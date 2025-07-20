@@ -29,9 +29,9 @@ Z. Chen et al., Electron ptychography achieves atomic-resolution limits set by l
 
 Short notes for startup:
 
-1. Large diffraction data needs to be loaded from PARADIM website: https://data.paradim.org/, and should be put in '../PtychoShelves_EM_Hollow/ptycho/Hollow_Data_exp_30nm/'.
+1. Large diffraction data needs to be loaded from PARADIM website: https://data.paradim.org/, and should be put in '../MultiHollowPtycho/ptycho/Hollow_Data_exp_30nm/'.
 
-2. For an initial test of the reconstruction, change the Matlab current Folder (work path) to ../PtychoShelves_EM/ptycho/, and run the main drive ptychographt_exp_30nm.m. 
+2. For an initial test of the reconstruction, change the Matlab current Folder (work path) to ../MultiHollowPtycho/ptycho/, and run the main drive ptychographt_exp_30nm.m. 
 
 3. For your own data, prepare a data file 'data_dp.mat' containing diffractions, 'data_position.hdf5' containing probe positions, and initial probe 'probe_initial.mat'. Please see the example script: ../ptycho/utils_EM/prepare_data_electron_exp.m. 
 
