@@ -1,6 +1,6 @@
-PtychoShelves_EM_Hollow
+MultiHollowPtycho
 
-# PtychoShelves_EM (Modified Version)
+# MultiHollowPtycho
 
 This source code is a modified version of the PtychoShelves package originally developed at Paul Scherrer Institut (PSI). It has been adapted for hollow multi-slice electron ptychographic reconstruction at the University of Warwick.
 
