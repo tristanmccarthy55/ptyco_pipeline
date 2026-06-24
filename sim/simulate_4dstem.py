@@ -53,6 +53,14 @@ DETECTOR_MAX_ANGLE_MRAD = 200.0   # full detector outer angle [mrad]
 SLICE_THICKNESS_A       = 2.0     # multislice slice thickness [Å]
 BIN_FACTOR              = 4       # NxN detector binning applied to the lazy array
 
+# --- dose ---
+# abTEM flux-normalises each pattern to total ≈ 1, so the per-pixel "photon count"
+# is ~1e-5 and PtychoShelves rejects it (load_from_p: avg count must be >= 1e-4).
+# Scale every pattern to DOSE_E electrons (integrated counts). No Poisson noise is
+# added, so the data is noiseless; a high dose just keeps counts well above the
+# threshold (avg ~8e4 e/pixel at 1e10, comfortable in float32).
+DOSE_E = 1e10                     # electrons per diffraction pattern (noiseless)
+
 # --- scan (production) ---
 # Coordinates are in the PREPARED cell frame (after rotate+orthogonalize+pad+centre),
 # NOT the raw POSCAR frame. The run prints the material bbox + exit-wave margins so
@@ -277,8 +285,17 @@ def save_outputs(arr, scan, out_dir: Path, box_a: float):
     assert n_b == n_bx, f"binned DP not square: {n_b}x{n_bx}"
 
     # Flatten scan to a single y-fastest axis: A[k, dy, dx], k = iy + ix*ny
-    A = arr.reshape(nx * ny, n_b, n_b).astype(np.float32)
+    A = arr.reshape(nx * ny, n_b, n_b).astype(np.float64)
     npos = A.shape[0]
+
+    # Scale to a realistic electron dose (global factor -> preserves the relative
+    # intensity between scan positions). abTEM patterns integrate to ~1; rescale so
+    # the MEAN pattern integrates to DOSE_E.
+    cur_total = float(A.reshape(npos, -1).sum(axis=1).mean())
+    A *= DOSE_E / max(cur_total, 1e-30)
+    A = A.astype(np.float32)
+    print(f"[dose] scaled to {DOSE_E:.0e} e/pattern  "
+          f"(avg {A.reshape(npos,-1).sum(1).mean()/(n_b*n_b):.3g} e/pixel)")
 
     # --- data_dp.hdf5 -------------------------------------------------
     # MATLAB h5read reverses axes: HDF5 (s0,s1,s2) -> MATLAB [s2,s1,s0] with
@@ -405,7 +422,7 @@ def write_driver_geometry(n_b: int, box_a: float, beam_thickness_a: float,
 # MAIN
 # ======================================================================
 def main(argv=None) -> int:
-    global DEVICE, SLICE_THICKNESS_A, SCAN_STEP_A
+    global DEVICE, SLICE_THICKNESS_A, SCAN_STEP_A, DOSE_E
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--test", action="store_true",
                     help="Tiny 3x3 scan for fast local shape/geometry validation.")
@@ -417,10 +434,13 @@ def main(argv=None) -> int:
     ap.add_argument("--scan-step", type=float, default=SCAN_STEP_A,
                     help="Scan step [Å]. Larger = fewer positions = faster "
                          "(~0.4 for the test campaign).")
+    ap.add_argument("--dose", type=float, default=DOSE_E,
+                    help="Electrons per diffraction pattern (noiseless scaling).")
     args = ap.parse_args(argv)
     DEVICE = args.device
     SLICE_THICKNESS_A = args.slice_thickness
     SCAN_STEP_A = args.scan_step
+    DOSE_E = args.dose
 
     print("=" * 64)
     print(f"4D-STEM simulation  |  device={DEVICE}  |  test={args.test}")
