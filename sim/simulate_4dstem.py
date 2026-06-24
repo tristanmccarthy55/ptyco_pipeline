@@ -97,6 +97,34 @@ def potential_sampling_a() -> float:
 # ======================================================================
 # 1. STRUCTURE
 # ======================================================================
+def build_phantom_atoms():
+    """Thin, ASYMMETRIC, CHIRAL phantom for the orientation (8-DOF) test.
+
+    A handful of Pb atoms arranged as the letter 'F' in a single z-plane. 'F' has
+    NO symmetry (C1), so all 8 dihedral-group orientations of the detector produce
+    a visibly different reconstruction -> the correct custom_data_flip is the one
+    that renders the F upright (vertical bar on the left, arms pointing +x, top arm
+    higher than the middle arm). Single-slice is exact for this thin object, so the
+    orientation result is NOT confounded by sample thickness.
+
+    Box x,y are kept at the same 70.008 Å as the real sim so Ndpx/d_alpha (and thus
+    the winning custom_data_flip) transfer directly to the real multislice recon.
+    """
+    from ase import Atoms
+    side = 70.008                      # match the real sim's in-plane box -> same Ndpx
+    zc = 4.0                           # atoms in one plane; box z below
+    # 'F' around the scan centre (40, 20). x→ right, y→ up.
+    coords = [(38, 14), (38, 17), (38, 20), (38, 23), (38, 26),   # vertical bar (left)
+              (41, 26), (44, 26),                                  # top arm (long, +x)
+              (41, 20)]                                            # middle arm (short)
+    pos = [(x, y, zc) for (x, y) in coords]
+    atoms = Atoms("Pb" * len(coords), positions=pos,
+                  cell=[side, side, 8.0], pbc=True)
+    print(f"[atoms] PHANTOM: {len(atoms)} Pb atoms as 'F' around (40,20); "
+          f"box {side:.1f}×{side:.1f}×8.0 Å (thin)")
+    return atoms, float(side)
+
+
 def load_and_prepare_atoms():
     """Load POSCAR, orient for the beam, make the in-plane box square, add vacuum.
 
@@ -436,6 +464,9 @@ def main(argv=None) -> int:
                          "(~0.4 for the test campaign).")
     ap.add_argument("--dose", type=float, default=DOSE_E,
                     help="Electrons per diffraction pattern (noiseless scaling).")
+    ap.add_argument("--phantom", action="store_true",
+                    help="Thin asymmetric 'F' Pb phantom for the orientation (8-DOF) "
+                         "test (single-slice exact; same Ndpx as the real sim).")
     args = ap.parse_args(argv)
     DEVICE = args.device
     SLICE_THICKNESS_A = args.slice_thickness
@@ -443,12 +474,13 @@ def main(argv=None) -> int:
     DOSE_E = args.dose
 
     print("=" * 64)
-    print(f"4D-STEM simulation  |  device={DEVICE}  |  test={args.test}")
+    print(f"4D-STEM simulation  |  device={DEVICE}  |  test={args.test}  |  "
+          f"phantom={args.phantom}")
     print(f"lambda = {wavelength_a():.5f} Å  |  bin = {BIN_FACTOR}×{BIN_FACTOR}  |  "
           f"slice = {SLICE_THICKNESS_A} Å  |  step = {SCAN_STEP_A} Å")
     print("=" * 64)
 
-    atoms, box_a = load_and_prepare_atoms()
+    atoms, box_a = build_phantom_atoms() if args.phantom else load_and_prepare_atoms()
     beam_thickness_a = float(atoms.cell.lengths()[2] - 2 * Z_VACUUM_A)
     report_scan_geometry(atoms, beam_thickness_a)
     potential = build_potential(atoms)
