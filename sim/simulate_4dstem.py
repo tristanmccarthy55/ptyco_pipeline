@@ -54,8 +54,12 @@ SLICE_THICKNESS_A       = 2.0     # multislice slice thickness [Å]
 BIN_FACTOR              = 4       # NxN detector binning applied to the lazy array
 
 # --- scan (production) ---
-SCAN_CENTER_X_A = 23.94
-SCAN_CENTER_Y_A = 35.0
+# Coordinates are in the PREPARED cell frame (after rotate+orthogonalize+pad+centre),
+# NOT the raw POSCAR frame. The run prints the material bbox + exit-wave margins so
+# you can place the scan on a feature with a safe buffer from the vacuum edges.
+# (40, 20) targets the frustrated-vortex region with PTO/surface on the right.
+SCAN_CENTER_X_A = 40.0
+SCAN_CENTER_Y_A = 20.0
 SCAN_WINDOW_A   = 20.0
 SCAN_STEP_A     = 0.1
 
@@ -201,6 +205,30 @@ def make_scan(test_mode: bool):
     print(f"[scan] {nx} × {ny} = {nx*ny} positions, "
           f"{tuple(np.round(start,2))} -> {tuple(np.round(end,2))} Å")
     return scan, nx, ny
+
+
+def report_scan_geometry(atoms, beam_thickness_a: float):
+    """Print where the scan sits relative to the material + the exit-wave halo,
+    so a vacuum-padding shift can't silently mis-place the scan again.
+
+    x is vacuum-padded (non-periodic) -> the halo must stay clear of the box edge
+    there or multislice wraps/aliases. y is periodic (wrap is real material)."""
+    pos = atoms.get_positions()
+    bx, by, _ = atoms.cell.lengths()
+    mx0, mx1 = pos[:, 0].min(), pos[:, 0].max()
+    my0, my1 = pos[:, 1].min(), pos[:, 1].max()
+    half = SCAN_WINDOW_A / 2.0
+    # exit-wave radius ≈ geometric beam spread through the sample + probe radius
+    ew_r = beam_thickness_a * np.tan(CONVERGENCE_MRAD * 1e-3) + OVERFOCUS_A * np.tan(CONVERGENCE_MRAD * 1e-3)
+    hx0, hx1 = SCAN_CENTER_X_A - half - ew_r, SCAN_CENTER_X_A + half + ew_r
+    print(f"[geom] material x[{mx0:.1f},{mx1:.1f}] y[{my0:.1f},{my1:.1f}]  box {bx:.1f}×{by:.1f} Å")
+    print(f"[geom] scan centre ({SCAN_CENTER_X_A},{SCAN_CENTER_Y_A}) window {SCAN_WINDOW_A} Å; "
+          f"exit-wave radius ≈ {ew_r:.1f} Å")
+    print(f"[geom] x halo [{hx0:.1f},{hx1:.1f}] -> margin to box edges "
+          f"{hx0:.1f} / {bx-hx1:.1f} Å  (x is VACUUM-padded; keep >~5 Å)")
+    if hx0 < 5 or (bx - hx1) < 5:
+        print("[geom] WARNING: exit-wave halo is close to the box edge in x -> "
+              "risk of multislice wraparound; move the scan centre inward.")
 
 
 def _crop_center_to_multiple(n_u: int, factor: int) -> tuple[int, int]:
@@ -402,6 +430,7 @@ def main(argv=None) -> int:
 
     atoms, box_a = load_and_prepare_atoms()
     beam_thickness_a = float(atoms.cell.lengths()[2] - 2 * Z_VACUUM_A)
+    report_scan_geometry(atoms, beam_thickness_a)
     potential = build_potential(atoms)
     probe = build_probe(potential)
     scan, nx, ny = make_scan(args.test)
