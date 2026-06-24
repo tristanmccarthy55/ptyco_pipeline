@@ -230,7 +230,8 @@ for ieng = 1:length(Niter)
     eng. mirror_objects    = false;
     eng. auto_center_data  = false;
     eng. auto_center_probe = false;
-    eng. custom_data_flip  = [0,0,0];
+    eng. custom_data_flip  = [0,0,1];   % [fliplr flipud TRANSPOSE]: orientation sweep
+                                        % proved the synthetic detector needs a transpose.
     eng. apply_tilted_plane_correction = '';
 
     eng. plot_results_every           = inf;
