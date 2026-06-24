@@ -1,0 +1,17 @@
+This folder contains one experimental dataset (scan01) from scanning transmission electron microscopy at Cornell University, published in the following paper. This paper should be cited whenever this code, dataset or their derivatives are used: 
+Chen, Z., et al., Electron ptychography achieves atomic-resolution limits set by lattice vibrations. arXiv: 2101.00465.
+(large diffraction data needs to be loaded from PARADIM website: https://data.paradim.org/, check our paper for more details).
+
+Conditions:
+Material: PrScO3 along [001], thickness ~ 21 nm
+Diffraction patterns: 128x128x64x64 (only use 64x64 diffraction patterns to make the computation less demanding)
+Beam energy: 300 keV
+Probe-forming semi-angle: 21.4 mrad
+defocus: -20 nm (overfocus)
+scan step size: 0.41 Angstrom
+pixel size in diffraction: 0.823 mrad/pixel
+Counts per electron: 580
+
+Contact information:
+
+Zhen Chen (zhen.chen@conell.edu) or David A. Muller (david.a.muller@cornell.edu)
