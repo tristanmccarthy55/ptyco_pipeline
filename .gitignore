@@ -10,3 +10,8 @@ ptycho/**/Niter*.mat
 
 # SLURM logs
 logs/
+
+# abTEM simulation outputs (large diffraction data + reconstructions; keep on
+# the shared FS, never in git). sim_meta.mat is tiny but regenerated each run.
+sim_out/
+sim/__pycache__/

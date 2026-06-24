@@ -1,0 +1,421 @@
+"""
+simulate_4dstem.py — minimal abTEM 4D-STEM generator for PtychoShelves.
+
+Simulates a 4D-STEM dataset with abTEM (multislice) and writes it straight into
+the PtychoShelves worked-example format, ready for the MultiHollowPtycho pipeline
+(hollow angle = 0 baseline) with no conversion step.
+
+Strategy (full box, no cropping):
+  - keep the FULL real-space cell (cropping would alias the broadened exit wave),
+  - collect the full detector (~200 mrad),
+  - return the measurement as a LAZY Dask array,
+  - bin the detector 4x4 with dask.array.coarsen, then .compute() (~20 GB, fits RAM),
+  - save a single data_dp.hdf5 via h5py (no Zarr).
+
+Outputs (into OUT_DIR, default ./sim_out/01/):
+  - data_dp.hdf5         /dp                  binned diffraction intensities
+  - data_position.hdf5   /probe_positions_0   scan positions (Å)
+  - probe_initial.mat    probe, p             initial probe (at the BINNED size)
+
+Library: abTEM 1.0.5 (new API).  See DATA_FORMAT.md (ptyco repo) for the contract.
+
+    python simulate_4dstem.py --test        # 3x3 local sanity check
+    python simulate_4dstem.py               # full production scan (HPC)
+"""
+from __future__ import annotations
+
+import argparse
+from pathlib import Path
+
+import numpy as np
+import h5py
+import dask.array as da
+import ase.io
+from scipy.io import savemat
+
+import abtem
+
+
+# ======================================================================
+# CONFIG  (edit these for your data)
+# ======================================================================
+PROJECT_ROOT = Path(__file__).resolve().parent
+POSCAR_PATH  = PROJECT_ROOT / "PTO6_STO6_18_18_labyrinthPoscar.vasp"
+OUT_DIR      = PROJECT_ROOT / "sim_out" / "01"
+
+# --- physics / optics ---
+ENERGY_EV          = 300e3     # beam energy [eV]
+CONVERGENCE_MRAD   = 100.0     # probe convergence semi-angle [mrad]
+OVERFOCUS_A        = 20.0      # overfocus MAGNITUDE [Å] (2 nm). Sign handled below.
+
+# --- detector / sampling / binning ---
+DETECTOR_MAX_ANGLE_MRAD = 200.0   # full detector outer angle [mrad]
+SLICE_THICKNESS_A       = 2.0     # multislice slice thickness [Å]
+BIN_FACTOR              = 4       # NxN detector binning applied to the lazy array
+
+# --- scan (production) ---
+SCAN_CENTER_X_A = 23.94
+SCAN_CENTER_Y_A = 35.0
+SCAN_WINDOW_A   = 20.0
+SCAN_STEP_A     = 0.1
+
+# --- device ---
+DEVICE = "gpu"   # "gpu" on the HPC L40; "cpu" for a laptop test
+
+# --- structure prep ---
+ROTATE_DEG_Y = -90.0     # rotation about y to set the beam (z) axis
+Z_VACUUM_A   = 2.0       # center(axis=2, vacuum=...) padding each side along beam
+
+
+def wavelength_a() -> float:
+    """Electron wavelength [Å] at ENERGY_EV."""
+    return float(abtem.core.energy.energy2wavelength(ENERGY_EV))
+
+
+def potential_sampling_a() -> float:
+    """Real-space sampling [Å] to band-limit beyond DETECTOR_MAX_ANGLE_MRAD.
+
+    sampling <= lambda / (2 sin(theta_max)); abTEM antialiases to ~2/3 of the
+    array Nyquist, so we sample a little finer to keep theta_max 'valid'.
+    """
+    theta = DETECTOR_MAX_ANGLE_MRAD * 1e-3
+    return wavelength_a() / (2.0 * np.sin(theta)) / 1.5
+
+
+# ======================================================================
+# 1. STRUCTURE
+# ======================================================================
+def load_and_prepare_atoms():
+    """Load POSCAR, orient for the beam, make the in-plane box square, add vacuum.
+
+    1. read POSCAR
+    2. rotate -90 deg about y   (sets which axis the beam looks down)
+    3. orthogonalize_cell()     (required: multislice needs an orthogonal box)
+    4. pad X and Y so the in-plane bounding box is square (NO cropping)
+    5. center(axis=2, vacuum=2.0)
+    """
+    atoms = ase.io.read(str(POSCAR_PATH))
+    print(f"[atoms] loaded {len(atoms)} atoms; cell "
+          f"{np.round(atoms.cell.lengths(), 2)} Å")
+
+    atoms.rotate(ROTATE_DEG_Y, "y", rotate_cell=True)
+    atoms = abtem.orthogonalize_cell(atoms)
+    Lx, Ly, Lz = atoms.cell.lengths()
+    print(f"[atoms] after rotate+orthogonalize: {Lx:.2f} × {Ly:.2f} × {Lz:.2f} Å "
+          f"(beam = z)")
+
+    # pad X and Y to a square in-plane box (square box -> square DP sampling)
+    side = max(Lx, Ly)
+    atoms.cell[0, 0] = side
+    atoms.cell[1, 1] = side
+    atoms.center(axis=0)
+    atoms.center(axis=1)
+    atoms.center(axis=2, vacuum=Z_VACUUM_A)
+
+    bx, by, bz = atoms.cell.lengths()
+    print(f"[atoms] final box: {bx:.2f} × {by:.2f} × {bz:.2f} Å  "
+          f"(beam path ≈ {bz:.1f} Å)")
+    assert abs(bx - by) < 1e-6, f"in-plane box not square: {bx} vs {by}"
+    return atoms, float(bx)
+
+
+# ======================================================================
+# 2. POTENTIAL & PROBES
+# ======================================================================
+def build_potential(atoms):
+    sampling = potential_sampling_a()
+    pot = abtem.Potential(
+        atoms,
+        sampling=sampling,
+        slice_thickness=SLICE_THICKNESS_A,
+        parametrization="lobato",
+        projection="infinite",
+        device=DEVICE,
+    )
+    print(f"[potential] sampling = {sampling:.4f} Å  ->  gpts = {pot.gpts}  "
+          f"({pot.num_slices} slices)")
+    return pot
+
+
+def _defocus():
+    # Defocus sign derived from abTEM 1.0.5 source (not assumed):
+    #   chi = (2*pi/lambda)*(1/2 * alpha^2 * C10 + ...), T(k)=exp(-i*chi),
+    #   and abTEM defines defocus = -C10  =>  T(k) = exp(+i*pi*lambda*defocus*k^2).
+    #   abTEM's Fresnel propagator (forward, dz>0) is exp(-i*pi*lambda*dz*k^2),
+    #   so T = P(dz = -defocus). A NEGATIVE defocus therefore builds the entrance
+    #   wave as the in-focus probe propagated FORWARD by |defocus| -> the crossover
+    #   is |defocus| ABOVE the entrance surface (in vacuum) = OVERFOCUS.
+    # => overfocus of magnitude OVERFOCUS_A is defocus = -OVERFOCUS_A.
+    return -OVERFOCUS_A
+
+
+def build_probe(potential):
+    """Probe on the full simulation grid, used for the scan (accurate multislice)."""
+    probe = abtem.Probe(
+        energy=ENERGY_EV,
+        semiangle_cutoff=CONVERGENCE_MRAD,
+        defocus=_defocus(),
+        device=DEVICE,
+    )
+    probe.grid.match(potential)
+    print(f"[probe] semiangle = {CONVERGENCE_MRAD:.0f} mrad, "
+          f"abTEM defocus = {_defocus():+.1f} Å (overfocus {OVERFOCUS_A:.1f} Å: "
+          f"crossover before entrance surface)")
+    return probe
+
+
+def build_initial_probe(n_b: int, box_a: float):
+    """Probe on the BINNED grid for probe_initial.mat.
+
+    The binned detector has reciprocal pixel dk_b = BIN_FACTOR / box and N_b pixels.
+    A probe with gpts=N_b and real-space extent = box / BIN_FACTOR has exactly that
+    dk_b, the same object pixel dx = box/(N_b*BIN_FACTOR), and the same outer angle
+    as the binned DP — so it is geometrically consistent with the saved data.
+    """
+    extent = box_a / BIN_FACTOR
+    probe = abtem.Probe(
+        energy=ENERGY_EV,
+        semiangle_cutoff=CONVERGENCE_MRAD,
+        defocus=_defocus(),
+        gpts=(n_b, n_b),
+        extent=(extent, extent),
+        device="cpu",   # tiny; keep off the GPU
+    )
+    return np.asarray(probe.build().compute().array).astype(np.complex64)
+
+
+# ======================================================================
+# 3. SCAN + LAZY 4x4 BINNING
+# ======================================================================
+def make_scan(test_mode: bool):
+    half = SCAN_WINDOW_A / 2.0
+    start = (SCAN_CENTER_X_A - half, SCAN_CENTER_Y_A - half)
+    end   = (SCAN_CENTER_X_A + half, SCAN_CENTER_Y_A + half)
+    if test_mode:
+        start = (SCAN_CENTER_X_A - 0.2, SCAN_CENTER_Y_A - 0.2)
+        end   = (SCAN_CENTER_X_A + 0.2, SCAN_CENTER_Y_A + 0.2)
+        scan = abtem.GridScan(start=start, end=end, gpts=(3, 3))
+    else:
+        scan = abtem.GridScan(start=start, end=end, sampling=SCAN_STEP_A)
+    nx, ny = int(scan.gpts[0]), int(scan.gpts[1])
+    print(f"[scan] {nx} × {ny} = {nx*ny} positions, "
+          f"{tuple(np.round(start,2))} -> {tuple(np.round(end,2))} Å")
+    return scan, nx, ny
+
+
+def _crop_center_to_multiple(n_u: int, factor: int) -> tuple[int, int]:
+    """Largest N_c <= N_u that is a multiple of 2*factor (keeps DC centred after
+    binning), and the symmetric start index. Returns (start, N_c)."""
+    n_c = (n_u // (2 * factor)) * (2 * factor)
+    start = (n_u - n_c) // 2
+    return start, n_c
+
+
+def run_scan_binned(probe, potential, scan):
+    """Scan -> lazy Dask measurement -> crop+bin detector 4x4 -> compute NumPy.
+
+    Returns the binned array (nx, ny, N_b, N_b).
+    """
+    detector = abtem.PixelatedDetector(max_angle=DETECTOR_MAX_ANGLE_MRAD)
+    meas = probe.scan(potential, scan=scan, detectors=detector, lazy=True)
+
+    lazy = da.asarray(meas.array)            # (nx, ny, N_u, N_u), lazy
+    n_u = int(lazy.shape[-1])
+    s, n_c = _crop_center_to_multiple(n_u, BIN_FACTOR)
+    cropped = lazy[..., s:s + n_c, s:s + n_c]        # symmetric crop about DC
+    binned = da.coarsen(np.sum, cropped,
+                        {cropped.ndim - 2: BIN_FACTOR, cropped.ndim - 1: BIN_FACTOR})
+    n_b = n_c // BIN_FACTOR
+    print(f"[bin] detector {n_u} -> crop {n_c} -> {BIN_FACTOR}×{BIN_FACTOR} bin "
+          f"-> N_b = {n_b}")
+    print(f"[bin] computing binned array (~{binned.nbytes/1e9:.1f} GB) ...")
+    arr = np.asarray(binned.compute()).astype(np.float32)  # (nx, ny, N_b, N_b)
+    print(f"[bin] binned measurement shape (nx,ny,kY,kX) = {arr.shape}")
+    return arr
+
+
+# ======================================================================
+# 4. SAVE  (PtychoShelves contract + C-vs-Fortran handling)
+# ======================================================================
+def _scan_positions_xy(scan):
+    """(Npos, 2) [x, y] in Å, flattened C-order over (nx, ny) -> y-fastest."""
+    pos = np.asarray(scan.get_positions())   # (nx, ny, 2), last axis = (x, y)
+    return pos.reshape(-1, 2)
+
+
+def save_outputs(arr, scan, out_dir: Path, box_a: float):
+    out_dir.mkdir(parents=True, exist_ok=True)
+    nx, ny, n_b, n_bx = arr.shape
+    assert n_b == n_bx, f"binned DP not square: {n_b}x{n_bx}"
+
+    # Flatten scan to a single y-fastest axis: A[k, dy, dx], k = iy + ix*ny
+    A = arr.reshape(nx * ny, n_b, n_b).astype(np.float32)
+    npos = A.shape[0]
+
+    # --- data_dp.hdf5 -------------------------------------------------
+    # MATLAB h5read reverses axes: HDF5 (s0,s1,s2) -> MATLAB [s2,s1,s0] with
+    # M(p,q,r)=H[r-1,q-1,p-1]. For MATLAB dp[N_b,N_b,Npos] with dp(dy,dx,k)=A[k,dy,dx]
+    # the dataset must be (Npos, N_b_x, N_b_y) = A.transpose(0,2,1).
+    H_dp = np.ascontiguousarray(A.transpose(0, 2, 1))
+    dp_path = out_dir / "data_dp.hdf5"        # NOTE: .hdf5 (PtychoShelves loader name)
+    with h5py.File(dp_path, "w") as f:
+        f.create_dataset("dp", data=H_dp)
+    print(f"[save] {dp_path}  (HDF5 /dp {H_dp.shape} -> MATLAB [{n_b},{n_b},{npos}])")
+
+    # --- data_position.hdf5 ------------------------------------------
+    pos_xy = _scan_positions_xy(scan).astype(np.float32)   # (Npos, 2) [x, y]
+    assert pos_xy.shape[0] == npos, f"{pos_xy.shape[0]} positions != {npos} frames"
+    pos_path = out_dir / "data_position.hdf5"
+    with h5py.File(pos_path, "w") as f:
+        f.create_dataset("probe_positions_0", data=pos_xy.T)   # (2, Npos)
+    print(f"[save] {pos_path}  (HDF5 /probe_positions_0 {pos_xy.T.shape} "
+          f"-> MATLAB [{npos},2])")
+
+    # --- probe_initial.mat (binned grid; scipy for MATLAB load()+complex) ----
+    probe_wave = build_initial_probe(n_b, box_a)
+    itot = float(A.reshape(npos, -1).sum(axis=1).mean())
+    probe_wave *= np.sqrt(itot) / (np.linalg.norm(probe_wave) + 1e-30)
+    probe_wave = probe_wave.astype(np.complex64)
+    assert probe_wave.shape == (n_b, n_b), \
+        f"probe {probe_wave.shape} != DP size {(n_b, n_b)}"
+    mat_path = out_dir / "probe_initial.mat"
+    savemat(str(mat_path), {
+        "probe": probe_wave,
+        "p": {"binning": False, "detector": {"binning": False}},
+    })
+    print(f"[save] {mat_path}  (probe {probe_wave.shape} complex)")
+
+    return dp_path, pos_path, A, pos_xy, probe_wave
+
+
+# ======================================================================
+# 5. SELF-TESTS + DRIVER GEOMETRY
+# ======================================================================
+def selftest_ordering(dp_path, pos_path, A, pos_xy, nx, ny):
+    """Round-trip the written files under MATLAB's axis-reversal convention to
+    catch the C-vs-Fortran transpose landmine without needing MATLAB."""
+    npos, n_b, n_bx = A.shape
+
+    with h5py.File(dp_path, "r") as f:
+        H = f["dp"][...]                       # (Npos, N_b_x, N_b_y)
+    M_dp = np.transpose(H, (2, 1, 0))          # MATLAB [N_b, N_b, Npos]
+    assert M_dp.shape == (n_b, n_bx, npos), M_dp.shape
+    assert np.array_equal(M_dp, np.transpose(A, (1, 2, 0))), \
+        "dp ordering mismatch (detector/scan transpose)"
+
+    with h5py.File(pos_path, "r") as f:
+        Hp = f["probe_positions_0"][...]       # (2, Npos)
+    assert np.array_equal(np.transpose(Hp, (1, 0)), pos_xy), "position ordering mismatch"
+
+    assert n_b == n_bx, "DP not square"
+    assert npos == nx * ny, f"{npos} != {nx}*{ny}"
+
+    # y-fastest: first ny positions share one x, y increases uniformly (float32 tol)
+    xs = pos_xy[:ny, 0].astype(np.float64)
+    ys = pos_xy[:ny, 1].astype(np.float64)
+    assert np.allclose(xs, xs[0]), "x should be constant over the first ny points"
+    if ny > 1:
+        dystep = np.diff(ys)
+        assert np.all(dystep > 0), "y should increase monotonically (y-fastest)"
+        assert np.allclose(dystep, dystep[0], rtol=1e-3), "y step should be uniform"
+
+    # DC at the array centre (centre-of-MASS, robust to a strong Bragg disk)
+    mean_dp = A.mean(axis=0).astype(np.float64)
+    tot = mean_dp.sum()
+    yy, xx = np.indices(mean_dp.shape)
+    cy = float((yy * mean_dp).sum() / tot)
+    cx = float((xx * mean_dp).sum() / tot)
+    exp = n_b // 2
+    tol = max(3.0, 0.02 * n_b)
+    assert abs(cy - exp) <= tol and abs(cx - exp) <= tol, \
+        f"diffraction COM at ({cy:.1f},{cx:.1f}), expected near ({exp},{exp})"
+
+    print(f"[selftest] OK: dp {M_dp.shape}, pos {pos_xy.shape}, "
+          f"y-fastest verified, DC-centred (COM ({cy:.1f},{cx:.1f}) of {n_b})")
+
+
+def write_driver_geometry(n_b: int, box_a: float, beam_thickness_a: float,
+                          out_dir: Path):
+    """Print AND save (sim_meta.mat) the binned geometry the MATLAB driver needs,
+    so the driver reads it instead of hardcoding (and drifting from) the sim."""
+    lam = wavelength_a()
+    dk_b = BIN_FACTOR / box_a                       # binned recip pixel [1/Å]
+    d_alpha_rad = dk_b * lam                         # angle per binned pixel [rad]
+    d_alpha_mrad = d_alpha_rad * 1e3
+    rbf = CONVERGENCE_MRAD / d_alpha_mrad           # BF disk radius [binned px]
+    dx = 1.0 / (n_b * dk_b)                         # object pixel [Å]
+
+    meta = {
+        "Ndpx": int(n_b),
+        "d_alpha_rad": float(d_alpha_rad),
+        "d_alpha_mrad": float(d_alpha_mrad),
+        "rbf": float(rbf),
+        "dx_object_A": float(dx),
+        "energy_kev": float(ENERGY_EV / 1e3),
+        "box_A": float(box_a),
+        "bin_factor": int(BIN_FACTOR),
+        "beam_thickness_A": float(beam_thickness_a),
+        "convergence_mrad": float(CONVERGENCE_MRAD),
+        "overfocus_A": float(OVERFOCUS_A),
+        "ADU": 1.0,
+    }
+    savemat(str(out_dir / "sim_meta.mat"), {"meta": meta})
+
+    print("\n" + "=" * 64)
+    print("DRIVER GEOMETRY (saved to sim_meta.mat; the MATLAB driver reads it):")
+    print(f"  Ndpx (p.asize)      = {n_b}")
+    print(f"  d_alpha             = {d_alpha_mrad:.4f} mrad/pixel")
+    print(f"  rbf (BF disk radius)= {rbf:.1f} binned pixels")
+    print(f"  object pixel dx     = {dx:.4f} Å")
+    print(f"  HT                  = {ENERGY_EV / 1e3:.0f} keV")
+    print(f"  beam thickness      = {beam_thickness_a:.1f} Å (sample along beam)")
+    print(f"  ADU                 = 1   (synthetic intensities; engine rescales probe)")
+    print("=" * 64)
+
+
+# ======================================================================
+# MAIN
+# ======================================================================
+def main(argv=None) -> int:
+    global DEVICE, SLICE_THICKNESS_A, SCAN_STEP_A
+    ap = argparse.ArgumentParser(description=__doc__)
+    ap.add_argument("--test", action="store_true",
+                    help="Tiny 3x3 scan for fast local shape/geometry validation.")
+    ap.add_argument("--device", default=DEVICE, choices=["gpu", "cpu"])
+    ap.add_argument("--out-dir", type=Path, default=OUT_DIR)
+    ap.add_argument("--slice-thickness", type=float, default=SLICE_THICKNESS_A,
+                    help="Multislice slice thickness [Å]. Larger = fewer slices "
+                         "= faster (use for the geometry test campaign).")
+    ap.add_argument("--scan-step", type=float, default=SCAN_STEP_A,
+                    help="Scan step [Å]. Larger = fewer positions = faster "
+                         "(~0.4 for the test campaign).")
+    args = ap.parse_args(argv)
+    DEVICE = args.device
+    SLICE_THICKNESS_A = args.slice_thickness
+    SCAN_STEP_A = args.scan_step
+
+    print("=" * 64)
+    print(f"4D-STEM simulation  |  device={DEVICE}  |  test={args.test}")
+    print(f"lambda = {wavelength_a():.5f} Å  |  bin = {BIN_FACTOR}×{BIN_FACTOR}  |  "
+          f"slice = {SLICE_THICKNESS_A} Å  |  step = {SCAN_STEP_A} Å")
+    print("=" * 64)
+
+    atoms, box_a = load_and_prepare_atoms()
+    beam_thickness_a = float(atoms.cell.lengths()[2] - 2 * Z_VACUUM_A)
+    potential = build_potential(atoms)
+    probe = build_probe(potential)
+    scan, nx, ny = make_scan(args.test)
+
+    arr = run_scan_binned(probe, potential, scan)
+    n_b = arr.shape[-1]
+
+    dp_path, pos_path, A, pos_xy, _ = save_outputs(arr, scan, args.out_dir, box_a)
+    selftest_ordering(dp_path, pos_path, A, pos_xy, nx, ny)
+    write_driver_geometry(n_b, box_a, beam_thickness_a, args.out_dir)
+
+    print("\nDone. Wrote 3 files to", args.out_dir)
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
