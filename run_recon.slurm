@@ -15,8 +15,11 @@
 # Cluster constraints (MATLAB module, L40 GPU, partition/account) follow the
 # infrastructure reference in ../config.sh.
 
-# --- resolve repo root (directory containing this script) -------------------
-REPO_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# --- resolve repo root ------------------------------------------------------
+# Under Slurm the batch script is copied to a spool dir, so ${BASH_SOURCE[0]}
+# is NOT the repo. SLURM_SUBMIT_DIR is the directory sbatch was launched from
+# (= the repo root). Fall back to the script location for non-Slurm runs.
+REPO_DIR="${SLURM_SUBMIT_DIR:-$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)}"
 PTYCHO_DIR="${REPO_DIR}/ptycho"
 mkdir -p "${REPO_DIR}/logs"
 
