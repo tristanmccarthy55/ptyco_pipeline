@@ -3,7 +3,7 @@ sample_data_PrScO3.mat
 ptycho/exampleData/**/data_dp.mat
 ptycho/exampleData/**/mask.mat
 
-# Reconstruction outputs (keep the shipped scan01/final_results/ reference, which
+# Reconstruction outputs (keep the shipped 01/final_results/ reference, which
 # does not match these patterns and is committed deliberately)
 ptycho/exampleData/**/*ML_recon*/
 ptycho/**/Niter*.mat

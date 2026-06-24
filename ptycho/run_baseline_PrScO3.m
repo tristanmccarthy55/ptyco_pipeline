@@ -34,8 +34,8 @@ Ndpx    = 256;             % detector size
 ADU     = 580;             % counts per electron
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%% prepare data_dp.mat (hollow = 0) %%%%%%%%%%%%%%%%%%%%
-% scan01 already ships with probe_initial.mat and data_position.hdf5; we only
-% need to derive data_dp.mat from the raw 'dp' once. mask = all-ones => hollow 0.
+% scan folder 01/ already ships with probe_initial.mat and data_position.hdf5;
+% we only derive data_dp.mat from the raw 'dp' once. mask = all-ones => hollow 0.
 if ~exist(fullfile(save_dir,'data_dp.mat'),'file')
     if ~exist(RAW_DATA,'file')
         error('Raw data not found: %s (set RAW_DATA env var to its path)', RAW_DATA);
