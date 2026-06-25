@@ -67,6 +67,14 @@ Niter_save_results        = [50,  50];
 Niter_save_exit_wave      = [200, 200];
 strcustom0                = 'synthetic_ML';
 
+% LSQ step size: deep multilayer recons are ill-conditioned and diverge to NaN at
+% the proven-baseline 0.5 (esp. when the probe update starts). Yu's 30-layer hollow
+% script used 0.1. Default 0.1; override via BETA_LSQ env (drop to 0.05 if 82 layers
+% still NaNs).
+blsq_env = getenv('BETA_LSQ');
+if ~isempty(blsq_env); beta_LSQ_val = str2double(blsq_env); else; beta_LSQ_val = 0.1; end
+fprintf('beta_LSQ = %.3g\n', beta_LSQ_val);
+
 %%%%%%%%%%%%%%%%%%%%%%%%%%%% p struct %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 clear p
 p = struct();
@@ -192,7 +200,7 @@ for ieng = 1:length(Niter)
     eng. beta_probe  = 1;
     eng. delta_p     = 0.1;
     eng. momentum    = 0;
-    eng. beta_LSQ    = 0.5;
+    eng. beta_LSQ    = beta_LSQ_val;
     eng. accelerated_gradients_start = inf;
 
     eng. apply_subpix_shift             = true;
