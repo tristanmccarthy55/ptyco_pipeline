@@ -59,16 +59,18 @@ fprintf('multislice: Nlayers=%d, delta_z=%.3f A (planes ~1.95 A; ratio %.2f)\n',
 % two-engine schedule (coarse presolve -> full), modelled on the proven baseline
 grouping                  = [64,  32];
 Niter                     = [200, 200];
-% Probe update start. The working 7-layer run REFINED the probe ([20 10]) — that
-% refinement is part of why it locked, so refinement-on is the default. (Fixing the
-% probe, PROBE_START=inf, removed that DOF and gave noise on the under-constrained
-% deep run.) For very deep layers, a DELAYED start lets the object settle first.
-% Override both engines with PROBE_START (e.g. inf to fix, 60 to delay).
+% Probe update start. CONFIRMED: the fixed-probe 7-layer run reproduced the refined
+% run's lattice to-a-tee, so the simulated probe we hand in is CORRECT. For synthetic
+% data we therefore DON'T refine it — fixing the (true) probe is both accurate and
+% removes the probe-update instability that NaN'd the deep refined runs at iter 20.
+% (The earlier 41-layer noise was under-constraint, not the probe.) Default: fixed.
+% For REAL data (unknown probe) re-enable refinement via PROBE_START (e.g. 20, or 60
+% to delay so the object settles first on deep runs).
 ps_env = getenv('PROBE_START');
 if ~isempty(ps_env)
     Nst_probe = [str2double(ps_env), str2double(ps_env)];
 else
-    Nst_probe = [20, 10];                       % proven refinement schedule
+    Nst_probe = [inf, inf];                     % synthetic: known/true probe -> fixed
 end
 fprintf('probe_change_start (per engine) = [%g %g]\n', Nst_probe(1), Nst_probe(2));
 Npos_st                   = [inf, inf];     % positions are EXACT (from sim) -> fixed
