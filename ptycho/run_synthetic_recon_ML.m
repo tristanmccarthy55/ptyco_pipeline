@@ -43,10 +43,18 @@ mask1 = ones(Ndpx, Ndpx, 'single');
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%% multislice reconstruction parameters %%%%%%%%%%%%%%%
 Nprobe    = 8;
-DELTA_Z_A = 10;                         % target recon slice thickness [Å]
-Nlayers   = max(1, round(thick / DELTA_Z_A));   % ~7 layers through ~70 Å
-delta_z   = thick / Nlayers;            % actual layer spacing [Å]
-fprintf('multislice: Nlayers=%d, delta_z=%.1f A\n', Nlayers, delta_z);
+% Nlayers: set via NLAYERS env (e.g. 41 for the 4 A sublattice, 74/82 for the 2 A
+% oxygen sublattice — chosen INCOMMENSURATE with the ~1.95 A atomic planes to avoid
+% depth plane-locking). Falls back to ~10 A slices if NLAYERS is unset.
+nl_env = getenv('NLAYERS');
+if ~isempty(nl_env)
+    Nlayers = max(1, round(str2double(nl_env)));
+else
+    Nlayers = max(1, round(thick / 10));        % ~7 layers through ~70 A
+end
+delta_z = thick / Nlayers;                      % actual layer spacing [Å]
+fprintf('multislice: Nlayers=%d, delta_z=%.3f A (planes ~1.95 A; ratio %.2f)\n', ...
+        Nlayers, delta_z, 1.95/delta_z);
 
 % two-engine schedule (coarse presolve -> full), modelled on the proven baseline
 grouping                  = [64,  32];

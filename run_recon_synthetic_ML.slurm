@@ -7,7 +7,7 @@
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=8
 #SBATCH --mem=64G
-#SBATCH --time=10:00:00
+#SBATCH --time=1-00:00:00
 #SBATCH --output=logs/ptycho_synthML_%j.out
 #SBATCH --error=logs/ptycho_synthML_%j.err
 
@@ -22,10 +22,12 @@ module purge
 module load MATLAB/2024b_Update_3
 
 export SIM_BASE="${SIM_BASE:-${REPO_DIR}/sim_out/}"
+export NLAYERS="${NLAYERS:-7}"          # recon depth slices (override per submission)
 
 echo "Job ${SLURM_JOB_ID} on $(hostname)"
 echo "REPO_DIR : ${REPO_DIR}"
 echo "SIM_BASE : ${SIM_BASE}"
+echo "NLAYERS  : ${NLAYERS}"
 echo "GPU      : ${CUDA_VISIBLE_DEVICES:-<unset>}"
 
 matlab -nodisplay -nosplash -nodesktop \
