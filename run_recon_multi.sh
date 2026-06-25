@@ -30,8 +30,11 @@ for NL in "$@"; do
     mkdir -p "${DST}"
     for f in "${INPUTS[@]}"; do ln -sf "${SRC}/${f}" "${DST}/${f}"; done   # symlink shared data
 
+    TIME_ARG=()
+    [ -n "${WALLTIME:-}" ] && TIME_ARG=(--time="${WALLTIME}")   # e.g. WALLTIME=1-18:00:00 for 82 layers
     JID=$(sbatch --parsable \
         --job-name="ptyML_${TAG}" \
+        "${TIME_ARG[@]}" \
         --export=ALL,NLAYERS="${NL}",SIM_BASE="${REPO_DIR}/recon_${TAG}/" \
         run_recon_synthetic_ML.slurm)
     echo "  NLAYERS=${NL}  ->  recon_${TAG}/   job ${JID}   (log: logs/ptycho_synthML_${JID}.out)"
