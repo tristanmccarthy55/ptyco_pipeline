@@ -59,7 +59,14 @@ fprintf('multislice: Nlayers=%d, delta_z=%.3f A (planes ~1.95 A; ratio %.2f)\n',
 % two-engine schedule (coarse presolve -> full), modelled on the proven baseline
 grouping                  = [64,  32];
 Niter                     = [200, 200];
-Nst_probe                 = [20,  10];
+% Probe update start. For SYNTHETIC data the initial probe IS the true (simulated)
+% probe, so refining it is unnecessary AND destabilises the deep multilayer solve
+% (it NaNs the instant the probe update begins). Default: never update (inf). Set
+% PROBE_START env to a finite iter to re-enable gentle probe refinement.
+ps_env = getenv('PROBE_START');
+if ~isempty(ps_env); ps_val = str2double(ps_env); else; ps_val = inf; end
+Nst_probe                 = [ps_val, ps_val];
+fprintf('probe_change_start = %g (inf => fixed known probe)\n', ps_val);
 Npos_st                   = [inf, inf];     % positions are EXACT (from sim) -> fixed
 reglayer                  = [1,   0.5];     % symmetrise info between layers
 Np_presolve               = [round(Ndpx/2), Ndpx];   % 178 -> 356
