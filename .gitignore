@@ -14,4 +14,7 @@ logs/
 # abTEM simulation outputs (large diffraction data + reconstructions; keep on
 # the shared FS, never in git). sim_meta.mat is tiny but regenerated each run.
 sim_out/
+sim_out_*/
+sim_phantom/
+recon_*/            # per-run multislice output dirs (run_recon_multi.sh)
 sim/__pycache__/
