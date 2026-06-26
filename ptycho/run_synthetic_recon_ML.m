@@ -58,7 +58,10 @@ fprintf('multislice: Nlayers=%d, delta_z=%.3f A (planes ~1.95 A; ratio %.2f)\n',
 
 % two-engine schedule (coarse presolve -> full), modelled on the proven baseline
 grouping                  = [64,  32];
-Niter                     = [200, 200];
+% iterations per engine; the lattice converges well before 200, so NITER lets the
+% heavy deep/fine runs fit walltime (e.g. NITER=120 for 70-layer ~1 A slices).
+ni_env = getenv('NITER');
+if ~isempty(ni_env); Niter = [round(str2double(ni_env)), round(str2double(ni_env))]; else; Niter = [200, 200]; end
 % Probe update start. CONFIRMED: the fixed-probe 7-layer run reproduced the refined
 % run's lattice to-a-tee, so the simulated probe we hand in is CORRECT. For synthetic
 % data we therefore DON'T refine it — fixing the (true) probe is both accurate and
