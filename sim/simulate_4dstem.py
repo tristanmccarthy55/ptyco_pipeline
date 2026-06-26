@@ -71,6 +71,16 @@ SCAN_CENTER_Y_A = 20.0
 SCAN_WINDOW_A   = 20.0
 SCAN_STEP_A     = 0.1
 
+# --- thermal diffuse scattering (frozen phonons) ---
+# OFF by default (coherent) so sim_out/ stays the validated coherent baseline. When
+# N_PHONONS > 0 the multislice is run over N_PHONONS randomly displaced atomic
+# configurations and the DIFFRACTION INTENSITIES are averaged (incoherent) -> TDS.
+# Cost scales ~linearly with N_PHONONS. sigma is the rms 1-D displacement (~0.08 Å
+# is a sensible room-temperature value for these elements).
+N_PHONONS      = 0        # 0 = coherent; 8-16 for a realistic TDS sim
+PHONON_SIGMA_A = 0.08     # rms thermal displacement [Å]
+PHONON_SEED    = 1
+
 # --- device ---
 DEVICE = "gpu"   # "gpu" on the HPC L40; "cpu" for a laptop test
 
@@ -164,8 +174,16 @@ def load_and_prepare_atoms():
 # ======================================================================
 def build_potential(atoms):
     sampling = potential_sampling_a()
+    src = atoms
+    if N_PHONONS and N_PHONONS > 0:
+        src = abtem.FrozenPhonons(atoms, num_configs=N_PHONONS,
+                                  sigmas=PHONON_SIGMA_A, seed=PHONON_SEED)
+        print(f"[phonons] frozen phonons ON: {N_PHONONS} configs, sigma={PHONON_SIGMA_A} Å "
+              f"(thermal diffuse scattering)")
+    else:
+        print("[phonons] OFF (coherent — no TDS)")
     pot = abtem.Potential(
-        atoms,
+        src,
         sampling=sampling,
         slice_thickness=SLICE_THICKNESS_A,
         parametrization="lobato",
@@ -284,6 +302,10 @@ def run_scan_binned(probe, potential, scan):
     meas = probe.scan(potential, scan=scan, detectors=detector, lazy=True)
 
     lazy = da.asarray(meas.array)            # (nx, ny, N_u, N_u), lazy
+    # frozen phonons add leading ensemble axes; average the INTENSITIES over them
+    # (incoherent TDS sum) to get back to (nx, ny, N_u, N_u).
+    while lazy.ndim > 4:
+        lazy = lazy.mean(axis=0)
     n_u = int(lazy.shape[-1])
     s, n_c = _crop_center_to_multiple(n_u, BIN_FACTOR)
     cropped = lazy[..., s:s + n_c, s:s + n_c]        # symmetric crop about DC
@@ -430,6 +452,9 @@ def write_driver_geometry(n_b: int, box_a: float, beam_thickness_a: float,
         "beam_thickness_A": float(beam_thickness_a),
         "convergence_mrad": float(CONVERGENCE_MRAD),
         "overfocus_A": float(OVERFOCUS_A),
+        "scan_step_A": float(SCAN_STEP_A),
+        "n_phonons": int(N_PHONONS),
+        "phonon_sigma_A": float(PHONON_SIGMA_A),
         "ADU": 1.0,
     }
     savemat(str(out_dir / "sim_meta.mat"), {"meta": meta})
@@ -450,7 +475,7 @@ def write_driver_geometry(n_b: int, box_a: float, beam_thickness_a: float,
 # MAIN
 # ======================================================================
 def main(argv=None) -> int:
-    global DEVICE, SLICE_THICKNESS_A, SCAN_STEP_A, DOSE_E
+    global DEVICE, SLICE_THICKNESS_A, SCAN_STEP_A, DOSE_E, N_PHONONS, PHONON_SIGMA_A, PHONON_SEED
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--test", action="store_true",
                     help="Tiny 3x3 scan for fast local shape/geometry validation.")
@@ -467,17 +492,27 @@ def main(argv=None) -> int:
     ap.add_argument("--phantom", action="store_true",
                     help="Thin asymmetric 'F' Pb phantom for the orientation (8-DOF) "
                          "test (single-slice exact; same Ndpx as the real sim).")
+    ap.add_argument("--phonons", type=int, default=N_PHONONS,
+                    help="Frozen-phonon configs (thermal diffuse scattering). "
+                         "0 = coherent (default); 8-16 for a realistic sim.")
+    ap.add_argument("--phonon-sigma", type=float, default=PHONON_SIGMA_A,
+                    help="RMS thermal displacement [Å] for frozen phonons (~0.08 ≈ RT).")
+    ap.add_argument("--phonon-seed", type=int, default=PHONON_SEED)
     args = ap.parse_args(argv)
     DEVICE = args.device
     SLICE_THICKNESS_A = args.slice_thickness
     SCAN_STEP_A = args.scan_step
     DOSE_E = args.dose
+    N_PHONONS = args.phonons
+    PHONON_SIGMA_A = args.phonon_sigma
+    PHONON_SEED = args.phonon_seed
 
     print("=" * 64)
     print(f"4D-STEM simulation  |  device={DEVICE}  |  test={args.test}  |  "
           f"phantom={args.phantom}")
     print(f"lambda = {wavelength_a():.5f} Å  |  bin = {BIN_FACTOR}×{BIN_FACTOR}  |  "
-          f"slice = {SLICE_THICKNESS_A} Å  |  step = {SCAN_STEP_A} Å")
+          f"slice = {SLICE_THICKNESS_A} Å  |  step = {SCAN_STEP_A} Å  |  "
+          f"phonons = {N_PHONONS or 'off (coherent)'}")
     print("=" * 64)
 
     atoms, box_a = build_phantom_atoms() if args.phantom else load_and_prepare_atoms()

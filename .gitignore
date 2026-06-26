@@ -18,3 +18,8 @@ sim_out_*/
 sim_phantom/
 recon_*/            # per-run multislice output dirs (run_recon_multi.sh)
 sim/__pycache__/
+**/__pycache__/
+
+# OS / editor cruft
+.DS_Store
+**/.DS_Store

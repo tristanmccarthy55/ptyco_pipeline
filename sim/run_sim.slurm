@@ -11,19 +11,30 @@
 #SBATCH --output=logs/abtem_sim_%j.out
 #SBATCH --error=logs/abtem_sim_%j.err
 
-# abTEM 4D-STEM simulation on Blythe (Warwick HPC).
-# Cluster constraints (L40 GPU, partition/account, CUDA + conda modules) follow
-# the infrastructure reference in ../config.sh.
+# abTEM 4D-STEM simulation WORKER on Blythe (Warwick HPC). Normally launched via
+# sim/run_sim.sh, which builds the descriptive output dir (sim_out_<tag>/ encoding
+# step + phonons) and routes this job's SLURM log INTO that dir. Cluster constraints
+# (L40 GPU, partition/account, CUDA) follow the infrastructure reference ../config.sh.
 #
-# TEST CAMPAIGN defaults: thick slices + coarse scan for a fast geometry check.
-# Override per submission, e.g. for production:
-#   sbatch --export=ALL,SLICE_THICKNESS=2,SCAN_STEP=0.1 sim/run_sim.slurm
+#   bash sim/run_sim.sh                              # coherent baseline params
+#   SCAN_STEP=0.05 PHONONS=8 bash sim/run_sim.sh     # finer scan + TDS
+#
+# JOB_DIR is passed by the launcher. If this script is sbatch'd directly without it,
+# output falls back to sim_out/ and refuses to clobber a finished sim (OVERWRITE=1
+# forces).
 
-# --- resolve repo root (sbatch launch dir) ----------------------------------
+# --- resolve repo root + output dir -----------------------------------------
 REPO_DIR="${SLURM_SUBMIT_DIR:-$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)}"
 SIM_DIR="${REPO_DIR}/sim"
-OUT_DIR="${REPO_DIR}/sim_out/01"
-mkdir -p "${REPO_DIR}/logs" "${OUT_DIR}"
+JOB_DIR="${JOB_DIR:-${REPO_DIR}/sim_out}"      # launcher passes the descriptive dir
+OUT_DIR="${JOB_DIR}/01"
+mkdir -p "${REPO_DIR}/logs"
+if [ -e "${OUT_DIR}/data_dp.hdf5" ] && [ "${OVERWRITE:-0}" != "1" ]; then
+    echo "ERROR: ${OUT_DIR}/data_dp.hdf5 already exists — refusing to overwrite a finished sim." >&2
+    echo "       Use a new SIM_TAG (via run_sim.sh) or OVERWRITE=1 to force." >&2
+    exit 1
+fi
+mkdir -p "${OUT_DIR}"
 
 # --- environment: CUDA + conda env --------------------------------------------
 # CUDA toolkit (for cupy's runtime NVRTC/JIT). cupy-cuda12x bundles its own CUDA
@@ -50,20 +61,24 @@ if [ ! -x "${PYBIN}" ]; then
     exit 1
 fi
 
-# Test-campaign defaults (override via --export=ALL,SLICE_THICKNESS=..,SCAN_STEP=..)
+# Params (defaults = fast test-campaign values; launcher / --export overrides them)
 SLICE_THICKNESS="${SLICE_THICKNESS:-10}"   # Å  (~7 slices through ~70 Å -> fast)
 SCAN_STEP="${SCAN_STEP:-0.4}"              # Å  (50x50 = 2500 positions over 20 Å)
+PHONONS="${PHONONS:-0}"                    # 0 = coherent; 8-16 for a TDS sim
+PHONON_SIGMA="${PHONON_SIGMA:-0.08}"       # Å rms thermal displacement
 
 echo "Job ${SLURM_JOB_ID} on $(hostname)"
 echo "REPO_DIR : ${REPO_DIR}"
 echo "OUT_DIR  : ${OUT_DIR}"
 echo "PYBIN    : ${PYBIN}"
 echo "GPU      : ${CUDA_VISIBLE_DEVICES:-<unset>}"
-echo "slice=${SLICE_THICKNESS} Å  step=${SCAN_STEP} Å"
+echo "slice=${SLICE_THICKNESS} Å  step=${SCAN_STEP} Å  phonons=${PHONONS} (sigma ${PHONON_SIGMA} Å)"
 "${PYBIN}" -c "import sys,numpy,abtem; print('python:',sys.executable); print('abtem:',abtem.__version__,'numpy:',numpy.__version__)"
 
 "${PYBIN}" "${SIM_DIR}/simulate_4dstem.py" \
     --device gpu \
     --out-dir "${OUT_DIR}" \
     --slice-thickness "${SLICE_THICKNESS}" \
-    --scan-step "${SCAN_STEP}"
+    --scan-step "${SCAN_STEP}" \
+    --phonons "${PHONONS}" \
+    --phonon-sigma "${PHONON_SIGMA}"
