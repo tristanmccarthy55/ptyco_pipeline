@@ -74,7 +74,14 @@ else
 end
 fprintf('probe_change_start (per engine) = [%g %g]\n', Nst_probe(1), Nst_probe(2));
 Npos_st                   = [inf, inf];     % positions are EXACT (from sim) -> fixed
-reglayer                  = [1,   0.5];     % symmetrise info between layers
+% Depth (multilayer) regularizer: regulation_multilayers.m is a missing-cone low-pass
+% in kz (W = 1-atan((R*|kz|/k_xy)^2)/(pi/2)) -> it BLURS depth. For depth resolution
+% we want it OFF (REGLAYER=0); it was only stabilising the under-constrained deep
+% solve, a job the fixed probe + high overlap should now do. Default keeps Yu's
+% [1,0.5] for safety; set REGLAYER=0 (or small, e.g. 0.05 if depth diverges).
+rl_env = getenv('REGLAYER');
+if ~isempty(rl_env); reglayer = [str2double(rl_env), str2double(rl_env)]; else; reglayer = [1, 0.5]; end
+fprintf('regularize_layers (per engine) = [%g %g]\n', reglayer(1), reglayer(2));
 Np_presolve               = [round(Ndpx/2), Ndpx];   % 178 -> 356
 Niter_save_results        = [50,  50];
 Niter_save_exit_wave      = [200, 200];
