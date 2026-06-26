@@ -42,7 +42,12 @@ global mask1
 mask1 = ones(Ndpx, Ndpx, 'single');
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%% multislice reconstruction parameters %%%%%%%%%%%%%%%
-Nprobe    = 8;
+% Probe modes model partial coherence (real data). Our sim is a single fully-
+% coherent probe, so 1 mode is correct; >1 just adds spurious incoherent background.
+% Default 1; override with PROBE_MODES (e.g. for real, partially-coherent data).
+pm_env = getenv('PROBE_MODES');
+if ~isempty(pm_env); Nprobe = round(str2double(pm_env)); else; Nprobe = 1; end
+fprintf('probe_modes = %d\n', Nprobe);
 % Nlayers: set via NLAYERS env (e.g. 41 for the 4 A sublattice, 74/82 for the 2 A
 % oxygen sublattice — chosen INCOMMENSURATE with the ~1.95 A atomic planes to avoid
 % depth plane-locking). Falls back to ~10 A slices if NLAYERS is unset.
