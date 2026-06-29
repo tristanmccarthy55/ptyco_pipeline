@@ -27,6 +27,14 @@
 REPO_DIR="${SLURM_SUBMIT_DIR:-$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)}"
 SIM_DIR="${REPO_DIR}/sim"
 JOB_DIR="${JOB_DIR:-${REPO_DIR}/sim_out}"      # launcher passes the descriptive dir
+
+# Tiling: when launched as an array (run_sim_tiled.sh) with N_TILES + TILES_BASE set,
+# this task simulates scan x-band SLURM_ARRAY_TASK_ID of N_TILES into its own tile dir.
+TILE_ARG=()
+if [ -n "${N_TILES:-}" ] && [ -n "${SLURM_ARRAY_TASK_ID:-}" ]; then
+    TILE_ARG=(--scan-tile "${SLURM_ARRAY_TASK_ID}/${N_TILES}")
+    JOB_DIR="${TILES_BASE}/tile_${SLURM_ARRAY_TASK_ID}of${N_TILES}"
+fi
 OUT_DIR="${JOB_DIR}/01"
 mkdir -p "${REPO_DIR}/logs"
 if [ -e "${OUT_DIR}/data_dp.hdf5" ] && [ "${OVERWRITE:-0}" != "1" ]; then
@@ -81,4 +89,5 @@ echo "slice=${SLICE_THICKNESS} Å  step=${SCAN_STEP} Å  phonons=${PHONONS} (sig
     --slice-thickness "${SLICE_THICKNESS}" \
     --scan-step "${SCAN_STEP}" \
     --phonons "${PHONONS}" \
-    --phonon-sigma "${PHONON_SIGMA}"
+    --phonon-sigma "${PHONON_SIGMA}" \
+    "${TILE_ARG[@]}"

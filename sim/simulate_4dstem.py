@@ -245,20 +245,38 @@ def build_initial_probe(n_b: int, box_a: float):
 # ======================================================================
 # 3. SCAN + LAZY 4x4 BINNING
 # ======================================================================
-def make_scan(test_mode: bool):
+def make_scan(test_mode: bool, tile=None):
+    """Return (scan, positions_xy (M,2) y-fastest, ny, (g0, g1, total)).
+
+    tile=(I, N): take x-band I of N from the FULL grid's positions and scan them as a
+    CustomScan -> bit-exact tiling (no grid re-derivation). The band is a contiguous
+    block [g0:g1] of the global y-fastest order (x is the slow axis), so concatenating
+    tiles 0..N-1 in order reconstructs the full dataset exactly. merge_tiles.py does that.
+    """
     half = SCAN_WINDOW_A / 2.0
     start = (SCAN_CENTER_X_A - half, SCAN_CENTER_Y_A - half)
     end   = (SCAN_CENTER_X_A + half, SCAN_CENTER_Y_A + half)
     if test_mode:
         start = (SCAN_CENTER_X_A - 0.2, SCAN_CENTER_Y_A - 0.2)
         end   = (SCAN_CENTER_X_A + 0.2, SCAN_CENTER_Y_A + 0.2)
-        scan = abtem.GridScan(start=start, end=end, gpts=(3, 3))
+        full = abtem.GridScan(start=start, end=end, gpts=(3, 3))
     else:
-        scan = abtem.GridScan(start=start, end=end, sampling=SCAN_STEP_A)
-    nx, ny = int(scan.gpts[0]), int(scan.gpts[1])
-    print(f"[scan] {nx} × {ny} = {nx*ny} positions, "
-          f"{tuple(np.round(start,2))} -> {tuple(np.round(end,2))} Å")
-    return scan, nx, ny
+        full = abtem.GridScan(start=start, end=end, sampling=SCAN_STEP_A)
+    nx, ny = int(full.gpts[0]), int(full.gpts[1])
+    full_pos = np.asarray(full.get_positions())          # (nx, ny, 2), y-fastest on C-flatten
+    total = nx * ny
+    if tile is None:
+        print(f"[scan] {nx} × {ny} = {total} positions, "
+              f"{tuple(np.round(start,2))} -> {tuple(np.round(end,2))} Å")
+        return full, full_pos.reshape(-1, 2), ny, (0, total, total)
+    I, N = tile
+    assert 0 <= I < N <= nx, f"tile {I}/{N} invalid for nx={nx}"
+    x0, x1 = I * nx // N, (I + 1) * nx // N
+    band = full_pos[x0:x1].reshape(-1, 2)
+    g0, g1 = x0 * ny, x1 * ny
+    print(f"[scan] TILE {I+1}/{N}: x-rows [{x0}:{x1}] of {nx} -> {band.shape[0]} positions "
+          f"= global [{g0}:{g1}] of {total}")
+    return abtem.CustomScan(band), band, ny, (g0, g1, total)
 
 
 def report_scan_geometry(atoms, beam_thickness_a: float):
@@ -301,50 +319,45 @@ def run_scan_binned(probe, potential, scan):
     detector = abtem.PixelatedDetector(max_angle=DETECTOR_MAX_ANGLE_MRAD)
     meas = probe.scan(potential, scan=scan, detectors=detector, lazy=True)
 
-    lazy = da.asarray(meas.array)            # (nx, ny, N_u, N_u), lazy
-    # frozen phonons add leading ensemble axes; average the INTENSITIES over them
-    # (incoherent TDS sum) to get back to (nx, ny, N_u, N_u).
-    while lazy.ndim > 4:
-        lazy = lazy.mean(axis=0)
+    lazy = da.asarray(meas.array)            # (..., nx, ny, N_u, N_u); leading = phonon configs
     n_u = int(lazy.shape[-1])
     s, n_c = _crop_center_to_multiple(n_u, BIN_FACTOR)
-    cropped = lazy[..., s:s + n_c, s:s + n_c]        # symmetric crop about DC
+    cropped = lazy[..., s:s + n_c, s:s + n_c]        # symmetric crop about DC (last 2 dims)
+    # bin the detector FIRST (per config), THEN average the phonon configs, so the
+    # incoherent TDS average runs on the small binned patterns -> ~BIN_FACTOR^2 less
+    # peak memory than averaging the unbinned 1424^2 stack.
     binned = da.coarsen(np.sum, cropped,
                         {cropped.ndim - 2: BIN_FACTOR, cropped.ndim - 1: BIN_FACTOR})
+    while binned.ndim > 4:                            # incoherent average over phonon configs
+        binned = binned.mean(axis=0)
     n_b = n_c // BIN_FACTOR
     print(f"[bin] detector {n_u} -> crop {n_c} -> {BIN_FACTOR}×{BIN_FACTOR} bin "
           f"-> N_b = {n_b}")
     print(f"[bin] computing binned array (~{binned.nbytes/1e9:.1f} GB) ...")
-    arr = np.asarray(binned.compute()).astype(np.float32)  # (nx, ny, N_b, N_b)
-    print(f"[bin] binned measurement shape (nx,ny,kY,kX) = {arr.shape}")
+    arr = np.asarray(binned.compute()).astype(np.float32)
+    arr = arr.reshape(-1, n_b, n_b)          # (M, N_b, N_b); grid (nx,ny,..) flattens y-fastest
+    print(f"[bin] binned measurement: {arr.shape[0]} positions × {n_b}×{n_b}")
     return arr
 
 
 # ======================================================================
 # 4. SAVE  (PtychoShelves contract + C-vs-Fortran handling)
 # ======================================================================
-def _scan_positions_xy(scan):
-    """(Npos, 2) [x, y] in Å, flattened C-order over (nx, ny) -> y-fastest."""
-    pos = np.asarray(scan.get_positions())   # (nx, ny, 2), last axis = (x, y)
-    return pos.reshape(-1, 2)
-
-
-def save_outputs(arr, scan, out_dir: Path, box_a: float):
+def save_outputs(arr, pos_xy, out_dir: Path, box_a: float):
+    """arr: (M, N_b, N_b) binned intensities (y-fastest).  pos_xy: (M, 2) [x, y] Å."""
     out_dir.mkdir(parents=True, exist_ok=True)
-    nx, ny, n_b, n_bx = arr.shape
+    npos, n_b, n_bx = arr.shape
     assert n_b == n_bx, f"binned DP not square: {n_b}x{n_bx}"
+    A = arr.astype(np.float64)
 
-    # Flatten scan to a single y-fastest axis: A[k, dy, dx], k = iy + ix*ny
-    A = arr.reshape(nx * ny, n_b, n_b).astype(np.float64)
-    npos = A.shape[0]
-
-    # Scale to a realistic electron dose (global factor -> preserves the relative
-    # intensity between scan positions). abTEM patterns integrate to ~1; rescale so
-    # the MEAN pattern integrates to DOSE_E.
-    cur_total = float(A.reshape(npos, -1).sum(axis=1).mean())
-    A *= DOSE_E / max(cur_total, 1e-30)
+    # FIXED dose scale (NOT normalised by this run's own mean) so independently
+    # simulated scan tiles share one consistent scale and merge seamlessly. abTEM
+    # flux-normalises each pattern (~1), so xDOSE_E gives ~DOSE_E e/pattern. The Poisson
+    # step renormalises this away anyway; it only has to be consistent across tiles and
+    # above the recon's count floor.
+    A *= DOSE_E
     A = A.astype(np.float32)
-    print(f"[dose] scaled to {DOSE_E:.0e} e/pattern  "
+    print(f"[dose] ×{DOSE_E:.0e} (fixed)  "
           f"(avg {A.reshape(npos,-1).sum(1).mean()/(n_b*n_b):.3g} e/pixel)")
 
     # --- data_dp.hdf5 -------------------------------------------------
@@ -358,8 +371,8 @@ def save_outputs(arr, scan, out_dir: Path, box_a: float):
     print(f"[save] {dp_path}  (HDF5 /dp {H_dp.shape} -> MATLAB [{n_b},{n_b},{npos}])")
 
     # --- data_position.hdf5 ------------------------------------------
-    pos_xy = _scan_positions_xy(scan).astype(np.float32)   # (Npos, 2) [x, y]
-    assert pos_xy.shape[0] == npos, f"{pos_xy.shape[0]} positions != {npos} frames"
+    pos_xy = np.asarray(pos_xy).astype(np.float32)   # (Npos, 2) [x, y]
+    assert pos_xy.shape == (npos, 2), f"positions {pos_xy.shape} != ({npos}, 2)"
     pos_path = out_dir / "data_position.hdf5"
     with h5py.File(pos_path, "w") as f:
         f.create_dataset("probe_positions_0", data=pos_xy.T)   # (2, Npos)
@@ -380,15 +393,16 @@ def save_outputs(arr, scan, out_dir: Path, box_a: float):
     })
     print(f"[save] {mat_path}  (probe {probe_wave.shape} complex)")
 
-    return dp_path, pos_path, A, pos_xy, probe_wave
+    return dp_path, pos_path, A
 
 
 # ======================================================================
 # 5. SELF-TESTS + DRIVER GEOMETRY
 # ======================================================================
-def selftest_ordering(dp_path, pos_path, A, pos_xy, nx, ny):
+def selftest_ordering(dp_path, pos_path, A, pos_xy, ny):
     """Round-trip the written files under MATLAB's axis-reversal convention to
-    catch the C-vs-Fortran transpose landmine without needing MATLAB."""
+    catch the C-vs-Fortran transpose landmine without needing MATLAB. Works for the
+    full grid AND a single tile band (which is also a y-fastest contiguous block)."""
     npos, n_b, n_bx = A.shape
 
     with h5py.File(dp_path, "r") as f:
@@ -403,7 +417,7 @@ def selftest_ordering(dp_path, pos_path, A, pos_xy, nx, ny):
     assert np.array_equal(np.transpose(Hp, (1, 0)), pos_xy), "position ordering mismatch"
 
     assert n_b == n_bx, "DP not square"
-    assert npos == nx * ny, f"{npos} != {nx}*{ny}"
+    assert npos == pos_xy.shape[0], f"{npos} frames != {pos_xy.shape[0]} positions"
 
     # y-fastest: first ny positions share one x, y increases uniformly (float32 tol)
     xs = pos_xy[:ny, 0].astype(np.float64)
@@ -498,6 +512,10 @@ def main(argv=None) -> int:
     ap.add_argument("--phonon-sigma", type=float, default=PHONON_SIGMA_A,
                     help="RMS thermal displacement [Å] for frozen phonons (~0.08 ≈ RT).")
     ap.add_argument("--phonon-seed", type=int, default=PHONON_SEED)
+    ap.add_argument("--scan-tile", default=None,
+                    help='HPC tiling: run only scan x-band I of N, as "I/N" (0-indexed). '
+                         'Each tile is an independent job; sim/merge_tiles.py reassembles '
+                         'them into the full dataset (bit-exact, consistent dose scale).')
     args = ap.parse_args(argv)
     DEVICE = args.device
     SLICE_THICKNESS_A = args.slice_thickness
@@ -507,9 +525,14 @@ def main(argv=None) -> int:
     PHONON_SIGMA_A = args.phonon_sigma
     PHONON_SEED = args.phonon_seed
 
+    tile = None
+    if args.scan_tile:
+        I, N = (int(v) for v in args.scan_tile.split("/"))
+        tile = (I, N)
+
     print("=" * 64)
     print(f"4D-STEM simulation  |  device={DEVICE}  |  test={args.test}  |  "
-          f"phantom={args.phantom}")
+          f"phantom={args.phantom}  |  tile={args.scan_tile or 'none'}")
     print(f"lambda = {wavelength_a():.5f} Å  |  bin = {BIN_FACTOR}×{BIN_FACTOR}  |  "
           f"slice = {SLICE_THICKNESS_A} Å  |  step = {SCAN_STEP_A} Å  |  "
           f"phonons = {N_PHONONS or 'off (coherent)'}")
@@ -520,16 +543,20 @@ def main(argv=None) -> int:
     report_scan_geometry(atoms, beam_thickness_a)
     potential = build_potential(atoms)
     probe = build_probe(potential)
-    scan, nx, ny = make_scan(args.test)
+    scan, pos_xy, ny, grange = make_scan(args.test, tile)
 
-    arr = run_scan_binned(probe, potential, scan)
+    arr = run_scan_binned(probe, potential, scan)      # (M, N_b, N_b)
     n_b = arr.shape[-1]
 
-    dp_path, pos_path, A, pos_xy, _ = save_outputs(arr, scan, args.out_dir, box_a)
-    selftest_ordering(dp_path, pos_path, A, pos_xy, nx, ny)
+    dp_path, pos_path, A = save_outputs(arr, pos_xy, args.out_dir, box_a)
+    selftest_ordering(dp_path, pos_path, A, pos_xy, ny)
     write_driver_geometry(n_b, box_a, beam_thickness_a, args.out_dir)
+    if tile is not None:
+        # record this band's global position range so merge can order + verify
+        np.save(args.out_dir / "tile_range.npy", np.array(grange, dtype=np.int64))
+        print(f"[tile] global position range {grange[0]}:{grange[1]} of {grange[2]}")
 
-    print("\nDone. Wrote 3 files to", args.out_dir)
+    print("\nDone. Wrote files to", args.out_dir)
     return 0
 
 
