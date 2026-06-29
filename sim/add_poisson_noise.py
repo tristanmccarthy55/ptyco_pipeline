@@ -54,21 +54,28 @@ def main(argv=None) -> int:
     out = args.out_dir or args.in_dir.parent / f"{args.in_dir.name}_dose{dose_tag}"
     outd = out / args.scan; outd.mkdir(parents=True, exist_ok=True)
 
-    with h5py.File(dp_in, "r") as f:
-        H = f["dp"][...].astype(np.float64)         # (Npos, Nx, Ny), noiseless (rel. intensities)
-    npos = H.shape[0]
-    # global scale so the MEAN pattern carries `epp` electrons -> preserves the
-    # relative per-pattern totals (TDS/ADF contrast), unlike per-pattern renorm.
-    mean_total = float(H.reshape(npos, -1).sum(1).mean())
-    counts = H * (epp / max(mean_total, 1e-30))
+    # Streamed in chunks so this is safe on the 81 GB dataset (and login nodes):
+    # pass 1 finds the global scale (mean pattern total -> epp, preserving the relative
+    # per-pattern totals = TDS/ADF contrast); pass 2 scales + Poisson-samples + writes.
     rng = np.random.default_rng(args.seed)
-    noisy = rng.poisson(counts).astype(np.float32)
-
-    with h5py.File(outd / "data_dp.hdf5", "w") as f:
-        f.create_dataset("dp", data=noisy)
+    CHUNK = 1000
+    with h5py.File(dp_in, "r") as fin:
+        dp = fin["dp"]; npos, nxb, nyb = dp.shape
+        running = 0.0
+        for i in range(0, npos, CHUNK):
+            running += float(dp[i:i+CHUNK].astype(np.float64).sum())
+        scale = epp / max(running / npos, 1e-30)        # mean-pattern-total -> epp
+        gmax, gsum = 0.0, 0.0
+        with h5py.File(outd / "data_dp.hdf5", "w") as fout:
+            dset = fout.create_dataset("dp", shape=dp.shape, dtype=np.float32)
+            for i in range(0, npos, CHUNK):
+                blk = rng.poisson(dp[i:i+CHUNK].astype(np.float64) * scale).astype(np.float32)
+                dset[i:i+CHUNK] = blk
+                gmax = max(gmax, float(blk.max())); gsum += float(blk.sum())
+    mean_pix = gsum / (npos * nxb * nyb)
     print(f"[poisson] dose {args.dose:.0e} e/A^2, step {step:.3f} A -> {epp:.1f} e/pattern")
-    print(f"[poisson] mean count: {noisy.mean():.3g} e/pixel  (peak {noisy.max():.0f}); "
-          f"avg/pixel {'OK' if noisy.mean() > 1e-4 else 'LOW (<1e-4 — raise dose)'}")
+    print(f"[poisson] mean count: {mean_pix:.3g} e/pixel  (peak {gmax:.0f}); "
+          f"avg/pixel {'OK' if mean_pix > 1e-4 else 'LOW (<1e-4 — raise dose)'}")
 
     # link the unchanged inputs so the new dir is a complete, recon-ready dataset
     for name in ("data_position.hdf5", "probe_initial.mat", "sim_meta.mat"):
