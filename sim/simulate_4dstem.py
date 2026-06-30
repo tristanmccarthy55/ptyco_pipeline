@@ -172,26 +172,23 @@ def load_and_prepare_atoms():
 # ======================================================================
 # 2. POTENTIAL & PROBES
 # ======================================================================
-def build_potential(atoms):
+def build_potential(atoms, announce=False):
+    """Potential for ONE set of atom positions (a single frozen-phonon config, or the
+    coherent structure). Frozen phonons are handled by LOOPING this in run_scan_binned
+    (one config in memory at a time) rather than wrapping FrozenPhonons here, which
+    would force abTEM to hold all configs at once -> OOM at 16 configs."""
     sampling = potential_sampling_a()
-    src = atoms
-    if N_PHONONS and N_PHONONS > 0:
-        src = abtem.FrozenPhonons(atoms, num_configs=N_PHONONS,
-                                  sigmas=PHONON_SIGMA_A, seed=PHONON_SEED)
-        print(f"[phonons] frozen phonons ON: {N_PHONONS} configs, sigma={PHONON_SIGMA_A} Å "
-              f"(thermal diffuse scattering)")
-    else:
-        print("[phonons] OFF (coherent — no TDS)")
     pot = abtem.Potential(
-        src,
+        atoms,
         sampling=sampling,
         slice_thickness=SLICE_THICKNESS_A,
         parametrization="lobato",
         projection="infinite",
         device=DEVICE,
     )
-    print(f"[potential] sampling = {sampling:.4f} Å  ->  gpts = {pot.gpts}  "
-          f"({pot.num_slices} slices)")
+    if announce:
+        print(f"[potential] sampling = {sampling:.4f} Å  ->  gpts = {pot.gpts}  "
+              f"({pot.num_slices} slices)")
     return pot
 
 
@@ -311,31 +308,43 @@ def _crop_center_to_multiple(n_u: int, factor: int) -> tuple[int, int]:
     return start, n_c
 
 
-def run_scan_binned(probe, potential, scan):
-    """Scan -> lazy Dask measurement -> crop+bin detector 4x4 -> compute NumPy.
-
-    Returns the binned array (nx, ny, N_b, N_b).
-    """
-    detector = abtem.PixelatedDetector(max_angle=DETECTOR_MAX_ANGLE_MRAD)
+def _scan_one_config(probe, potential, scan, detector):
+    """Scan one (single-config) potential -> binned (M, N_b, N_b) NumPy, y-fastest."""
     meas = probe.scan(potential, scan=scan, detectors=detector, lazy=True)
-
-    lazy = da.asarray(meas.array)            # (..., nx, ny, N_u, N_u); leading = phonon configs
+    lazy = da.asarray(meas.array)                    # (..., N_u, N_u); no phonon axis here
     n_u = int(lazy.shape[-1])
     s, n_c = _crop_center_to_multiple(n_u, BIN_FACTOR)
-    cropped = lazy[..., s:s + n_c, s:s + n_c]        # symmetric crop about DC (last 2 dims)
-    # bin the detector FIRST (per config), THEN average the phonon configs, so the
-    # incoherent TDS average runs on the small binned patterns -> ~BIN_FACTOR^2 less
-    # peak memory than averaging the unbinned 1424^2 stack.
-    binned = da.coarsen(np.sum, cropped,
-                        {cropped.ndim - 2: BIN_FACTOR, cropped.ndim - 1: BIN_FACTOR})
-    while binned.ndim > 4:                            # incoherent average over phonon configs
-        binned = binned.mean(axis=0)
+    binned = da.coarsen(np.sum, lazy[..., s:s + n_c, s:s + n_c],
+                        {lazy.ndim - 2: BIN_FACTOR, lazy.ndim - 1: BIN_FACTOR})
     n_b = n_c // BIN_FACTOR
-    print(f"[bin] detector {n_u} -> crop {n_c} -> {BIN_FACTOR}×{BIN_FACTOR} bin "
-          f"-> N_b = {n_b}")
-    print(f"[bin] computing binned array (~{binned.nbytes/1e9:.1f} GB) ...")
-    arr = np.asarray(binned.compute()).astype(np.float32)
-    arr = arr.reshape(-1, n_b, n_b)          # (M, N_b, N_b); grid (nx,ny,..) flattens y-fastest
+    arr = np.asarray(binned.compute()).astype(np.float64).reshape(-1, n_b, n_b)
+    return arr, n_b, n_u, n_c
+
+
+def run_scan_binned(probe, atoms, scan):
+    """Scan -> binned (M, N_b, N_b). Frozen phonons are processed ONE CONFIG AT A TIME
+    (build that config's potential, scan, bin, accumulate the incoherent average), so
+    peak memory is that of a single coherent sim regardless of phonon count — the fix
+    for the 16-config OOM. Same total work as the ensemble path; just memory-bounded."""
+    detector = abtem.PixelatedDetector(max_angle=DETECTOR_MAX_ANGLE_MRAD)
+    if N_PHONONS and N_PHONONS > 0:
+        print(f"[phonons] {N_PHONONS} configs, sigma={PHONON_SIGMA_A} Å — one at a time "
+              f"(bounded memory; incoherent TDS average)")
+        configs = list(abtem.FrozenPhonons(atoms, num_configs=N_PHONONS,
+                                           sigmas=PHONON_SIGMA_A, seed=PHONON_SEED))
+        acc = None
+        for i, cfg in enumerate(configs):
+            arr_i, n_b, n_u, n_c = _scan_one_config(
+                probe, build_potential(cfg, announce=(i == 0)), scan, detector)
+            acc = arr_i if acc is None else acc + arr_i
+            print(f"[phonons] config {i+1}/{N_PHONONS} done")
+        arr = (acc / N_PHONONS).astype(np.float32)
+    else:
+        print("[phonons] OFF (coherent — no TDS)")
+        arr_i, n_b, n_u, n_c = _scan_one_config(
+            probe, build_potential(atoms, announce=True), scan, detector)
+        arr = arr_i.astype(np.float32)
+    print(f"[bin] detector {n_u} -> crop {n_c} -> {BIN_FACTOR}×{BIN_FACTOR} bin -> N_b = {n_b}")
     print(f"[bin] binned measurement: {arr.shape[0]} positions × {n_b}×{n_b}")
     return arr
 
@@ -541,11 +550,10 @@ def main(argv=None) -> int:
     atoms, box_a = build_phantom_atoms() if args.phantom else load_and_prepare_atoms()
     beam_thickness_a = float(atoms.cell.lengths()[2] - 2 * Z_VACUUM_A)
     report_scan_geometry(atoms, beam_thickness_a)
-    potential = build_potential(atoms)
-    probe = build_probe(potential)
+    probe = build_probe(build_potential(atoms, announce=True))   # ref potential -> probe grid
     scan, pos_xy, ny, grange = make_scan(args.test, tile)
 
-    arr = run_scan_binned(probe, potential, scan)      # (M, N_b, N_b)
+    arr = run_scan_binned(probe, atoms, scan)      # (M, N_b, N_b); builds per-config potentials
     n_b = arr.shape[-1]
 
     dp_path, pos_path, A = save_outputs(arr, pos_xy, args.out_dir, box_a)
