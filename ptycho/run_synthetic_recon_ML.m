@@ -103,6 +103,38 @@ blsq_env = getenv('BETA_LSQ');
 if ~isempty(blsq_env); beta_LSQ_val = str2double(blsq_env); else; beta_LSQ_val = 0.1; end
 fprintf('beta_LSQ = %.3g\n', beta_LSQ_val);
 
+% -------- chained-restart (continue a long recon across the 2-day wall) ----------
+% RESTART_DIR set  -> init the object from the latest Niter*.mat found under it (a
+%   previous chain segment) and run ONLY the full-resolution engine for NITER more
+%   iterations (the coarse presolve is skipped — the object is already full-res).
+% RESTART_DIR unset -> fresh run (coarse presolve + full).
+% SAVE_EVERY (default 50): checkpoint frequency; keep it < NITER so a wall-timeout
+%   still leaves a usable Niter*.mat for the next segment to resume from.
+se_env = getenv('SAVE_EVERY');
+if ~isempty(se_env); save_every = round(str2double(se_env)); else; save_every = 50; end
+Niter_save_results = [save_every, save_every];
+restart_dir = getenv('RESTART_DIR');
+do_restart  = ~isempty(restart_dir);
+restart_obj = '';
+if do_restart
+    dd = dir(fullfile(restart_dir, '**', 'Niter*.mat'));
+    if isempty(dd); error('RESTART_DIR has no Niter*.mat: %s', restart_dir); end
+    nums = zeros(numel(dd), 1);
+    for k = 1:numel(dd)
+        t = regexp(dd(k).name, 'Niter(\d+)\.mat', 'tokens');
+        if ~isempty(t); nums(k) = str2double(t{1}{1}); end
+    end
+    [~, imax] = max(nums);
+    restart_obj = fullfile(dd(imax).folder, dd(imax).name);
+    fprintf('RESTART: continuing from %s (full-res engine only)\n', restart_obj);
+    % collapse the two-engine schedule to the full-resolution (2nd) engine
+    Niter = Niter(end); grouping = grouping(end); Nst_probe = Nst_probe(end);
+    Npos_st = Npos_st(end); reglayer = reglayer(end); Np_presolve = Np_presolve(end);
+    Niter_save_results = Niter_save_results(end); Niter_save_exit_wave = Niter_save_exit_wave(end);
+else
+    fprintf('FRESH run (coarse presolve + full)\n');
+end
+
 %%%%%%%%%%%%%%%%%%%%%%%%%%%% p struct %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 clear p
 p = struct();
@@ -159,9 +191,14 @@ p.   io.file_compression  = 0;
 p.   io.data_compression  = 3;
 p.   io.load_prep_pos     = false;
 
-p.   model_object  = true;
-p.   model.object_type = 'rand';
-p.   initial_iterate_object_file{1} = '';
+if do_restart
+    p.   model_object  = false;                 % continue a previous chain segment
+    p.   initial_iterate_object_file{1} = restart_obj;
+else
+    p.   model_object  = true;
+    p.   model.object_type = 'rand';
+    p.   initial_iterate_object_file{1} = '';
+end
 p.   model_probe   = false;
 p.   model.probe_is_focused            = true;
 p.   model.probe_central_stop          = true;
