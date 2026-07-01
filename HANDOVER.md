@@ -4,11 +4,20 @@ End-to-end MVP that **simulates** 4D-STEM in Python (abTEM) and **reconstructs**
 in MATLAB (PtychoShelves, Yu Lei's `MultiHollowPtycho` engine) on the Warwick
 **Blythe** HPC, then **validates** the reconstruction against the known model.
 
-Status (as of this handover): the pipeline works end-to-end on a coherent,
-noiseless PTO/STO labyrinth dataset. In-plane lattice, depth-dependent atomic
-**displacement**, and along-beam **atomic-plane depth resolution** are all
-recovered and validated against ground truth. Realism (frozen phonons + Poisson
-dose) and finer scans are wired and ready but not yet run.
+Status (as of this handover): the pipeline works end-to-end and is validated on a
+coherent, noiseless dataset — in-plane lattice, depth-dependent atomic
+**displacement**, and along-beam **atomic-plane depth resolution** all recovered and
+matched to ground truth. Realism is now built and running: **frozen phonons (TDS)**,
+**Poisson/dose**, and **scan tiling** for arbitrarily-large sims are implemented and
+validated; a **0.05 Å-step, 16-phonon "reviewer-2" dataset** is simulating on Blythe
+(30 tiles). The reconstruction of that large dataset is the current open task (it's a
+monolithic job that exceeds the 2-day wall — see §10).
+
+> **If you are the atom-finding agent:** jump to **§11 — For the atom-finding agent**.
+> It has the local data paths, how to load the reconstructed 3D object, the
+> recon↔model coordinate map, the ground-truth atom positions, and the
+> PSF-deconvolution plan. §3 (geometry) and §11 are the two you need; the rest is about
+> generating/reconstructing the data (a separate thread owns that).
 
 ---
 
@@ -38,16 +47,20 @@ ptyco_pipeline/                 (this repo; on Blythe under $SHARE/phucrh/ptyco_
 │   ├── ptychography_exp_30nm.m     Yu's original real-data example (reference only)
 │   └── exampleData/01/             PrScO3 example data (folder MUST be named '01')
 ├── sim/
-│   ├── simulate_4dstem.py          THE simulator (single file; abTEM 1.0.x new API)
-│   ├── add_poisson_noise.py        post-sim Poisson/dose step (sweep dose, no re-sim)
-│   ├── run_sim.sh                  sim launcher (descriptive folder + log inside)
-│   ├── run_sim.slurm               sim SLURM worker (driven by run_sim.sh)
-│   └── PTO6_STO6_18_18_labyrinthPoscar.vasp   the structure
-├── analysis/                   reusable validation (run locally on pulled results)
-│   ├── depth_resolution.py         kz plane-frequency test + convergence
+│   ├── simulate_4dstem.py          THE simulator (abTEM 1.0.x; phonons processed 1-at-a-time)
+│   ├── add_poisson_noise.py        post-sim Poisson/dose step (streamed; sweep dose, no re-sim)
+│   ├── run_sim.sh                  single-job sim launcher (descriptive folder + log inside)
+│   ├── run_sim_tiled.sh            TILED sim launcher: scan split into N array jobs + merge
+│   ├── merge_tiles.py              reassemble scan tiles into one dataset (streamed)
+│   ├── run_sim.slurm               sim SLURM worker (driven by both launchers; tile-aware)
+│   └── PTO6_STO6_18_18_labyrinthPoscar.vasp   the structure (ground truth)
+├── analysis/                   reusable validation (run LOCALLY on pulled results)
+│   ├── depth_resolution.py         kz plane-frequency test + the recon-mat loader
 │   ├── column_cross_section.py     depth cross-section down a column
-│   └── column_cross_section_overlay.py   recon-vs-GT model overlay (the money figure)
+│   ├── column_cross_section_overlay.py   recon-vs-GT model overlay (the money figure)
+│   └── dose_compare.py             recon cross-section + slice vs electron dose
 ├── run_recon_multi.sh          recon launcher (descriptive folder + log+outputs together)
+├── run_dose_series.sh          make noisy copies at several doses + launch a recon for each
 ├── run_recon_synthetic_ML.slurm    recon SLURM worker
 ├── DATA_FORMAT.md              the data contract (read this if touching I/O)
 └── HANDOVER.md                 this file
@@ -82,7 +95,13 @@ never re-derived from scratch.
 | Object pixel `dx` | **0.0492 Å** | = `1/(N_b·dk_b)`; set by diffraction angle, NOT scan step |
 | In-plane box | 70.008 Å (square) | POSCAR rotated −90° y, orthogonalized, padded square |
 | Beam thickness | 69.93 Å | sample along z; +2 Å vacuum each side (box ≈ 74 Å) |
-| Scan | centre (40, 20) Å, 20 Å window, 0.1 Å step | ≈ 200×200 ≈ 40k positions |
+| Scan | centre (40, 20) Å, 20 Å window | step varies (see below) |
+| Object grid (ROI) | 404 × 404 px | = the reconstructed in-plane field, `object_roi` |
+
+Scan step is the one knob that changes between datasets:
+- **Validated recons (NL42/NL70, the cross-section figures): 0.15 Å step → ~18k positions**,
+  coherent, 2 Å multislice slices. (This is the data the atom-finding agent has — §11.)
+- **Reviewer-2 run (simulating now): 0.05 Å step → 160k positions**, 16 phonons, 0.5 Å slices.
 
 These are **read by the driver from `sim_meta.mat`** — change them in the sim and the
 recon follows automatically.
@@ -131,10 +150,21 @@ magnitude 20 Å ⇒ `defocus = −20`.
 
 ### 3.7 Dose / intensity scaling
 abTEM flux-normalises each pattern to total ≈ 1; PtychoShelves' `load_from_p` rejects
-avg counts < 1e-4. The **coherent** sim scales to `DOSE_E=1e10 e/pattern` (≈ noiseless).
-For realism, leave the sim noiseless and apply **`add_poisson_noise.py --dose <e/Å²>`**
-afterwards (incident e/pattern = dose·step², relative totals preserved so TDS/ADF
-contrast survives).
+avg counts < 1e-4. The sim applies a **fixed** `×DOSE_E=1e10` (not normalised by the
+run's own mean — that is deliberate, so independently-simulated scan tiles share one
+scale and merge seamlessly), giving a noiseless dataset. For realism, leave the sim
+noiseless and apply **`add_poisson_noise.py --dose <e/Å²>`** afterwards (incident
+e/pattern = dose·step², relative totals preserved so TDS/ADF contrast survives; the
+`1e10` is renormalised away, so the noisy dose is set purely by `--dose`).
+
+### 3.8 Frozen phonons (TDS) — processed one config at a time
+`--phonons N` averages the diffraction **intensities** over N randomly-displaced atomic
+configs (σ default 0.08 Å). Configs are simulated **sequentially** (build that config's
+potential → scan → bin → accumulate), so peak RAM ≈ a single coherent sim (~14 GB)
+regardless of N — wrapping `FrozenPhonons` in the `Potential` instead makes abTEM hold
+all N at once and OOMs at 16. Same `PHONON_SEED` across tiles ⇒ identical configs ⇒
+seamless tiling. TDS shows as a diffuse dark-field background (validated: ~5–12% DF lift
+vs a matched coherent sim; BF disk unchanged).
 
 ---
 
@@ -177,37 +207,49 @@ Three stages, each producing a **self-describing folder** (params in the name, l
 inside). All commands run from the repo root **on a Blythe login node** unless noted.
 
 ```bash
-# 1. SIMULATE  -> sim_out_step<step>_slice<slice>_<coherent|ph<N>s<sig>>/
-bash sim/run_sim.sh                                   # coherent, 0.1 Å, default params
-SCAN_STEP=0.05 PHONONS=8 WALLTIME=1-00:00:00 bash sim/run_sim.sh   # finer + TDS
+# 1a. SIMULATE (single job) -> sim_out_step<step>_slice<slice>_<coherent|ph<N>s<sig>>/
+bash sim/run_sim.sh                                              # coherent, defaults
+SCAN_STEP=0.1 SLICE_THICKNESS=0.5 PHONONS=8 WALLTIME=1-00:00:00 bash sim/run_sim.sh
 
-# 2. ADD DOSE (post-sim, cheap, repeatable)  -> ..._dose<D>/
-python sim/add_poisson_noise.py --in-dir sim_out_step0.1_slice2_ph8s0.08 --dose 1e5
+# 1b. SIMULATE (TILED — for big/16-phonon runs that exceed the 2-day wall)
+#     splits the scan into TILES array jobs (<=MAXPARALLEL at once) + a merge job
+SCAN_STEP=0.05 SLICE_THICKNESS=0.5 PHONONS=16 TILES=30 WALLTIME=18:00:00 \
+    bash sim/run_sim_tiled.sh
+rm -rf sim_out_step0.05_slice0.5_ph16s0.08/tiles                 # after merge: reclaim ~81 GB
 
-# 3. RECONSTRUCT  -> recon_<simref>_NL<n>_reg<r>_p<modes>_b<beta>/
-SIM_SRC=sim_out_step0.1_slice2_ph8s0.08_dose1e5/01 REGLAYER=0 PROBE_MODES=1 \
+# 2. ADD DOSE (post-sim, streamed, cheap, repeatable) -> ..._dose<D>/
+python sim/add_poisson_noise.py --in-dir sim_out_step0.05_slice0.5_ph16s0.08 --dose 1e8
+
+# 3. RECONSTRUCT -> recon_<simref>_NL<n>_reg<r>_p<modes>_b<beta>/   (log+outputs together)
+SIM_SRC=sim_out_step0.05_slice0.5_ph16s0.08_dose1e8/01 REGLAYER=0 PROBE_MODES=1 \
     NITER=120 WALLTIME=2-00:00:00 bash run_recon_multi.sh 70
 
-# pull results to the Mac (see §8), then validate locally:
+#     dose SERIES in one shot (a recon per dose, for the degradation figure):
+SIM_SRC=sim_out/01 DOSES="1e10 1e8 1e6 1e4" NL=70 bash run_dose_series.sh
+
+# 4. pull results to the Mac (see §8), then validate LOCALLY:
 python analysis/depth_resolution.py
 python analysis/column_cross_section_overlay.py
+python analysis/dose_compare.py
 ```
 
 ---
 
 ## 7. Key levers (env knobs)
 
-**Sim** (`sim/run_sim.sh`):
+**Sim** (`sim/run_sim.sh` or `sim/run_sim_tiled.sh`):
 | Var | Default | Effect |
 |---|---|---|
-| `SCAN_STEP` | 0.1 | probe-position spacing (Å). Smaller = more overlap = better, 4× cost at 0.05 |
-| `SLICE_THICKNESS` | 2 | abTEM potential slice (Å); accuracy, not depth info |
-| `PHONONS` | 0 | frozen-phonon configs (TDS). 0=coherent; 8–16 realistic; N× cost |
-| `PHONON_SIGMA` | 0.08 | rms thermal displacement (Å) |
-| `WALLTIME` | (12 h) | bump for phonon sims |
+| `SCAN_STEP` | 0.1 | probe-position spacing (Å). Smaller = more overlap = better; 0.05→160k pos |
+| `SLICE_THICKNESS` | 2 (use **0.5**) | abTEM multislice slice (Å); forward accuracy, not depth resolution. Use 0.5 with phonons (high-angle TDS) |
+| `PHONONS` | 0 | frozen-phonon configs (TDS). 0=coherent; 8–16 realistic. Memory-bounded (sequential) so any N is safe; cost ∝ N |
+| `PHONON_SIGMA` | 0.08 | rms thermal displacement (Å); per-element would be more correct for O |
+| `TILES` | 16 | (tiled only) scan bands = independent array jobs. More = smaller/faster/robuster each |
+| `MAXPARALLEL` | 15 | (tiled only) concurrent tiles; ≤ the 15-GPU per-user cap |
+| `WALLTIME` | 12 h | per job; each tile ~10 h at 0.05 Å/16-phonon |
 | `SIM_TAG`, `OVERWRITE` | — | force a name / allow overwrite |
 
-**Dose** (`sim/add_poisson_noise.py`): `--dose` (e/Å²; ~1e4–1e6 sensible), `--seed`.
+**Dose** (`sim/add_poisson_noise.py`): `--dose` (e/Å²; ~1e4–1e6 experimental, 1e8 near-noiseless), `--seed`. Streamed (low memory). Or `run_dose_series.sh` (`DOSES`, `NL`).
 
 **Recon** (`run_recon_multi.sh`, args = Nlayers list):
 | Var | Default | Effect |
@@ -263,15 +305,130 @@ scp the `Niter*.mat` and I'll analyse it.
 - **load_from_p photon-count error** → scale dose above 1e-4 avg counts.
 - Engine code (`ptycho/+engines`, `ptychography_exp_30nm.m`) is **Yu's — leave it intact**;
   the two-engine presolve (128→256, here 178→356) is his scheme, only the px rescaled.
+- **`$HOME` is tiny (2 GB) and fills silently** → jobs die with `Disk quota exceeded`.
+  Culprits: cupy's CUDA-kernel cache (`~/.cupy`) and MATLAB's **ServiceHost**
+  (`~/.MathWorks/ServiceHost`, ~2 GB). Fixes are permanent: `run_sim.slurm` points
+  `CUPY_CACHE_DIR`/`XDG_CACHE_HOME`/`MPLCONFIGDIR` at `$SHARE`; `~/.MathWorks` is a
+  symlink to `$SHARE`. Keep **everything** off `$HOME`.
+- **16-phonon OOM** (Killed / exit 9) → don't wrap `FrozenPhonons` in the `Potential`
+  (holds all configs at once, >128 GB). Loop configs one at a time (already done).
+- **cupy kernel cache is per-array-size** → a *new* scan size recompiles; if the cache
+  can't write (quota) the whole job dies. See the `$HOME` fix above.
+- **git pull asks for a password / fails** → GitHub HTTPS needs a **PAT** (not your
+  password) or an SSH remote; a cached token had expired.
+- **Tiling introduces NO edge effects** (verified: per-position corr 1.0 across tile
+  boundaries) — each scan position is an independent multislice through the *full*
+  potential; tiling splits only *which positions* are computed.
 
 ---
 
 ## 10. Recommended next steps
-1. **Realistic baseline (paper backbone):** frozen-phonon sim on the *validated* 0.1 Å
-   geometry → dose → NL70 recon. Re-run §4's checks: do planes + displacement survive
-   TDS + shot noise? (Verify the first phonon run logs `frozen phonons ON` on abTEM 1.0.9.)
-2. **0.05 Å "ceiling" run** if compute allows — the oxygen stretch (more overlap → SNR
-   for PSF-deconvolution atom-finding). ~4× data/compute (~80 GB binned).
-3. Consider **exit vacuum padding** to kill the last-layer artifact at the source.
-4. Not done deliberately: scan **jitter** (position-refinement demo) and **partial
-   coherence / source size** — easy future reviewer-proofing if needed.
+1. **Reconstruct the 0.05 Å / 16-phonon dataset** (currently simulating). The blocker:
+   160k positions is a **monolithic** recon (the object is solved jointly — the recon does
+   NOT tile) and won't converge in the 2-day wall. Plan: add **position sub-sampling** to
+   the recon driver (reconstruct every k-th position → k=2 gives a tractable 0.1 Å-
+   equivalent for the headline figure), and keep the full 0.05 Å recon for when wall-time
+   allows (it checkpoints `Niter*.mat`, so partial is usable).
+2. **Dose series** (`run_dose_series.sh`) on a tractable dataset → the recon-vs-dose figure.
+3. **Per-element phonon σ** (Pb/Ti ≈ 0.08, O ≈ 0.11) — more correct and more O signal.
+4. **Exit vacuum padding** to kill the last-layer artifact at the source.
+5. Deliberately not done: scan **jitter** and **partial coherence / source size** — future
+   reviewer-proofing if asked.
+6. **Atom finding / oxygen** — handed to a separate agent (§11).
+
+---
+
+## 11. For the atom-finding agent
+
+**Your goal:** locate atoms in the reconstructed 3-D object — in particular **oxygen**,
+which is *not* cleanly resolved (light, Z=8, buried under the Pb/Ti blur tails). The
+recommended route is **PSF measurement + deconvolution / model-fitting** (§11.5). You
+work entirely on the **Mac, locally** — no HPC needed; the data is already pulled. The
+sims/reconstructions are owned by a separate thread; you consume its output.
+
+### 11.1 The data (local, on the Mac)
+| File | What |
+|---|---|
+| `~/Desktop/NL70_new_vol.npy` | **Primary.** Reconstructed object, complex64, shape **(70, 404, 404)** = [depth layer z, y, x]. Reg-off, single-mode, from the 0.15 Å coherent baseline. |
+| `~/Desktop/NL42_new_vol.npy` | 42-layer version (dz = 1.665 Å). |
+| `~/Desktop/recon_new/NL70/.../Niter120.mat` | The raw PtychoShelves output the npy came from (loader: `analysis/depth_resolution.py::load_recon`; object is in `outputs/object_roi`, a per-layer cell array). |
+| `~/Desktop/column_cross_section_overlay.png` | The figure to reproduce/extend: recon cross-section down a column with GT Pb/Ti/O overlaid. |
+| `~/Desktop/model_overlay.png` | GT projected potential with atom-type labels (which column is which). |
+
+A **better dataset is coming** (0.05 Å step, 16 phonons/TDS, Poisson dose — higher SNR &
+overlap, ideal for deconvolution). Same format, bigger; write your code against
+`NL70_new_vol.npy` now and it will drop straight onto the new volume.
+
+### 11.2 How to load + interpret the object
+```python
+import numpy as np
+vol = np.load("~/Desktop/NL70_new_vol.npy")        # complex64 (70, 404, 404)
+phase = np.angle(vol).astype(float)                 # the structure ∝ projected potential/layer
+phase -= np.median(phase, axis=(1, 2), keepdims=True)   # remove per-layer offset
+# axis 0 = depth (entrance→exit), axes 1,2 = (y, x)
+```
+- **Object pixel** `dx = 0.0492 Å` (in-plane, both axes).
+- **Depth spacing** `dz = 1.0 Å` (NL70) / `1.665 Å` (NL42); total depth ≈ 70 Å.
+- Atoms appear as **bright phase blobs**; brightness ∝ Z, so Pb ≫ Ti ≫ O.
+
+### 11.3 Resolution / what is and isn't resolved (your target)
+- **In-plane:** resolved to sub-Å (0.85 correlation to the model). Pb/Ti columns are clear.
+- **Depth (along beam):** information-limited to **~2 Å** (λ/NA² optical axial limit).
+  Atomic *planes* along the beam are resolved at **~3.9 Å** (NL70; verified by a kz peak).
+- **Depth-dependent displacement** is recovered (~0.25 Å column lean; the labyrinth/vortex).
+- **Oxygen: not resolved** — there is faint signal where O should be, but it does not
+  separate from the Ti/Pb blur. **This is the job.**
+
+### 11.4 Ground truth + recon↔model coordinate map (where atoms SHOULD be)
+Structure file: `sim/PTO6_STO6_18_18_labyrinthPoscar.vasp` (PbTiO₃/SrTiO₃ labyrinth).
+To get atom positions in the **same frame as the reconstruction**, apply the exact
+transform the sim used, then map to recon pixels:
+```python
+import ase.io, abtem, numpy as np
+a = ase.io.read("sim/PTO6_STO6_18_18_labyrinthPoscar.vasp")
+a.rotate(-90, "y", rotate_cell=True); a = abtem.orthogonalize_cell(a)
+s = max(a.cell.lengths()[:2]); a.cell[0,0]=s; a.cell[1,1]=s
+a.center(axis=0); a.center(axis=1); a.center(axis=2, vacuum=2.0)
+pos, Z = a.get_positions(), a.get_atomic_numbers()     # Pb=82, Ti=22, O=8, Sr=38
+```
+**Map (locked by NCC, corr 0.79; the recon is the transpose of the GT grid):**
+- recon **(row r, col c)** → GT physical **X = 30 + c·dx**, **Y = 10 + r·dx**
+- inverse (GT→recon pixel): **col = (X−30)/dx + CAL**, **row = (Y−10)/dx**, `CAL ≈ +1.8 px`
+  (a measured sub-pixel registration; `analysis/column_cross_section_overlay.py` derives it
+  data-drivenly — reuse that, don't hand-tune).
+- **depth:** recon layer `i` ↔ GT z ≈ `(i+0.5)·dz` (entrance at layer 0; fitted offset ≈ 0).
+- The scan window is X∈[30,50], Y∈[10,30] Å; only atoms in that box are in the field.
+
+`analysis/column_cross_section_overlay.py` already implements the **full** alignment
+(transpose + NCC shift + depth registration + sub-pixel CAL) and overlays Pb/Ti/O markers
+on a column cross-section — **start from that script**; it's the tested path.
+
+### 11.5 Recommended approach — PSF deconvolution / model fitting
+Every atom reconstructs as the system's **point-spread function**: a 3-D blob, **tight
+in-plane (~0.5–1 Å)** but **stretched along z (~2 Å+, the missing cone)**. So
+`reconstruction ≈ true_atoms ⊛ PSF`.
+
+1. **Measure the PSF empirically (the unfair advantage of a sim pipeline):** run
+   `sim/simulate_4dstem.py` on a *single isolated atom* (a 1-atom structure in the same
+   box) and reconstruct it through the identical pipeline → the reconstructed blob **is**
+   your 3-D PSF (anisotropy, missing-cone and all). Defensible in a paper: measured, not
+   assumed. (This needs one small sim+recon — coordinate with the sims thread.)
+2. **Deconvolve** with **Richardson–Lucy** (non-negative, Poisson-appropriate — the right
+   choice for electron counts; `skimage.restoration.richardson_lucy`), OR — better for
+   weak/overlapping O — **model-based fitting**: place a PSF at each candidate lattice site
+   (you know the lattice and the PSF) and solve for per-site amplitudes.
+3. **Caveats:** deconvolution amplifies noise — use the **highest-dose** recon and cap RL
+   iterations / regularise. The 3-D PSF is **anisotropic** (don't use a symmetric one — the
+   empirical PSF handles this for free). O is a *contrast/SNR* problem, not a *resolution*
+   one, so it works best where O is "resolved-but-blurred," not noise-buried.
+
+### 11.6 Physics parameters (for computing/checking the ideal PSF)
+300 keV (λ = 0.01969 Å) · convergence 100 mrad · defocus −20 Å (= 20 Å overfocus) ·
+detector 200 mrad · 4×4 binned → Ndet 356, d_alpha 1.125 mrad/px, BF-disk radius 88.9 px ·
+object pixel 0.0492 Å. (Full table + derivations in §3.)
+
+### 11.7 Scripts to build on (`analysis/`, run locally)
+- `column_cross_section_overlay.py` — recon vs GT overlay down a column (the alignment + figure).
+- `column_cross_section.py` — depth cross-section down a column.
+- `depth_resolution.py` — the recon-mat loader + the kz plane-frequency test.
+- `dose_compare.py` — recon vs dose (useful once you pick a working dose for deconvolution).
