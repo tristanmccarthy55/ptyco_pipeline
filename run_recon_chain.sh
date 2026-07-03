@@ -4,8 +4,9 @@
 #
 # Per dose: a Poisson-noise JOB (off the login node) -> seg0 (fresh: presolve + full)
 # -> seg1..seg(NSEG-1), each RESTARTING from the previous segment's last checkpoint.
-# Segments are chained with `afterany`, so even a wall-timed-out segment hands its
-# checkpoint to the next one. Total iterations ≈ NSEG * SEG_ITERS.
+# Segments chain with `afterok` — each restarts from the previous segment's native
+# _recons.h5 (written only on COMPLETION), so a segment must FINISH to be resumable
+# (budget SEG_ITERS < wall). Total iterations ≈ NSEG * SEG_ITERS.
 #
 # Usage (repo root, Blythe login node):
 #   SIM_SRC=sim_out_step0.05_slice0.5_ph16s0.08/01 DOSES="1e10 1e8 1e6 1e4" \
@@ -50,7 +51,7 @@ for D in ${DOSES}; do
         --wrap="'${PYBIN}' '${REPO_DIR}/sim/add_poisson_noise.py' --in-dir '${SIM_DIRNAME}' --dose ${D} --out-dir '${NOISY}'")
     echo "dose ${D}: job ${DJID}  -> ${NOISY}/"
 
-    # 2) segment chain: seg0 afterok the dose job; seg k afterany seg k-1, restarting
+    # 2) segment chain: seg0 afterok the dose job; seg k afterok seg k-1, restarting
     PREV=""; DEP="afterok:${DJID}"
     for ((k=0; k<NSEG; k++)); do
         SEG="${REPO_DIR}/${CHAIN}/seg${k}"
@@ -65,7 +66,7 @@ for D in ${DOSES}; do
             --export=ALL,NLAYERS="${NL}",SIM_BASE="${SEG}/",REGLAYER="${REG}",NITER="${SEG_ITERS}",SAVE_EVERY="${SAVE_EVERY}"${RESTART_EXPORT} \
             run_recon_synthetic_ML.slurm)
         echo "  seg${k}: job ${SJID}  [${DEP}]  -> ${CHAIN}/seg${k}/"
-        PREV="${SEG}/"; DEP="afterany:${SJID}"
+        PREV="${SEG}/"; DEP="afterok:${SJID}"    # next seg only if this one COMPLETES (resumable _recons.h5 is written on completion, not on a wall-timeout)
     done
 done
 

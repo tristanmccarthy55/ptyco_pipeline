@@ -104,12 +104,16 @@ if ~isempty(blsq_env); beta_LSQ_val = str2double(blsq_env); else; beta_LSQ_val =
 fprintf('beta_LSQ = %.3g\n', beta_LSQ_val);
 
 % -------- chained-restart (continue a long recon across the 2-day wall) ----------
-% RESTART_DIR set  -> init the object from the latest Niter*.mat found under it (a
-%   previous chain segment) and run ONLY the full-resolution engine for NITER more
-%   iterations (the coarse presolve is skipped — the object is already full-res).
+% RESTART_DIR set  -> init the object from the previous chain segment's native
+%   *_recons.h5 (io.load_ptycho_recons -> S.object) and run ONLY the full-resolution
+%   engine for NITER more iterations (presolve is skipped — the object is full-res).
+%   NB: PtychoShelves writes _recons.h5 only when a segment COMPLETES; its intermediate
+%   Niter*.mat keep the object under outputs.object, which prepare_initial_object does
+%   NOT read (that was the original chain bug). So segments must FINISH (budget
+%   SEG_ITERS < wall) and the chain launcher chains with afterok.
 % RESTART_DIR unset -> fresh run (coarse presolve + full).
-% SAVE_EVERY (default 50): checkpoint frequency; keep it < NITER so a wall-timeout
-%   still leaves a usable Niter*.mat for the next segment to resume from.
+% SAVE_EVERY (default 50): how often to write intermediate Niter*.mat (for monitoring /
+%   a partial object); NOT used for resume — that's the _recons.h5.
 se_env = getenv('SAVE_EVERY');
 if ~isempty(se_env); save_every = round(str2double(se_env)); else; save_every = 50; end
 Niter_save_results = [save_every, save_every];
@@ -117,14 +121,11 @@ restart_dir = getenv('RESTART_DIR');
 do_restart  = ~isempty(restart_dir);
 restart_obj = '';
 if do_restart
-    dd = dir(fullfile(restart_dir, '**', 'Niter*.mat'));
-    if isempty(dd); error('RESTART_DIR has no Niter*.mat: %s', restart_dir); end
-    nums = zeros(numel(dd), 1);
-    for k = 1:numel(dd)
-        t = regexp(dd(k).name, 'Niter(\d+)\.mat', 'tokens');
-        if ~isempty(t); nums(k) = str2double(t{1}{1}); end
+    dd = dir(fullfile(restart_dir, '**', '*_recons.h5'));   % PtychoShelves native recon file
+    if isempty(dd)
+        error('RESTART_DIR has no *_recons.h5 (did the previous segment complete?): %s', restart_dir);
     end
-    [~, imax] = max(nums);
+    [~, imax] = max([dd.datenum]);                          % most recently written
     restart_obj = fullfile(dd(imax).folder, dd(imax).name);
     fprintf('RESTART: continuing from %s (full-res engine only)\n', restart_obj);
     % collapse the two-engine schedule to the full-resolution (2nd) engine
