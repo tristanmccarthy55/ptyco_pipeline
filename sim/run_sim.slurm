@@ -93,9 +93,11 @@ echo "GPU      : ${CUDA_VISIBLE_DEVICES:-<unset>}"
 echo "slice=${SLICE_THICKNESS} Å  step=${SCAN_STEP} Å  phonons=${PHONONS} (sigma ${PHONON_SIGMA} Å)"
 "${PYBIN}" -c "import sys,numpy,abtem; print('python:',sys.executable); print('abtem:',abtem.__version__,'numpy:',numpy.__version__)"
 
-# single-atom PSF mode (analysis/atomfind): SINGLE_ATOM=Pb [ATOM_Z=37] [SCAN_WINDOW=10]
+# single-atom / grid PSF mode (analysis/atomfind): SINGLE_ATOM=Pb [ATOM_Z=37]
+# [SCAN_WINDOW=14] [GRID_SPACING=4]  (GRID_SPACING>0 -> a grid, the one that converges)
 SA_ARG=()
-[ -n "${SINGLE_ATOM:-}" ] && SA_ARG=(--single-atom "${SINGLE_ATOM}" --atom-z "${ATOM_Z:-37}" --scan-window "${SCAN_WINDOW:-10}")
+[ -n "${SINGLE_ATOM:-}" ] && SA_ARG=(--single-atom "${SINGLE_ATOM}" --atom-z "${ATOM_Z:-37}" \
+    --scan-window "${SCAN_WINDOW:-10}" --grid-spacing "${GRID_SPACING:-0}")
 
 "${PYBIN}" "${SIM_DIR}/simulate_4dstem.py" \
     --device gpu \

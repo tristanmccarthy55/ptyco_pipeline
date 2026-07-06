@@ -150,6 +150,25 @@ def build_single_atom(element="Pb", z=37.0):
     return atoms, float(side)
 
 
+def build_atom_grid(element="Pb", spacing=4.0, z=37.0):
+    """A 2-D grid of one element at a SINGLE depth — for a clean empirical PSF. A lone
+    atom is too sparse for the reg-off multislice recon (nonlinear; it fills the volume
+    with noise). A grid gives the in-plane DENSITY to converge like the real sample,
+    while each atom stays ISOLATED in-plane (spacing >> the ~1 Å blob) and AXIALLY
+    isolated (one plane) -> extract/average the central blobs for the PSF (its axial tail
+    is neighbour-free, unlike a data-derived blob from the stacked labyrinth columns)."""
+    from ase import Atoms
+    side, box_z = 70.008, 74.0
+    half = SCAN_WINDOW_A / 2.0 - 1.0                 # 1 Å margin inside the scanned window
+    xs = np.arange(SCAN_CENTER_X_A - half, SCAN_CENTER_X_A + half + 1e-6, spacing)
+    ys = np.arange(SCAN_CENTER_Y_A - half, SCAN_CENTER_Y_A + half + 1e-6, spacing)
+    pos = [(x, y, z) for x in xs for y in ys]
+    atoms = Atoms(element * len(pos), positions=pos, cell=[side, side, box_z], pbc=True)
+    print(f"[atoms] GRID: {len(xs)}×{len(ys)} = {len(pos)} {element} at z={z} Å, "
+          f"{spacing} Å spacing — isolated PSF blobs with a converging object")
+    return atoms, float(side)
+
+
 def load_and_prepare_atoms():
     """Load POSCAR, orient for the beam, make the in-plane box square, add vacuum.
 
@@ -534,7 +553,11 @@ def main(argv=None) -> int:
                     help="Simulate ONE atom (element, e.g. Pb/O/Ti) at the scan centre "
                          "for an empirical PSF (analysis/atomfind/PSF_SIM_REQUEST.md).")
     ap.add_argument("--atom-z", type=float, default=37.0,
-                    help="single-atom depth z [Å] (default 37 = mid-depth).")
+                    help="single-atom / grid depth z [Å] (default 37 = mid-depth).")
+    ap.add_argument("--grid-spacing", type=float, default=0.0,
+                    help="if >0 (with --single-atom), build a GRID of that element at this "
+                         "spacing [Å] instead of one atom — dense enough to converge, blobs "
+                         "stay isolated. Use this for a real PSF; a lone atom -> noise.")
     ap.add_argument("--scan-window", type=float, default=SCAN_WINDOW_A,
                     help="scan window [Å] (default 20; use ~10 for a fast single-atom PSF).")
     ap.add_argument("--phonons", type=int, default=N_PHONONS,
@@ -571,7 +594,10 @@ def main(argv=None) -> int:
     print("=" * 64)
 
     if args.single_atom:
-        atoms, box_a = build_single_atom(args.single_atom, args.atom_z)
+        if args.grid_spacing > 0:
+            atoms, box_a = build_atom_grid(args.single_atom, args.grid_spacing, args.atom_z)
+        else:
+            atoms, box_a = build_single_atom(args.single_atom, args.atom_z)
     elif args.phantom:
         atoms, box_a = build_phantom_atoms()
     else:
