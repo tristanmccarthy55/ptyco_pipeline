@@ -93,6 +93,10 @@ echo "GPU      : ${CUDA_VISIBLE_DEVICES:-<unset>}"
 echo "slice=${SLICE_THICKNESS} Å  step=${SCAN_STEP} Å  phonons=${PHONONS} (sigma ${PHONON_SIGMA} Å)"
 "${PYBIN}" -c "import sys,numpy,abtem; print('python:',sys.executable); print('abtem:',abtem.__version__,'numpy:',numpy.__version__)"
 
+# single-atom PSF mode (analysis/atomfind): SINGLE_ATOM=Pb [ATOM_Z=37] [SCAN_WINDOW=10]
+SA_ARG=()
+[ -n "${SINGLE_ATOM:-}" ] && SA_ARG=(--single-atom "${SINGLE_ATOM}" --atom-z "${ATOM_Z:-37}" --scan-window "${SCAN_WINDOW:-10}")
+
 "${PYBIN}" "${SIM_DIR}/simulate_4dstem.py" \
     --device gpu \
     --out-dir "${OUT_DIR}" \
@@ -100,4 +104,4 @@ echo "slice=${SLICE_THICKNESS} Å  step=${SCAN_STEP} Å  phonons=${PHONONS} (sig
     --scan-step "${SCAN_STEP}" \
     --phonons "${PHONONS}" \
     --phonon-sigma "${PHONON_SIGMA}" \
-    "${TILE_ARG[@]}"
+    "${TILE_ARG[@]}" "${SA_ARG[@]}"

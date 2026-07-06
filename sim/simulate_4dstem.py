@@ -135,6 +135,21 @@ def build_phantom_atoms():
     return atoms, float(side)
 
 
+def build_single_atom(element="Pb", z=37.0):
+    """ONE atom at the scan centre in the production-shaped box -> its reconstruction is
+    the empirical PSF (see analysis/atomfind/PSF_SIM_REQUEST.md). Placed directly in the
+    final box (no rotate/orthogonalize/pad): same square in-plane size + beam path as
+    production, so Ndpx / d_alpha / dx and the axial propagation all match. Pair with a
+    small --scan-window for a fast, cheap PSF (the kernel is local, window-invariant)."""
+    from ase import Atoms
+    side, box_z = 70.008, 74.0
+    atoms = Atoms(element, positions=[(SCAN_CENTER_X_A, SCAN_CENTER_Y_A, z)],
+                  cell=[side, side, box_z], pbc=True)
+    print(f"[atoms] SINGLE {element} (Z={atoms.get_atomic_numbers()[0]}) at "
+          f"({SCAN_CENTER_X_A},{SCAN_CENTER_Y_A},{z}) Å; box {side:.3f}×{side:.3f}×{box_z} Å")
+    return atoms, float(side)
+
+
 def load_and_prepare_atoms():
     """Load POSCAR, orient for the beam, make the in-plane box square, add vacuum.
 
@@ -498,7 +513,7 @@ def write_driver_geometry(n_b: int, box_a: float, beam_thickness_a: float,
 # MAIN
 # ======================================================================
 def main(argv=None) -> int:
-    global DEVICE, SLICE_THICKNESS_A, SCAN_STEP_A, DOSE_E, N_PHONONS, PHONON_SIGMA_A, PHONON_SEED
+    global DEVICE, SLICE_THICKNESS_A, SCAN_STEP_A, DOSE_E, N_PHONONS, PHONON_SIGMA_A, PHONON_SEED, SCAN_WINDOW_A
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--test", action="store_true",
                     help="Tiny 3x3 scan for fast local shape/geometry validation.")
@@ -515,6 +530,13 @@ def main(argv=None) -> int:
     ap.add_argument("--phantom", action="store_true",
                     help="Thin asymmetric 'F' Pb phantom for the orientation (8-DOF) "
                          "test (single-slice exact; same Ndpx as the real sim).")
+    ap.add_argument("--single-atom", default=None,
+                    help="Simulate ONE atom (element, e.g. Pb/O/Ti) at the scan centre "
+                         "for an empirical PSF (analysis/atomfind/PSF_SIM_REQUEST.md).")
+    ap.add_argument("--atom-z", type=float, default=37.0,
+                    help="single-atom depth z [Å] (default 37 = mid-depth).")
+    ap.add_argument("--scan-window", type=float, default=SCAN_WINDOW_A,
+                    help="scan window [Å] (default 20; use ~10 for a fast single-atom PSF).")
     ap.add_argument("--phonons", type=int, default=N_PHONONS,
                     help="Frozen-phonon configs (thermal diffuse scattering). "
                          "0 = coherent (default); 8-16 for a realistic sim.")
@@ -533,6 +555,7 @@ def main(argv=None) -> int:
     N_PHONONS = args.phonons
     PHONON_SIGMA_A = args.phonon_sigma
     PHONON_SEED = args.phonon_seed
+    SCAN_WINDOW_A = args.scan_window
 
     tile = None
     if args.scan_tile:
@@ -547,7 +570,12 @@ def main(argv=None) -> int:
           f"phonons = {N_PHONONS or 'off (coherent)'}")
     print("=" * 64)
 
-    atoms, box_a = build_phantom_atoms() if args.phantom else load_and_prepare_atoms()
+    if args.single_atom:
+        atoms, box_a = build_single_atom(args.single_atom, args.atom_z)
+    elif args.phantom:
+        atoms, box_a = build_phantom_atoms()
+    else:
+        atoms, box_a = load_and_prepare_atoms()
     beam_thickness_a = float(atoms.cell.lengths()[2] - 2 * Z_VACUUM_A)
     report_scan_geometry(atoms, beam_thickness_a)
     probe = build_probe(build_potential(atoms, announce=True))   # ref potential -> probe grid
