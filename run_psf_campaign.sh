@@ -19,10 +19,10 @@ CONFIGS=(
   "Ti_NL70       Ti 37 0.15  2     70  14  4    0"
   "Pb_NL70_z10   Pb 10 0.15  2     70  14  4    0"     # depth series (entrance)
   "Pb_NL70_z64   Pb 64 0.15  2     70  14  4    0"     # depth series (exit)
-  "Pb_rev2       Pb 37 0.05  0.5   105 8   2.5  1e8"   # reviewer-2 geometry (VERIFY first)
-  "O_rev2        O  37 0.05  0.5   105 8   2.5  1e8"
-  "Ti_rev2       Ti 37 0.05  0.5   105 8   2.5  1e8"
 )
+# NOTE: the reviewer-2 (0.05 A / NL105) PSFs are NOT here — that production data is a
+# 16-frozen-phonon sim, so a coherent kernel would undercorrect it. They live in
+# run_psf_campaign_rev2.sh (tiled 16-phonon sim, matched to doses 1e10 + 1e8).
 
 for cfg in "${CONFIGS[@]}"; do
     read -r name el z step slice nl win grid dose <<< "${cfg}"
