@@ -99,6 +99,9 @@ SA_ARG=()
 [ -n "${SINGLE_ATOM:-}" ] && SA_ARG=(--single-atom "${SINGLE_ATOM}" --atom-z "${ATOM_Z:-37}" \
     --scan-window "${SCAN_WINDOW:-10}" --grid-spacing "${GRID_SPACING:-0}")
 
+# per-species RMS thermal displacements (Pb/Sr/Ti/O) instead of one sigma for all
+PS_ARG=(); [ "${PER_SPECIES_SIGMA:-0}" = "1" ] && PS_ARG=(--per-species-sigma)
+
 "${PYBIN}" "${SIM_DIR}/simulate_4dstem.py" \
     --device gpu \
     --out-dir "${OUT_DIR}" \
@@ -106,4 +109,4 @@ SA_ARG=()
     --scan-step "${SCAN_STEP}" \
     --phonons "${PHONONS}" \
     --phonon-sigma "${PHONON_SIGMA}" \
-    "${TILE_ARG[@]}" "${SA_ARG[@]}"
+    "${TILE_ARG[@]}" "${SA_ARG[@]}" "${PS_ARG[@]}"

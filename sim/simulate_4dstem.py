@@ -78,8 +78,17 @@ SCAN_STEP_A     = 0.1
 # Cost scales ~linearly with N_PHONONS. sigma is the rms 1-D displacement (~0.08 Å
 # is a sensible room-temperature value for these elements).
 N_PHONONS      = 0        # 0 = coherent; 8-16 for a realistic TDS sim
-PHONON_SIGMA_A = 0.08     # rms thermal displacement [Å]
+PHONON_SIGMA_A = 0.08     # abtem `sigmas` [Å] (scalar: same for all species)
 PHONON_SEED    = 1
+# Per-species thermal displacements at ROOM TEMPERATURE. abtem's `sigmas` is the 3-D rms
+# displacement MAGNITUDE (verified on 1.0.5: per-Cartesian std = sigmas/√3), so to inject
+# a target isotropic Uiso = B/(8π²) we pass sigmas = √(3·Uiso) = √(3·B/(8π²)). Parameterised
+# by the tabulated RT isotropic B [Å²] so it's auditable (Pb & O vibrate far more than Ti);
+# for a single-element PSF grid only that element's value is used.
+_B_BY_SPECIES = {"Pb": 0.90, "Sr": 0.55, "Ti": 0.45, "O": 0.80}     # RT isotropic B [Å²]
+PHONON_SIGMA_BY_SPECIES = {k: float(np.sqrt(3.0 * b / (8.0 * np.pi ** 2)))
+                           for k, b in _B_BY_SPECIES.items()}
+PER_SPECIES_SIGMA = False   # False = scalar PHONON_SIGMA_A; True = the per-species dict
 
 # --- device ---
 DEVICE = "gpu"   # "gpu" on the HPC L40; "cpu" for a laptop test
@@ -362,10 +371,12 @@ def run_scan_binned(probe, atoms, scan):
     for the 16-config OOM. Same total work as the ensemble path; just memory-bounded."""
     detector = abtem.PixelatedDetector(max_angle=DETECTOR_MAX_ANGLE_MRAD)
     if N_PHONONS and N_PHONONS > 0:
-        print(f"[phonons] {N_PHONONS} configs, sigma={PHONON_SIGMA_A} Å — one at a time "
+        sigmas = PHONON_SIGMA_BY_SPECIES if PER_SPECIES_SIGMA else PHONON_SIGMA_A
+        print(f"[phonons] {N_PHONONS} configs, sigma={sigmas} Å "
+              f"({'per-species' if PER_SPECIES_SIGMA else 'scalar'}) — one at a time "
               f"(bounded memory; incoherent TDS average)")
         configs = list(abtem.FrozenPhonons(atoms, num_configs=N_PHONONS,
-                                           sigmas=PHONON_SIGMA_A, seed=PHONON_SEED))
+                                           sigmas=sigmas, seed=PHONON_SEED))
         acc = None
         for i, cfg in enumerate(configs):
             arr_i, n_b, n_u, n_c = _scan_one_config(
@@ -512,6 +523,7 @@ def write_driver_geometry(n_b: int, box_a: float, beam_thickness_a: float,
         "scan_step_A": float(SCAN_STEP_A),
         "n_phonons": int(N_PHONONS),
         "phonon_sigma_A": float(PHONON_SIGMA_A),
+        "phonon_per_species": int(PER_SPECIES_SIGMA),
         "ADU": 1.0,
     }
     savemat(str(out_dir / "sim_meta.mat"), {"meta": meta})
@@ -532,7 +544,7 @@ def write_driver_geometry(n_b: int, box_a: float, beam_thickness_a: float,
 # MAIN
 # ======================================================================
 def main(argv=None) -> int:
-    global DEVICE, SLICE_THICKNESS_A, SCAN_STEP_A, DOSE_E, N_PHONONS, PHONON_SIGMA_A, PHONON_SEED, SCAN_WINDOW_A
+    global DEVICE, SLICE_THICKNESS_A, SCAN_STEP_A, DOSE_E, N_PHONONS, PHONON_SIGMA_A, PER_SPECIES_SIGMA, PHONON_SEED, SCAN_WINDOW_A
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--test", action="store_true",
                     help="Tiny 3x3 scan for fast local shape/geometry validation.")
@@ -565,6 +577,9 @@ def main(argv=None) -> int:
                          "0 = coherent (default); 8-16 for a realistic sim.")
     ap.add_argument("--phonon-sigma", type=float, default=PHONON_SIGMA_A,
                     help="RMS thermal displacement [Å] for frozen phonons (~0.08 ≈ RT).")
+    ap.add_argument("--per-species-sigma", action="store_true",
+                    help="use per-species RMS thermal displacements (Pb/Sr/Ti/O, RT) "
+                         "instead of one --phonon-sigma for all atoms — more faithful TDS.")
     ap.add_argument("--phonon-seed", type=int, default=PHONON_SEED)
     ap.add_argument("--scan-tile", default=None,
                     help='HPC tiling: run only scan x-band I of N, as "I/N" (0-indexed). '
@@ -577,6 +592,7 @@ def main(argv=None) -> int:
     DOSE_E = args.dose
     N_PHONONS = args.phonons
     PHONON_SIGMA_A = args.phonon_sigma
+    PER_SPECIES_SIGMA = args.per_species_sigma
     PHONON_SEED = args.phonon_seed
     SCAN_WINDOW_A = args.scan_window
 

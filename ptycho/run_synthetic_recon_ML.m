@@ -82,6 +82,18 @@ else
 end
 fprintf('probe_change_start (per engine) = [%g %g]\n', Nst_probe(1), Nst_probe(2));
 Npos_st                   = [inf, inf];     % positions are EXACT (from sim) -> fixed
+
+% --- released / variable probe for noisy, partially-coherent data (TDS + dose) ---
+% With >1 probe mode the mutually-incoherent modes must actually be updated together
+% (apply_multimodal_update) or the extra modes just sit there. Auto-on when Nprobe>1;
+% MULTIMODAL=0/1 overrides. VARIABLE_PROBE=<#modes> turns on orthogonal probe
+% relaxation (the probe varies across the scan) — 0/unset = off. These let the recon
+% absorb the incoherent TDS background instead of corrupting the object with it.
+mm_env = getenv('MULTIMODAL');
+if ~isempty(mm_env); multimodal = logical(str2double(mm_env)); else; multimodal = (Nprobe > 1); end
+vp_env = getenv('VARIABLE_PROBE');
+if ~isempty(vp_env); n_varprobe = max(0, round(str2double(vp_env))); else; n_varprobe = 0; end
+fprintf('apply_multimodal_update = %d ; variable_probe_modes = %d\n', multimodal, n_varprobe);
 % Depth (multilayer) regularizer: regulation_multilayers.m is a missing-cone low-pass
 % in kz (W = 1-atan((R*|kz|/k_xy)^2)/(pi/2)) -> it BLURS depth. For depth resolution
 % we want it OFF (REGLAYER=0); it was only stabilising the under-constrained deep
@@ -256,7 +268,7 @@ for ieng = 1:length(Niter)
     eng. reg_mu                       = 0;
     eng. delta                        = 0;
     eng. positivity_constraint_object = 0;
-    eng. apply_multimodal_update      = false;
+    eng. apply_multimodal_update      = multimodal;
     eng. probe_backpropagate          = 0;
     eng. probe_support_radius         = [];
     eng. probe_support_fft            = false;
@@ -288,8 +300,8 @@ for ieng = 1:length(Niter)
     eng. estimate_NF_distance       = inf;
     eng. detector_rotation_search   = inf;
     eng. detector_scale_search      = inf;
-    eng. variable_probe             = false;
-    eng. variable_probe_modes       = 1;
+    eng. variable_probe             = (n_varprobe > 0);
+    eng. variable_probe_modes       = max(1, n_varprobe);
     eng. variable_probe_smooth      = 0;
     eng. variable_intensity         = false;
 
