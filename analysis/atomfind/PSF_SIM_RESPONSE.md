@@ -42,7 +42,7 @@ Verified with the exact `empirical_psf()` logic (argmax of `np.angle − per-lay
 | **`psf_Pb_NL70_vol.npy`** | NL70, coherent | ✅ (24,30,30) | **GOLD — use this** |
 | `psf_Pb_vol.npy` | NL70, coherent | ✅ | duplicate of the above (earlier extract) |
 | `psf_Ti_NL70_vol.npy` | NL70, coherent | ✅ (24,30,30) | clean — usable if you want an element-specific Ti kernel |
-| `psf_O_NL70_vol.npy` | NL70, coherent | ⚠️ off-centre (24,47,46) | **marginal** — O is weakly resolved; blob sits in a noisy field. Prefer the Pb kernel as proxy. |
+| `psf_O_NL70_vol.npy` | NL70, coherent | ❌ atom sub-noise (SNR 0.39) | **not a usable kernel** — isolated O is ~1 % of Pb and *below* the recon noise floor here (peak 0.007 vs 99%-noise 0.017); argmax grabs a noise spike 1.15 Å off. Keep only as a detectability number (see note). Detect O with the Pb shape. |
 | `psf_Pb_rev2_d1e10_vol.npy` | NL105, 16-ph, dose 1e10 | ✅ (43,30,30) | clean — for the reviewer-2 data (§4) |
 | `psf_Pb_rev2_d1e8_vol.npy` | NL105, 16-ph, dose 1e8 | ✅ (43,30,30) | clean — for the reviewer-2 data (§4) |
 | `psf_O_rev2_d1e10/d1e8` | NL105, 16-ph, dosed | ❌ corner artifact | **broken — do not use.** O does not localise as an isolated atom under TDS+dose. |
@@ -53,11 +53,16 @@ Every kernel also has a `psf_<tag>_check.png` next to it (in-plane max-projectio
 slice) — glance at these; the good ones look like a single compact blob, the broken ones are
 obviously noise/edge junk.
 
-**Physics takeaway (real, not a bug):** under 16-phonon thermal diffuse scattering + finite
-dose, only the **heavy Pb** column reconstructs as an isolated atom. O (light) and Ti (medium)
-are attenuated by the Debye–Waller factor and buried in the incoherent TDS background, so an
-*isolated* O/Ti atom is too under-constrained to reconstruct there. Detect O/Ti with the Pb
-system-PSF (the shape is what matters for deconvolution/matched-filtering).
+**Physics takeaway (real, not a bug):** only the **heavy Pb** column reconstructs as an
+*isolated* atom. Even coherent/noiseless, isolated O measures at **SNR ≈ 0.39** (peak ~1 % of
+Pb, ≈ the median noise) — below the reconstruction noise floor; under 16-phonon TDS + dose,
+O and Ti (Debye–Waller-attenuated, buried in the incoherent background) go the same way. This
+is not an extraction bug: **isolating the atom removes the crystalline support that makes O
+visible in the first place.** O *is* present in the real crystal recon (`NL70_new_vol`, between
+the Ti columns) because there it's held up by its neighbours + the periodic lattice. So detect
+O/Ti with the **Pb system-PSF shape** (element-independent; it's the shape that matters for
+deconvolution/matched-filtering) plus a low expected amplitude — exactly what your model-based
+O detector (windowed NNLS) is built for. Don't feed an O/Ti kernel to `empirical_psf()`.
 
 ---
 
