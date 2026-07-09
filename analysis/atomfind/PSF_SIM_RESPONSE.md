@@ -113,7 +113,73 @@ used released mixed-state probes — but you still consume the object volume exa
 
 ---
 
-## 6. How the kernel is consumed (why the broken ones fail)
+## 6. How every volume was generated (full pipeline — so you handle each one correctly)
+
+Both the target data AND the PSF grids come from the **same two stages** — an abTEM multislice
+4D-STEM simulation, then a PtychoShelves multislice reconstruction — differing ONLY in (a) the
+object placed in the box and (b) the noise level. Knowing this fixes how to read the volume.
+
+### 6.1 Stage 1 — abTEM multislice 4D-STEM (`sim/simulate_4dstem.py`, the forward model)
+Common to every dataset:
+- **Beam** 300 keV; **probe** 100 mrad convergence, 20 Å overfocus (defocus −20 Å).
+- **Potential**: abTEM `Potential`, Lobato parametrization, infinite projection, on the FULL
+  square box (no cropping — a cropped box aliases the broadened exit wave). Slice thickness
+  **2 Å** (NL70/NL42 data) or **0.5 Å** (reviewer-2).
+- **Scan**: `GridScan` over a window centred at prepared-cell **(40, 20) Å**, positions
+  flattened **y-fastest**. Step **0.15 Å** (NL70), **0.1 Å** (dose series + reviewer-2).
+- **Detector**: full ~200 mrad pixelated → binned **4×4 → 356×356** patterns, DC-centred.
+- **Frozen phonons (reviewer-2 only)**: N displaced configs, diffraction **intensities**
+  averaged (incoherent TDS). Per-species room-T displacement from tabulated isotropic B
+  (Pb 0.90, Sr 0.55, Ti 0.45, O 0.80 Å²) → σ = √(3B/8π²); Pb & O vibrate ~2× Ti.
+- Patterns flux-normalised then scaled to a fixed electron count (noiseless base).
+
+### 6.2 The object in the box — the ONLY thing that differs
+- **Target data** (`NL70_new_vol`, `NL42`, dose series): the real PbTiO₃/SrTiO₃ labyrinth from
+  `PTO6_STO6_18_18_labyrinthPoscar.vasp` — read → **rotate −90° about y** (beam→z) →
+  `orthogonalize_cell` → pad to a **square 70.008 Å** in-plane box → `center` + 2 Å vacuum.
+  ~70 Å of material along the beam.
+- **PSF grids** (`psf_*` volumes): a sparse **2-D grid of ONE element at ONE depth** (z = 37 Å)
+  via `build_atom_grid` — atoms on a `spacing`-Å grid (**4 Å** NL70, **2.5 Å** rev2) across the
+  scan window, placed directly in the identical 70.008 × 70.008 × 74 Å box. A grid, not a lone
+  atom, because a lone atom is too sparse for the reg-off recon (it fills the volume with
+  noise); the grid gives enough in-plane density to CONVERGE while each atom stays isolated
+  in-plane (spacing ≫ the ~1 Å blob) and axially (single plane). **Everything else — optics,
+  detector, slice thickness, phonons, dose, and the recon below — is byte-for-byte the
+  production pipeline, so each reconstructed grid blob IS the system point-spread response.**
+  (This is exactly why light/isolated O collapses — see §2 — while the recon of the *full
+  crystal* still shows O: the grid removes the neighbour support.)
+
+### 6.3 Stage 2 — dose (optional, `sim/add_poisson_noise.py`)
+Poisson shot noise added post-sim: incident e/pattern = dose·step², streamed two-pass. The
+**NL70 target and the NL70 PSF grids are NOISELESS** (no Poisson). The dose series and the
+reviewer-2 PSFs are dosed at the stated e/Å².
+
+### 6.4 Stage 3 — PtychoShelves multislice reconstruction
+- Engine: Yu Lei MultiHollowPtycho, GPU **LSQ-ML/MLs**, hollow angle 0; two-engine presolve
+  (Ndp 178→356) then full-resolution.
+- `custom_data_flip = [0,0,1]` → the recon is **TRANSPOSED** vs the model (row↔Y, col↔X — the
+  §5 coordinate map already accounts for this).
+- **NL** depth layers over ~70 Å: NL70→dz 0.999, NL42→1.665, NL105→0.666 Å.
+- Probe: NL70/NL42 target + their PSFs = **1 fixed mode, layer-reg OFF**; reviewer-2 PSFs =
+  **released mixed-state probes** (so the incoherent TDS has somewhere to go instead of
+  corrupting the object).
+- Output = the reconstructed multislice **object**: a complex transmission function per depth
+  layer, `(nL, Ny, Nx)` complex64 — the array you load.
+
+### 6.5 What this means when you handle a volume
+- It is a **multislice object, not a projected image**: `V[l]` is the complex transmission of
+  depth slice `l` (entrance→exit). `np.angle(V[l])` ≈ that slice's projected potential; atoms
+  are **positive-phase peaks after per-layer median subtraction**.
+- **z** = beam axis at `dz` Å/layer; **in-plane** is transposed vs GT (use the §5 map).
+- **Surface layers are artifact-prone**: entrance/exit planes accumulate a "dumping-ground"
+  residual (hence `zmax_show_A=66` trims the exit, and why the z=10/64 depth PSFs broke).
+  Trust the interior.
+- **Noise**: NL70 = noiseless/coherent (cleanest, your best bet); dosed volumes carry Poisson
+  noise → cap deconvolution iterations (your `effective_rl_iters()` already scales for this).
+
+---
+
+## 7. How the kernel is consumed (why the broken ones fail)
 
 `psf.empirical_psf()` loads `cfg.single_atom_vol`, takes `np.angle`, subtracts the per-layer
 median, finds the **global argmax**, and crops `±psf_half_z_A/dz` × `±psf_half_xy_A/dx` around
