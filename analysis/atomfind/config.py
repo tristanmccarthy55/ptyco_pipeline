@@ -1,0 +1,214 @@
+#!/usr/bin/env python
+"""Central configuration for the atom-finding pipeline.
+
+EVERYTHING that changes between reconstructions lives here so the SAME code runs
+unchanged on the current NL70 (0.15 A, coherent) volume and on the better data
+that is coming (0.05 A step, 16-phonon TDS, Poisson-dosed). To switch volumes you
+change ONE Config (or pass --preset on the CLI); no code edits.
+
+Interpreter: this pipeline needs abtem (GT prep) + skimage (RL) + scipy. On this
+Mac those live in ~/hyperspy-bundle/bin/python, NOT the system python3. Run:
+    ~/hyperspy-bundle/bin/python run_atomfind.py
+
+Coordinate map + calibration constants are the ones VALIDATED in
+analysis/column_cross_section_overlay.py (transpose + NCC + sub-pixel CAL). We
+keep them identical so the alignment here reproduces the tested overlay exactly.
+"""
+from __future__ import annotations
+from dataclasses import dataclass, field, replace
+import os
+
+# The ground-truth structure (same file the sim consumed). Absolute so it works
+# from any CWD; falls back to the repo copy under sim/.
+_REPO = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
+_VASP_CANDIDATES = [
+    os.path.join(_REPO, "sim", "PTO6_STO6_18_18_labyrinthPoscar.vasp"),
+    os.path.join(_REPO, "..", "PTO6_STO6_18_18_labyrinthPoscar.vasp"),
+]
+
+
+def _find_vasp() -> str:
+    for p in _VASP_CANDIDATES:
+        if os.path.exists(p):
+            return os.path.abspath(p)
+    return _VASP_CANDIDATES[0]
+
+
+@dataclass
+class Config:
+    # ---- which reconstructed volume -------------------------------------
+    name: str = "NL70_coherent"
+    recon_vol: str = os.path.expanduser("~/Desktop/NL70_new_vol.npy")   # complex64 (nL, Ny, Nx)
+
+    # ---- calibration ----------------------------------------------------
+    # In-plane object pixel. The VALIDATED overlay uses scan_window / Nx
+    # (20 A / 404 px); the physics object pixel is 0.0492 A. They agree to <1%
+    # and the sub-pixel CAL below absorbs the residual. dx=None => derive as
+    # scan_window_A / Nx at load time (generalises to any ROI size).
+    dx: float | None = None
+    dz: float = 0.999                 # depth spacing (A/layer). NL70=0.999, NL42=1.665
+    scan_center_xy: tuple = (40.0, 20.0)   # sim scan centre (A), prepared-cell frame
+    scan_window_A: float = 20.0            # sim scan window (A) -> field of view
+
+    # ---- recon <-> ground-truth map (VALIDATED, section 3.5 / 11.4) -----
+    # recon (row r, col c) -> GT physical  X = X0 + c*dx,  Y = Y0 + r*dx
+    X0: float = 30.0
+    Y0: float = 10.0
+    # depth registration search: (sign, off_lo, off_hi) branches, fitted data-drivenly
+    depth_branches: tuple = ((+1, -8.0, 4.0), (-1, 66.0, 78.0))
+
+    # ---- physics (for the synthetic PSF + sanity), section 3.1 / 11.6 ---
+    energy_keV: float = 300.0
+    wavelength_A: float = 0.01969
+    convergence_mrad: float = 100.0
+    defocus_A: float = -20.0          # overfocus 20 A
+    # Optical axial resolution ~ lambda / NA^2 ; NA = sin(conv). Used only as a
+    # physically-motivated default for the synthetic PSF z-width.
+    # (For 100 mrad, lambda/NA^2 ~ 2 A -> matches the handover's ~2 A axial limit.)
+
+    # ---- dose (drives RL iteration cap / regularisation) ----------------
+    # None = noiseless/coherent (current NL70). Set e/A^2 for the dosed data.
+    dose_e_per_A2: float | None = None
+
+    # ---- synthetic PSF parameters (physics stand-in) --------------------
+    # In-plane: ~ lambda/(2*NA) = 0.0197/(2*sin 100mrad) ~ 0.1 A (huge aperture). We
+    # set 0.4 A (a touch broader than the diffraction limit) so the synthetic and the
+    # measured data PSF BRACKET a plausible range for the sensitivity test.
+    psf_inplane_fwhm_A: float = 0.4   # tight in-plane blob (probe/aperture limited)
+    psf_axial_fwhm_A: float = 2.2     # stretched along beam (missing cone / axial NA); data measures ~3 A
+    psf_half_xy_A: float = 1.4        # kernel half-extent in-plane
+    psf_half_z_A: float = 3.5         # kernel half-extent along beam
+    psf_missingcone_tail: float = 0.35  # extra exponential z-tail weight (asymmetry)
+
+    # ---- data-derived PSF (average isolated Pb blobs) -------------------
+    psf_data_species: int = 82        # Pb: heaviest/cleanest reference atom
+    psf_data_zhalf_A: float = 1.9     # z half-window < Pb-Pb period/2 (3.9/2) so
+                                      # neighbouring in-column Pb do NOT leak in
+    psf_data_xyhalf_A: float = 1.2
+    psf_data_min_sep_A: float = 2.2   # in-plane isolation from any OTHER heavy column
+
+    # ---- deconvolution --------------------------------------------------
+    rl_iters: int = 12                # dose-scaled cap (see effective_rl_iters)
+    rl_iters_noiseless: int = 15      # cap for the noiseless/coherent NL70 (dose=None)
+    rl_filter_epsilon: float = 1e-3   # skimage RL regulariser (avoids /0 noise blow-up)
+    rl_blowup_ratio: float = 12.0     # divergence guard: stop if est peak/median exceeds
+    #                                   this x the input's (noise-amplification runaway)
+
+    # ---- model-based fit (the O detector) -------------------------------
+    fit_tile_A: float = 3.0           # in-plane tile edge (A) for the windowed NNLS
+    fit_ridge: float = 0.0            # optional ridge on NNLS (0 = pure NNLS)
+
+    # ---- blind atom finder (find.py) ------------------------------------
+    # in-plane column detection
+    find_min_sep_A: float = 1.4       # min in-plane separation of column peaks (< a/2)
+    find_col_pct: float = 90.0        # depth-mean percentile threshold for a column peak
+    find_track_win_px: int = 3        # per-layer centroid tracking half-window (px)
+    # v1 axial spike deconvolution (kept as comparison baseline)
+    find_profile_navg: int = 3        # in-plane half-box (px) for column z-profile extraction;
+    #                                   MUST match psf.axial_kernel navg (validated: gold-kernel
+    #                                   comb @ GT z reproduces real column profile, corr 0.94)
+    spike_grid_A: float = 0.5         # z candidate spacing (2x oversampled vs dz)
+    spike_merge_A: float = 1.0        # merge nonzero spikes closer than this -> one atom
+    spike_min_frac: float = 0.05      # drop spikes below this fraction of the column max
+    # v2: 3-D tube CLEAN (matching pursuit with the measured 3-D kernel) -- the default.
+    # Rationale (measured): 1-D profile reduction fails on dim B-O columns (lean-tracking
+    # wanders 0.5-0.65 A); the 3-D tube fit gives each atom its own xy -> Ti recall 65%->~86%+.
+    tube_halfwidth_px: int = 10       # tube half-width (~0.5 A): contains the column lean
+    clean_floor: float = 0.4          # matched-filter stop floor (LOW = complete; junk is
+    #                                   rejected later by fit QUALITY, not amplitude)
+    clean_max_atoms: int = 45         # per-tube atom cap (~70 A / 1.95 A spacing + margin)
+    clean_nms_z_layers: float = 1.5   # non-max suppression half-extent around accepted atoms
+    clean_nms_xy_px: int = 4
+    refine_sweeps: int = 2            # joint Gauss-Newton refinement passes per tube
+    quality_min_corr: float = 0.5     # junk cut: min normalised patch-vs-kernel correlation
+    # error-bar resolution floors (added in quadrature with the formal CRB): on noiseless
+    # data the CRB is systematic-limited, not counting-limited. These floors are the
+    # registration limit in-plane (~2 px) and the axial kernel-mismatch limit; CALIBRATED so
+    # median |GT error|/sigma = 1 per species on the NL70 validation volume (v2 floors of
+    # 0.10/0.30 measured 1.2-1.6x conservative -> tightened).
+    sigma_floor_xy_A: float = 0.08
+    sigma_floor_z_A: float = 0.19
+    guided_sigma_scale: float = 1.3   # guided atoms (below blind threshold) get wider sigma
+
+    # ---- v3: preprocessing + lattice-aware species + guided re-detection ----
+    preprocess_bg: bool = True        # subtract a smooth per-layer background (depth haze)
+    bg_smooth_A: float = 3.0          # background blur scale (>> atom width, ~ column pitch)
+    # column typing: k-means (k=3) on per-column amp_p75 -> A / B-O / pure-O bands
+    # (measured zero-overlap: A 3.8-4.5, B-O 1.4-1.8, pure-O 0.56-0.87)
+    comb_period_A: float = 3.9        # nominal plane period (fallback; fitted per column)
+    slot_empty_A: float = 0.8         # comb slot is "empty" if no same-comb atom within this
+    guided_min_corr: float = 0.35     # guided fits: lower quality bar (position prior pays)
+    guided_gate_z_A: float = 0.7      # guided fit must stay within this of the predicted slot
+    guided_gate_xy_A: float = 0.35    #   ... and this in-plane (from the column lean)
+    # GT matching tolerances (validation only)
+    match_tol_xy_A: float = 0.6
+    match_tol_z_A: float = 2.0
+    bulk_z_A: tuple = (10.0, 56.0)    # "bulk" depth band for the headline recall metric
+
+    # ---- per-species empirical kernels ----------------------------------
+    # Ti single-atom kernel (clean per PSF_SIM_RESPONSE): broader axially than Pb
+    # (weaker channeling). Used for species classification + light-atom refinement.
+    # O's kernel is noise (do NOT use) -> O gets the Ti shape.
+    ti_kernel_vol: str | None = None
+
+    # ---- analysis window / trimming -------------------------------------
+    zmax_show_A: float = 66.0         # trim exit-surface dumping-ground artifact
+    trim_z_A: tuple = (2.0, 66.0)     # interior kept for deconv/detection (entrance/exit
+    #                                   dumping-ground layers behave like noise under RL)
+    reference_columns: tuple = ()     # (row,col) seeds; empty => auto from GT Pb columns
+
+    # ---- output ---------------------------------------------------------
+    out_dir: str = os.path.expanduser("~/Desktop/atomfind_out")
+
+    # ---- external empirical PSF (drops in when the sim thread delivers) --
+    # Path to a reconstructed single-isolated-atom volume (.npy, same format).
+    # When set, psf.empirical_psf() uses THIS instead of the data/synth stand-in.
+    single_atom_vol: str | None = None
+    single_atom_species: int = 82
+
+    def vasp(self) -> str:
+        return _find_vasp()
+
+    def effective_rl_iters(self) -> int:
+        """Cap RL iterations more aggressively at low dose (deconv amplifies noise)."""
+        if self.dose_e_per_A2 is None:
+            return self.rl_iters_noiseless        # noiseless -> can afford more iterations
+        if self.dose_e_per_A2 >= 1e8:
+            return self.rl_iters
+        if self.dose_e_per_A2 >= 1e6:
+            return max(4, self.rl_iters // 2)
+        return max(3, self.rl_iters // 4)
+
+
+# ---------------------------------------------------------------- presets
+def preset(name: str) -> Config:
+    """Named volumes. Add the better data here when it lands; run_atomfind picks by --preset."""
+    presets = {
+        # current data (this is what the prototype runs on). Gold empirical PSF =
+        # the measured single-Pb system kernel (PSF_SIM_RESPONSE.md sec.1). Per the sims
+        # thread we use the Pb SHAPE for every species (it's the imaging-system response;
+        # the element only sets amplitude), so this is the default kernel for all atoms.
+        "NL70_coherent": Config(name="NL70_coherent",
+                                recon_vol=os.path.expanduser("~/Desktop/NL70_new_vol.npy"),
+                                dz=0.999, dose_e_per_A2=None,
+                                single_atom_vol=os.path.expanduser("~/Desktop/psf_Pb_NL70_vol.npy"),
+                                single_atom_species=82,
+                                ti_kernel_vol=os.path.expanduser("~/Desktop/psf_Ti_NL70_vol.npy")),
+        "NL42_coherent": Config(name="NL42_coherent",
+                                recon_vol=os.path.expanduser("~/Desktop/NL42_new_vol.npy"),
+                                dz=1.665, dose_e_per_A2=None,
+                                single_atom_vol=os.path.expanduser("~/Desktop/psf_Pb_NL70_vol.npy"),
+                                single_atom_species=82,
+                                ti_kernel_vol=os.path.expanduser("~/Desktop/psf_Ti_NL70_vol.npy")),
+        # TEMPLATE for the reviewer-2 data (0.1 A-binned, 16-phonon, dosed). Set recon_vol
+        # + dose when it lands; dose-MATCH the kernel (d1e8 kernel <-> 1e8 recon). dz=0.666
+        # (NL105), per PSF_SIM_RESPONSE.md sec.4.
+        "reviewer2": Config(name="reviewer2",
+                            recon_vol=os.path.expanduser("~/Desktop/recon_new/REVIEWER2/vol.npy"),
+                            dz=0.666, dose_e_per_A2=1e8,
+                            single_atom_vol=os.path.expanduser("~/Desktop/psf_Pb_rev2_d1e8_vol.npy"),
+                            single_atom_species=82),
+    }
+    if name not in presets:
+        raise KeyError(f"unknown preset {name!r}; have {list(presets)}")
+    return presets[name]
