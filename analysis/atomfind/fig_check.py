@@ -31,12 +31,127 @@ from atomfind import config, align, psf as psfmod, find
 SPC = {82: ("#3b6fd6", "Pb"), 22: ("#8a9099", "Ti"), 8: ("#e74c3c", "O")}
 
 
-# ================================================================ Plot 1
+# ================================================================ Plot 1b: 2-row cross-sections
+def _brightest_col(V, al, pos, Z, cfg, species, near_row=None, max_drow=None):
+    """Brightest column of a given species in the recon depth-mean; optionally near a row."""
+    dm = np.clip(V, 0, None).mean(0)
+    win = align.in_window(pos, cfg)
+    idx = np.where(win & (Z == species))[0]
+    best = None
+    for j in idx:
+        rf, cf, _ = al.site_to_index(pos[j, 0], pos[j, 1], pos[j, 2])
+        r, c = int(round(rf)), int(round(cf))
+        if not (3 <= r < V.shape[1]-3 and 3 <= c < V.shape[2]-3):
+            continue
+        if near_row is not None and abs(r - near_row) > max_drow:
+            continue
+        b = dm[r-1:r+2, c-1:c+2].mean()
+        if best is None or b > best[0]:
+            best = (b, r, c)
+    return best[1], best[2]
+
+
+def fig_cross_sections(V, dec, dx, al, pos, Z, found, cfg, path, W=None):
+    """Two horizontal cuts x depth, raw AND RL-deconvolved, with the blind atoms drawn on.
+
+    Row 1: cut through a Pb (A) row  -> alternating Pb / pure-O columns.
+    Row 2: cut through the neighbouring Ti row -> alternating Ti-O / pure-O columns.
+    Found atoms (filled, species colour, x/z error bars) + GT (open rings) within the strip.
+    This answers 'do the found O sit on the phase blobs?' -- especially on the deconvolved
+    panels where the faint O columns are sharpened."""
+    from atomfind.run_atomfind import _pick_BO_column
+    r_ti, c_ti, _ = _pick_BO_column(pos, Z, cfg, al, V)
+    r_pb, c_pb = _brightest_col(V, al, pos, Z, cfg, 82, near_row=r_ti,
+                                max_drow=int(round(3.0/dx)))
+    if W is None:
+        W = int(round(6.0/dx))                          # +-6 A along the cut
+    nL = V.shape[0]; zrec = (np.arange(nL)+0.5)*cfg.dz
+    l0 = int(round(cfg.trim_z_A[0]/cfg.dz)); l1 = int(round(cfg.trim_z_A[1]/cfg.dz))
+    strip_half_A = 0.35                                  # atoms within this of the cut row
+
+    cuts = [(r_pb, c_pb, "Pb row  (Pb / pure-O columns)"),
+            (r_ti, c_ti, "Ti row  (Ti-O / pure-O columns)")]
+    fig, axes = plt.subplots(2, 2, figsize=(15, 13), sharey=True)
+    n_mis_total = 0
+    gr_all, gc_all, gl_all = al.site_to_index(pos[:, 0], pos[:, 1], pos[:, 2])
+    for row_i, (r, c, ttl) in enumerate(cuts):
+        x0, x1 = max(c - W, 0), min(c + W, V.shape[2])   # clamp to the field
+        for col_i, (img, kind) in enumerate([(V, "raw phase"), (dec, "RL-deconvolved")]):
+            ax = axes[row_i][col_i]
+            cs = img[:, r-1:r+2, x0:x1].mean(1)
+            shown = cs[l0:l1]
+            # extent maps PIXEL EDGES: put pixel CENTRES on integer index coordinates so
+            # markers drawn at (col-c)*dx / layer*dz land exactly on their pixels (the old
+            # extent was off by half a pixel in x and half a layer in z -> visible ~1 px
+            # left-shift of every marker relative to the blobs).
+            ax.imshow(cs, extent=[(x0-0.5-c)*dx, (x1-0.5-c)*dx,
+                                  (cs.shape[0]-0.5)*cfg.dz, -0.5*cfg.dz],
+                      aspect="auto", cmap="inferno", vmin=max(np.percentile(shown, 5), 0),
+                      vmax=np.percentile(shown, 99.5))
+            # GT rings in the strip
+            gsel = np.where((np.abs(gr_all - r)*dx < strip_half_A + 0.25) &
+                            (gc_all > x0) & (gc_all < x1))[0]
+            for j in gsel:
+                zz = gl_all[j]*cfg.dz
+                if zz > cfg.zmax_show_A or Z[j] not in SPC:
+                    continue
+                ax.scatter([(gc_all[j]-c)*dx], [zz], s=18, facecolors="none",
+                           edgecolors=SPC[int(Z[j])][0], linewidths=1.1, zorder=3,
+                           alpha=0.55)
+            # found atoms in the strip: small discs + x AND z (1-sigma) error bars
+            fsel = np.where((np.abs(found["row"] - r)*dx < strip_half_A) &
+                            (found["col"] > x0) & (found["col"] < x1))[0]
+            for i in fsel:
+                zz = found["layer"][i]*cfg.dz
+                if zz > cfg.zmax_show_A:
+                    continue
+                sp = int(found["species"][i])
+                col = SPC.get(sp, ("w",))[0]
+                ax.errorbar([(found["col"][i]-c)*dx], [zz],
+                            xerr=found["sx_A"][i], yerr=found["sz_A"][i],
+                            fmt="o", ms=4.0, color=col, ecolor=col, elinewidth=1.0,
+                            capsize=2.2, zorder=4, markeredgecolor="black",
+                            markeredgewidth=0.35, alpha=0.7)
+                # flag species mis-IDs (nearest GT within 1.5 A of another species)
+                d = np.hypot((gc_all-found["col"][i])*dx, (gr_all-found["row"][i])*dx) \
+                    + np.abs(gl_all-found["layer"][i])*cfg.dz
+                jg = int(np.argmin(d))
+                if col_i == 0 and Z[jg] in SPC and Z[jg] != sp and d[jg] < 1.5:
+                    n_mis_total += 1
+                if Z[jg] in SPC and Z[jg] != sp and d[jg] < 1.5:
+                    ax.scatter([(found["col"][i]-c)*dx], [zz], s=60, facecolors="none",
+                               edgecolors="yellow", linewidths=1.5, zorder=5)
+            ax.set_xlim((x0-0.5-c)*dx, (x1-0.5-c)*dx)
+            ax.set_ylim(cfg.zmax_show_A, -0.5*cfg.dz)
+            if row_i == 1:
+                ax.set_xlabel("in-plane x along the cut  (A)")
+            if col_i == 0:
+                ax.set_ylabel("depth z  (A)")
+            ax.set_title(f"{ttl} -- {kind}", fontsize=11)
+    handles = ([plt.Line2D([], [], marker="o", ls="", mfc=SPC[z][0], mec="k", ms=8,
+                           label=f"found {SPC[z][1]}") for z in (82, 22, 8)] +
+               [plt.Line2D([], [], marker="o", ls="", mfc="none", mec=SPC[z][0], mew=1.8,
+                           ms=10, label=f"GT {SPC[z][1]}") for z in (82, 22, 8)] +
+               [plt.Line2D([], [], marker="o", ls="", mfc="none", mec="yellow", mew=2,
+                           ms=11, label="species mis-ID")])
+    fig.legend(handles=handles, loc="lower center", ncol=7, frameon=False,
+               bbox_to_anchor=(0.5, 0.005), fontsize=9)
+    fig.suptitle("Blind v3 atoms on raw and PSF-deconvolved cross-sections "
+                 f"(cuts through a Pb row and a Ti row; {n_mis_total} mis-IDs in view)",
+                 fontsize=13)
+    fig.tight_layout(rect=[0, 0.03, 1, 1])
+    fig.savefig(path, dpi=150, bbox_inches="tight"); plt.close(fig)
+    print(f"wrote {os.path.basename(path)}  ({n_mis_total} mis-IDs in the two strips)")
+
+
+# ================================================================ Plot 1 (single column, kept)
 def fig_column_overlay(V, dx, al, pos, Z, found, cfg, path, W=24):
     from atomfind.run_atomfind import _pick_BO_column
     r, c, on = _pick_BO_column(pos, Z, cfg, al, V)
     nL = V.shape[0]; zrec = (np.arange(nL) + 0.5) * cfg.dz
-    ext = [-W*dx, W*dx, zrec[-1], zrec[0]]
+    # pixel-centred extent (edges at +-0.5 px/layer) so markers at (col-c)*dx / layer*dz
+    # land exactly on their pixels
+    ext = [(-W-0.5)*dx, (W-0.5)*dx, (nL-0.5)*cfg.dz, -0.5*cfg.dz]
     l0 = int(round(cfg.trim_z_A[0]/cfg.dz)); l1 = int(round(cfg.trim_z_A[1]/cfg.dz))
     xc_col = c * dx                                         # column centre (recon-frame A)
 
@@ -85,7 +200,7 @@ def fig_column_overlay(V, dx, al, pos, Z, found, cfg, path, W=24):
             ax.scatter([xoff], [zz], s=240, facecolors="none", edgecolors="yellow",
                        linewidths=2.2, marker="o", zorder=5)
 
-    ax.set_xlim(-W*dx, W*dx); ax.set_ylim(cfg.zmax_show_A, zrec[0])
+    ax.set_xlim((-W-0.5)*dx, (W-0.5)*dx); ax.set_ylim(cfg.zmax_show_A, -0.5*cfg.dz)
     ax.set_xlabel("in-plane x  (A)"); ax.set_ylabel("depth z  (A)")
     ax.set_title(f"Sketchiest B-O column: blind found atoms (filled disc = assigned species,\n"
                  f"x/z error bars) vs ground truth (open ring = true species).  "
@@ -104,7 +219,7 @@ def fig_column_overlay(V, dx, al, pos, Z, found, cfg, path, W=24):
 
 
 # ================================================================ Plot 2 (pyvista)
-def fig_atoms_3d(V, dx, al, pos, Z, found, cfg, path, crop_r=(178, 288), z_band=(24, 46)):
+def fig_atoms_3d(V, dx, al, pos, Z, found, cfg, path, crop_r=(152, 348), z_band=(12, 54)):
     import pyvista as pv
     pv.OFF_SCREEN = True
     dz = cfg.dz
@@ -171,9 +286,13 @@ def fig_atoms_3d(V, dx, al, pos, Z, found, cfg, path, crop_r=(178, 288), z_band=
         p.add_mesh(pv.Box(bounds=(0, Lx, 0, Lx, 0, Lz)), style="wireframe",
                    color="#b0b0b0", line_width=1, opacity=0.4)
         if cam == "side":
+            # PARALLEL projection + a small rotation about the column (z) axis: each
+            # depth-plane of columns lands as its own separated horizontal row instead of
+            # perspective-smearing into the others -- columns read as clean rows.
+            p.enable_parallel_projection()
             p.camera.up = (1, 0, 0)
             p.camera.focal_point = CENTER
-            p.camera.position = tuple(cc + Rc*o for cc, o in zip(CENTER, (0.07, 1.0, 0.09)))
+            p.camera.position = tuple(cc + Rc*o for cc, o in zip(CENTER, (0.38, 1.0, 0.0)))
             p.reset_camera(); p.camera.zoom(zoom)
         else:
             p.view_xy(); p.camera.zoom(1.3)
@@ -191,13 +310,14 @@ def fig_atoms_3d(V, dx, al, pos, Z, found, cfg, path, crop_r=(178, 288), z_band=
         for s in ax.spines.values():
             s.set_visible(False)
         ax.set_title(ttl, fontsize=13)
-    fig.suptitle(f"Blind v2 atoms ({len(P)} found) + 3-axis error bars   vs   ground-truth ghosts"
+    fig.suptitle(f"Blind v3 atoms ({len(P)} found) + 3-axis error bars   vs   ground-truth ghosts"
                  f"   (crop {Lx:.0f}x{Lz:.0f} A)", fontsize=14, y=0.99)
     handles = [plt.Line2D([], [], marker="o", ls="", mfc=SPC[z][0], mec="none", ms=11,
                           label=SPC[z][1]) for z in (82, 22, 8)]
     fig.legend(handles=handles, loc="lower center", ncol=3, frameon=False, bbox_to_anchor=(0.5, 0.02))
-    fig.text(0.5, 0.075, "solid = blind reconstruction (bars = +/-1 sigma x,y,z)   ·   translucent = ground truth",
-             ha="center", color="0.4", fontsize=10)
+    fig.text(0.5, 0.075, "solid = blind reconstruction (bars = +/-1 sigma x,y,z)   ·   translucent = ground truth"
+             "   ·   crop is DISPLAY-ONLY (atoms are found on the full field first -- no edge effects)",
+             ha="center", color="0.4", fontsize=9)
     fig.savefig(path, dpi=200, bbox_inches="tight"); plt.close(fig)
     print("wrote", os.path.basename(path))
 
@@ -218,7 +338,16 @@ def main():
     al = align.register(V, dx, pos, Z, cfg)
     kernels = psfmod.species_kernels(cfg, dx)
     found, seeds = find.find_atoms_v3(V, cfg, dx, kernels)
+    al = align.refine_with_atoms(al, found, pos, Z, cfg)   # fiducial map refinement
     print(f"v3 finder: {len(found)} atoms ({(found['guided']==1).sum()} guided) on {len(seeds)} columns")
+    from atomfind import deconv
+    dec_path = os.path.join(cfg.out_dir, "deconvolved_vol.npy")
+    if os.path.exists(dec_path):
+        dec = np.load(dec_path)
+    else:
+        dec, _ = deconv.richardson_lucy_3d(V, psfmod.empirical_psf(cfg, dx), cfg)
+    fig_cross_sections(V, dec, dx, al, pos, Z, found, cfg,
+                       os.path.join(cfg.out_dir, "fig_cross_sections.png"))
     fig_column_overlay(V, dx, al, pos, Z, found, cfg,
                        os.path.join(cfg.out_dir, "fig_column_overlay.png"))
     fig_atoms_3d(V, dx, al, pos, Z, found, cfg,

@@ -155,7 +155,8 @@ def fig_overlay(V, dec, found, al, pos, Z, cfg, dx, path, W=22):
         for j in on:
             zz = al.SGN*pos[j, 2] + al.OFF
             if zz > cfg.zmax_show_A: continue
-            xin = pos[j, 0] - (cfg.X0 + c*dx) + al.CAL_X
+            _, gcj, _ = al.site_to_index(pos[j, 0], pos[j, 1], pos[j, 2])
+            xin = (gcj - c) * dx
             if Z[j] == 22:
                 mk = ax.scatter([xin], [zz], s=60, marker="x", c="#39ff14", linewidths=1.8)
             else:
@@ -251,6 +252,11 @@ def main():
     # atoms; guided atoms tagged) -> xyz + 3-axis error bars + species -> ASE object.
     kernels = psfmod.species_kernels(cfg, dx)
     found, seeds = find.find_atoms_v3(V, cfg, dx, kernels)
+    # refine the recon<->GT map's affine on matched heavy atoms (fiducial refinement --
+    # calibration only, the finder never sees the map). Kills the ~1.6 px peak-vs-fit
+    # convention bias + the 0.6% dx scale residual.
+    al = align.refine_with_atoms(al, found, pos, Z, cfg)
+    print("[align] refined: " + align.summarize(al))
     frep, m_v3 = validate.finder_report(found, pos, Z, al, cfg, olabel=olab)
     blind = found[found["guided"] == 0]
     frep_blind, _ = validate.finder_report(blind, pos, Z, al, cfg, olabel=olab)
@@ -300,6 +306,7 @@ def main():
     report = dict(preset=cfg.name, vol=cfg.recon_vol, dose=cfg.dose_e_per_A2,
                   dx=dx, dz=cfg.dz,
                   align=dict(SGN=al.SGN, OFF=al.OFF, CAL_X=al.CAL_X, CAL_Y=al.CAL_Y,
+                             mX=al.mX, bX=al.bX, mY=al.mY, bY=al.bY,
                              corr_depth=al.corr_depth),
                   psf=dict(default=psfs["_default"], data_n=psfs.get("_data_n"),
                            fwhm={n: list(map(float, psfmod.measure_fwhm(psfs[n], cfg, dx)))
@@ -330,9 +337,12 @@ def _print_verdict(reports, frep, frep_blind, frep_spike, frep_raw, psfs, cfg):
     print(f"  overall precision  raw {frep_raw['precision']:.0%} / v1 {frep_spike['precision']:.0%}"
           f" / v3 {frep['precision']:.0%}    xy-RMS {frep.get('xy_rms_A', float('nan')):.2f}A"
           f"    z-RMS raw {frep_raw['z_rms_A']:.2f} -> v3 {frep['z_rms_A']:.2f}A")
-    if "sigma_calibration" in frep:
-        sc = frep["sigma_calibration"]
-        print(f"  error-bar calibration |GTerr|/sigma  x={sc['x']:.2f} y={sc['y']:.2f} z={sc['z']:.2f} (want ~1)")
+    if "sigma_coverage_1s" in frep:
+        cv = frep["sigma_coverage_1s"]
+        pz = "  ".join(f"{nm} {frep[nm]['z_cov_1s']:.0%}" for nm in ("Pb", "Ti", "O")
+                       if "z_cov_1s" in frep.get(nm, {}))
+        print(f"  error-bar 1-sigma COVERAGE (want ~68%):  x={cv['x']:.0%} y={cv['y']:.0%} "
+              f"z={cv['z']:.0%}   per-species z: {pz}")
     if "confusion" in frep:
         cf = frep["confusion"]
         offd = sum(cf[f"{a}->{b}"] for a in (82, 22, 8) for b in (82, 22, 8) if a != b)

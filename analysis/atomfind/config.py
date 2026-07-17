@@ -122,13 +122,21 @@ class Config:
     refine_sweeps: int = 2            # joint Gauss-Newton refinement passes per tube
     quality_min_corr: float = 0.5     # junk cut: min normalised patch-vs-kernel correlation
     # error-bar resolution floors (added in quadrature with the formal CRB): on noiseless
-    # data the CRB is systematic-limited, not counting-limited. These floors are the
-    # registration limit in-plane (~2 px) and the axial kernel-mismatch limit; CALIBRATED so
-    # median |GT error|/sigma = 1 per species on the NL70 validation volume (v2 floors of
-    # 0.10/0.30 measured 1.2-1.6x conservative -> tightened).
-    sigma_floor_xy_A: float = 0.08
-    sigma_floor_z_A: float = 0.19
-    guided_sigma_scale: float = 1.3   # guided atoms (below blind threshold) get wider sigma
+    # data the CRB is systematic-limited, not counting-limited. Floors are CALIBRATED to
+    # 68% COVERAGE (fraction of atoms with |true error| <= 1 sigma) on the NL70 validation
+    # volume -- the honest metric. (Median-ratio calibration was tried and rejected: it
+    # gave ratio=1.0 but only ~50% coverage because the error tails are heavy.)
+    # Per-species z floors = measured blind p68(|err_z|): Pb 0.24 / Ti 0.27 / O 0.31 A.
+    # xy floor: after the fiducial affine refinement of the recon<->GT map the measured
+    # p68(|err_xy|) is ~0.01 A; 0.015 keeps a margin for map transfer to new volumes.
+    sigma_floor_xy_A: float = 0.015
+    sigma_floor_z_A: float = 0.30     # fallback for unknown species
+    sigma_floor_z_species: dict = field(default_factory=lambda: {82: 0.24, 22: 0.27, 8: 0.31})
+    guided_sigma_scale: float = 1.4   # guided atoms: measured p68 ratio guided/blind ~1.35
+    # exit-band inflation: the last ~10 A before the exit surface carries reconstruction
+    # artifacts; measured coverage there under-ran (z 63%, x 2-sigma 85%) -> widen bars.
+    exit_band_z_A: float = 56.0
+    exit_sigma_scale: float = 1.4
 
     # ---- v3: preprocessing + lattice-aware species + guided re-detection ----
     preprocess_bg: bool = True        # subtract a smooth per-layer background (depth haze)
@@ -137,6 +145,10 @@ class Config:
     # (measured zero-overlap: A 3.8-4.5, B-O 1.4-1.8, pure-O 0.56-0.87)
     comb_period_A: float = 3.9        # nominal plane period (fallback; fitted per column)
     slot_empty_A: float = 0.8         # comb slot is "empty" if no same-comb atom within this
+    guided_species: tuple = (8,)      # guided re-detection for O ONLY: heavy atoms are found
+    #                                   blind at ~97% bulk, and the few guided Pb/Ti were
+    #                                   MISLOCATED with overconfident bars (guided-Ti z
+    #                                   coverage measured at 9% -- confidently wrong)
     guided_min_corr: float = 0.35     # guided fits: lower quality bar (position prior pays)
     guided_gate_z_A: float = 0.7      # guided fit must stay within this of the predicted slot
     guided_gate_xy_A: float = 0.35    #   ... and this in-plane (from the column lean)

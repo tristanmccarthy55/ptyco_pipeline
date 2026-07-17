@@ -104,13 +104,22 @@ def finder_report(found, pos, Z, al, cfg, olabel=None):
             conf[f"{pz}->none"] = int(((found["species"] == pz) & ~matched).sum())
         rep["confusion"] = conf
     if "sz_A" in found.dtype.names and matched.any():
-        cal = {}
+        cal, cov = {}, {}
         for err, sig, ax in [(m["match_dx"], found["sx_A"], "x"),
                              (m["match_dy"], found["sy_A"], "y"),
                              (m["match_dz"], found["sz_A"], "z")]:
             ok = matched & np.isfinite(err) & (sig > 1e-6)
             cal[ax] = float(np.median(np.abs(err[ok]) / sig[ok])) if ok.any() else np.nan
+            # COVERAGE is the honest error-bar metric: fraction of atoms whose true error
+            # is within +-1 sigma (target ~0.68). Median-ratio calibration alone hides
+            # heavy tails (measured: median ratio 1.0 but coverage only ~50%).
+            cov[ax] = float((np.abs(err[ok]) <= sig[ok]).mean()) if ok.any() else np.nan
         rep["sigma_calibration"] = cal
+        rep["sigma_coverage_1s"] = cov
+        for zz, nm in [(82, "Pb"), (22, "Ti"), (8, "O")]:
+            s = matched & (found["species"] == zz) & np.isfinite(m["match_dz"])
+            if s.any():
+                rep[nm]["z_cov_1s"] = float((np.abs(m["match_dz"][s]) <= found["sz_A"][s]).mean())
     return rep, m
 
 

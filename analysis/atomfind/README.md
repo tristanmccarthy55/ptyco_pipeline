@@ -52,14 +52,14 @@ OVITO/VESTA), **`found_atoms.csv`** (same + error bars), `found_atoms.npy`, plus
 | file | role |
 |---|---|
 | `config.py` | every per-volume knob (path, dx/dz, dose, PSF, finder, window). `preset()` selects a volume + its dose-matched gold kernel. |
-| `align.py`  | recon↔GT map (transpose + NCC + sub-pixel CAL + depth registration); auto-picks reference Pb columns. Reproduces the validated overlay. |
+| `align.py`  | recon↔GT map: depth registration + **per-axis AFFINE in-plane calibration** (a constant offset cannot register this data — dx = window/N differs from the physical pixel by ~0.6%, i.e. ~2 px across the field) + `refine_with_atoms` fiducial refinement on matched heavy atoms (calibration only; the finder never sees the map). |
 | `psf.py`    | 3-D PSF: **empirical** (gold sim kernel, default), data-derived, synthetic. `species_kernels()` = {Pb, Ti} measured kernels; `axial_kernel()` = the v1 1-D z-response. |
 | `deconv.py` | Richardson–Lucy 3-D: clip-to-zero (no pedestal), interior-trim + re-embed, compact kernel, dose-capped iters, max-growth divergence guard. |
 | `find.py`   | **blind finder**: v2 = 3-D tube CLEAN + Gauss-Newton refinement + error bars + species + `export_atoms` (CSV/ASE); v1 = 1-D spike baseline. No GT. |
 | `fit.py`    | GT-seeded per-site NNLS (the O amplitude detector), Gram-solved, with off-lattice null sites. |
 | `validate.py` | greedy GT matching (recall / precision / **z-error RMS**) for the finder; ROC/AUC/amplitude-vs-Z/O-split for the detector. |
 | `run_atomfind.py` | end-to-end driver + figures + `report.json` + printed verdict. |
-| `fig_check.py` | visual sanity checks: `fig_column_overlay.png` (per-atom species vs GT on the sketchiest B-O column, **mis-IDs ringed yellow** — for auditing O-called-Ti false positives) + `fig_atoms_3d.png` (pyvista: blind atoms + 3-axis error bars vs translucent GT ghosts, fig7-style). |
+| `fig_check.py` | visual sanity checks: `fig_cross_sections.png` (Pb-row + Ti-row cuts, raw AND RL-deconvolved, blind atoms + GT + yellow mis-ID rings — the O-on-blobs audit), `fig_column_overlay.png` (single sketchiest B-O column), `fig_atoms_3d.png` (pyvista, parallel-projection side view so each column reads as its own row + end-on; crop is display-only — atoms are found on the full field first). |
 
 ## Results on NL70 (0.15 Å, coherent, noiseless), gold Pb+Ti kernels
 
@@ -70,14 +70,21 @@ OVITO/VESTA), **`found_atoms.csv`** (same + error bars), `found_atoms.npy`, plus
 | Ti (n=371) | 24 % | 65 % | 87 % | **91 %** | **97 %** | 0.40 Å |
 | O (n=1182) | 15 % | 49 % | 52 % | **83 %** | **92 %** | 0.38 Å |
 
-Overall **precision 97 %** (up from 94), xy-RMS 0.13 Å, z-RMS 0.38 Å. The v3 jumps:
+Overall **precision 97 %** (up from 94), **xy-RMS 0.035 Å** (after the affine map
+refinement exposed it — a ~1.6 px map bias + 0.6 % scale residual had been inflating it to
+0.13 Å), z-RMS 0.38 Å. The v3 jumps:
 **O bulk 58 %→92 %** (guided re-detection recovers the O absorbed under Ti spikes),
-**species confusion 3.1 %→2.0 %** with Ti→Pb = 0 (lattice parity replaced global amplitude
-bands), and **error bars now exactly calibrated**: median |GT error|/σ = 0.97 / 1.03 / 1.02
-(x/y/z) with σ ≈ 0.08 Å (xy) and **0.19 Å (z)** — the old 0.30 Å z-floor was measured 1.6×
-conservative and retuned. Guided atoms (~25 %) are tagged in the export; blind-only numbers
-are reported alongside (`report.json: finder.v3_blind_only`) so the lattice prior is never
-silently laundered into the headline.
+**species confusion 3.1 %→1.2 %** with Ti→Pb = 0 (lattice parity replaced global amplitude
+bands; guided re-detection restricted to O — the few guided Pb/Ti were mislocated with
+overconfident bars, guided-Ti z-coverage measured at 9 %, so they were removed rather than
+papered over), and **error bars calibrated to 68 % COVERAGE** — the honest metric (fraction
+of atoms whose true error is within ±1σ). Median-ratio calibration was tried and rejected:
+it reported "perfect" while actual coverage was ~50 % (heavy error tails). Final floors:
+σ_xy = 0.015 Å (post-affine-refinement); σ_z per species = 0.24 (Pb) / 0.27 (Ti) / 0.31 (O)
+Å; guided ×1.4; exit band (z>56 Å) ×1.4 — audited per species, axis, depth band, and
+blind/guided: every subset ≥ 68 % at 1σ and ≥ 89 % at 2σ. Guided atoms (~23 %) are tagged
+in the export; blind-only numbers are in `report.json: finder.v3_blind_only` so the lattice
+prior is never silently laundered into the headline.
 
 **GT-seeded O amplitude detector (calibrated contrast, vs off-lattice null):**
 Pb 100 %/AUC 1.00, Ti 93 %/0.97 · **O all AUC 0.87** (46 % @5% FPR) · O in-plane isolated

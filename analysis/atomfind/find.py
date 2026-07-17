@@ -594,6 +594,7 @@ def find_atoms_v3(V, cfg, dx, kernels):
         resid = t["tube"] - total
         p = t["p"]
         species_list = ([82] if t["ctype"] == "A" else [8] if t["ctype"] == "O" else [22, 8])
+        species_list = [s for s in species_list if s in cfg.guided_species]
         t["guided"] = []
         for sp in species_list:
             K, Kg = (KPb, KPb_g) if sp == 82 else (KTi, KTi_g)
@@ -649,8 +650,8 @@ def find_atoms_v3(V, cfg, dx, kernels):
                 resid -= _contrib(t["tube"].shape, fit["l"], fit["r"], fit["c"],
                                   fit["amp"], K, hz, hxy)
 
-    # ---- assemble records (guided sigmas get the wider floor) ----
-    fxy, fz = cfg.sigma_floor_xy_A, cfg.sigma_floor_z_A
+    # ---- assemble records (per-species 68%-coverage floors; guided get the wider scale) ----
+    fxy = cfg.sigma_floor_xy_A
     dt = np.dtype([("row", float), ("col", float), ("layer", float), ("z_A", float),
                    ("amp", float), ("sx_A", float), ("sy_A", float), ("sz_A", float),
                    ("quality", float), ("species", int), ("col_id", int), ("guided", int)])
@@ -658,7 +659,11 @@ def find_atoms_v3(V, cfg, dx, kernels):
     for t in tubes:
         for d, g in [(d, 0) for d in t["kept"]] + [(d, 1) for d in t["guided"]]:
             s = cfg.guided_sigma_scale if g else 1.0
-            recs.append((t["ri"]-HW+d["r"], t["ci"]-HW+d["c"], l0+d["l"], (l0+d["l"])*cfg.dz,
+            z_A = (l0 + d["l"]) * cfg.dz
+            if z_A > cfg.exit_band_z_A:                  # exit-artifact band: wider bars
+                s *= cfg.exit_sigma_scale
+            fz = cfg.sigma_floor_z_species.get(int(d["species"]), cfg.sigma_floor_z_A)
+            recs.append((t["ri"]-HW+d["r"], t["ci"]-HW+d["c"], l0+d["l"], z_A,
                          d["amp"],
                          np.hypot(d["sc"]*dx, fxy)*s, np.hypot(d["sr"]*dx, fxy)*s,
                          np.hypot(d["sl"]*cfg.dz, fz)*s,
@@ -670,12 +675,11 @@ def find_atoms_v3(V, cfg, dx, kernels):
 def export_atoms(found, al, cfg, out_prefix):
     """Write the found atoms as CSV + an ASE extxyz object in the prepared-cell frame.
 
-    Uses ONLY the calibration constants of the recon<->prepared-cell map (X0/Y0/CAL/dz/OFF)
-    -- no GT atom positions. The frame matches the GT VASP after the sec.11 prep, so the
-    exported object overlays the model directly in OVITO/VESTA/ASE."""
-    X = cfg.X0 + found["col"]*al.dx - al.CAL_X
-    Y = cfg.Y0 + found["row"]*al.dx - al.CAL_Y
-    Zc = al.SGN * ((found["layer"] + 0.5)*cfg.dz - al.OFF)
+    Uses ONLY the calibration constants of the recon<->prepared-cell map (the affine
+    in-plane map + depth registration) -- no GT atom positions. The frame matches the GT
+    VASP after the sec.11 prep, so the exported object overlays the model directly."""
+    X, Y = al.index_to_site(found["row"], found["col"])
+    Zc = al.layer_to_z(found["layer"])
     sym = {82: "Pb", 22: "Ti", 8: "O"}
     guided = found["guided"] if "guided" in found.dtype.names else np.zeros(len(found), int)
     # CSV
