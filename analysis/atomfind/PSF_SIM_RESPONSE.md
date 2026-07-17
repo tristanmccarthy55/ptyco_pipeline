@@ -47,7 +47,8 @@ Verified with the exact `empirical_psf()` logic (argmax of `np.angle − per-lay
 | `psf_Pb_rev2_d1e8_vol.npy` | NL105, 16-ph, dose 1e8 | ✅ (43,30,30) | clean — for the reviewer-2 data (§4) |
 | `psf_O_rev2_d1e10/d1e8` | NL105, 16-ph, dosed | ❌ corner artifact | **broken — do not use.** O does not localise as an isolated atom under TDS+dose. |
 | `psf_Ti_rev2_d1e10/d1e8` | NL105, 16-ph, dosed | ❌ corner artifact | **broken — do not use.** Same reason. |
-| `psf_Pb_NL70_z10`, `psf_Pb_NL70_z64` | NL70 depth series | ❌ argmax at surface (layer 0) | **broken** — the z=10/64 atoms sit inside the surface-trim zone; re-extract with a smaller `--zdrop` if you want the depth dependence. |
+| `psf_Pb_NL70_z10_vol.npy` | NL70 depth series (entrance) | ✅ (z=6 → atom z=10 Å) | **FIXED** (re-extracted `--zdrop 4`) — clean, your `hz` crop fits. |
+| `psf_Pb_NL70_z64_vol.npy` | NL70 depth series (exit) | ✅ (z=60 → atom z=64 Å) | **FIXED** (`--zdrop 4`) — but **edge-limited**: the atom is only 6 Å from the exit surface, so your `hz=4` crop clips ~3 layers. That *is* the exit band — which is exactly why recall is weak there, not an extraction fault. |
 
 Every kernel also has a `psf_<tag>_check.png` next to it (in-plane max-projection + axial
 slice) — glance at these; the good ones look like a single compact blob, the broken ones are

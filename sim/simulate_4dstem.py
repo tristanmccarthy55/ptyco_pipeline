@@ -178,6 +178,72 @@ def build_atom_grid(element="Pb", spacing=4.0, z=37.0):
     return atoms, float(side)
 
 
+COLUMN_TOL_A = 0.8      # in-plane radius for "same column along the beam"
+
+
+def build_vacancy(element="O", column="any", z_target=35.0, half_field=5.0):
+    """The production labyrinth MINUS exactly ONE atom (analysis/atomfind REQUEST 2).
+
+    Differencing this reconstruction against the full one gives that atom's IN-SITU
+    response: angle(recon_full) - angle(recon_minus_X). Unlike the isolated-atom grid,
+    it keeps the crystalline support + channeling that make a light species visible at
+    all (isolated O reconstructs at SNR 0.39 — below the noise floor — because isolating
+    it removes exactly that support).
+
+    Picks the `element` atom nearest the SCAN CENTRE at ~z_target, restricted to a
+    +-half_field box around it so the difference blob stays clear of the scan edges.
+    NB the scanned field is centred on (SCAN_CENTER_X_A, SCAN_CENTER_Y_A) = (40, 20),
+    so the in-field box is X in [35,45], Y in [15,25] — NOT Y in [35,45].
+
+    column: 'BO'   = the column also holds Ti (a B-O column),
+            'pure' = no cation in the column (a pure-O column),
+            'any'  = don't care (use for Ti/Pb).
+    """
+    atoms, box_a = load_and_prepare_atoms()
+    pos = atoms.get_positions()
+    sym = np.array(atoms.get_chemical_symbols())
+    x0, x1 = SCAN_CENTER_X_A - half_field, SCAN_CENTER_X_A + half_field
+    y0, y1 = SCAN_CENTER_Y_A - half_field, SCAN_CENTER_Y_A + half_field
+    cand = np.where((sym == element)
+                    & (pos[:, 0] >= x0) & (pos[:, 0] <= x1)
+                    & (pos[:, 1] >= y0) & (pos[:, 1] <= y1)
+                    & (np.abs(pos[:, 2] - z_target) <= 2.0))[0]
+    if len(cand) == 0:
+        raise SystemExit(f"[vacancy] no {element} within ±{half_field} Å of the scan centre "
+                         f"at z≈{z_target} Å")
+
+    best = None
+    for i in cand:
+        d_xy = np.hypot(pos[:, 0] - pos[i, 0], pos[:, 1] - pos[i, 1])
+        mates = np.where((d_xy < COLUMN_TOL_A) & (np.arange(len(atoms)) != i))[0]
+        col_species = set(sym[mates].tolist())
+        has_cation = bool(col_species & {"Ti", "Pb", "Sr"})
+        if column == "BO" and "Ti" not in col_species:
+            continue
+        if column == "pure" and has_cation:
+            continue
+        # prefer nearest the scan centre in-plane, then nearest z_target
+        r = np.hypot(pos[i, 0] - SCAN_CENTER_X_A, pos[i, 1] - SCAN_CENTER_Y_A) \
+            + 0.1 * abs(pos[i, 2] - z_target)
+        if best is None or r < best[0]:
+            best = (r, int(i), sorted(col_species))
+    if best is None:
+        raise SystemExit(f"[vacancy] no {element} on a '{column}' column near the scan centre")
+
+    _, i, col_species = best
+    info = {"element": element, "column_type": column,
+            "x_A": float(pos[i, 0]), "y_A": float(pos[i, 1]), "z_A": float(pos[i, 2]),
+            "column_species": col_species, "atom_index": i,
+            "n_atoms_before": int(len(atoms)),
+            "frame": "prepared cell (rotate -90 y -> orthogonalize -> square pad -> centre)"}
+    print(f"[vacancy] deleting {element} #{i} at ({pos[i,0]:.3f}, {pos[i,1]:.3f}, "
+          f"{pos[i,2]:.3f}) Å — its column holds {col_species}")
+    del atoms[i]
+    print(f"[vacancy] {info['n_atoms_before']} -> {len(atoms)} atoms "
+          f"(everything else byte-identical to the full run)")
+    return atoms, box_a, info
+
+
 def load_and_prepare_atoms():
     """Load POSCAR, orient for the beam, make the in-plane box square, add vacuum.
 
@@ -572,6 +638,16 @@ def main(argv=None) -> int:
                          "stay isolated. Use this for a real PSF; a lone atom -> noise.")
     ap.add_argument("--scan-window", type=float, default=SCAN_WINDOW_A,
                     help="scan window [Å] (default 20; use ~10 for a fast single-atom PSF).")
+    ap.add_argument("--vacancy", default=None,
+                    help="Simulate the full labyrinth MINUS one atom of this element "
+                         "(O/Ti/Pb) -> its IN-SITU difference kernel vs the full recon "
+                         "(analysis/atomfind/PSF_SIM_REQUEST.md REQUEST 2).")
+    ap.add_argument("--vacancy-column", default="any", choices=["any", "BO", "pure"],
+                    help="which column the deleted atom must sit on: 'BO' = shares the "
+                         "column with Ti (B-O column), 'pure' = no cation in the column "
+                         "(pure-O column), 'any' = don't care (Ti/Pb).")
+    ap.add_argument("--vacancy-z", type=float, default=35.0,
+                    help="target depth [Å] of the deleted atom (default 35 = mid-depth).")
     ap.add_argument("--phonons", type=int, default=N_PHONONS,
                     help="Frozen-phonon configs (thermal diffuse scattering). "
                          "0 = coherent (default); 8-16 for a realistic sim.")
@@ -609,7 +685,10 @@ def main(argv=None) -> int:
           f"phonons = {N_PHONONS or 'off (coherent)'}")
     print("=" * 64)
 
-    if args.single_atom:
+    vac_info = None
+    if args.vacancy:
+        atoms, box_a, vac_info = build_vacancy(args.vacancy, args.vacancy_column, args.vacancy_z)
+    elif args.single_atom:
         if args.grid_spacing > 0:
             atoms, box_a = build_atom_grid(args.single_atom, args.grid_spacing, args.atom_z)
         else:
@@ -629,6 +708,11 @@ def main(argv=None) -> int:
     dp_path, pos_path, A = save_outputs(arr, pos_xy, args.out_dir, box_a)
     selftest_ordering(dp_path, pos_path, A, pos_xy, ny)
     write_driver_geometry(n_b, box_a, beam_thickness_a, args.out_dir)
+    if vac_info is not None:
+        # sidecar: WHICH atom was removed, so the difference kernel is attributable
+        import json
+        (args.out_dir / "vacancy_info.json").write_text(json.dumps(vac_info, indent=2))
+        print(f"[vacancy] wrote {args.out_dir / 'vacancy_info.json'}: {vac_info}")
     if tile is not None:
         # record this band's global position range so merge can order + verify
         np.save(args.out_dir / "tile_range.npy", np.array(grange, dtype=np.int64))
