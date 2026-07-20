@@ -17,9 +17,23 @@ a comb of K's placed at the ground-truth depths reproduces a real B–O column's
 at corr 0.94 — the "3–5 px axial blur" is nothing but K-overlap of atoms 1.9–3.9 Å apart.
 
 Atom finding = estimating {r_i, β_i}. Free-form deconvolution (RL) sharpens the volume but
-spreads the ill-posedness everywhere; **fitting K directly** (sparse deconvolution) is the
-statistically efficient use of the same information. We do both: RL for the human eye,
-model fitting for the numbers.
+spreads the ill-posedness everywhere; **fitting K directly** (sparse deconvolution — the
+CLEAN / SMLM branch of the deconvolution literature) is the statistically efficient use of
+the same information. We do both: RL for the human eye, model fitting for the numbers.
+**We measured the field-standard alternative** rather than asserting it. The established
+STEM depth-sectioning workflow is 3-D deconvolution of the volume by RL **and MEM**
+followed by peak analysis (Ishizuka, Ishizuka, Ishikawa, Shibata, Ikuhara, Hashiguchi &
+Sagawa, *Microscopy* **70**, 241 (2021) — where MEM was the stronger routine). We ran
+both with our measured PSF, each at its best-effort threshold: RL+peaks → Pb 93 / Ti 87 /
+**O 58 %**; MEM (Gull–Daniell iteration, converged χ²) + peaks → Pb 93 / Ti 88 /
+**O 59 %** — and peak-picking the *raw* volume does slightly better still (**O 71 %**).
+Deconvolution compresses dynamic range into the bright species (MEM most aggressively:
+O only appears at a 0.001 relative floor), and the missing-cone information it cannot
+restore is exactly what the direct model fit exploits. None of these baselines yields
+species labels or error bars. The full machinery's edge on the same volume: **O 83 %
+(92 % bulk) vs 58–71 %**, precision 97 % vs 84–90 %, plus species and calibrated σ. The
+deconvolve-then-detect family was built for sparse features (isolated dopants, adatoms);
+on a dense lattice its limit is structural, not a tuning artifact.
 
 ## The five algorithmic stages
 
@@ -90,6 +104,70 @@ differs from the physical object pixel (0.0492 Å) by 0.6%, i.e. ~2 px of drift 
 404-px field; and blob-peak calibration differs from the kernel-fit convention by ~1 px,
 so the map is refined fiducial-style on matched heavy atoms. This exposed the true
 in-plane accuracy (xy-RMS 0.13 → 0.035 Å) and lifted the GT-seeded O detector to AUC 0.94.
+
+## The field-native story (verified citations)
+Our method is not an import from another field — it is the merger of two things the EM
+community already does, applied at scale:
+
+**(a) The field already extracts 3-D atom positions from MEP volumes by fitting the
+axial response.** Chen et al., *"Electron ptychography achieves atomic-resolution limits
+set by lattice vibrations"*, **Science 372, 826 (2021)** located embedded Pr dopants in
+all three dimensions from a single projection — with the dopant **depth obtained by
+Gaussian fits to the phase depth-profile**. Follow-ups pushed the same idea: 3-D
+localization of interstitials by MEP (arXiv:2407.18063), sub-nm depth resolution +
+single-dopant visualization by tilt-coupled MEP (**Nat. Commun. 16, 2025**), and
+oxygen-site quantification with multislice ptychography (Dong et al., *"Visualization of
+oxygen vacancies and self-doped ligand holes in La₃Ni₂O₇₋δ"*, **Nature, 2024**). The STEM
+depth-sectioning lineage did it first: Ishikawa et al., *"Three-Dimensional Location of a
+Single Dopant with Atomic Precision by Aberration-Corrected STEM"*, **Nano Lett. 14, 1903
+(2014)**. So "fit a localized peak model to the depth response to get z" is established
+practice — for one dopant at a time.
+
+**(a′) The field-standard "PSF deconvolution" workflow is our measured baseline, not our
+method.** For depth sectioning, the established route is 3-D deconvolution (RL/MEM) of
+the volume with the probe PSF — Ishizuka et al., *Microscopy* **70**, 241 (2021);
+foundations: Behan et al., Phil. Trans. R. Soc. A **367**, 3825 (2009); Xin & Muller,
+J. Electron Microsc. **58**, 157 (2009). We run both RL and MEM with our measured PSF and
+report them in the benchmark ladder; on a dense lattice they sharpen the heavies but
+cannot separate the axially-buried O (see measured numbers above) — consistent with that
+literature's own scope, which targets sparse dopants/adatoms.
+
+**(b) For many overlapping columns, the field's standard is model-based least-squares
+fitting of a peak superposition.** De Backer, van den Bos, Van den Broek, Sijbers &
+Van Aert, *"StatSTEM…"*, **Ultramicroscopy 171, 104 (2016)** — the accepted quantitative
+route to positions/intensities in atomic-resolution images, whose defining feature is
+*explicitly handling overlap between neighbouring peaks*, in 2-D. (The same school has
+combined depth sectioning with model-based atom counting toward 3-D structure retrieval:
+*"Depth sectioning combined with atom-counting in HAADF STEM to retrieve the 3D atomic
+structure"*, Ultramicroscopy — check authors when citing.)
+
+**What we did = (a) × (b), in 3-D, for every atom at once**: fit the whole reconstructed
+volume as a superposition of single-atom responses — the response *measured* by
+reconstructing an isolated atom through the identical sim+recon pipeline (essential
+because the axial response is asymmetric, and its overlap is precisely what buries O
+under Ti) — with candidate atoms proposed by iterative residual peak detection and
+refined by local least-squares with the neighbours' contributions subtracted (the 3-D
+analogue of how 2-D fitting handles overlapping columns). Per-atom uncertainties are the
+least-squares covariance with floors calibrated to 68 % empirical coverage on the
+simulated validation volume — precision quantification in exactly the Van Aert-school
+sense, here validated against known ground truth.
+
+Suggested methods sentences: *"Atomic coordinates were extracted by model-based fitting
+of the reconstructed phase volume as a superposition of single-atom response functions,
+with the anisotropic 3-D response measured by reconstructing an isolated atom through the
+identical simulation and reconstruction pipeline. Candidate atoms were proposed by
+iterative residual peak detection and refined by local least-squares fits with
+neighbouring atoms' contributions subtracted, extending model-based quantification of
+atomic-resolution images [De Backer 2016] to three dimensions; depth positions thereby
+follow from fitting the axial response, as established for single-dopant depth
+measurements in multislice ptychography [Chen 2021] and ADF depth sectioning [Ishikawa
+2014]. Position uncertainties combine the fit covariance with floors calibrated to 68 %
+empirical coverage on a simulated volume with known ground truth."*
+
+*(Cross-field context, footnote-level only: the initialization loop is algorithmically
+equivalent to matched-filter subtraction — CLEAN [Högbom 1974] — and the σ ≪ FWHM
+behaviour of fitted centres is the localization-microscopy result [Thompson et al. 2002].
+Richardson 1972 / Lucy 1974 for the RL comparison panels.)*
 
 ## Inputs / outputs / assumptions
 **In:** the complex recon volume; measured single-atom PSFs (Pb, Ti; O's is unusable —

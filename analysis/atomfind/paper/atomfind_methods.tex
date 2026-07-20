@@ -1,0 +1,129 @@
+% ---------------------------------------------------------------------------
+% Atom localisation from the multislice-ptychographic object volume
+% Requires: amsmath (\eqref, \lVert). Citations use natbib (\citep) or biblatex;
+% references in atomfind_refs.bib
+% ---------------------------------------------------------------------------
+\subsection{Atom localisation with a measured three-dimensional point-spread function}
+\label{sec:atomfind}
+
+\paragraph{Forward model.}
+We treat the reconstructed multislice object as a sparse superposition of identical
+single-atom responses,
+\begin{equation}
+  \phi(\mathbf{r}) \;=\; \sum_{i=1}^{N} \beta_i\, K(\mathbf{r}-\mathbf{r}_i)
+  \;+\; b(\mathbf{r}) \;+\; \varepsilon(\mathbf{r}),
+  \qquad \beta_i \ge 0,
+  \label{eq:forward}
+\end{equation}
+with $\phi$ the per-layer-median-subtracted phase, $(\beta_i,\mathbf{r}_i)$ the amplitude
+and three-dimensional position of atom $i$, $b$ a slowly varying background removed by a
+high-pass filter, and $\varepsilon$ the residual. The
+reconstruction is a nonlinear inverse problem, so Eq.~\eqref{eq:forward} is an empirical
+linearisation rather than a derived identity; we test it directly by fixing
+$\{\mathbf{r}_i\}$ at the known atomic positions of a simulated structure and solving the
+resulting linear least-squares problem for $\{\beta_i\}$, which reproduces measured column
+profiles with a correlation of $0.94$.
+
+The kernel $K$ is measured rather than parameterised: a single isolated atom is propagated
+through the identical simulation and reconstruction pipeline, and its reconstructed
+response is taken as $K$. This is material because $K$ is strongly anisotropic --- full
+width at half maximum (FWHM) $\approx 0.1$\,\AA{} in-plane against $2$--$3$\,\AA{} along
+the beam, the latter set by the missing-cone transfer of single-projection ptychography
+\citep{Chen2021} --- and because its axial width exceeds the projected interatomic spacing
+($1.9$--$3.9$\,\AA{} here). Neighbouring responses therefore overlap, the design is not
+separable, and localisation cannot be reduced to independent peak fits.
+
+Estimation proceeds in two stages: greedy selection of the support and model order $N$,
+then continuous refinement of $\{\beta_i,\mathbf{r}_i\}$ against
+Eq.~\eqref{eq:forward}. Greedy selection followed by local fitting is the established
+route to atom localisation in three-dimensional electron microscopy \citep{Xu2015}.
+
+\paragraph{Support selection.}
+$K$ is normalised so that $\lVert K\rVert_2 = 1$. For a single source at position
+$\mathbf{r}$, the least-squares amplitude is then $\hat\beta(\mathbf{r}) = \langle
+R, K(\cdot-\mathbf{r})\rangle = (K\star R)(\mathbf{r})$, the matched filter applied to the
+current residual $R$; and the position maximising $\hat\beta$ is the position maximising
+the achievable reduction in residual sum of squares. Selection is therefore greedy forward
+selection on the dictionary $\{K(\cdot-\mathbf{r})\}$, i.e.\ matching pursuit
+\citep{MallatZhang1993}: take $\hat{\mathbf{r}} = \arg\max (K\star R)$, record
+$(\hat\beta,\hat{\mathbf{r}})$, update $R \leftarrow R - \hat\beta K(\cdot-\hat{\mathbf{r}})$,
+exclude a minimum-separation neighbourhood of $\hat{\mathbf{r}}$ from subsequent selection,
+and repeat. The exclusion enforces identifiability: it prevents two dictionary atoms
+separated by much less than the width of $K$, whose columns are near-collinear, from both
+entering the support.
+
+Iteration stops when $\max(K\star R) < k\,\sigma_{\mathrm{MF}}$, where
+$\sigma_{\mathrm{MF}}$ is a median-absolute-deviation estimate of the matched-filter noise
+computed over the sub-median voxels of the same subvolume, and $k=2$ throughout. The
+threshold is noise-relative rather than absolute because $(K\star R)$ scales with the phase
+amplitude of the reconstruction, which differs by a factor of about two between the
+reconstructions used here; an absolute threshold does not transfer between them. Because
+overlapping responses bias the greedy amplitudes --- each is estimated as though its source
+were isolated --- the stopping rule is set for completeness of the support, and the
+amplitudes themselves are re-estimated in the next stage.
+
+\paragraph{Refinement.}
+Writing $\theta_i = (\beta_i,\mathbf{r}_i)$, we minimise
+$\lVert \phi - \sum_i \beta_i K(\cdot-\mathbf{r}_i)\rVert^2$ by block-coordinate descent:
+each atom is updated in turn by Gauss--Newton steps on the local residual with the current
+models of all other atoms subtracted, so that overlap between neighbours is accounted for
+to first order at every update. Derivatives of $K$ with respect to $\mathbf{r}$ are obtained
+by finite differences on the measured kernel. Two sweeps are used; the update is confined to
+a neighbourhood of each atom, so the cost is linear in $N$. This is model-based fitting of a
+peak superposition \citep{DeBacker2016} carried into three dimensions with a measured rather
+than parametric $K$. A candidate is retained only if the normalised correlation between the
+local data (neighbours removed) and its fitted response exceeds a fixed threshold --- a
+goodness-of-fit criterion on shape, independent of amplitude, so that weak but well-formed
+responses are not discarded with the poorly formed ones. Estimating depth by fitting the
+axial response is established for isolated dopants
+\citep{Chen2021,Ishikawa2014}; here it is applied to every atom of a dense lattice.
+
+\paragraph{Species assignment and lattice-constrained detection.}
+Columns are typed from their own fitted-amplitude statistics, which are well separated in
+this material; within mixed columns the two sublattices are separated by amplitude, with
+ambiguous cases resolved by consistency with the local periodicity of the already-assigned
+neighbours. Sites predicted by that periodicity --- from the fitted atoms of the same
+column, not from the reference structure --- but left empty by the selection stage are
+re-examined at a reduced detection threshold with bounded positional and amplitude
+tolerances. This deliberately trades false-negative rate against false-positive rate for
+the weakest species only, and such detections are flagged in all outputs so that the
+constrained and unconstrained populations can be reported separately.
+
+\paragraph{Uncertainty.}
+From the final Gauss--Newton step of each atom we form the block covariance
+$\hat{C}_i = s_i^2 (\mathbf{J}_i^{\!\top}\mathbf{J}_i)^{-1}$, with $\mathbf{J}_i$ the
+Jacobian of Eq.~\eqref{eq:forward} with respect to $\theta_i$ and $s_i^2$ the residual
+variance on the local patch. Two properties of $\hat{C}_i$ must be stated. First, it is
+block-diagonal by construction: it is evaluated with neighbouring atoms held fixed, so
+correlations between the parameters of overlapping atoms are not propagated, and $\hat{C}_i$
+is optimistic wherever two responses overlap strongly. Second, on near-noiseless data
+$s_i^2$ is dominated by model mismatch --- the difference between the measured $K$ and the
+true in-crystal response --- rather than by counting statistics, so $\hat{C}_i$ alone
+underestimates the error.
+
+We therefore report a variance decomposition
+$\sigma^2 = \sigma_{\mathrm{fit}}^2 + \sigma_{\mathrm{sys}}^2$, where
+$\sigma_{\mathrm{fit}}^2 = \mathrm{diag}(\hat{C}_i)$ and $\sigma_{\mathrm{sys}}$ is a
+per-species systematic term. $\sigma_{\mathrm{sys}}$ is fixed by empirical coverage: it is
+chosen so that $68\%$ of atoms in a simulation with known ground truth satisfy
+$\lvert\Delta\rvert\le\sigma$ on each axis, and coverage is then audited separately by
+species, axis, depth and detection mode rather than assumed uniform. Because
+$\sigma_{\mathrm{sys}}$ represents a localisation limit set by the width of the response, it
+is rescaled for a new reconstruction by the measured FWHM of its kernel; empirical coverage
+is reported with the coordinates, so a dataset on which the calibration fails to transfer is
+identified rather than silently trusted. The resulting precision, $\sigma \approx
+\mathrm{FWHM}/10$ per axis, is consistent with the width-over-signal-to-noise scaling
+expected for the localisation of a known template and lies well below the resolution.
+
+\paragraph{Comparison with deconvolution.}
+The established alternative --- three-dimensional Richardson--Lucy or maximum-entropy
+deconvolution of the volume followed by peak detection \citep{Ishizuka2021} --- was run
+with the same measured $K$ on the same volume. Both routines sharpen the strongly
+scattering columns but recover at most $59\%$ of the oxygen sublattice at their
+best-effort thresholds, below the $71\%$ obtained by peak-picking the undeconvolved volume
+and well below the $96\%$ (in-bulk) of the model fit. Deconvolution redistributes dynamic
+range towards the strongly scattering species and cannot restore the missing-cone
+frequencies that separate an oxygen atom from the axial flank of its titanium neighbour;
+the reported advantage of these routines is obtained for sparse, isolated features rather
+than for a dense sublattice.
+% ---------------------------------------------------------------------------

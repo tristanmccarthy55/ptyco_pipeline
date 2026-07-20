@@ -114,10 +114,24 @@ class Config:
     # Rationale (measured): 1-D profile reduction fails on dim B-O columns (lean-tracking
     # wanders 0.5-0.65 A); the 3-D tube fit gives each atom its own xy -> Ti recall 65%->~86%+.
     tube_halfwidth_px: int = 10       # tube half-width (~0.5 A): contains the column lean
-    clean_floor: float = 0.4          # matched-filter stop floor (LOW = complete; junk is
-    #                                   rejected later by fit QUALITY, not amplitude)
+    # CLEAN stop floor. PORTABILITY: an absolute floor does NOT transfer -- the matched-
+    # filter peak scales with the volume's phase amplitude (NL70 p99.9 0.333 vs dose-series
+    # 0.188 at comparable noise), so a fixed floor cuts ~2x deeper there and decapitates
+    # the weak species. Default is noise-relative: floor = clean_floor_k * sigma_MF,
+    # sigma_MF estimated per tube by MAD over quiet voxels (see find.clean_floor_for).
+    clean_floor_relative: bool = True
+    # k swept on BOTH volumes (RESULTS sec.7): recall is monotone in k on each. k=2.0 is the
+    # only setting meeting the dose1e10 targets (Ti 74%, confusion 13.7%) with ONE config;
+    # it costs NL70 precision 0.97->0.95 while bulk O recall rises 92->96% -- a
+    # precision/recall trade, not a degradation (the extra NL70 atoms are filterable via the
+    # exported `quality` column). k=3.5 restores NL70 precision 0.97 but drops dose Ti to 63%.
+    clean_floor_k: float = 2.0        # k in floor = k * sigma_matched-filter
+    clean_floor: float = 0.4          # absolute fallback (used if relative=False or the
+    #                                   sigma estimate degenerates)
     clean_max_atoms: int = 45         # per-tube atom cap (~70 A / 1.95 A spacing + margin)
-    clean_nms_z_layers: float = 1.5   # non-max suppression half-extent around accepted atoms
+    clean_nms_z_A: float = 1.5        # non-max suppression half-extent along z, in ANGSTROM
+    #                                   (was 'layers' -- silently changed physical meaning
+    #                                   when dz went 0.999 -> 0.666)
     clean_nms_xy_px: int = 4
     refine_sweeps: int = 2            # joint Gauss-Newton refinement passes per tube
     quality_min_corr: float = 0.5     # junk cut: min normalised patch-vs-kernel correlation
@@ -129,9 +143,19 @@ class Config:
     # Per-species z floors = measured blind p68(|err_z|): Pb 0.24 / Ti 0.27 / O 0.31 A.
     # xy floor: after the fiducial affine refinement of the recon<->GT map the measured
     # p68(|err_xy|) is ~0.01 A; 0.015 keeps a margin for map transfer to new volumes.
+    # PORTABILITY: these are NL70-calibrated. They do NOT transfer as constants (dose1e10
+    # z-coverage ~20-28% with the raw NL70 numbers). The systematic localisation floor
+    # scales with the volume's actual BLUR, so by default we rescale them by the measured
+    # kernel FWHM relative to the reference kernel they were calibrated on (blind: uses the
+    # PSF, not GT). Residual shortfall on poorly-registered volumes is REAL and is surfaced
+    # by the sigma-coverage health warning rather than hidden.
     sigma_floor_xy_A: float = 0.015
     sigma_floor_z_A: float = 0.30     # fallback for unknown species
     sigma_floor_z_species: dict = field(default_factory=lambda: {82: 0.24, 22: 0.27, 8: 0.31})
+    sigma_floor_scale_with_psf: bool = True
+    sigma_floor_ref_fwhm_z_A: float = 1.0    # NL70 Pb kernel axial FWHM (calibration ref)
+    sigma_floor_ref_fwhm_xy_A: float = 0.1   # NL70 Pb kernel in-plane FWHM
+    sigma_floor_scale_cap: float = 4.0       # sanity clamp on the rescale factor
     guided_sigma_scale: float = 1.4   # guided atoms: measured p68 ratio guided/blind ~1.35
     # exit-band inflation: the last ~10 A before the exit surface carries reconstruction
     # artifacts; measured coverage there under-ran (z 63%, x 2-sigma 85%) -> widen bars.

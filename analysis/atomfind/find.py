@@ -142,19 +142,46 @@ def _unit_norm(K):
     return K / np.sqrt((K ** 2).sum())
 
 
-def clean_tube(tube, K, cfg):
+def clean_floor_for(tube, K, cfg, dx):
+    """Stop floor for CLEAN, as k * sigma_noise of the matched-filter output.
+
+    PORTABILITY: an ABSOLUTE floor does not transfer. The matched-filter peak scales with
+    the volume's phase amplitude, which differs ~2x between reconstructions (NL70 p99.9
+    0.333 vs dose-series 0.188 at comparable vacuum noise), so a fixed floor cuts twice as
+    deep on the dose data and decapitates the weak species while bright Pb survives.
+
+    sigma is estimated from the matched-filter response of the tube's QUIET voxels: a
+    robust MAD of the correlation over voxels below the tube's median (i.e. vacuum /
+    inter-atomic space), which is insensitive to the atoms themselves. Falls back to the
+    absolute floor if the estimate degenerates."""
+    if not cfg.clean_floor_relative:
+        return cfg.clean_floor
+    C = fftconvolve(tube, K[::-1, ::-1, ::-1], mode="same")
+    quiet = C[tube <= np.median(tube)]
+    if quiet.size < 32:
+        return cfg.clean_floor
+    sigma = 1.4826 * np.median(np.abs(quiet - np.median(quiet)))
+    if not np.isfinite(sigma) or sigma <= 0:
+        return cfg.clean_floor
+    return float(cfg.clean_floor_k * sigma)
+
+
+def clean_tube(tube, K, cfg, floor=None):
     """Matching pursuit (CLEAN) with the unit-L2-norm kernel K in one column tube.
 
     Correlate residual with K, take the max (= that atom's amplitude, since ||K||=1),
-    subtract amp*K, non-max-suppress around accepted atoms, stop at cfg.clean_floor.
+    subtract amp*K, non-max-suppress around accepted atoms, stop at `floor`
+    (noise-relative by default, see clean_floor_for).
     The floor is deliberately LOW (completeness); junk is culled later by fit quality."""
     hz = (K.shape[0]-1)//2
     hxy = (K.shape[1]-1)//2
     Km = K[::-1, ::-1, ::-1]
     R = tube.copy()
     atoms = []
-    nz = cfg.clean_nms_z_layers
+    nz = max(1, int(round(cfg.clean_nms_z_A / cfg.dz)))   # A -> layers for THIS volume
     nxy = cfg.clean_nms_xy_px
+    if floor is None:
+        floor = cfg.clean_floor
     for _ in range(cfg.clean_max_atoms):
         C = fftconvolve(R, Km, mode="same")
         for (l, r, c, _a) in atoms:                      # suppress re-detections
@@ -164,7 +191,7 @@ def clean_tube(tube, K, cfg):
             C[z0:z1, y0:y1, x0:x1] = -1
         i = np.unravel_index(np.argmax(C), C.shape)
         pk = float(C[i])
-        if pk < cfg.clean_floor:
+        if pk < floor:
             break
         l, r, c = i
         z0, z1 = max(l-hz, 0), min(l+hz+1, R.shape[0])
@@ -316,7 +343,7 @@ def find_atoms_v2(V, cfg, dx, kernels):
         if not (HW <= ri < V.shape[1]-HW and HW <= ci < V.shape[2]-HW):
             continue
         tube = np.clip(V[l0:l1, ri-HW:ri+HW+1, ci-HW:ci+HW+1], 0, None)
-        atoms = clean_tube(tube, KPb, cfg)
+        atoms = clean_tube(tube, KPb, cfg, floor=clean_floor_for(tube, KPb, cfg, dx))
         if not atoms:
             continue
         refined = refine_tube(tube, atoms, KPb, cfg)
@@ -523,7 +550,7 @@ def find_atoms_v3(V, cfg, dx, kernels):
         if not (HW <= ri < V.shape[1]-HW and HW <= ci < V.shape[2]-HW):
             continue
         tube = np.clip(Vp[l0:l1, ri-HW:ri+HW+1, ci-HW:ci+HW+1], 0, None)
-        atoms = clean_tube(tube, KPb, cfg)
+        atoms = clean_tube(tube, KPb, cfg, floor=clean_floor_for(tube, KPb, cfg, dx))
         if not atoms:
             continue
         refined = refine_tube(tube, atoms, KPb, cfg)
@@ -651,7 +678,21 @@ def find_atoms_v3(V, cfg, dx, kernels):
                                   fit["amp"], K, hz, hxy)
 
     # ---- assemble records (per-species 68%-coverage floors; guided get the wider scale) ----
-    fxy = cfg.sigma_floor_xy_A
+    # Floors rescaled by the measured kernel width: the systematic localisation floor tracks
+    # the volume's blur, and the NL70-calibrated constants do not transfer as-is (BUG 4).
+    sc_z = sc_xy = 1.0
+    if cfg.sigma_floor_scale_with_psf:
+        try:
+            fw_z, fw_xy = _psf.measure_fwhm(kernels[82], cfg, dx)
+            if np.isfinite(fw_z) and fw_z > 0:
+                sc_z = float(np.clip(fw_z / cfg.sigma_floor_ref_fwhm_z_A,
+                                     1.0, cfg.sigma_floor_scale_cap))
+            if np.isfinite(fw_xy) and fw_xy > 0:
+                sc_xy = float(np.clip(fw_xy / cfg.sigma_floor_ref_fwhm_xy_A,
+                                      1.0, cfg.sigma_floor_scale_cap))
+        except Exception:
+            pass
+    fxy = cfg.sigma_floor_xy_A * sc_xy
     dt = np.dtype([("row", float), ("col", float), ("layer", float), ("z_A", float),
                    ("amp", float), ("sx_A", float), ("sy_A", float), ("sz_A", float),
                    ("quality", float), ("species", int), ("col_id", int), ("guided", int)])
@@ -662,13 +703,48 @@ def find_atoms_v3(V, cfg, dx, kernels):
             z_A = (l0 + d["l"]) * cfg.dz
             if z_A > cfg.exit_band_z_A:                  # exit-artifact band: wider bars
                 s *= cfg.exit_sigma_scale
-            fz = cfg.sigma_floor_z_species.get(int(d["species"]), cfg.sigma_floor_z_A)
+            fz = cfg.sigma_floor_z_species.get(int(d["species"]), cfg.sigma_floor_z_A) * sc_z
             recs.append((t["ri"]-HW+d["r"], t["ci"]-HW+d["c"], l0+d["l"], z_A,
                          d["amp"],
                          np.hypot(d["sc"]*dx, fxy)*s, np.hypot(d["sr"]*dx, fxy)*s,
                          np.hypot(d["sl"]*cfg.dz, fz)*s,
                          d["quality"], d["species"], t["cid"], g))
     return np.array(recs, dtype=dt), seeds
+
+
+# ---------------------------------------------------------------- literature baseline
+def peaks3d(vol, cfg, dx, max_atoms=2500, rel_floor=0.05):
+    """The classic 'PSF-deconvolve, then peak-pick' recipe, as a measured baseline.
+
+    3-D local maxima on a (deconvolved) volume: atomic-scale non-max footprint
+    (+-1 layer in z so 2-A-spaced Ti/O alternation CAN survive), a relative amplitude
+    floor, parabolic sub-voxel refinement. No PSF model, no lattice, no species --
+    exactly what the image-restoration branch of the literature does after RL."""
+    from scipy.ndimage import maximum_filter
+    l0 = int(round(cfg.trim_z_A[0]/cfg.dz)); l1 = int(round(cfg.trim_z_A[1]/cfg.dz))
+    W = np.clip(vol, 0, None).astype(float)
+    interior = W[l0:l1]
+    fp_xy = max(3, int(round(cfg.find_min_sep_A / dx)) | 1)
+    mx = maximum_filter(interior, size=(3, fp_xy, fp_xy))
+    pk = (interior == mx) & (interior > rel_floor * interior.max())
+    zi, yi, xi = np.where(pk)
+    vals = interior[zi, yi, xi]
+    order = np.argsort(-vals)[:max_atoms]
+
+    def par(a, b, c_):
+        d = a - 2*b + c_
+        return 0.0 if abs(d) < 1e-12 else float(np.clip(0.5*(a - c_)/d, -0.5, 0.5))
+
+    recs = []
+    for j in order:
+        l, r, c = int(zi[j]) + l0, int(yi[j]), int(xi[j])
+        lf = l + (par(W[l-1, r, c], W[l, r, c], W[l+1, r, c]) if 0 < l < W.shape[0]-1 else 0)
+        rf = r + (par(W[l, r-1, c], W[l, r, c], W[l, r+1, c]) if 0 < r < W.shape[1]-1 else 0)
+        cf = c + (par(W[l, r, c-1], W[l, r, c], W[l, r, c+1]) if 0 < c < W.shape[2]-1 else 0)
+        recs.append((rf, cf, lf, lf*cfg.dz, float(vals[j]), -1))
+    dt = np.dtype([("row", float), ("col", float), ("layer", float), ("z_A", float),
+                   ("amp", float), ("col_id", int)])
+    return np.array(recs, dtype=dt)
 
 
 # ---------------------------------------------------------------- export

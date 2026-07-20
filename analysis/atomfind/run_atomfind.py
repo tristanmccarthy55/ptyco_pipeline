@@ -194,7 +194,9 @@ def fig_overlay(V, dec, found, al, pos, Z, cfg, dx, path, W=22):
 def fig_zaccuracy(methods, cfg, path):
     """z-error histograms across finder methods (dict name->match-dict): the payoff of
     3-D fitting over 1-D spike over raw peak-picking, in both count matched and z-RMS."""
-    colours = {"v3 lattice+guided": "tab:green", "v1 spike": "tab:blue", "raw peak-pick": "gray"}
+    colours = {"v3 lattice+guided": "tab:green", "v1 spike": "tab:blue",
+               "MEM + 3D peak-pick": "tab:red", "RL + 3D peak-pick": "tab:orange",
+               "3D peak-pick (raw)": "gray"}
     fig, ax = plt.subplots(figsize=(8, 5))
     for lab, m in methods.items():
         dz = m["match_dz"][m["match_gi"] >= 0]
@@ -268,11 +270,24 @@ def main():
           f"(Pb {frep['Pb']['recall']:.0%} / Ti {frep['Ti']['recall']:.0%} / O {frep['O']['recall']:.0%})")
     print(f"[export] {os.path.basename(csv_p)} + {os.path.basename(xyz_p)} (ASE object)")
 
+    # baselines: v1 1-D spike deconv, and the field-standard deconvolve-then-detect
+    # family (Ishizuka et al., Microscopy 70, 241 (2021)): 3-D local-maxima peak-picking
+    # on the raw, RL-deconvolved, and MEM-deconvolved volumes (best-effort floors --
+    # the deconvolved volumes need much lower relative floors because deconvolution
+    # concentrates dynamic range into the bright species).
     found_spike, _, _ = find.find_atoms(V, cfg, dx, default_psf, method="spike")
-    found_raw, _, _ = find.find_atoms(V, cfg, dx, default_psf, method="raw")
+    mem, minfo = deconv.mem_3d(V, default_psf, cfg)
+    print(f"[deconv] MEM {minfo}")
+    found_pkraw = find.peaks3d(V, cfg, dx, rel_floor=0.02)
+    found_pkrl = find.peaks3d(dec, cfg, dx, rel_floor=0.02)
+    found_pkmem = find.peaks3d(mem, cfg, dx, rel_floor=0.001, max_atoms=4000)
     frep_spike, m_spike = validate.finder_report(found_spike, pos, Z, al, cfg, olabel=olab)
-    frep_raw, m_raw = validate.finder_report(found_raw, pos, Z, al, cfg, olabel=olab)
-    fig_zaccuracy({"v3 lattice+guided": m_v3, "v1 spike": m_spike, "raw peak-pick": m_raw},
+    frep_pkraw, m_pkraw = validate.finder_report(found_pkraw, pos, Z, al, cfg, olabel=olab)
+    frep_pkrl, m_pkrl = validate.finder_report(found_pkrl, pos, Z, al, cfg, olabel=olab)
+    frep_pkmem, m_pkmem = validate.finder_report(found_pkmem, pos, Z, al, cfg, olabel=olab)
+    fig_zaccuracy({"v3 lattice+guided": m_v3, "v1 spike": m_spike,
+                   "MEM + 3D peak-pick": m_pkmem, "RL + 3D peak-pick": m_pkrl,
+                   "3D peak-pick (raw)": m_pkraw},
                   cfg, os.path.join(cfg.out_dir, "z_accuracy.png"))
 
     null = make_null(pos, cfg, n=args.n_null)
@@ -311,32 +326,39 @@ def main():
                   psf=dict(default=psfs["_default"], data_n=psfs.get("_data_n"),
                            fwhm={n: list(map(float, psfmod.measure_fwhm(psfs[n], cfg, dx)))
                                  for n in psfs if not n.startswith("_")}),
-                  deconv=dinfo,
+                  deconv=dict(rl=dinfo, mem=minfo),
                   finder=dict(v3=frep, v3_blind_only=frep_blind, v1_spike=frep_spike,
-                              raw=frep_raw),
+                              peaks3d_raw=frep_pkraw, peaks3d_rl=frep_pkrl,
+                              peaks3d_mem=frep_pkmem),
                   reports=reports)
     with open(os.path.join(cfg.out_dir, "report.json"), "w") as f:
         json.dump(report, f, indent=2, default=float)
 
-    _print_verdict(reports, frep, frep_blind, frep_spike, frep_raw, psfs, cfg)
+    _print_verdict(reports, frep, frep_blind, frep_spike, frep_pkraw, frep_pkrl,
+                   frep_pkmem, psfs, cfg)
     print(f"\n[atomfind] wrote figures + report.json + found_atoms.{{csv,extxyz,npy}} to {cfg.out_dir}")
 
 
-def _print_verdict(reports, frep, frep_blind, frep_spike, frep_raw, psfs, cfg):
+def _print_verdict(reports, frep, frep_blind, frep_spike, frep_pkraw, frep_pkrl,
+                   frep_pkmem, psfs, cfg):
     d = reports.get(psfs["_default"], next(iter(reports.values())))
-    print("\n" + "=" * 78)
+    print("\n" + "=" * 86)
     print(f"VERDICT  ({cfg.name}, dose={cfg.dose_e_per_A2},  PSF={psfs['_default']})")
-    print("=" * 78)
-    print("BLIND FINDER v3 (tube CLEAN + lattice species + guided; no GT anywhere):")
-    print(f"  {'':16s}   raw   v1-spike   v3-blind   v3-full   v3-BULK   z-RMS")
+    print("=" * 86)
+    print("BLIND FINDER v3 vs baselines (pk = 3-D local-maxima peak-pick, best-effort floor;")
+    print("  RL/MEM per the field-standard deconvolve-then-detect workflow, Ishizuka 2021):")
+    print(f"  {'':16s} pk-raw   pk-RL   pk-MEM   v1-spike   v3-blind   v3-full   v3-BULK   z-RMS")
     for k, lab in [("Pb", "Pb (Z=82)"), ("Ti", "Ti (Z=22)"), ("O", "O (Z=8)")]:
-        rr = f"{frep_raw[k]['recall']:.0%}"; rs = f"{frep_spike[k]['recall']:.0%}"
+        r1 = f"{frep_pkraw[k]['recall']:.0%}"; r2 = f"{frep_pkrl[k]['recall']:.0%}"
+        r3 = f"{frep_pkmem[k]['recall']:.0%}"; rs = f"{frep_spike[k]['recall']:.0%}"
         rb0 = f"{frep_blind[k]['recall']:.0%}"; rv = f"{frep[k]['recall']:.0%}"
         rb = f"{frep[k]['recall_bulk']:.0%}"
-        print(f"  {lab:16s} {rr:>5} {rs:>8} {rb0:>9} {rv:>8} {rb:>8}   {frep[k]['z_rms_A']:.2f}A")
-    print(f"  overall precision  raw {frep_raw['precision']:.0%} / v1 {frep_spike['precision']:.0%}"
+        print(f"  {lab:16s} {r1:>6} {r2:>7} {r3:>8} {rs:>9} {rb0:>9} {rv:>8} {rb:>8}   {frep[k]['z_rms_A']:.2f}A")
+    print(f"  precision  pk-raw {frep_pkraw['precision']:.0%} / pk-RL {frep_pkrl['precision']:.0%}"
+          f" / pk-MEM {frep_pkmem['precision']:.0%} / v1 {frep_spike['precision']:.0%}"
           f" / v3 {frep['precision']:.0%}    xy-RMS {frep.get('xy_rms_A', float('nan')):.2f}A"
-          f"    z-RMS raw {frep_raw['z_rms_A']:.2f} -> v3 {frep['z_rms_A']:.2f}A")
+          f"   z-RMS {frep['z_rms_A']:.2f}A")
+    print("  (baselines have no species labels and no error bars; v3 columns do)")
     if "sigma_coverage_1s" in frep:
         cv = frep["sigma_coverage_1s"]
         pz = "  ".join(f"{nm} {frep[nm]['z_cov_1s']:.0%}" for nm in ("Pb", "Ti", "O")
@@ -351,6 +373,15 @@ def _print_verdict(reports, frep, frep_blind, frep_spike, frep_raw, psfs, cfg):
         for pz, nm in [(82, "found Pb"), (22, "found Ti"), (8, "found O ")]:
             print(f"    {nm}: ->Pb {cf[f'{pz}->82']:4d}  ->Ti {cf[f'{pz}->22']:4d}  "
                   f"->O {cf[f'{pz}->8']:4d}  ->none {cf[f'{pz}->none']:4d}")
+    # ---- run-time HEALTH CHECK: precision does NOT warn you (measured: 0.95 while Ti/O
+    # recall was 0% and 81% of labels were wrong). Confusion + coverage are the canaries.
+    warns = validate.health_warnings(frep)
+    if warns:
+        print("\n  !! HEALTH WARNINGS !!")
+        for w in warns:
+            print(f"    - {w}")
+    else:
+        print("\n  health check: OK (confusion, sigma-coverage and per-species recall in range)")
     print("\nGT-SEEDED O AMPLITUDE DETECTOR (calibrated contrast, vs off-lattice null):")
     for k, lab in [("O_all", "O all"), ("O_inplane_isolated", "O in-plane isolated"),
                    ("O_axial_overlap", "O axial-overlap")]:

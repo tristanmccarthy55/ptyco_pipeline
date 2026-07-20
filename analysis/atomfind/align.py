@@ -74,6 +74,7 @@ class Alignment:
     bX: float = 0.0       # affine offset, col axis (px)
     mY: float = 0.0
     bY: float = 0.0
+    mZ: float = 0.0       # depth scale residual (layer per layer); OFF carries the shift
 
     def site_to_index(self, X, Y, Z_depth):
         """GT physical (X, Y, z) -> fractional recon index (row, col, layer)."""
@@ -81,7 +82,8 @@ class Alignment:
         row_n = (np.asarray(Y) - self.Y0) / self.dx
         col = col_n * (1.0 + self.mX) + self.bX
         row = row_n * (1.0 + self.mY) + self.bY
-        layer = (self.SGN * np.asarray(Z_depth) + self.OFF) / self.dz - 0.5
+        layer_n = (self.SGN * np.asarray(Z_depth) + self.OFF) / self.dz - 0.5
+        layer = layer_n * (1.0 + self.mZ)
         return row, col, layer
 
     def index_to_site(self, row, col):
@@ -92,7 +94,8 @@ class Alignment:
 
     def layer_to_z(self, layer):
         """Recon fractional layer -> GT physical z (inverse depth map)."""
-        return self.SGN * ((np.asarray(layer) + 0.5) * self.dz - self.OFF)
+        layer_n = np.asarray(layer) / (1.0 + self.mZ)
+        return self.SGN * ((layer_n + 0.5) * self.dz - self.OFF)
 
 
 # ---------------------------------------------------------------- registration
@@ -214,55 +217,97 @@ def register(V, dx, pos, Z, cfg, n_ref=6):
                      mX=mX, bX=bX, mY=mY, bY=bY)
 
 
-def refine_with_atoms(al: Alignment, found, pos, Z, cfg):
-    """Refine the in-plane affine map using matched HEAVY found atoms as fiducials.
+def _robust_line(p, o, min_keep=10):
+    """Least-squares line with one 3-sigma rejection pass. Returns (slope, intercept)."""
+    p, o = np.asarray(p, float), np.asarray(o, float)
+    m, b = np.polyfit(p, o, 1)
+    r = o - (m*p + b)
+    keep = np.abs(r - np.median(r)) < 3*np.std(r) + 1e-9
+    if keep.sum() >= min_keep:
+        m, b = np.polyfit(p[keep], o[keep], 1)
+    return float(m), float(b)
 
-    Blob-peak calibration leaves a systematic ~1 px residual because the kernel-fit centre
-    (where found atoms -- and hence the honest comparison frame -- live) differs from the
-    brightest-voxel peak for asymmetric blobs. This composes a residual affine, fitted on
-    bright Pb/Ti matches, into the map. It refines the CALIBRATION only: the finder never
-    sees the map, so blindness is untouched. Returns a new Alignment."""
+
+def refine_with_atoms(al: Alignment, found, pos, Z, cfg, iters=4, fit_depth_scale=True):
+    """Refine the recon<->GT map (in-plane affine AND depth) on matched HEAVY atoms.
+
+    Two systematic residuals motivate this. (1) In-plane: blob-peak calibration differs
+    from the kernel-fit centre by ~1 px for asymmetric blobs, plus a ~0.6% pixel-scale
+    residual. (2) DEPTH: the comb-correlation registration can sit ~1 A off, and on a
+    lattice whose Ti/O alternate every 1.95 A a 1 A depth error SWAPS SPECIES LABELS
+    wholesale (measured: dose1e10 confusion 19% with OFF=1.26 A, 14% at OFF=0.20 A).
+
+    Must ITERATE: the correspondences used to diagnose the offset are themselves computed
+    with the (wrong) offset. The z-gate is kept below the heavy-atom column spacing
+    (~3.9 A) so heavy->heavy matches cannot jump a lattice site. Refines the CALIBRATION
+    only -- the finder never sees the map, so blindness is untouched.
+
+    Returns a new Alignment (OFF absorbs the depth shift so it stays interpretable;
+    mZ carries any depth-scale residual)."""
     from dataclasses import replace as _replace
-    heavy = np.where((Z == 82) | (Z == 22))[0]
     win = in_window(pos, cfg)
-    heavy = heavy[win[heavy]]
-    gr, gc, gl = al.site_to_index(pos[heavy, 0], pos[heavy, 1], pos[heavy, 2])
-    sel = np.where((found["species"] != 8) & (found["quality"] >= 0.5))[0]
-    res_c, nom_c, res_r, nom_r = [], [], [], []
-    for i in sel:
-        d2 = ((gr - found["row"][i])*al.dx)**2 + ((gc - found["col"][i])*al.dx)**2 \
-             + ((gl - found["layer"][i])*al.dz)**2
-        j = int(np.argmin(d2))
-        if d2[j] > 1.0**2:
-            continue
-        # residual in px vs the NOMINAL (uncorrected) index of the matched GT atom
-        col_n = (pos[heavy[j], 0] - al.X0) / al.dx
-        row_n = (pos[heavy[j], 1] - al.Y0) / al.dx
-        res_c.append(found["col"][i] - gc[j]); nom_c.append(col_n)
-        res_r.append(found["row"][i] - gr[j]); nom_r.append(row_n)
-    if len(res_c) < 20:
+    heavy = np.where(((Z == 82) | (Z == 22)) & win)[0]
+    if len(heavy) < 20:
         return al
+    # Fiducials chosen by AMPLITUDE, not by species label: on a poorly-registered volume
+    # the labels are exactly what is wrong (a mislabelled O sits 1.95 A off and drags the
+    # depth fit), so selecting on `species != 8` would feed the error back into itself.
+    # The brightest atoms are Pb/Ti whatever they are currently called.
+    qual_ok = found["quality"] >= 0.5
+    if qual_ok.sum() < 20:
+        return al
+    amp_cut = np.median(found["amp"][qual_ok])
+    sel = np.where(qual_ok & (found["amp"] >= amp_cut))[0]
+    if len(sel) < 20:
+        return al
+    f_row = found["row"][sel]; f_col = found["col"][sel]; f_lay = found["layer"][sel]
+    nom_c = (pos[heavy, 0] - al.X0) / al.dx        # nominal (uncorrected) GT indices
+    nom_r = (pos[heavy, 1] - al.Y0) / al.dx
 
-    def robust_line(p, o):
-        p, o = np.asarray(p), np.asarray(o)
-        m, b = np.polyfit(p, o, 1)
-        r = o - (m*p + b)
-        keep = np.abs(r - np.median(r)) < 3*np.std(r) + 1e-9
-        if keep.sum() >= 10:
-            m, b = np.polyfit(p[keep], o[keep], 1)
-        return float(m), float(b)
-
-    m2c, b2c = robust_line(nom_c, res_c)
-    m2r, b2r = robust_line(nom_r, res_r)
+    gate_xy = 1.0                                   # A, in-plane: columns are ~2.76 A apart
+    gate_z = 1.8                                    # A, < half the 3.9 A heavy spacing
+    cur = al
+    for _ in range(iters):
+        gr, gc, gl = cur.site_to_index(pos[heavy, 0], pos[heavy, 1], pos[heavy, 2])
+        mc, mr, ml, mi = [], [], [], []
+        for k in range(len(sel)):
+            dxy = np.hypot((gr - f_row[k])*cur.dx, (gc - f_col[k])*cur.dx)
+            dz = np.abs(gl - f_lay[k]) * cur.dz
+            ok = (dxy <= gate_xy) & (dz <= gate_z)
+            if not ok.any():
+                continue
+            cand = np.where(ok)[0]
+            j = cand[np.argmin(dxy[cand] + dz[cand])]
+            mc.append(f_col[k] - gc[j]); mr.append(f_row[k] - gr[j])
+            ml.append(f_lay[k] - gl[j]); mi.append(j)
+        if len(mi) < 20:
+            break
+        mi = np.asarray(mi)
+        # ---- depth: shift (into OFF) + optional scale (into mZ) ----
+        gl_m = gl[mi]
+        if fit_depth_scale and (np.ptp(gl_m) > 10):
+            sZ, bZ = _robust_line(gl_m, np.asarray(ml))
+        else:
+            sZ, bZ = 0.0, float(np.median(ml))
+        sZ = float(np.clip(sZ, -0.05, 0.05))        # guard: >5% depth-scale error is a bug
+        # layer = layer_n*(1+mZ); absorb the constant into OFF (d layer / d OFF = 1/dz)
+        new_mZ = (1.0 + cur.mZ) * (1.0 + sZ) - 1.0
+        new_OFF = cur.OFF + bZ * cur.dz / max(1.0 + new_mZ, 1e-6)
+        # ---- in-plane affine (composed, as before) ----
+        m2c, b2c = _robust_line(nom_c[mi], np.asarray(mc))
+        m2r, b2r = _robust_line(nom_r[mi], np.asarray(mr))
+        cur = _replace(cur, OFF=float(new_OFF), mZ=float(new_mZ),
+                       mX=cur.mX + m2c, bX=cur.bX + b2c,
+                       mY=cur.mY + m2r, bY=cur.bY + b2r)
     ctr = 0.5 * (np.max(nom_c) + np.min(nom_c))
-    new = _replace(al, mX=al.mX + m2c, bX=al.bX + b2c, mY=al.mY + m2r, bY=al.bY + b2r)
-    new.CAL_X = float(((new.mX)*ctr + new.bX) * al.dx)
-    new.CAL_Y = float(((new.mY)*ctr + new.bY) * al.dx)
-    return new
+    cur.CAL_X = float((cur.mX*ctr + cur.bX) * al.dx)
+    cur.CAL_Y = float((cur.mY*ctr + cur.bY) * al.dx)
+    return cur
 
 
 def summarize(al: Alignment):
-    return (f"depth: z_recon = {al.SGN:+d}*z_GT + {al.OFF:.2f} A (corr {al.corr_depth:.2f})  |  "
+    return (f"depth: z_recon = {al.SGN:+d}*z_GT + {al.OFF:.2f} A (corr {al.corr_depth:.2f}, "
+            f"mZ {al.mZ*100:+.2f}%)  |  "
             f"in-plane affine: centre offset X {al.CAL_X:+.3f} A ({al.CAL_X/al.dx:+.1f} px), "
             f"Y {al.CAL_Y:+.3f} A;  scale residual mX {al.mX*100:+.2f}% mY {al.mY*100:+.2f}%"
             f"  |  dx={al.dx:.4f} A")

@@ -123,6 +123,54 @@ def finder_report(found, pos, Z, al, cfg, olabel=None):
     return rep, m
 
 
+# ---------------------------------------------------------------- health metrics
+def confusion_rate(rep):
+    """Off-diagonal fraction of the species confusion matrix (0 if unavailable)."""
+    cf = rep.get("confusion")
+    if not cf:
+        return float("nan")
+    off = sum(cf[f"{a}->{b}"] for a in (82, 22, 8) for b in (82, 22, 8) if a != b)
+    diag = sum(cf[f"{a}->{a}"] for a in (82, 22, 8))
+    return off / (off + diag) if (off + diag) else float("nan")
+
+
+def confusion_line(rep):
+    """One-line confusion summary for run-time health printing."""
+    cf = rep.get("confusion")
+    if not cf:
+        return "confusion: n/a"
+    r = confusion_rate(rep)
+    return (f"confusion {r:.1%}  "
+            f"[Ti->O {cf['22->8']}, O->Ti {cf['8->22']}, Ti->Pb {cf['22->82']}, "
+            f"Pb->Ti {cf['82->22']}]")
+
+
+def health_warnings(rep, conf_max=0.05, cov_lo=0.55, cov_hi=0.95, recall_min=0.30):
+    """Run-time sanity checks that PRECISION DOES NOT GIVE YOU.
+
+    Measured failure mode (noise sweep): precision read 0.95 while Ti/O recall was 0% and
+    81% of species labels were wrong -- the surviving bright Pb were placed correctly, so
+    precision looked fine. Confusion rate and sigma-coverage are the canaries."""
+    warns = []
+    r = confusion_rate(rep)
+    if r == r and r > conf_max:
+        warns.append(f"species confusion {r:.1%} > {conf_max:.0%} — labels unreliable "
+                     f"(check depth registration: a ~1 A OFF error swaps Ti/O)")
+    cv = rep.get("sigma_coverage_1s") or {}
+    for ax, v in cv.items():
+        if v < cov_lo:
+            warns.append(f"sigma coverage {ax} {v:.0%} < {cov_lo:.0%} — error bars are "
+                         f"OVERCONFIDENT (floors need re-deriving for this dataset)")
+        elif v > cov_hi:
+            warns.append(f"sigma coverage {ax} {v:.0%} > {cov_hi:.0%} — error bars overly "
+                         f"conservative")
+    for s in ("Pb", "Ti", "O"):
+        if s in rep and rep[s].get("recall", 1.0) < recall_min:
+            warns.append(f"{s} recall {rep[s]['recall']:.0%} < {recall_min:.0%} — species "
+                         f"effectively not detected")
+    return warns
+
+
 # ---------------------------------------------------------------- O classification
 def classify_oxygen(pos, Z, cfg):
     """Return an int label per atom: 1 = axially-overlapped O, 2 = in-plane-isolated O,

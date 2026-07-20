@@ -63,12 +63,22 @@ OVITO/VESTA), **`found_atoms.csv`** (same + error bars), `found_atoms.npy`, plus
 
 ## Results on NL70 (0.15 Å, coherent, noiseless), gold Pb+Ti kernels
 
-**Blind finder v3 — recall (all / BULK z 10–56 Å) + accuracy:**
-| species | raw-peak | v1 spike | v2 | **v3** | **v3 bulk** | z-RMS |
+**Blind finder v3 — recall (all / BULK z 10–56 Å) + accuracy.** Baseline = the literature
+recipe done properly: 3-D local-maxima peak-picking with sub-voxel refinement, best-effort
+threshold, on the raw and the RL-deconvolved volume. (Measured side-finding: **RL before
+peak-picking does not help** — O 58 % vs 71 % on raw: RL's compressed dynamic range pushes
+weak O below the relative floor, and the missing-cone information RL cannot restore is
+exactly what the model fit exploits instead.)
+| species | 3D peaks (raw) | 3D peaks (RL) | v1 spike | **v3** | **v3 bulk** | z-RMS |
 |---|---|---|---|---|---|---|
-| Pb (n=446) | 34 % | 91 % | 90 % | 89 % | **96 %** | 0.38 Å |
-| Ti (n=371) | 24 % | 65 % | 87 % | **91 %** | **97 %** | 0.40 Å |
-| O (n=1182) | 15 % | 49 % | 52 % | **83 %** | **92 %** | 0.38 Å |
+| Pb (n=446) | 93 % | 93 % | 91 % | 88 % | **96 %** | 0.37 Å |
+| Ti (n=371) | 88 % | 87 % | 65 % | **91 %** | **97 %** | 0.39 Å |
+| O (n=1182) | 71 % | 58 % | 49 % | **83 %** | **92 %** | 0.37 Å |
+
+The peak-pick baselines run at 84 % (raw) / 99 % (RL) precision and produce **no species
+labels and no error bars**. On noiseless data the heavies are findable by any competent
+peak-picker — the finder's edge is oxygen (+21 % over the best baseline, 92 % in bulk),
+species ID (98.8 %), precision control (97 %), and calibrated per-atom σ.
 
 Overall **precision 97 %** (up from 94), **xy-RMS 0.035 Å** (after the affine map
 refinement exposed it — a ~1.6 px map bias + 0.6 % scale residual had been inflating it to
