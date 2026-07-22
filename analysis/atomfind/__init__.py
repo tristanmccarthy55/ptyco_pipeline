@@ -1,6 +1,7 @@
-"""Atom-finding pipeline for 3-D electron-ptychography reconstructions.
+"""@package atomfind
+@brief Atom-finding pipeline for 3-D electron-ptychography reconstructions.
 
-See README.md. Entry point: run_atomfind.py. Modules: config, align, psf, deconv,
-fit, validate. Designed to run UNCHANGED on the coherent NL70 volume now and the
-0.05 A / 16-phonon / dosed volume when it lands (switch via config.preset).
+Entry point: run_atomfind.py. Modules: config, align, psf, deconv, find, fit, validate,
+uncertainty. Runs unchanged across volumes via config.preset (coherent NL70; 0.05 A /
+16-phonon / dosed). See README.md for usage, METHODS.md for the method.
 """

@@ -1,23 +1,16 @@
 #!/usr/bin/env python
-"""3-D point-spread function estimation.
+"""@file psf.py
+@brief 3-D point-spread function estimation.
 
-Every atom reconstructs as the system PSF: tight in-plane (~0.5-1 A) but stretched
-along the beam (~2 A+, the missing cone). So  recon ~ true_atoms (*) PSF.
-
-Three ways to get the PSF, in order of trustworthiness:
-  1. EMPIRICAL from the sim (gold standard, owned by the sims thread): reconstruct a
-     single isolated atom through the identical pipeline; the blob IS the PSF. Drops
-     in via cfg.single_atom_vol -> empirical_psf(). Nothing else changes.
-  2. DATA-DERIVED (default stand-in): average many isolated Pb columns' blobs from THIS
-     recon. Real, anisotropic, data-matched. Limitation: the z-tails beyond +-period/2
-     are contaminated by the neighbouring in-column Pb (a crystal has no isolated atom
-     in z), so we taper them -> the sim PSF (1) is what fixes the true axial tails.
-  3. SYNTHETIC (physics stand-in): an anisotropic kernel from the optics (in-plane
-     Gaussian, elongated missing-cone z-profile). Controlled + reproducible, assumed.
-
-The user chose "both, compare": we build (2) as default and (3) alongside, and the
-pipeline reports detection sensitivity to the PSF choice. All kernels share the SAME
-voxel grid so they are drop-in interchangeable.
+Every atom reconstructs as the system PSF (tight in-plane, stretched along the beam by the
+missing cone), so recon ~ atoms (*) PSF. Three interchangeable kernels on a shared voxel
+grid, in order of trustworthiness:
+  1. EMPIRICAL (gold): a single isolated atom reconstructed through the identical pipeline
+     -- the blob IS the PSF. Drops in via cfg.single_atom_vol -> empirical_psf().
+  2. DATA-DERIVED (default stand-in): average of isolated Pb blobs from this recon; its
+     axial tails are neighbour-contaminated and tapered (a crystal has no isolated atom in z).
+  3. SYNTHETIC: an anisotropic missing-cone kernel from the optics.
+Kernel provenance and why only the Pb kernel is usable: docs/history/PSF_SIM_RESPONSE.md.
 """
 from __future__ import annotations
 import os
@@ -158,7 +151,7 @@ def species_kernels(cfg, dx):
     Measured (this data): the Ti single-atom axial response is genuinely broader than Pb's
     (weaker channeling of the lighter atom; 3-D corr 0.87) -- the shape difference is the
     species-classification signal. O's own kernel is below the recon noise floor
-    (PSF_SIM_RESPONSE sec.2) so O shares the Ti (light-atom) shape."""
+    (docs/history/PSF_SIM_RESPONSE.md sec.2) so O shares the Ti (light-atom) shape."""
     out = {}
     if cfg.single_atom_vol and os.path.exists(os.path.expanduser(cfg.single_atom_vol)):
         out[82] = empirical_psf(cfg, dx)

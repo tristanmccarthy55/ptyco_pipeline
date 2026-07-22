@@ -146,7 +146,7 @@ def build_phantom_atoms():
 
 def build_single_atom(element="Pb", z=37.0):
     """ONE atom at the scan centre in the production-shaped box -> its reconstruction is
-    the empirical PSF (see analysis/atomfind/PSF_SIM_REQUEST.md). Placed directly in the
+    the empirical PSF (see analysis/atomfind/docs/history/PSF_SIM_REQUEST.md). Placed directly in the
     final box (no rotate/orthogonalize/pad): same square in-plane size + beam path as
     production, so Ndpx / d_alpha / dx and the axial propagation all match. Pair with a
     small --scan-window for a fast, cheap PSF (the kernel is local, window-invariant)."""
@@ -629,7 +629,7 @@ def main(argv=None) -> int:
                          "test (single-slice exact; same Ndpx as the real sim).")
     ap.add_argument("--single-atom", default=None,
                     help="Simulate ONE atom (element, e.g. Pb/O/Ti) at the scan centre "
-                         "for an empirical PSF (analysis/atomfind/PSF_SIM_REQUEST.md).")
+                         "for an empirical PSF (analysis/atomfind/docs/history/PSF_SIM_REQUEST.md).")
     ap.add_argument("--atom-z", type=float, default=37.0,
                     help="single-atom / grid depth z [Å] (default 37 = mid-depth).")
     ap.add_argument("--grid-spacing", type=float, default=0.0,
@@ -641,7 +641,7 @@ def main(argv=None) -> int:
     ap.add_argument("--vacancy", default=None,
                     help="Simulate the full labyrinth MINUS one atom of this element "
                          "(O/Ti/Pb) -> its IN-SITU difference kernel vs the full recon "
-                         "(analysis/atomfind/PSF_SIM_REQUEST.md REQUEST 2).")
+                         "(analysis/atomfind/docs/history/PSF_SIM_REQUEST.md REQUEST 2).")
     ap.add_argument("--vacancy-column", default="any", choices=["any", "BO", "pure"],
                     help="which column the deleted atom must sit on: 'BO' = shares the "
                          "column with Ti (B-O column), 'pure' = no cation in the column "

@@ -1,18 +1,17 @@
 #!/usr/bin/env python
-"""Extract an empirical PSF kernel from a grid-PSF reconstruction.
+"""@file extract_psf.py
+@brief Extract an empirical PSF kernel from a grid-PSF reconstruction.
 
-The sims thread reconstructs a sparse GRID of one element at one depth — a lone atom is
-too under-constrained to reconstruct (it comes back ~84% noise), but a 4 A grid converges
-like the real sample while each blob stays isolated in-plane and axially. Every blob IS
-the system PSF. This pulls ONE clean interior blob onto a volume in the same complex
-object format as NL70_new_vol.npy, so analysis/atomfind's empirical_psf() (np.angle ->
-argmax -> crop) consumes it directly via cfg.single_atom_vol.
+A lone atom is too under-constrained to reconstruct, but a sparse 4-A grid of one element
+converges like the real sample while each blob stays isolated -- and every blob IS the
+system PSF. This pulls ONE clean interior blob onto a volume in the same complex-object
+format as NL70_new_vol.npy, so psf.empirical_psf() (angle -> argmax -> crop) consumes it
+directly via cfg.single_atom_vol. The atom is forced to a POSITIVE phase peak so argmax
+locks onto it, and entrance/exit surface layers are dropped.
 
   python analysis/atomfind/extract_psf.py <recon_dir> <name> [--out ~/Desktop]
 
-<recon_dir> holds .../Niter*.mat (newest used). Writes psf_<name>_vol.npy (+ _check.png):
-one interior blob, entrance/exit surface layers dropped, atom forced to a POSITIVE phase
-peak so empirical_psf()'s argmax locks onto it (not a negative-phase element or noise).
+<recon_dir> holds .../Niter*.mat (newest used). Writes psf_<name>_vol.npy (+ _check.png).
 """
 import argparse, glob, os
 import numpy as np

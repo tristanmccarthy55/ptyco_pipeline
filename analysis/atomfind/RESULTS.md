@@ -160,57 +160,73 @@ accuracy is not merely a precision figure; it is a prerequisite for correct chem
 | `psf_O_rev2_*` | (81,60,60) | corner (63,59,59) | 2.7 | — | **broken**; d1e10 interior peak on the *last layer* |
 | data-derived (from dose1e10 Pb blobs) | — | — | — | 4.0 Å | **worse** (Pb 65 % vs 85 %) — in-crystal neighbours inflate the axial width |
 
-Confirms the physics in `PSF_SIM_RESPONSE.md`: isolated light atoms do not reconstruct
+Confirms the physics in `docs/history/PSF_SIM_RESPONSE.md`: isolated light atoms do not reconstruct
 above the noise floor, and worse under TDS+dose. Use the **Pb shape for all species**.
 
 ---
 
-## 6. Error bars
+## 6. Uncertainty quantification (rebuilt 2026-07-21)
 
-σ = least-squares covariance $s^2[(J^\top J)^{-1}]_{kk}$ ⊕ empirical floors calibrated to
-**68 % coverage** (fraction of atoms with |true error| ≤ σ).
+Two explicitly separated stages (`find.py` model σ + `uncertainty.py` calibration). The old
+tuned per-species floors are **retired**; they could only hit coverage on average and left
+the overlapped oxygen optimistic and isolated atoms conservative (the failure below).
 
-Audited subsets, current config (1σ / 2σ coverage; target ~68 % / ~95 %):
+**Stage 1 — model σ (no ground truth):** σ² = σ²_stat + σ²_sys.
+- σ_stat is the **JOINT Cramér–Rao bound**: the diagonal block of the inverse of the *full*
+  Fisher matrix over all atoms in a tube, not the per-atom block `[JᵀJ]⁻¹`. The block form is
+  the bound with every neighbour *known exactly*; the ratio to the joint bound is the variance
+  inflation factor (VIF) of the overlapping design. **Measured on our kernel:**
 
-| subset | n | x | y | z |
-|---|---|---|---|---|
-| all | 1790 | 83 / 96 % | 92 / 98 % | 74 / 92 % |
-| Pb | 393 | 82 / 93 % | 96 / 99 % | 72 / 91 % |
-| Ti | 320 | 90 / 99 % | 94 / 100 % | 73 / 98 % |
-| O | 1077 | 81 / 96 % | 91 / 97 % | 74 / 91 % |
-| blind | 1737 | 83 / 96 % | 93 / 98 % | 74 / 92 % |
-| **guided** | **53** | 79 / 96 % | **72 / 94 %** | **60 / 83 %** |
-| bulk z 10–56 Å | 1257 | 84 / 97 % | 94 / 98 % | 75 / 95 % |
-| edge z < 10 Å | 229 | 84 / 99 % | 90 / 98 % | 69 / 94 % |
-| **edge z > 56 Å** | 304 | **74 / 89 %** | 89 / 96 % | **70 / 78 %** |
+  | separation | pair | VIF(β) | VIF(z) | σ_z understated |
+  |---|---|---|---|---|
+  | 3.90 Å | Pb–Pb, Ti–Ti | 1.04 | 1.04 | ×1.02 |
+  | 1.95 Å | Ti–O (every apical O) | 2.28 | 2.02 | ×1.42 |
+  | 0.99 Å | near-degenerate | 13.3 | 3.33 | ×1.83 |
 
-⚠️ **Two subsets are now under-covered** and the ×1.4 guided / exit-band inflations no
-longer suffice: **guided** atoms (z 60 % at 1σ, 83 % at 2σ) and the **exit band** (z 78 % at
-2σ). This is a *consequence of the portability pass succeeding*: the noise-relative floor
-now finds oxygen blind, so the guided population collapsed 402 → 53 atoms and is
-now only the hardest residue, for which the old ×1.4 was calibrated on a much easier mix.
-Per-atom σ for those two subsets should be treated as optimistic until the inflation
-factors are re-derived on the current population; everything else is at or above target.
+  and **85 % of in-window atoms have a neighbour within 2.5 Å**, so the block form was
+  optimistic almost everywhere. The joint inverse restores the inflation per atom, no tuned
+  constant. It also gives σ_β, which drives the species posterior (below).
+- σ_sys is the **kernel-mismatch** term (`find.kernel_mismatch_sigma`): refit a synthetic
+  response made with one measured kernel using another, take the position spread. **Computable
+  without GT, so it transfers.** On NL70 (Pb vs Ti kernels nearly identical) it is small
+  (σ_z 0.02 Å); it grows on datasets whose kernels genuinely differ.
 
-| | floor |
-|---|---|
-| σ_xy | 0.015 Å (post affine-map refinement) |
-| σ_z | 0.24 / 0.27 / 0.31 Å (Pb / Ti / O) |
-| guided atoms | × 1.4 |
-| exit band z > 56 Å | × 1.4 |
+**Stage 2 — split-conformal calibration (Mondrian):** nonconformity s = |Δ|/σ per axis,
+empirical (1−α) quantile *per stratum* (species × blind/guided × depth band), half-width =
+q·σ. **Coverage holds per stratum by construction** — no Gaussian assumption, no hand-tuned
+constant. Verified on NL70:
 
-Median-ratio calibration was tried and **rejected**: it read a "perfect" 1.00 while true
-coverage was ~50 % (heavy tails). Coverage is the honest metric.
+| target | overall coverage (x / y / z) | worst-stratum z |
+|---|---|---|
+| 68 % | 69 / 69 / 69 % | 68 % (O\|blind\|bulk) |
+| 95 % | 96 / 96 / 96 % | 91 % (O\|guided\|entrance, n=11 — small-n conformal noise) |
 
-**Transfer (BUG 4, partially fixed).** The floors are systematic-localisation limits, so they
-scale with the volume's blur, not with anything universal. They are now rescaled *blindly* by
-the measured kernel FWHM relative to the NL70 reference kernel
-(`sigma_floor_scale_with_psf`; rev2 axial FWHM 2.0 Å vs NL70 1.0 Å → floors ×2). Measured
-effect on dose1e10 z-coverage: **28 % → 56 %**. That is a real improvement but still short of
-68 %, because the residual is *misregistration*, not blur — and misregistration is not
-knowable blind. **The honest position: on a new dataset the floors are a starting estimate,
-the σ-coverage health metric tells you whether they hold, and they must be re-derived if it
-warns.** It warns on the dose volumes (x 38 %, y 47 %), correctly.
+The per-stratum q(z) ranges **7.3 → 14.3** — direct proof a single floor cannot represent the
+uncertainty. Exports: `uq_conformal.json` (the q-table) and, per atom, the model σ, the **95 %
+half-width as default** (a 1σ number is the least-conservative honest choice; the conservative
+interval is what a downstream user picks up by accident), and a within-column amplitude
+posterior `p_species` (relative confidence, not calibrated; atoms with p<0.9 are **~25× enriched
+for mislabelling** over the 1 % base rate).
+
+**Precision context:** model σ ≈ FWHM/10 per axis (in-plane σ_stat 0.001–0.002 Å vs kernel
+FWHM 0.1 Å; axial 0.03 Å vs 1–3 Å) — the width/SNR scaling for a known template. On noiseless
+simulation σ_stat → 0 and the *systematic* error dominates; conformal supplies that scale
+(hence the large q), and σ_stat resumes its role on counting-limited data.
+
+**Transfer — the decisive test.** Applying an NL70 q-table to a new volume assumes
+exchangeability, which fails when registration quality differs. The intended workflow is to
+re-run the conformal step on each volume's own matched atoms. On **dose1e10** (different
+geometry NL105, ~half the phase amplitude, real recon noise, z-RMS 0.87 Å) this gives, with
+the *same code and no tuned constants*:
+
+| target | dose1e10 coverage (x / y / z) | vs old tuned floors |
+|---|---|---|
+| 68 % | **69 / 69 / 69 %** | 38 / 47 / 56 % (under-covered, warned) |
+| 95 % | **96 / 96 / 96 %** | — |
+
+q(z) spread on dose is even wider (10.9 → 23.3) — the errors are more heteroscedastic on the
+harder volume, which is exactly the regime a single floor cannot serve and conformal handles
+for free. Only σ_sys (kernel mismatch) transfers unconditionally.
 
 ---
 
@@ -255,7 +271,7 @@ warns.** It warns on the dose volumes (x 38 %, y 47 %), correctly.
 
 **Pending data (owner: sims thread):** in-situ vacancy-difference kernels — the labyrinth
 reconstructed minus exactly one atom (priority: O on a B–O column, then O on a pure-O
-column, then Ti, then Pb). Spec in `PSF_SIM_REQUEST.md` §"REQUEST 2". Would give a true
+column, then Ti, then Pb). Spec in `docs/history/PSF_SIM_REQUEST.md` §"REQUEST 2". Would give a true
 in-crystal O matched filter, which §5 shows is the one thing no existing kernel provides.
 Also outstanding: a **coherent NL105 kernel** (all NL105 kernels are 16-phonon), and
 re-extraction of the broken `psf_Pb_NL70_z10/z64` depth kernels with a smaller `--zdrop`.
@@ -267,9 +283,9 @@ Ti 0.45 Å²), so under TDS oxygen's true kernel is genuinely broader than lead'
 ---
 
 ## 8. Files
-`SUMMARY.md` (method, plain-language) · `README.md` (usage) · `paper/atomfind_methods.tex`
+`METHODS.md` (method, plain-language) · `README.md` (usage) · `paper/atomfind_methods.tex`
 + `paper/atomfind_refs.bib` (manuscript segment, 6 refs, compiles clean) ·
-`PSF_SIM_REQUEST.md` / `PSF_SIM_RESPONSE.md` (kernel provenance) ·
+`docs/history/PSF_SIM_REQUEST.md` / `docs/history/PSF_SIM_RESPONSE.md` (kernel provenance) ·
 `dose_series.py` (portability harness: NL105 `.mat` loader + per-dose run) · this file.
 
 Reproduce the portability benchmark:

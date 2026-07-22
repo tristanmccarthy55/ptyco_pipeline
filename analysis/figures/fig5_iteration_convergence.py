@@ -1,5 +1,6 @@
 #!/usr/bin/env python
-"""FIG 5 — When does the reconstruction stop improving?  (1e10, single mid slice)
+"""@file fig5_iteration_convergence.py
+@brief FIG 5 — When does the reconstruction stop improving? (1e10, single mid slice)
 
 Reads the SAME mid-depth in-plane slice from every iteration checkpoint
 (Niter 25, 50, ... 200) of the highest-dose recon and shows it as a filmstrip, plus

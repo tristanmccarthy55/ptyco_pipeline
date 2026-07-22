@@ -26,7 +26,7 @@ Each dose folder contains:
 | `exit_wave_200.mat` | Exit wave at Niter 200. |
 | `run_synthetic_recon_ML.m` | **A copy of the exact recon script that produced this folder** — the definitive recon provenance. |
 
-Already-made summary figures (regenerate from `analysis/dose_compare.py`):
+Already-made summary figures (regenerate from `analysis/figures/fig1_depth_resolution.py` + `fig4_species_columns.py`):
 - `~/Desktop/dose_compare.png` — 2×4 grid: depth cross-section (top) + in-plane slice (bottom) per dose.
 - `~/Desktop/dose_metrics.png` — quantitative degradation vs dose.
 
@@ -114,16 +114,16 @@ re-deriving the rotation. Ground-truth structure: `sim/PTO6_STO6_18_18_labyrinth
 
 | File | What it does — reuse for |
 |---|---|
-| `dose_compare.py` | **Start here.** Loads all four dose recons, auto-picks a strong Pb column, makes the 2×4 depth-cross-section + in-plane-slice grid. The `load_vol()` in it is the canonical `.mat` reader. |
+| `figures/dose_fig_common.py` | **Start here.** The canonical `.mat` reader (`load_dose`, `.npy`-cached), reference-column picker, per-dose registration, and kz spectrum — shared by all the `fig*` scripts. |
 | `column_cross_section.py` | Depth cross-section down a Pb and a Ti column + phase-vs-depth profile with plane-period ticks (written for NL70 `.npy`; adapt the loader for dose `.mat`). |
 | `column_cross_section_overlay.py` | Overlays the GT atom positions on the recon (model registration). |
-| `depth_resolution.py` | Quantifies depth resolution (kz plane-frequency peak, axial FWHM) — the numbers behind the dose-degradation story. |
+| `figures/fig1_depth_resolution.py` | Depth resolution vs dose: cross-sections + kz plane-frequency peak — the numbers behind the dose-degradation story. |
 
 ---
 
 ## 6. Ready-to-use snippets
 
-**Load a dose volume → phase array `[nL, Ny, Nx]` + `dz`** (the canonical reader, from `dose_compare.py`):
+**Load a dose volume → phase array `[nL, Ny, Nx]` + `dz`** (the canonical reader, `figures/dose_fig_common.load_dose`):
 
 ```python
 import glob, os, numpy as np, h5py

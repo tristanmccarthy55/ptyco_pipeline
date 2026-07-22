@@ -1,0 +1,69 @@
+# Doxygen configuration for the *new* PtychoShelves code (analysis + sim pipelines).
+# Only user-authored code is documented here; the upstream PtychoShelves_EM MATLAB
+# engine (ptycho/+*, +beamline, +io, +math, +plotting, +utils) is deliberately left out.
+#
+# Build:   cd ptychoshelves-clean && doxygen Doxyfile
+# Output:  docs/html/index.html       (generated; git-ignored)
+# Install: brew install doxygen        (macOS)
+#
+# This is a curated subset of Doxygen's options — anything omitted uses the default.
+# Doc convention followed by the source: see analysis/atomfind/README.md ("Working on
+# this code"). Module docstrings carry @file/@brief; functions get a one-line @brief.
+
+#---------------------------------------------------------------------------
+# Project
+#---------------------------------------------------------------------------
+PROJECT_NAME           = "PtychoShelves — analysis & sim"
+PROJECT_BRIEF          = "abTEM 4D-STEM simulation, dose series, and 3-D atom finding"
+OUTPUT_DIRECTORY       = docs      # doxygen creates this; HTML lands in docs/html/
+OPTIMIZE_OUTPUT_JAVA   = YES          # closest match to Python semantics
+MARKDOWN_SUPPORT       = YES
+PYTHON_DOCSTRING       = YES          # render docstrings as documentation bodies
+TAB_SIZE               = 4
+
+#---------------------------------------------------------------------------
+# What to extract
+#---------------------------------------------------------------------------
+EXTRACT_ALL            = YES          # list undocumented members too (surfaces gaps)
+EXTRACT_STATIC         = YES
+EXTRACT_LOCAL_METHODS  = YES
+HIDE_UNDOC_MEMBERS     = NO
+CASE_SENSE_NAMES       = YES
+SORT_MEMBER_DOCS       = NO           # keep source order — the pipeline reads top-to-bottom
+
+#---------------------------------------------------------------------------
+# Input — new code only
+#---------------------------------------------------------------------------
+INPUT                  = analysis sim
+FILE_PATTERNS          = *.py
+RECURSIVE              = YES
+EXCLUDE_PATTERNS       = */__pycache__/* */.git/* */paper/*
+EXCLUDE_SYMLINKS       = YES
+SOURCE_BROWSER         = YES          # code-heavy repo — cross-linked source is useful
+INLINE_SOURCES         = NO
+#
+# The four new MATLAB drivers (ptycho/run_*.m) get structured header comments but are
+# NOT rendered here: Doxygen has no native MATLAB parser and would mis-read .m files.
+# To add them later, install an m-file filter (e.g. doxygen-matlab), then set:
+#   INPUT         += ptycho/run_baseline_PrScO3.m ptycho/run_orientation_sweep.m \
+#                    ptycho/run_synthetic_recon.m ptycho/run_synthetic_recon_ML.m
+#   FILE_PATTERNS += *.m
+#   FILTER_PATTERNS = "*.m=/path/to/m2cpp.pl"
+
+#---------------------------------------------------------------------------
+# Output
+#---------------------------------------------------------------------------
+GENERATE_HTML          = YES
+HTML_OUTPUT            = html
+GENERATE_LATEX         = NO
+GENERATE_TREEVIEW      = YES
+DISABLE_INDEX          = NO
+
+#---------------------------------------------------------------------------
+# Diagnostics — keep the build honest but quiet
+#---------------------------------------------------------------------------
+QUIET                  = YES
+WARNINGS               = YES
+WARN_IF_UNDOCUMENTED   = NO           # EXTRACT_ALL already surfaces these in the HTML
+WARN_IF_DOC_ERROR      = YES
+WARN_NO_PARAMDOC       = NO           # we document @param only where non-obvious, by policy

@@ -1,18 +1,15 @@
 #!/usr/bin/env python
-"""Shared helpers for the dose-series publication figures.
+"""@file dose_fig_common.py
+@brief Shared helpers for the dose-series publication figures (figures/fig1-8).
 
-One place for: the canonical .mat -> phase-volume reader (with a fast .npy cache),
-the reference-dose column picker, the ground-truth model load + per-dose depth/in-plane
-registration, the kz depth-resolution spectrum, and a clean-publication matplotlib style.
+One place for: the canonical .mat -> phase-volume reader (with a fast .npy cache), the
+reference-dose column picker, the GT model load + per-dose depth/in-plane registration, the
+kz depth-resolution spectrum, and a clean-publication matplotlib style. The in-plane
+registration follows column_cross_section_overlay.py; the loaders and kz spectrum were
+consolidated here from earlier standalone scripts. Needs the hyperspy-bundle Python
+(h5py, ase, abtem, scipy).
 
-All of this is adapted from the existing analysis scripts so the numbers stay consistent:
-  - loader / column pick        : dose_compare.py
-  - GT model + registration     : column_cross_section_overlay.py
-  - kz spectrum / plane freqs   : depth_resolution.py
-
-Interpreter: ~/hyperspy-bundle/bin/python  (h5py, ase, abtem, scipy).
-
-Self-test:  python dose_fig_common.py --selftest
+Self-test:  python figures/dose_fig_common.py --selftest
 """
 import os, glob, json, sys
 import numpy as np
@@ -21,8 +18,9 @@ import numpy as np
 DATA_ROOT = os.path.expanduser("~/Desktop/dose_series")
 FIG_DIR   = os.path.join(DATA_ROOT, "figures")
 CACHE_DIR = os.path.join(FIG_DIR, "cache")
-VASP      = ("/Users/u2109287/Library/CloudStorage/OneDrive-UniversityofWarwick/"
-            "Documents/PtycoShelves/ptychoshelves-clean/sim/PTO6_STO6_18_18_labyrinthPoscar.vasp")
+# repo root = analysis/figures/ -> analysis/ -> ptychoshelves-clean/
+_REPO     = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+VASP      = os.path.join(_REPO, "sim", "PTO6_STO6_18_18_labyrinthPoscar.vasp")
 
 DOSES     = ["1e10", "1e8", "1e6", "1e4"]      # high -> low
 DOSE_TeX  = {"1e10": r"$10^{10}$", "1e8": r"$10^{8}$",
@@ -87,7 +85,7 @@ def _mat_path(dose):
 
 
 def _read_mat(dose):
-    """Canonical reader (dose_compare.load_vol): -> phase V[nL,Ny,Nx], dz(Å), dx(Å)."""
+    """Canonical .mat reader: -> phase V[nL,Ny,Nx], dz(Å), dx(Å)."""
     import h5py
     m = _mat_path(dose)
     if m is None:
@@ -131,7 +129,7 @@ def load_dose(dose, verbose=True):
 
 # ----------------------------------------------------------------- column picking
 def pick_columns(ref_V, n=1, margin=40, sep=25, pct=97):
-    """Strong interior Pb columns on the reference volume (dose_compare.py:49-53).
+    """Strong interior Pb columns on the reference volume.
 
     Returns a list of (yc, xc), brightest first. n=1 -> just the hero Pb column.
     """
@@ -296,7 +294,7 @@ def hero_depth_offset(V, dz, dx, yc, xc, pos, Z, W=22):
 
 
 def kz_spectrum(V, dz):
-    """On-column vs vacuum z-power spectrum (depth_resolution.kz_spectrum)."""
+    """On-column vs vacuum z-power spectrum."""
     dm = V.mean(0); dmn = dm - dm.min()
     col = dmn > np.percentile(dmn, 95)
     vac = dmn < np.percentile(dmn, 35)
@@ -309,7 +307,7 @@ def kz_spectrum(V, dz):
 
 
 def gt_plane_freqs(pos, Z, cx=40.0, cy=20.0, w=20.0):
-    """Dominant along-beam plane spacing for Pb and Ti (depth_resolution.gt_plane_freqs)."""
+    """Dominant along-beam plane spacing for Pb and Ti."""
     win = (np.abs(pos[:, 0] - cx) < w / 2) & (np.abs(pos[:, 1] - cy) < w / 2)
     out = {}
     for nm, zz in [("Pb", 82), ("Ti", 22)]:

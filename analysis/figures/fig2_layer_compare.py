@@ -1,5 +1,6 @@
 #!/usr/bin/env python
-"""FIG 2 — In-plane depth slices: dose comparison + depth sectioning.
+"""@file fig2_layer_compare.py
+@brief FIG 2 — In-plane depth slices: dose comparison + depth sectioning.
 
 Produces three figures:
   fig2_layers          : dose (rows) x depth (cols) grid of in-plane phase slices.

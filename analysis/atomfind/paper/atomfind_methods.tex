@@ -90,30 +90,59 @@ the weakest species only, and such detections are flagged in all outputs so that
 constrained and unconstrained populations can be reported separately.
 
 \paragraph{Uncertainty.}
-From the final Gauss--Newton step of each atom we form the block covariance
-$\hat{C}_i = s_i^2 (\mathbf{J}_i^{\!\top}\mathbf{J}_i)^{-1}$, with $\mathbf{J}_i$ the
-Jacobian of Eq.~\eqref{eq:forward} with respect to $\theta_i$ and $s_i^2$ the residual
-variance on the local patch. Two properties of $\hat{C}_i$ must be stated. First, it is
-block-diagonal by construction: it is evaluated with neighbouring atoms held fixed, so
-correlations between the parameters of overlapping atoms are not propagated, and $\hat{C}_i$
-is optimistic wherever two responses overlap strongly. Second, on near-noiseless data
-$s_i^2$ is dominated by model mismatch --- the difference between the measured $K$ and the
-true in-crystal response --- rather than by counting statistics, so $\hat{C}_i$ alone
-underestimates the error.
+We separate a \emph{model} standard error, computed without ground truth, from a
+\emph{calibration} step that converts it into intervals with a stated coverage.
 
-We therefore report a variance decomposition
-$\sigma^2 = \sigma_{\mathrm{fit}}^2 + \sigma_{\mathrm{sys}}^2$, where
-$\sigma_{\mathrm{fit}}^2 = \mathrm{diag}(\hat{C}_i)$ and $\sigma_{\mathrm{sys}}$ is a
-per-species systematic term. $\sigma_{\mathrm{sys}}$ is fixed by empirical coverage: it is
-chosen so that $68\%$ of atoms in a simulation with known ground truth satisfy
-$\lvert\Delta\rvert\le\sigma$ on each axis, and coverage is then audited separately by
-species, axis, depth and detection mode rather than assumed uniform. Because
-$\sigma_{\mathrm{sys}}$ represents a localisation limit set by the width of the response, it
-is rescaled for a new reconstruction by the measured FWHM of its kernel; empirical coverage
-is reported with the coordinates, so a dataset on which the calibration fails to transfer is
-identified rather than silently trusted. The resulting precision, $\sigma \approx
-\mathrm{FWHM}/10$ per axis, is consistent with the width-over-signal-to-noise scaling
-expected for the localisation of a known template and lies well below the resolution.
+The model standard error has two terms, $\sigma^2 = \sigma_{\mathrm{stat}}^2 +
+\sigma_{\mathrm{sys}}^2$. The statistical term is the Cram\'er--Rao bound of the
+\emph{joint} estimation problem. For the stacked parameter vector $\theta=(\theta_1,\dots,
+\theta_N)$ the Fisher information of Eq.~\eqref{eq:forward} under homoscedastic residuals is
+$\mathbf{F}=\mathbf{J}^{\!\top}\mathbf{J}/s^2$ with $\mathbf{J}$ the full Jacobian, and the
+attainable variance of $\theta_i$ is the corresponding diagonal block of $\mathbf{F}^{-1}$,
+not the inverse of the diagonal block $\mathbf{F}_{ii}$. The two coincide only for an
+orthogonal design; in general $[\mathbf{F}^{-1}]_{ii}\ge[\mathbf{F}_{ii}]^{-1}$, and the
+ratio is the variance inflation factor (VIF) of the overlapping templates. Evaluating
+$[\mathbf{F}_{ii}]^{-1}$ --- each atom fitted with its neighbours held fixed --- is the
+per-peak Cram\'er--Rao bound used to predict single-column and single-dopant precision
+\citep{DeBacker2016,Chen2021}; for a dense sublattice it is the bound with all neighbours
+known exactly, and it is optimistic. For our measured kernel the VIF of the depth variance
+is $1.04$ at the $3.9$\,\AA{} heavy-atom spacing but $2.0$ at the $1.95$\,\AA{}
+titanium--oxygen spacing --- i.e.\ $\sigma_z$ understated by ${\approx}1.4\times$ for every
+oxygen --- and $85\%$ of atoms in the field have a neighbour within $2.5$\,\AA. We therefore
+assemble $\mathbf{J}$ over all atoms in a subvolume and invert $\mathbf{F}$ once (a
+$4N\times4N$ system with $N\lesssim45$; negligible cost), taking each atom's marginal
+variance. This restores the inflation per atom, automatically and without a tuned constant.
+The systematic term $\sigma_{\mathrm{sys}}$ is the position spread induced by kernel
+mismatch, estimated by fitting a synthetic response generated with one measured kernel using
+another admissible kernel; it requires no ground truth and so transfers to experimental
+data. On near-noiseless simulation $\sigma_{\mathrm{stat}}$ is small, and the model error is
+dominated by systematics that a residual-based variance cannot see; the calibration below
+supplies the missing scale, and on counting-limited data $\sigma_{\mathrm{stat}}$ recovers
+its usual role.
+
+Intervals are then obtained by split-conformal calibration
+\citep{Vovk2005,AngelopoulosBates2023}. On a simulation with known positions we form the
+nonconformity scores $s=\lvert\Delta\rvert/\sigma$ per axis and take the empirical
+$(1-\alpha)$ quantile with the finite-sample correction; the reported half-width is
+$q_{1-\alpha}\,\sigma$. This attains the target coverage by construction, with no Gaussian
+assumption. Coverage is guaranteed only marginally, and the error is strongly
+heteroscedastic across the lattice, so we calibrate in the Mondrian (label-conditional)
+variant \citep{Vovk2003}, stratifying by species, detection mode (unconstrained versus
+lattice-constrained) and depth --- the axes on which a single global correction is provably
+inadequate, since it would leave isolated atoms conservative and overlapped atoms optimistic
+by exactly the VIF above. The per-stratum quantiles differ by up to a factor of two,
+confirming that a single constant cannot represent the uncertainty. We report both a $68\%$
+and a $95\%$ interval and take the $95\%$ interval as the default in released coordinates;
+the calibration table and the per-stratum coverage are exported with the data, so a dataset
+on which the calibration fails to transfer is identified rather than silently trusted.
+
+The amplitude carries the species assignment, and the joint covariance shows amplitudes to
+be far less determined than the per-peak bound implies (VIF up to an order of magnitude for
+the most overlapped pairs). We therefore also emit, for atoms on mixed columns, a
+within-column amplitude posterior for the assigned label rather than a hard class only; it is
+a relative confidence, not a calibrated probability, and it concentrates the residual
+misassignments (labels below $0.9$ are enriched for error by more than an order of magnitude
+over the base rate).
 
 \paragraph{Comparison with deconvolution.}
 The established alternative --- three-dimensional Richardson--Lucy or maximum-entropy

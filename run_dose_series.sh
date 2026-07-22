@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Dose series: from ONE noiseless sim, make a Poisson-noised copy at each dose and
 # launch an identical recon for each (dose is the only variable) -> for a recon-vs-dose
-# figure (analysis/dose_compare.py). Each recon lands in its own dose-tagged folder.
+# figure (analysis/figures/fig1_depth_resolution.py). Each recon lands in its own dose-tagged folder.
 #
 #   SIM_SRC=sim_out/01 DOSES="1e10 1e8 1e6 1e4" NL=70 bash run_dose_series.sh
 #
@@ -35,4 +35,4 @@ done
 echo
 echo "Launched ${NL}-layer recons for doses: ${DOSES}"
 echo "When done, pull each recon_*dose*/01/*step02* to ~/Desktop/dose_series/ and run:"
-echo "  python analysis/dose_compare.py"
+echo "  python analysis/figures/fig1_depth_resolution.py"

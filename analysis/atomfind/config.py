@@ -1,18 +1,12 @@
 #!/usr/bin/env python
-"""Central configuration for the atom-finding pipeline.
+"""@file config.py
+@brief Central configuration -- every per-volume knob for the atom-finding pipeline.
 
-EVERYTHING that changes between reconstructions lives here so the SAME code runs
-unchanged on the current NL70 (0.15 A, coherent) volume and on the better data
-that is coming (0.05 A step, 16-phonon TDS, Poisson-dosed). To switch volumes you
-change ONE Config (or pass --preset on the CLI); no code edits.
-
-Interpreter: this pipeline needs abtem (GT prep) + skimage (RL) + scipy. On this
-Mac those live in ~/hyperspy-bundle/bin/python, NOT the system python3. Run:
-    ~/hyperspy-bundle/bin/python run_atomfind.py
-
-Coordinate map + calibration constants are the ones VALIDATED in
-analysis/column_cross_section_overlay.py (transpose + NCC + sub-pixel CAL). We
-keep them identical so the alignment here reproduces the tested overlay exactly.
+Everything that changes between reconstructions lives here, so the same code runs unchanged
+across volumes: edit one Config or pass --preset (no code edits). Calibration constants are
+kept identical to the validated overlay (analysis/column_cross_section_overlay.py), so the
+alignment reproduces the tested overlay exactly. Needs the hyperspy-bundle Python (abtem +
+skimage + scipy): ~/hyperspy-bundle/bin/python run_atomfind.py.
 """
 from __future__ import annotations
 from dataclasses import dataclass, field, replace
@@ -156,6 +150,14 @@ class Config:
     sigma_floor_ref_fwhm_z_A: float = 1.0    # NL70 Pb kernel axial FWHM (calibration ref)
     sigma_floor_ref_fwhm_xy_A: float = 0.1   # NL70 Pb kernel in-plane FWHM
     sigma_floor_scale_cap: float = 4.0       # sanity clamp on the rescale factor
+    # ---- uncertainty (see uncertainty.py) --------------------------------
+    # Model sigma = joint-CRLB (+) kernel mismatch, then split-conformal Mondrian
+    # calibration. The tuned per-species floors above are RETIRED (kept only as the
+    # legacy path / documentation of what was replaced).
+    kernel_mismatch_on: bool = True
+    uq_alphas: tuple = (0.32, 0.05)   # 68% and 95% prediction intervals
+    uq_min_stratum: int = 20          # below this, fall back to the pooled quantile
+    uq_default_alpha: float = 0.05    # the level exported as the DEFAULT interval
     guided_sigma_scale: float = 1.4   # guided atoms: measured p68 ratio guided/blind ~1.35
     # exit-band inflation: the last ~10 A before the exit surface carries reconstruction
     # artifacts; measured coverage there under-ran (z 63%, x 2-sigma 85%) -> widen bars.
@@ -182,7 +184,7 @@ class Config:
     bulk_z_A: tuple = (10.0, 56.0)    # "bulk" depth band for the headline recall metric
 
     # ---- per-species empirical kernels ----------------------------------
-    # Ti single-atom kernel (clean per PSF_SIM_RESPONSE): broader axially than Pb
+    # Ti single-atom kernel (clean per docs/history/PSF_SIM_RESPONSE.md): broader axially than Pb
     # (weaker channeling). Used for species classification + light-atom refinement.
     # O's kernel is noise (do NOT use) -> O gets the Ti shape.
     ti_kernel_vol: str | None = None
@@ -221,7 +223,7 @@ def preset(name: str) -> Config:
     """Named volumes. Add the better data here when it lands; run_atomfind picks by --preset."""
     presets = {
         # current data (this is what the prototype runs on). Gold empirical PSF =
-        # the measured single-Pb system kernel (PSF_SIM_RESPONSE.md sec.1). Per the sims
+        # the measured single-Pb system kernel (docs/history/PSF_SIM_RESPONSE.md sec.1). Per the sims
         # thread we use the Pb SHAPE for every species (it's the imaging-system response;
         # the element only sets amplitude), so this is the default kernel for all atoms.
         "NL70_coherent": Config(name="NL70_coherent",
@@ -238,7 +240,7 @@ def preset(name: str) -> Config:
                                 ti_kernel_vol=os.path.expanduser("~/Desktop/psf_Ti_NL70_vol.npy")),
         # TEMPLATE for the reviewer-2 data (0.1 A-binned, 16-phonon, dosed). Set recon_vol
         # + dose when it lands; dose-MATCH the kernel (d1e8 kernel <-> 1e8 recon). dz=0.666
-        # (NL105), per PSF_SIM_RESPONSE.md sec.4.
+        # (NL105), per docs/history/PSF_SIM_RESPONSE.md sec.4.
         "reviewer2": Config(name="reviewer2",
                             recon_vol=os.path.expanduser("~/Desktop/recon_new/REVIEWER2/vol.npy"),
                             dz=0.666, dose_e_per_A2=1e8,

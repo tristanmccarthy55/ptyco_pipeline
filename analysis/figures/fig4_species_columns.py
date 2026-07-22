@@ -1,5 +1,6 @@
 #!/usr/bin/env python
-"""FIG 4 — Depth cross-sections down Pb, Ti+O and O columns, for every dose.
+"""@file fig4_species_columns.py
+@brief FIG 4 — Depth cross-sections down Pb, Ti+O and O columns, for every dose.
 
 Three column TYPES (rows) x four doses (columns).  Each panel is a depth cross-section
 (z vs in-plane) down a representative column of that species, with the ground-truth atoms

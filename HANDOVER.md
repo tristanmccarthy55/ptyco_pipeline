@@ -55,10 +55,10 @@ ptyco_pipeline/                 (this repo; on Blythe under $SHARE/phucrh/ptyco_
 │   ├── run_sim.slurm               sim SLURM worker (driven by both launchers; tile-aware)
 │   └── PTO6_STO6_18_18_labyrinthPoscar.vasp   the structure (ground truth)
 ├── analysis/                   reusable validation (run LOCALLY on pulled results)
-│   ├── depth_resolution.py         kz plane-frequency test + the recon-mat loader
 │   ├── column_cross_section.py     depth cross-section down a column
 │   ├── column_cross_section_overlay.py   recon-vs-GT model overlay (the money figure)
-│   └── dose_compare.py             recon cross-section + slice vs electron dose
+│   ├── figures/                    publication figures + dose_fig_common (the .mat reader)
+│   └── atomfind/                   3-D atom finding + oxygen detection
 ├── run_recon_multi.sh          recon launcher (descriptive folder + log+outputs together)
 ├── run_dose_series.sh          make noisy copies at several doses + launch a recon for each
 ├── run_recon_synthetic_ML.slurm    recon SLURM worker
@@ -228,9 +228,9 @@ SIM_SRC=sim_out_step0.05_slice0.5_ph16s0.08_dose1e8/01 REGLAYER=0 PROBE_MODES=1 
 SIM_SRC=sim_out/01 DOSES="1e10 1e8 1e6 1e4" NL=70 bash run_dose_series.sh
 
 # 4. pull results to the Mac (see §8), then validate LOCALLY:
-python analysis/depth_resolution.py
+python analysis/figures/fig1_depth_resolution.py
 python analysis/column_cross_section_overlay.py
-python analysis/dose_compare.py
+python analysis/figures/fig4_species_columns.py
 ```
 
 ---
@@ -351,7 +351,7 @@ sims/reconstructions are owned by a separate thread; you consume its output.
 |---|---|
 | `~/Desktop/NL70_new_vol.npy` | **Primary.** Reconstructed object, complex64, shape **(70, 404, 404)** = [depth layer z, y, x]. Reg-off, single-mode, from the 0.15 Å coherent baseline. |
 | `~/Desktop/NL42_new_vol.npy` | 42-layer version (dz = 1.665 Å). |
-| `~/Desktop/recon_new/NL70/.../Niter120.mat` | The raw PtychoShelves output the npy came from (loader: `analysis/depth_resolution.py::load_recon`; object is in `outputs/object_roi`, a per-layer cell array). |
+| `~/Desktop/recon_new/NL70/.../Niter120.mat` | The raw PtychoShelves output the npy came from (loader: `analysis/figures/dose_fig_common.py::_read_mat`; object is in `outputs/object_roi`, a per-layer cell array). |
 | `~/Desktop/column_cross_section_overlay.png` | The figure to reproduce/extend: recon cross-section down a column with GT Pb/Ti/O overlaid. |
 | `~/Desktop/model_overlay.png` | GT projected potential with atom-type labels (which column is which). |
 
@@ -430,5 +430,5 @@ object pixel 0.0492 Å. (Full table + derivations in §3.)
 ### 11.7 Scripts to build on (`analysis/`, run locally)
 - `column_cross_section_overlay.py` — recon vs GT overlay down a column (the alignment + figure).
 - `column_cross_section.py` — depth cross-section down a column.
-- `depth_resolution.py` — the recon-mat loader + the kz plane-frequency test.
-- `dose_compare.py` — recon vs dose (useful once you pick a working dose for deconvolution).
+- `figures/dose_fig_common.py` — the canonical recon-mat reader + registration + kz spectrum.
+- `figures/fig1_depth_resolution.py` — depth resolution vs dose (kz plane-frequency peak).

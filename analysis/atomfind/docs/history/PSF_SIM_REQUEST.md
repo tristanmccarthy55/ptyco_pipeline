@@ -38,7 +38,7 @@ reuse `sim/simulate_4dstem.py`'s `build_phantom_atoms()` pattern but with **one 
 
 ## What I need back
 The reconstructed object exported to the **same format** as `NL70_new_vol.npy` — a
-`complex64` array shape `(nL, Ny, Nx)` (use the same `analysis/depth_resolution.py::load_recon`
+`complex64` array shape `(nL, Ny, Nx)` (use the same `analysis/figures/dose_fig_common.py::_read_mat`
 → `np.save` path that produced `NL70_new_vol.npy`). Name them:
 - `psf_Pb_vol.npy` (priority 1), `psf_O_vol.npy` (priority 2), `psf_Ti_vol.npy` (priority 3),
 - and, for the better data, `psf_Pb_step0.05_dose<D>_vol.npy` etc.

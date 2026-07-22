@@ -1,27 +1,17 @@
 #!/usr/bin/env python
-"""Richardson-Lucy deconvolution of the reconstructed phase volume.
+"""@file deconv.py
+@brief Richardson-Lucy (and MEM) deconvolution of the reconstructed phase volume.
 
-RL is the Poisson-appropriate, non-negative deconvolution -> the right choice for
-electron-counting data, and it CANNOT push the object negative (physical for a phase
-that is >= 0 above vacuum). We deconvolve by the measured 3-D system PSF to sharpen the
-missing-cone axial blur (the z-crutch): adjacent atoms ~4 layers apart overlap through
-the tight kernel into a weakly-modulated streak, and RL / the spike fit pull them apart.
-
-Preprocessing matters (this is what fixed the "solid-colour" figure):
+RL is the Poisson-appropriate, non-negative deconvolution; it sharpens the missing-cone
+axial blur but is the image-space VIEW only -- the quantitative detector is the model fit
+(find.py / fit.py). Preprocessing the result depends on:
   * per-layer median already subtracted (align.load_phase) -> vacuum ~ 0;
-  * CLIP negatives to 0 (do NOT global-min pedestal-shift: that injects a ~0.36 background
-    ~3x the atom contrast that RL then redistributes into a flat wash);
-  * TRIM to interior layers (cfg.trim_z_A): the entrance/exit "dumping-ground" planes carry
-    huge residuals that RL amplifies (seen: interior max ~2 -> 14.5). Deconvolve the interior,
-    re-embed into a full-size volume (artifact planes zeroed) so downstream indexing is intact;
-  * crop the kernel to its compact in-plane support (it is ~0.1 A / 2 px wide but stored 57 px)
-    -> far faster and no ringing from the empty margins.
-
-HONESTY: deconvolution amplifies noise. Iterations are capped (more when noiseless, scaled
-down at low dose via cfg.effective_rl_iters), a filter_epsilon floors the divisor, and a
-per-iteration DIVERGENCE GUARD stops early if the estimate's peak/median blows past
-cfg.rl_blowup_ratio x the input's. The quantitative detector is the model-based spike fit
-(find.py / fit.py); RL is the complementary image-space view + a deconvolved volume.
+  * clip negatives to 0 (NOT a global pedestal shift, which RL smears into a flat wash);
+  * deconvolve only the interior layers (cfg.trim_z_A) then re-embed into full size -- the
+    entrance/exit planes carry huge residuals RL amplifies;
+  * crop the kernel to its compact in-plane support (speed, no margin ringing).
+Iterations are capped and dose-scaled (cfg.effective_rl_iters) with a per-iteration
+divergence guard (cfg.rl_blowup_ratio). Detector-comparison numbers: RESULTS.md §2.
 """
 from __future__ import annotations
 import numpy as np

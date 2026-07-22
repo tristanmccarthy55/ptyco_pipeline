@@ -20,6 +20,10 @@ recon_*/            # per-run multislice output dirs (run_recon_multi.sh)
 sim/__pycache__/
 **/__pycache__/
 
+# Generated API docs (Doxygen; rebuild with `doxygen Doxyfile`). Anchored to the repo
+# root so it never matches the hand-written analysis/atomfind/docs/ tree.
+/docs/
+
 # OS / editor cruft
 .DS_Store
 **/.DS_Store

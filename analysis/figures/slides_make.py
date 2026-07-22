@@ -1,19 +1,17 @@
 #!/usr/bin/env python
-"""Presentation (PowerPoint) versions of the NL70 figures — uniform clean white style.
+"""@file slides_make.py
+@brief Presentation (PowerPoint) versions of the NL70 figures -- clean white slide style.
 
-Not publication panels: bigger fonts, simple titles, no dense sub-captions or axis text
-(extra detail goes in the slide title / is spoken).  Reuses the exact 3-D renders, the depth
-registration and the projected-potential from the existing scripts so nothing is recomputed
-differently.
+Bigger fonts, simple titles, no dense captions (talk detail is spoken). Reuses the exact
+3-D renders, depth registration and projected potential from fig7_nl70_3d and
+column_cross_section_overlay, so nothing is recomputed differently.
 
-Outputs -> ~/Desktop/dose_series/slides/
-  slide_atoms_overlay   : 7b side view + 7c end-on, SIDE BY SIDE, one image
-  slide_depth_columns   : Pb & Ti depth cross-sections with GT atoms (legend on white)
-  slide_potential       : recon Σphase vs GT projected potential (x-y + depth cross-section)
+Outputs -> ~/Desktop/dose_series/slides/: slide_atoms_overlay (7b side + 7c end-on),
+slide_depth_columns (Pb & Ti depth cross-sections + GT), slide_potential (recon vs GT).
 
-  python slides_make.py
+  python figures/slides_make.py
 """
-import os
+import os, sys
 import numpy as np
 import matplotlib
 matplotlib.use("Agg")
@@ -23,8 +21,10 @@ from matplotlib.lines import Line2D
 from matplotlib.ticker import MaxNLocator
 import pyvista as pv
 
-# import the existing figure scripts as modules — runs their renders once and gives us the
-# trimmed 3-D image arrays + the depth registration, unchanged.
+# Importing these modules runs their renders once and hands us the trimmed 3-D image arrays
+# + the depth registration. fig7 is a sibling in figures/; column_cross_section_overlay
+# stays one level up in analysis/, so put that on the path too.
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))   # analysis/
 import fig7_nl70_3d as F                 # F.img_recon, F.img_gt, F.img_ov, F.img_db
 import column_cross_section_overlay as Q # Q.V, Q.column_atoms, Q.SGN/OFF/CAL_X, ...
 

@@ -1,5 +1,6 @@
 #!/usr/bin/env python
-"""Ground-truth polarisation vortex map for the PTO/STO labyrinth model.
+"""@file pol_vortex.py
+@brief Ground-truth polarisation vortex map for the PTO/STO labyrinth model.
 
 Polarisation proxy = B-site off-centering: for each Ti, delta = r_Ti - centroid(6 nearest O)
 (the Ti displacement from its oxygen-octahedron charge centre).  Computed in the RAW POSCAR

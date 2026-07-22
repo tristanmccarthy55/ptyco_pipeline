@@ -1,5 +1,6 @@
 #!/usr/bin/env python
-"""FIG 7 — 3-D atom model from the CLEAN NL70 reconstruction (no dose noise).
+"""@file fig7_nl70_3d.py
+@brief FIG 7 — 3-D atom model from the CLEAN NL70 reconstruction (no dose noise).
 
 The dose-series 3-D was unconvincing because the noisy recons gave scattered false
 detections.  The NL70 coherent-baseline recon (70 layers, dz ~1.0 Å, ~/Desktop/NL70_new_vol.npy)

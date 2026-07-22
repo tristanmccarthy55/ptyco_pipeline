@@ -1,27 +1,19 @@
 #!/usr/bin/env python
-"""Blind atom finder -- no ground truth anywhere in this module.
+"""@file find.py
+@brief Blind atom finder -- no ground truth anywhere in this module.
 
-The physics: in-plane is easy (~0.1 A, 2 px -> columns crisp, sub-pixel xy trivial);
-DEPTH is the crutch (dz ~ 1 A, atoms ~4 layers apart overlap through the measured kernel).
+Raw phase volume -> typed atoms with 3-axis error bars, in the RECON frame. Entry points:
 
-v2 (default, `find_atoms_v2`) -- 3-D TUBE CLEAN. The v1 1-D column-profile reduction was
-measured to fail on dim B-O columns: lean-tracking wanders 0.5-0.65 A off-column in the
-weak-signal stretches, distorting the profile (Ti recall capped at 65%). v2 removes the
-reduction entirely: per detected column, take a fixed tube (half-width ~0.5 A, contains
-the lean) and run MATCHING PURSUIT with the measured 3-D system kernel -- correlate, take
-the max, subtract amp*K, repeat (CLEAN, as in radio astronomy). Every atom gets its OWN
-(x, y, z). Then a joint Gauss-Newton refinement per tube gives sub-voxel positions and
-1-sigma ERROR BARS from the nonlinear-LS covariance, and each atom is species-classified
-(amplitude bands + Pb-vs-Ti kernel shape, both measured from the single-atom sims) with
-junk rejected by FIT QUALITY, not amplitude (an amplitude floor alone was measured to
-trade Ti recall against precision).
+  - find_atoms_v3 (default): preprocess -> 3-D tube CLEAN + Gauss-Newton refinement ->
+    lattice-aware species -> guided re-detection at empty comb slots.
+  - find_atoms_v2: the pre-lattice core (CLEAN + refinement + amplitude-band species).
+  - find_atoms ('spike'/'raw'): the earlier 1-D baselines, kept for comparison.
 
-v1 (`find_atoms`, kept as the comparison baseline): per-column z-profile + 1-D NNLS spike
-deconvolution; `raw_peak_z` is the naive baseline below that.
+export_atoms maps results to the prepared-cell physical frame using calibration constants
+(not GT positions). The validator maps GT into the recon frame to score, so no GT leaks here.
 
-Outputs are in the RECON frame -- the validator maps GT into this frame to score, so no GT
-leaks here. `export_atoms` converts to the prepared-cell physical frame (calibration
-constants, not GT positions) and writes CSV + an ASE extxyz object.
+Method walk-through and the rationale for every stage: METHODS.md §3-§4. Measured numbers:
+RESULTS.md.
 """
 from __future__ import annotations
 import numpy as np
@@ -143,17 +135,13 @@ def _unit_norm(K):
 
 
 def clean_floor_for(tube, K, cfg, dx):
-    """Stop floor for CLEAN, as k * sigma_noise of the matched-filter output.
+    """@brief CLEAN stop floor as k * sigma_noise of the matched-filter output.
 
-    PORTABILITY: an ABSOLUTE floor does not transfer. The matched-filter peak scales with
-    the volume's phase amplitude, which differs ~2x between reconstructions (NL70 p99.9
-    0.333 vs dose-series 0.188 at comparable vacuum noise), so a fixed floor cuts twice as
-    deep on the dose data and decapitates the weak species while bright Pb survives.
-
-    sigma is estimated from the matched-filter response of the tube's QUIET voxels: a
-    robust MAD of the correlation over voxels below the tube's median (i.e. vacuum /
-    inter-atomic space), which is insensitive to the atoms themselves. Falls back to the
-    absolute floor if the estimate degenerates."""
+    sigma is a robust MAD of the correlation over the tube's QUIET voxels (below the tube
+    median: vacuum / inter-atomic space), so it tracks each volume's noise. This
+    noise-relative floor is what makes the finder portable across reconstructions -- an
+    absolute floor does not transfer (RESULTS.md §7 item 1). Falls back to the absolute
+    floor if the estimate degenerates."""
     if not cfg.clean_floor_relative:
         return cfg.clean_floor
     C = fftconvolve(tube, K[::-1, ::-1, ::-1], mode="same")
@@ -277,23 +265,42 @@ def refine_tube(tube, atoms, K, cfg):
     core_res = (tube - total)[core]
     rvar = float(np.mean(core_res**2)) + 1e-12
 
-    # final pass: covariance + quality per surviving atom
+    # ---- final pass: JOINT covariance (the actual Cramer-Rao bound) + quality ----
+    # Invert the FULL tube Fisher matrix, not the per-atom block [J_i^T J_i]^-1: the block
+    # form is the bound with neighbours known exactly and understates sigma for overlapping
+    # atoms (x1.4 on sigma_z for every 1.95-A Ti-O pair; 85% of atoms have a neighbour
+    # <2.5 A). Cost is negligible (<=45 atoms x 4 params). Measured VIF table: RESULTS.md §6.
+    live = [i for i in range(len(cur)) if cur[i][3] > 1e-6]
     out = []
-    for i in range(len(cur)):
+    if not live:
+        return out
+    nvox = tube.size
+    Jfull = np.zeros((nvox, 4*len(live)))
+    for k, i in enumerate(live):
         l, r, c, a = cur[i]
-        if a <= 1e-6:
-            continue
+        Kp = _render(tube.shape, (l, r, c), K,  hz, hxy)
+        Gz = _render(tube.shape, (l, r, c), Kz, hz, hxy)
+        Gy = _render(tube.shape, (l, r, c), Ky, hz, hxy)
+        Gx = _render(tube.shape, (l, r, c), Kx, hz, hxy)
+        Jfull[:, 4*k:4*k+4] = np.column_stack([Kp, -a*Gz, -a*Gy, -a*Gx])
+    F = Jfull.T @ Jfull
+    # ridge is relative to the design scale (absolute 1e-9 is meaningless once columns
+    # are near-collinear, which is precisely the regime we are trying to represent)
+    ridge = 1e-8 * (np.trace(F) / max(F.shape[0], 1) + 1e-30)
+    try:
+        Finv = np.linalg.inv(F + ridge*np.eye(F.shape[0]))
+    except np.linalg.LinAlgError:
+        Finv = np.linalg.pinv(F, rcond=1e-10)
+    dvar = np.clip(np.diag(Finv), 0, None)
+    for k, i in enumerate(live):
+        l, r, c, a = cur[i]
         sl_, Kp, Gz, Gy, Gx = patch_and_bases(l, r, c)
         patch = (tube - total + contribs[i])[sl_]
-        J = np.column_stack([Kp.ravel(), -a*Gz.ravel(), -a*Gy.ravel(), -a*Gx.ravel()])
-        try:
-            cov = rvar * np.linalg.inv(J.T @ J + 1e-9*np.eye(4))
-            sl, sr, sc = np.sqrt(np.clip(np.diag(cov)[1:], 0, None))
-        except np.linalg.LinAlgError:
-            sl = sr = sc = np.nan
+        sb, sl, sr, sc = np.sqrt(rvar * dvar[4*k:4*k+4])
         den = float(np.linalg.norm(patch) * np.linalg.norm(a*Kp))
         quality = float((patch * (a*Kp)).sum())/den if den > 0 else 0.0
-        out.append(dict(l=l, r=r, c=c, amp=a, sl=sl, sr=sr, sc=sc, quality=quality))
+        out.append(dict(l=l, r=r, c=c, amp=a, sl=sl, sr=sr, sc=sc,
+                        samp=sb, quality=quality))
     return out
 
 
@@ -507,12 +514,16 @@ def _fit_single_guided(resid, K, Kgrads, l_s, r_s, c_s, cfg, dx, min_corr=None):
     J = np.column_stack([Kp.ravel(), -a*Gz.ravel(), -a*Gy.ravel(), -a*Gx.ravel()])
     rvec = (patch - a*Kp).ravel()
     rvar = float(rvec @ rvec) / max(rvec.size - 4, 1)
+    # NOTE: a guided atom is fitted on the residual with its neighbours already removed, so
+    # this IS the conditional (neighbours-known) covariance. The joint/conditional gap is
+    # restored downstream by the conformal calibration, whose `guided` stratum absorbs
+    # exactly this -- which is why guided atoms previously needed an ad-hoc x1.4 fudge.
     try:
         cov = rvar * np.linalg.inv(J.T @ J + 1e-9*np.eye(4))
-        sl, sr, sc = np.sqrt(np.clip(np.diag(cov)[1:], 0, None))
+        sb, sl, sr, sc = np.sqrt(np.clip(np.diag(cov), 0, None))
     except np.linalg.LinAlgError:
-        sl = sr = sc = np.nan
-    return dict(l=l, r=r, c=c, amp=a, sl=sl, sr=sr, sc=sc, quality=quality)
+        sb = sl = sr = sc = np.nan
+    return dict(l=l, r=r, c=c, amp=a, sl=sl, sr=sr, sc=sc, samp=sb, quality=quality)
 
 
 def _lean_predict(kept, l):
@@ -660,15 +671,11 @@ def find_atoms_v3(V, cfg, dx, kernels):
                 if fit is None:
                     continue
                 # lattice-consistency amplitude gate: a guided atom must look like its
-                # column-mates. Kills low-amp junk AND cross-species catches (a guided-Ti
-                # slot grabbing an O has ~0.4x the Ti median -> rejected, and vice versa).
-                # Pb gets a lower bound of 0.25 (A-columns hold no confusable species, and
-                # domain-wall/edge Pb can be dim -- this restores real Pb that the A-column
-                # junk cut removed, at proper lattice slots only). Wide upper bound absorbs
-                # the KTi-vs-KPb matched-filter scale difference.
+                # column-mates (kills low-amp junk and cross-species catches). Bounds are
+                # asymmetric by species; the tight O upper bound stops a dim Ti passing as O,
+                # the loose Pb lower bound restores dim domain-wall Pb. METHODS.md §4.
                 lo = 0.25 if sp == 82 else 0.45
-                hi = 1.6 if sp == 8 else 2.2      # tight O upper bound: a dim Ti (~1.2)
-                #                                   must NOT pass as O (measured leak)
+                hi = 1.6 if sp == 8 else 2.2
                 if amp_med is not None and not (lo*amp_med <= fit["amp"] <= hi*amp_med):
                     continue
                 fit["species"] = sp
@@ -677,39 +684,77 @@ def find_atoms_v3(V, cfg, dx, kernels):
                 resid -= _contrib(t["tube"].shape, fit["l"], fit["r"], fit["c"],
                                   fit["amp"], K, hz, hxy)
 
-    # ---- assemble records (per-species 68%-coverage floors; guided get the wider scale) ----
-    # Floors rescaled by the measured kernel width: the systematic localisation floor tracks
-    # the volume's blur, and the NL70-calibrated constants do not transfer as-is (BUG 4).
-    sc_z = sc_xy = 1.0
-    if cfg.sigma_floor_scale_with_psf:
-        try:
-            fw_z, fw_xy = _psf.measure_fwhm(kernels[82], cfg, dx)
-            if np.isfinite(fw_z) and fw_z > 0:
-                sc_z = float(np.clip(fw_z / cfg.sigma_floor_ref_fwhm_z_A,
-                                     1.0, cfg.sigma_floor_scale_cap))
-            if np.isfinite(fw_xy) and fw_xy > 0:
-                sc_xy = float(np.clip(fw_xy / cfg.sigma_floor_ref_fwhm_xy_A,
-                                      1.0, cfg.sigma_floor_scale_cap))
-        except Exception:
-            pass
-    fxy = cfg.sigma_floor_xy_A * sc_xy
+    # ---- assemble records: MODEL sigma only (joint CRLB + kernel-mismatch systematic) ----
+    # No ground-truth-tuned floors here. The statistical part is the joint-CRLB sigma from
+    # refine_tube; the systematic part is the kernel-mismatch term (computable WITHOUT GT,
+    # so it transfers). Calibration to a stated coverage is a separate, explicit stage --
+    # see uncertainty.conformal_calibrate -- so that what is modelled and what is calibrated
+    # are never conflated.
+    sig_k_xy, sig_k_z = kernel_mismatch_sigma(cfg, dx, kernels)
     dt = np.dtype([("row", float), ("col", float), ("layer", float), ("z_A", float),
                    ("amp", float), ("sx_A", float), ("sy_A", float), ("sz_A", float),
-                   ("quality", float), ("species", int), ("col_id", int), ("guided", int)])
+                   ("samp", float), ("quality", float), ("species", int),
+                   ("col_id", int), ("guided", int)])
     recs = []
     for t in tubes:
         for d, g in [(d, 0) for d in t["kept"]] + [(d, 1) for d in t["guided"]]:
-            s = cfg.guided_sigma_scale if g else 1.0
             z_A = (l0 + d["l"]) * cfg.dz
-            if z_A > cfg.exit_band_z_A:                  # exit-artifact band: wider bars
-                s *= cfg.exit_sigma_scale
-            fz = cfg.sigma_floor_z_species.get(int(d["species"]), cfg.sigma_floor_z_A) * sc_z
+            sx = float(np.hypot(d["sc"]*dx, sig_k_xy))
+            sy = float(np.hypot(d["sr"]*dx, sig_k_xy))
+            sz = float(np.hypot(d["sl"]*cfg.dz, sig_k_z))
             recs.append((t["ri"]-HW+d["r"], t["ci"]-HW+d["c"], l0+d["l"], z_A,
-                         d["amp"],
-                         np.hypot(d["sc"]*dx, fxy)*s, np.hypot(d["sr"]*dx, fxy)*s,
-                         np.hypot(d["sl"]*cfg.dz, fz)*s,
+                         d["amp"], sx, sy, sz, d.get("samp", np.nan),
                          d["quality"], d["species"], t["cid"], g))
     return np.array(recs, dtype=dt), seeds
+
+
+def kernel_mismatch_sigma(cfg, dx, kernels, n_probe=40, seed=0):
+    """Systematic position spread from KERNEL MISMATCH, estimated without ground truth.
+
+    The measured single-atom K is not the true in-crystal response (different species
+    channel differently; TDS broadens light atoms more -- O's Debye-Waller B is ~1.8x Ti's).
+    We quantify the resulting position bias the only way that transfers to a new dataset:
+    fit the SAME synthetic response with a DIFFERENT admissible kernel and take the spread
+    of the recovered positions. No GT is used, so unlike a coverage-calibrated floor this
+    term is available on experimental data.
+
+    Returns (sigma_xy_A, sigma_z_A). Zero if only one kernel is available."""
+    alts = [k for z, k in sorted(kernels.items()) if z != 82]
+    if not alts or not cfg.kernel_mismatch_on:
+        return 0.0, 0.0
+    K0 = _unit_norm(crop_kernel_inplane(kernels[82]))
+    hz = (K0.shape[0]-1)//2; hxy = (K0.shape[1]-1)//2
+    rng = np.random.default_rng(seed)
+    dz_err, dxy_err = [], []
+    for Ka in alts:
+        Ka = _unit_norm(crop_kernel_inplane(Ka))
+        ha_z = (Ka.shape[0]-1)//2; ha_xy = (Ka.shape[1]-1)//2
+        box = (K0.shape[0]+8, K0.shape[1]+6, K0.shape[2]+6)
+        cz, cr, cc = box[0]/2.0, box[1]/2.0, box[2]/2.0
+        Kz, Ky, Kx = np.gradient(K0)
+        for _ in range(n_probe):
+            # truth: an atom at a random sub-voxel offset, rendered with the ALT kernel
+            oz, oy, ox = rng.uniform(-0.5, 0.5, 3)
+            data = _render(box, (cz+oz, cr+oy, cc+ox), Ka, ha_z, ha_xy).reshape(box)
+            # fit with the PRIMARY kernel (2 Gauss-Newton steps from the nominal centre)
+            l, r, c, a = cz, cr, cc, 1.0
+            for _it in range(2):
+                Kp = _render(box, (l, r, c), K0, hz, hxy)
+                Gz = _render(box, (l, r, c), Kz, hz, hxy)
+                Gy = _render(box, (l, r, c), Ky, hz, hxy)
+                Gx = _render(box, (l, r, c), Kx, hz, hxy)
+                J = np.column_stack([Kp, -a*Gz, -a*Gy, -a*Gx])
+                try:
+                    dp = np.linalg.solve(J.T@J + 1e-9*np.eye(4), J.T @ (data.ravel() - a*Kp))
+                except np.linalg.LinAlgError:
+                    break
+                a = max(a + dp[0], 1e-9)
+                l += np.clip(dp[1], -1, 1); r += np.clip(dp[2], -1, 1); c += np.clip(dp[3], -1, 1)
+            dz_err.append((l - (cz+oz)) * cfg.dz)
+            dxy_err.append(np.hypot(r - (cr+oy), c - (cc+ox)) * dx)
+    if not dz_err:
+        return 0.0, 0.0
+    return float(np.std(dxy_err)), float(np.std(dz_err))
 
 
 # ---------------------------------------------------------------- literature baseline
@@ -748,32 +793,61 @@ def peaks3d(vol, cfg, dx, max_atoms=2500, rel_floor=0.05):
 
 
 # ---------------------------------------------------------------- export
-def export_atoms(found, al, cfg, out_prefix):
+def export_atoms(found, al, cfg, out_prefix, intervals=None, p_species=None):
     """Write the found atoms as CSV + an ASE extxyz object in the prepared-cell frame.
 
     Uses ONLY the calibration constants of the recon<->prepared-cell map (the affine
     in-plane map + depth registration) -- no GT atom positions. The frame matches the GT
-    VASP after the sec.11 prep, so the exported object overlays the model directly."""
+    VASP after the sec.11 prep, so the exported object overlays the model directly.
+
+    `intervals` = {alpha: {"x":hw, "y":hw, "z":hw}} calibrated conformal half-widths
+    (uncertainty.apply). The DEFAULT reported interval is the conservative one
+    (cfg.uq_default_alpha, 95% by default): a 1-sigma number is the least conservative
+    honest choice and should not be what a downstream user picks up by accident. The
+    model sigma is still exported alongside, labelled as such.
+    `p_species` = per-atom probability of the assigned species (may be None)."""
     X, Y = al.index_to_site(found["row"], found["col"])
     Zc = al.layer_to_z(found["layer"])
     sym = {82: "Pb", 22: "Ti", 8: "O"}
     guided = found["guided"] if "guided" in found.dtype.names else np.zeros(len(found), int)
-    # CSV
+    n = len(found)
+    a_def = cfg.uq_default_alpha
+    hw = (intervals or {}).get(a_def)
+    lvl = f"{(1-a_def)*100:.0f}"
+    cols = ["element", "X_A", "Y_A", "Z_A"]
+    if hw is not None:
+        cols += [f"halfwidth{lvl}_x_A", f"halfwidth{lvl}_y_A", f"halfwidth{lvl}_z_A"]
+    cols += ["sigma_model_x_A", "sigma_model_y_A", "sigma_model_z_A"]
+    if p_species is not None:
+        cols += ["p_species"]
+    cols += ["amplitude", "quality", "col_id", "guided"]
     csv_path = out_prefix + ".csv"
     with open(csv_path, "w") as f:
-        f.write("element,X_A,Y_A,Z_A,sigma_x_A,sigma_y_A,sigma_z_A,amplitude,quality,col_id,guided\n")
-        for i in range(len(found)):
-            f.write(f"{sym.get(int(found['species'][i]),'X')},{X[i]:.4f},{Y[i]:.4f},{Zc[i]:.4f},"
-                    f"{found['sx_A'][i]:.4f},{found['sy_A'][i]:.4f},{found['sz_A'][i]:.4f},"
-                    f"{found['amp'][i]:.4f},{found['quality'][i]:.3f},{found['col_id'][i]},"
-                    f"{int(guided[i])}\n")
+        f.write(",".join(cols) + "\n")
+        for i in range(n):
+            row = [sym.get(int(found['species'][i]), 'X'),
+                   f"{X[i]:.4f}", f"{Y[i]:.4f}", f"{Zc[i]:.4f}"]
+            if hw is not None:
+                row += [f"{hw['x'][i]:.4f}", f"{hw['y'][i]:.4f}", f"{hw['z'][i]:.4f}"]
+            row += [f"{found['sx_A'][i]:.4f}", f"{found['sy_A'][i]:.4f}", f"{found['sz_A'][i]:.4f}"]
+            if p_species is not None:
+                row += [f"{p_species[i]:.3f}"]
+            row += [f"{found['amp'][i]:.4f}", f"{found['quality'][i]:.3f}",
+                    str(found['col_id'][i]), str(int(guided[i]))]
+            f.write(",".join(row) + "\n")
     # ASE extxyz (per-atom arrays for the uncertainties)
     import ase, ase.io
     side, height = 70.008, 74.0                          # prepared-box constants (sec.3.1)
     atoms = ase.Atoms([sym.get(int(s), "X") for s in found["species"]],
                       positions=np.column_stack([X, Y, Zc]),
                       cell=[side, side, height], pbc=False)
-    atoms.set_array("sigma_A", np.column_stack([found["sx_A"], found["sy_A"], found["sz_A"]]))
+    atoms.set_array("sigma_model_A",
+                    np.column_stack([found["sx_A"], found["sy_A"], found["sz_A"]]))
+    if hw is not None:
+        atoms.set_array(f"halfwidth{lvl}_A",
+                        np.column_stack([hw["x"], hw["y"], hw["z"]]))
+    if p_species is not None:
+        atoms.set_array("p_species", np.asarray(p_species, float))
     atoms.set_array("amplitude", found["amp"].astype(float))
     atoms.set_array("quality", found["quality"].astype(float))
     atoms.set_array("guided", guided.astype(int))

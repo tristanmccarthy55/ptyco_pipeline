@@ -1,22 +1,15 @@
 #!/usr/bin/env python
-"""Model-based per-site amplitude fitting -- the oxygen detector.
+"""@file fit.py
+@brief Model-based per-site amplitude fitting -- the (GT-seeded) oxygen detector.
 
-Rationale (why this and not just deconvolution): in-plane resolution here is ~0.1 A
-(a 100 mrad probe), so Ti and O *columns* are cleanly separated in-plane. Oxygen fails
-for two reasons only:
-  (1) OVERLAP: on a B-O column, O sits ~1.9 A from Ti ALONG THE BEAM -- below the ~2 A
-      axial limit, so it cannot be *resolved* from Ti;
-  (2) CONTRAST: O is light (Z=8), so pure-O columns are just weak.
-Model-based fitting attacks (1) directly: it does not try to *resolve* O from Ti, it
-*attributes* the reconstructed signal to the KNOWN atom positions. We place the measured
-PSF at every known lattice site in a local column group and solve non-negative least
-squares for a per-site amplitude beta_s. beta at each O site is the detection statistic;
-beta_Pb : beta_Ti : beta_O is a calibrated amplitude-vs-Z curve.
-
-Fitting is done per in-plane COLUMN GROUP (atoms clustered by projected x,y), which keeps
-each solve tiny (~70*small_box voxels x tens of sites), localises the O, and lets the
-axial overlap be resolved by the known-position constraint. A constant background basis
-absorbs the vacuum pedestal so betas are above-background amplitudes.
+In-plane resolution (~0.1 A) already separates Ti and O columns; oxygen is hard only from
+axial OVERLAP (O sits ~1.9 A from Ti along the beam, below the ~2 A axial limit) and
+CONTRAST (Z=8). This does not try to RESOLVE O from Ti -- it ATTRIBUTES the signal to known
+lattice sites: place the measured PSF at every known site in an in-plane column group and
+solve non-negative least squares for a per-site amplitude beta. beta is the detection
+statistic; beta_Pb:beta_Ti:beta_O is a calibrated amplitude-vs-Z curve. Per-group solves
+stay tiny; a constant-background basis absorbs the vacuum pedestal. Contrast numbers:
+RESULTS.md.
 """
 from __future__ import annotations
 import numpy as np

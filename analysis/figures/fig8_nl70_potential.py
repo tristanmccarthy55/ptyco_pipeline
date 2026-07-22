@@ -1,5 +1,6 @@
 #!/usr/bin/env python
-"""FIG 8 — NL70 reconstructed phase vs the ground-truth projected potential.
+"""@file fig8_nl70_potential.py
+@brief FIG 8 — NL70 reconstructed phase vs the ground-truth projected potential.
 
 The reconstructed phase (a phase object) should look like the specimen's projected
 potential.  Top row: both summed along the beam (x-y, "down the barrel").  Bottom row:

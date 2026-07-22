@@ -1,15 +1,14 @@
 #!/usr/bin/env python
-"""Recon <-> ground-truth alignment (the tested path, factored + generalised).
+"""@file align.py
+@brief Recon <-> ground-truth alignment (calibration only; the finder never sees this map).
 
-Reproduces the VALIDATED map from analysis/column_cross_section_overlay.py:
+Reproduces the validated map from analysis/column_cross_section_overlay.py:
   in-plane : recon (row r, col c) -> GT physical  X = X0 + c*dx ,  Y = Y0 + r*dx
              (recon is the transpose of the GT grid; sub-pixel CAL from blob centroids)
   depth    : z_recon = SGN * z_GT + OFF          (SGN, OFF fitted data-drivenly)
-
-Generalisation over the overlay script: reference columns are picked AUTOMATICALLY
-from the brightest ground-truth Pb (A-site) columns instead of two hand-typed pixels,
-so this runs unchanged on a bigger/finer volume. On NL70 it reproduces the overlay's
-numbers (CAL ~ +1.7 px, depth offset ~ +0.48 A).
+Reference columns are picked automatically from the brightest GT Pb (A-site) columns, so it
+runs unchanged on finer/larger volumes. The map must be affine per axis, not a shift --
+see METHODS.md ("Calibration infrastructure").
 """
 from __future__ import annotations
 from dataclasses import dataclass

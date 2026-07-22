@@ -1,13 +1,11 @@
 #!/usr/bin/env python
-"""Portability harness: run the finder on the DOSE SERIES (NL105, 0.1 A, coherent).
+"""@file dose_series.py
+@brief Portability harness: run the finder on the DOSE SERIES (NL105, 0.1 A, coherent).
 
-This is the dataset the portability fixes are for -- a different reconstruction geometry
-(105 layers, dz 0.666, 405x405), roughly half NL70's phase amplitude, and real
-reconstruction noise. Nothing here is tuned per-dose: the point is that ONE configuration
-works across volumes.
-
-Kernel: the Pb rev2 kernel for BOTH species (the rev2 Ti/O kernels are broken -- argmax in
-the corner, SNR ~2.5 -- and a data-derived kernel is worse: axial FWHM 4.0 A vs 2.0 A).
+The portability benchmark -- a different reconstruction geometry (105 layers, dz 0.666,
+405x405), ~half NL70's phase amplitude, real recon noise -- run with the SAME config as
+NL70 (nothing tuned per-dose). Uses the Pb rev2 kernel for both species (the rev2 Ti/O
+kernels are broken; a data-derived kernel is worse). Measured results: RESULTS.md §4.
 
 Usage:
     ~/hyperspy-bundle/bin/python atomfind/dose_series.py            # all doses
@@ -19,7 +17,7 @@ import numpy as np
 from dataclasses import replace
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from atomfind import config, align, psf as psfmod, find, validate
+from atomfind import config, align, psf as psfmod, find, validate, uncertainty
 
 DOSE_ROOT = os.path.expanduser("~/Desktop/dose_series")
 REV2_KERNEL = os.path.expanduser("~/Desktop/psf_Pb_rev2_d1e10_vol.npy")
@@ -92,9 +90,15 @@ def run_one(dose_tag, verbose=True):
             print(f"    {s}: recall {r['recall']:.0%} (bulk {r['recall_bulk']:.0%})  "
                   f"z-RMS {r['z_rms_A']:.2f} A")
         print(f"  {validate.confusion_line(rep)}")
-        if "sigma_coverage_1s" in rep:
-            cv = rep["sigma_coverage_1s"]
-            print(f"  sigma coverage 1s: x {cv['x']:.0%} y {cv['y']:.0%} z {cv['z']:.0%}")
+        # UQ: model sigma (single kernel here -> kernel-mismatch term is 0) + conformal.
+        # This exercises the TRANSFER path: calibrate on THIS volume's own matched atoms.
+        try:
+            qtab = uncertainty.calibrate(found, m, cfg, alphas=cfg.uq_alphas,
+                                         min_n=cfg.uq_min_stratum)
+            for ln in uncertainty.uncertainty_report(found, m, cfg, qtab, alphas=cfg.uq_alphas):
+                print("  " + ln)
+        except Exception as e:
+            print(f"  UQ: {e}")
     return dict(cfg=cfg, al=al, al_refined=al_r, found=found, rep=rep, V=V, dx=dx,
                 pos=pos, Z=Z)
 

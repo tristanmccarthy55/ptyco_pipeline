@@ -1,5 +1,6 @@
 #!/usr/bin/env python
-"""FIG 1 — Depth resolution vs dose (the headline).
+"""@file fig1_depth_resolution.py
+@brief FIG 1 — Depth resolution vs dose (the headline).
 
 Top:    depth cross-sections down the SAME Pb column at each dose, ground-truth Pb
         atomic-plane positions overlaid.  The periodic bright plane-blobs persist at

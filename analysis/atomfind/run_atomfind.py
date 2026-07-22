@@ -1,16 +1,15 @@
 #!/usr/bin/env python
-"""End-to-end atom-finding pipeline: PSF -> deconvolution -> per-site fit -> validation.
+"""@file run_atomfind.py
+@brief End-to-end atom-finding driver: PSF -> deconvolution -> fit/find -> validation.
 
-Runs UNCHANGED on the current NL70 volume and on the better data (switch with --preset,
-or point config.preset('reviewer2') at the new .npy). Requires the abtem/skimage stack:
+Runs unchanged across volumes (switch with --preset). Needs the hyperspy-bundle Python:
 
-    ~/hyperspy-bundle/bin/python run_atomfind.py                 # NL70, data PSF (default)
+    ~/hyperspy-bundle/bin/python run_atomfind.py                 # NL70, gold PSF (default)
     ~/hyperspy-bundle/bin/python run_atomfind.py --psf all       # compare data vs synthetic
-    ~/hyperspy-bundle/bin/python run_atomfind.py --preset reviewer2 --dose 1e8 \
-        --single-atom-vol ~/Desktop/psf_atom_vol.npy             # when the sim PSF lands
+    ~/hyperspy-bundle/bin/python run_atomfind.py --preset reviewer2 --dose 1e8
 
-Outputs (to cfg.out_dir, default ~/Desktop/atomfind_out): figures + report.json + a
-printed CAN / CAN'T-SHOW summary.
+Outputs to cfg.out_dir (default ~/Desktop/atomfind_out): figures + report.json + a printed
+CAN / CAN'T-SHOW verdict. See README.md.
 """
 from __future__ import annotations
 import os, sys, json, argparse
@@ -21,7 +20,7 @@ import matplotlib.pyplot as plt
 import matplotlib.patheffects as pe
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from atomfind import config, align, psf as psfmod, deconv, fit, validate, find
+from atomfind import config, align, psf as psfmod, deconv, fit, validate, find, uncertainty
 
 
 # ---------------------------------------------------------------- null sites
@@ -139,7 +138,7 @@ def _pick_BO_column(pos, Z, cfg, al, V):
 SPCOL = {82: "#00f5ff", 22: "#39ff14", 8: "#ff21ff"}       # Pb / Ti / O marker colours
 
 
-def fig_overlay(V, dec, found, al, pos, Z, cfg, dx, path, W=22):
+def fig_overlay(V, dec, found, al, pos, Z, cfg, dx, path, W=22, hw_z=None, hw_level="95%"):
     """Brightest B-O column: raw + RL-deconvolved cross-sections (GT markers), plus the
     money panel -- the blind v2 atoms (species-coloured, with z error bars) vs the GT comb."""
     r, c, on = _pick_BO_column(pos, Z, cfg, al, V)
@@ -173,7 +172,8 @@ def fig_overlay(V, dec, found, al, pos, Z, cfg, dx, path, W=22):
     for i in oncol:
         zz = found["z_A"][i]
         sp = int(found["species"][i])
-        ax.errorbar([0.5], [zz], yerr=[found["sz_A"][i]], fmt="o", ms=6,
+        ezi = hw_z[i] if hw_z is not None else found["sz_A"][i]
+        ax.errorbar([0.5], [zz], yerr=[ezi], fmt="o", ms=6,
                     color=SPCOL.get(sp, "w"), ecolor=SPCOL.get(sp, "w"),
                     capsize=2, elinewidth=1.2)
     for zz_lab, cc in [("Pb", 82), ("Ti", 22), ("O", 8)]:
@@ -185,7 +185,7 @@ def fig_overlay(V, dec, found, al, pos, Z, cfg, dx, path, W=22):
         ax.plot([-0.1], [zz], marker="_", color=col, ms=16, mew=2.5)
     ax.plot([], [], "_", color="#39aa14", label="GT Ti"); ax.plot([], [], "_", color="#c000c0", label="GT O")
     ax.set_ylim(cfg.zmax_show_A, zrec[0]); ax.set_xlim(-0.25, 1.0); ax.set_xticks([])
-    ax.set_title("blind v2 atoms (colour=species,\nbar=z sigma) vs GT ticks")
+    ax.set_title(f"blind atoms (colour=species,\nbar = {hw_level} conformal z-interval) vs GT ticks")
     ax.legend(fontsize=8, loc="lower right")
     fig.suptitle("Brightest B-O column -- 3-D tube-CLEAN atoms + error bars vs ground truth")
     fig.tight_layout(); fig.savefig(path, dpi=140, bbox_inches="tight"); plt.close(fig)
@@ -263,7 +263,15 @@ def main():
     blind = found[found["guided"] == 0]
     frep_blind, _ = validate.finder_report(blind, pos, Z, al, cfg, olabel=olab)
     np.save(os.path.join(cfg.out_dir, "found_atoms.npy"), found)
-    csv_p, xyz_p = find.export_atoms(found, al, cfg, os.path.join(cfg.out_dir, "found_atoms"))
+    # ---- UQ: model sigma (joint CRLB (+) kernel mismatch, from find) -> conformal
+    # calibration against GT, stratified by species x mode x depth band ----
+    qtab = uncertainty.calibrate(found, m_v3, cfg, alphas=cfg.uq_alphas,
+                                 min_n=cfg.uq_min_stratum)
+    uncertainty.save(qtab, os.path.join(cfg.out_dir, "uq_conformal.json"))
+    intervals = {a: uncertainty.apply(found, qtab, cfg, a) for a in cfg.uq_alphas}
+    p_species = uncertainty.species_probability(found)
+    csv_p, xyz_p = find.export_atoms(found, al, cfg, os.path.join(cfg.out_dir, "found_atoms"),
+                                     intervals=intervals, p_species=p_species)
     print(f"[find] v3: {len(seeds)} columns -> {frep['n_found']} atoms "
           f"({(found['guided']==1).sum()} guided), prec={frep['precision']:.2f}, "
           f"xy-RMS={frep.get('xy_rms_A', float('nan')):.2f}A, z-RMS={frep['z_rms_A']:.2f}A  "
@@ -316,7 +324,8 @@ def main():
 
     fig_amplitude(rec_default, olabel_default, cfg, os.path.join(cfg.out_dir, "amplitude_vs_Z.png"))
     fig_roc(rec_default, olabel_default, os.path.join(cfg.out_dir, "roc_oxygen.png"))
-    fig_overlay(V, dec, found, al, pos, Z, cfg, dx, os.path.join(cfg.out_dir, "detection_overlay.png"))
+    fig_overlay(V, dec, found, al, pos, Z, cfg, dx, os.path.join(cfg.out_dir, "detection_overlay.png"),
+                hw_z=intervals.get(0.05, {}).get("z"))
 
     report = dict(preset=cfg.name, vol=cfg.recon_vol, dose=cfg.dose_e_per_A2,
                   dx=dx, dz=cfg.dz,
@@ -336,7 +345,10 @@ def main():
 
     _print_verdict(reports, frep, frep_blind, frep_spike, frep_pkraw, frep_pkrl,
                    frep_pkmem, psfs, cfg)
-    print(f"\n[atomfind] wrote figures + report.json + found_atoms.{{csv,extxyz,npy}} to {cfg.out_dir}")
+    print("\n" + "\n".join(uncertainty.uncertainty_report(found, m_v3, cfg, qtab,
+                                                          alphas=cfg.uq_alphas)))
+    print(f"\n[atomfind] wrote figures + report.json + found_atoms.{{csv,extxyz,npy}} "
+          f"+ uq_conformal.json to {cfg.out_dir}")
 
 
 def _print_verdict(reports, frep, frep_blind, frep_spike, frep_pkraw, frep_pkrl,
@@ -359,12 +371,7 @@ def _print_verdict(reports, frep, frep_blind, frep_spike, frep_pkraw, frep_pkrl,
           f" / v3 {frep['precision']:.0%}    xy-RMS {frep.get('xy_rms_A', float('nan')):.2f}A"
           f"   z-RMS {frep['z_rms_A']:.2f}A")
     print("  (baselines have no species labels and no error bars; v3 columns do)")
-    if "sigma_coverage_1s" in frep:
-        cv = frep["sigma_coverage_1s"]
-        pz = "  ".join(f"{nm} {frep[nm]['z_cov_1s']:.0%}" for nm in ("Pb", "Ti", "O")
-                       if "z_cov_1s" in frep.get(nm, {}))
-        print(f"  error-bar 1-sigma COVERAGE (want ~68%):  x={cv['x']:.0%} y={cv['y']:.0%} "
-              f"z={cv['z']:.0%}   per-species z: {pz}")
+    print("  (uncertainty: calibrated conformal intervals reported in the UNCERTAINTY block below)")
     if "confusion" in frep:
         cf = frep["confusion"]
         offd = sum(cf[f"{a}->{b}"] for a in (82, 22, 8) for b in (82, 22, 8) if a != b)
@@ -381,7 +388,7 @@ def _print_verdict(reports, frep, frep_blind, frep_spike, frep_pkraw, frep_pkrl,
         for w in warns:
             print(f"    - {w}")
     else:
-        print("\n  health check: OK (confusion, sigma-coverage and per-species recall in range)")
+        print("\n  health check: OK (species confusion and per-species recall in range)")
     print("\nGT-SEEDED O AMPLITUDE DETECTOR (calibrated contrast, vs off-lattice null):")
     for k, lab in [("O_all", "O all"), ("O_inplane_isolated", "O in-plane isolated"),
                    ("O_axial_overlap", "O axial-overlap")]:
