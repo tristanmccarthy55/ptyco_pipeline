@@ -33,12 +33,11 @@ truth against which every reconstructed and localised position is scored.
 \begin{figure}[t]
   \centering
   \includegraphics[width=\linewidth]{figs/sample}
-  \caption{The PbTiO$_3$/SrTiO$_3$ model. (a) Ferroelectric polarisation (B-site
-    off-centring relative to the A-site cage, mid-depth slab; arrow colour = in-plane
-    direction), showing the polar domains; the dashed box is the $20$\,\AA{} scan window.
-    (b) Atomic columns in beam projection within the scan region --- Pb, Sr, Ti and O ---
-    with the overfocused probe ($\approx4$\,\AA) overlaid; the lead columns split into
-    polar dumbbells.}
+  \caption{The PbTiO$_3$/SrTiO$_3$ model. (a) Ferroelectric polar domains --- streamlines of
+    the smoothed B-site off-centring over an entrance-half slab (colour = magnitude) ---
+    showing polar vortices, one inside the $20$\,\AA{} scan window (dashed). (b) Atomic
+    columns in beam projection within the scan region (Pb, Sr, Ti, O) with the overfocused
+    probe ($\approx4$\,\AA) overlaid; the lead columns split into polar dumbbells.}
   \label{fig:sample}
 \end{figure}
 
@@ -56,17 +55,18 @@ reciprocal-space detector axes $\mathbf{k}$ \citep{Ophus2019,Tate2016}
 
 The reconstruction is \emph{ptychography}: recovery of the complex specimen transmission
 from the diffraction patterns of a set of mutually overlapping illuminations
-\citep{Hoppe1969,Nellist1995}. A single diffraction pattern discards the phase; the
-information that restores it is the \emph{redundancy} between neighbouring probe positions.
-Where two illuminations overlap in real space, their diffracted cones overlap in reciprocal
-space, and the intensity in that overlap is an interference between the two --- its fringes
-encode the phase gradient of the object (Fig.~\ref{fig:technique}b). Equivalently, as the
-probe steps by an amount far smaller than its own width, features in the diffraction pattern
-shift in a parallax that fixes their depth and phase. Solving the ensemble of overlapping
-patterns jointly retrieves an object phase consistent with all of them
-\citep{Rodenburg2008}, at a resolution set by the illumination angle rather than the lens
+\citep{Hoppe1969,Nellist1995}. A single pattern discards the phase; what restores it is the
+\emph{redundancy} between neighbouring probe positions, each of which re-illuminates a region
+shared with its neighbours. With a defocused (here overfocused) probe this redundancy also
+carries \emph{depth}. Each diffraction pattern is a shadow, or Ronchigram, image of the
+specimen whose effective viewpoint is the probe crossover; as the probe steps, the shadow of
+an atom near the entrance surface --- close to that viewpoint --- sweeps across the detector
+faster than the shadow of a deeper atom (Fig.~\ref{fig:technique}b). This parallax between
+depths, resolved jointly across all the overlapping patterns \citep{Rodenburg2008}, is what
+lets multislice ptychography section the specimen along the beam \citep{Gao2017,Chen2021}, at
+a lateral resolution set by the illumination angle rather than the lens
 \citep{Nellist1995,Jiang2018}. Our step of $0.1$--$0.15$\,\AA{} against a $\approx4$\,\AA{}
-probe gives ${>}90\%$ overlap --- heavy oversampling, which is what makes the phase problem
+probe gives ${>}90\%$ overlap --- the heavy oversampling that makes the phase problem
 well-conditioned. The remainder of the Methods simulates this acquisition
 (Sec.~\ref{sec:sim}) and inverts it (Sec.~\ref{sec:recon}).
 
@@ -76,9 +76,9 @@ well-conditioned. The remainder of the Methods simulates this acquisition
   \caption{4D-STEM ptychography. (a) A convergent probe, here focused $20$\,\AA{} above the
     entrance surface (overfocus), diverges through the $\approx70$\,\AA{} specimen; a
     pixelated detector records the full diffraction pattern at each scan position.
-    (b) Ptychographic redundancy: probe positions overlap strongly in real space (top), so
-    their diffracted discs overlap in the detector plane (bottom) and interfere --- the
-    fringes in the overlap encode the object phase.}
+    (b) Depth by parallax: each pattern is a shadow image viewed from the probe crossover, so
+    between adjacent probe positions the shadow of the near-surface atom shifts further than
+    that of the deeper atom --- the differential shift encodes depth.}
   \label{fig:technique}
 \end{figure}
 

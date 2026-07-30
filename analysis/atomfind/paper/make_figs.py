@@ -53,20 +53,26 @@ def fig_sample():
     fig, (a, b) = plt.subplots(1, 2, figsize=(6.8, 3.25),
                                gridspec_kw=dict(width_ratios=[1, 1], wspace=0.30))
 
-    # (a) ferroelectric polarisation: B-site (Ti) off-centring vs the A-site cage, mid-depth slab
+    # (a) polar domains as SMOOTHED streamlines of the B-site off-centring (entrance-half slab)
     from scipy.spatial import cKDTree
+    from scipy.ndimage import gaussian_filter
     Asite = p[(sym == "Pb") | (sym == "Sr")]; Ti = p[sym == "Ti"]
     _, idx = cKDTree(Asite).query(Ti, k=8)
     disp = Ti - Asite[idx].mean(1); mag = np.linalg.norm(disp, axis=1)
-    zc = p[:, 2].mean(); sl = (np.abs(Ti[:, 2] - zc) < 8) & (mag < 0.45) & (mag > 0.02)
-    ang = np.arctan2(disp[sl, 1], disp[sl, 0])
-    a.quiver(Ti[sl, 0], Ti[sl, 1], disp[sl, 0], disp[sl, 1], ang, cmap="twilight",
-             scale=6, width=0.005, pivot="mid", clim=(-np.pi, np.pi))
-    a.add_patch(Rectangle((cx - win / 2, cy - win / 2), win, win, fc="none", ec=INK, lw=1.3, ls="--"))
-    a.text(cx, cy - win / 2 - 2.2, "scan window", ha="center", fontsize=6.8, color=INK)
-    a.set_aspect("equal"); a.set_xlim(2, 68); a.set_ylim(2, 68)
+    zc = p[:, 2].mean(); sl = (Ti[:, 2] < zc) & (mag < 0.5)      # entrance half -> clear vortices
+    nb = 40; g = np.linspace(3, 67, nb); H = g[1] - g[0]
+    Px = np.zeros((nb, nb)); Py = np.zeros((nb, nb)); C = np.zeros((nb, nb))
+    ix = np.clip(((Ti[sl, 0] - 3) / H).astype(int), 0, nb - 1)
+    iy = np.clip(((Ti[sl, 1] - 3) / H).astype(int), 0, nb - 1)
+    np.add.at(Px, (iy, ix), disp[sl, 0]); np.add.at(Py, (iy, ix), disp[sl, 1])
+    np.add.at(C, (iy, ix), 1); Px /= np.maximum(C, 1); Py /= np.maximum(C, 1)
+    Px = gaussian_filter(Px, 1.2); Py = gaussian_filter(Py, 1.2); spd = np.hypot(Px, Py)
+    a.streamplot(g, g, Px, Py, color=spd, cmap="viridis", density=1.25, linewidth=0.9, arrowsize=0.8)
+    a.add_patch(Rectangle((cx - win / 2, cy - win / 2), win, win, fc="none", ec=INK, lw=1.4, ls="--"))
+    a.text(cx, cy - win / 2 - 3.0, "scan window", ha="center", fontsize=6.8, color=INK)
+    a.set_aspect("equal"); a.set_xlim(3, 67); a.set_ylim(3, 67)
     a.set_xlabel("x (Å)"); a.set_ylabel("y (Å)")
-    a.set_title("(a) ferroelectric polarisation", fontsize=8.2, loc="left", pad=3)
+    a.set_title("(a) ferroelectric polar domains", fontsize=8.2, loc="left", pad=3)
 
     # (b) atomic columns (beam projection) in the scan region + the probe
     style = [("Pb", C_Pb, 34), ("Sr", C_Sr, 26), ("Ti", C_Ti, 16), ("O", C_O, 5)]
@@ -89,62 +95,78 @@ def fig_sample():
     save(fig, "sample")
 
 
-# ============================================================ Fig: technique (4D-STEM + ptychography)
+# ============================================================ Fig: technique (4D-STEM + depth parallax)
+def _ripple(ax, x, y, col, r0=0.011, rings=(0.024, 0.038)):
+    ax.add_patch(Circle((x, y), r0, color=col, zorder=4))
+    for rr in rings:
+        ax.add_patch(Circle((x, y), rr, fc="none", ec=col, lw=0.6, alpha=0.85, zorder=4))
+
+
 def fig_technique():
-    fig, (a, b) = plt.subplots(1, 2, figsize=(6.8, 3.15),
-                               gridspec_kw=dict(width_ratios=[1.05, 1.0], wspace=0.28))
+    fig, (a, b) = plt.subplots(1, 2, figsize=(6.9, 3.35),
+                               gridspec_kw=dict(width_ratios=[0.92, 1.15], wspace=0.20))
     for ax in (a, b):
         ax.set_xticks([]); ax.set_yticks([]); ax.set_xlim(0, 1); ax.set_ylim(0, 1)
         for s in ax.spines.values(): s.set_visible(False)
 
-    # (a) 4D-STEM side view: overfocused probe -> slab -> pixelated detector records a DP
-    a.text(0.02, 0.98, "(a) 4D-STEM acquisition", fontsize=8.2, color=INK)
-    foc = (0.32, 0.74)                                   # crossover 2 nm ABOVE the entrance (overfocus)
-    a.plot([0.14, foc[0]], [0.92, foc[1]], color=ACCENT, lw=1.0)
-    a.plot([0.50, foc[0]], [0.92, foc[1]], color=ACCENT, lw=1.0)
-    a.add_patch(Polygon([(0.14, 0.92), (0.50, 0.92), foc], color=ACCENT, alpha=0.12, ec="none"))
-    a.add_patch(Polygon([foc, (0.16, 0.40), (0.48, 0.40)], color=ACCENT, alpha=0.10, ec="none"))
-    a.plot([foc[0], 0.16], [foc[1], 0.40], color=ACCENT, lw=1.0)
-    a.plot([foc[0], 0.48], [foc[1], 0.40], color=ACCENT, lw=1.0)
-    a.add_patch(Rectangle((0.06, 0.40), 0.56, 0.16, fc="#dfe6ee", ec="#9a9a9a", lw=0.7))  # slab
-    a.text(0.64, 0.48, "sample\n~70 Å", fontsize=6.8, color=INK, va="center")
-    a.annotate("overfocus\n20 Å", xy=foc, xytext=(0.66, 0.76), fontsize=6.6, color="#0a4e77",
-               ha="center", arrowprops=dict(arrowstyle="-|>", color="#0a4e77", lw=0.7))
-    a.annotate("", xy=(0.50, 0.90), xytext=(0.14, 0.90),
-               arrowprops=dict(arrowstyle="-|>", color=INK, lw=0.8))            # scan
-    a.text(0.53, 0.90, "scan", fontsize=6.6, color=INK, ha="left", va="center")
-    a.add_patch(Rectangle((0.12, 0.06), 0.40, 0.20, fc="#111318", ec="#9a9a9a", lw=0.5))  # detector
-    a.add_patch(Circle((0.32, 0.16), 0.028, color="#f2c14e"))
-    a.add_patch(Circle((0.32, 0.16), 0.055, fc="none", ec="#7a6a3a", lw=0.4))
-    for dx in (0.16, 0.24):
-        a.add_patch(Circle((0.32, 0.16), dx * 0.6 + 0.05, fc="none", ec="#5a4a2a", lw=0.25))
-    a.annotate("", xy=(0.32, 0.28), xytext=(0.32, 0.39), arrowprops=dict(arrowstyle="-|>", color=MUTED, lw=0.7))
-    a.text(0.55, 0.16, "pixelated\ndetector:\nfull DP per\nposition", fontsize=6.6, color=INK, va="center")
+    # (a) 4D-STEM: ONE symmetric probe cone (same angle above/below crossover), square detector
+    a.text(0.02, 0.985, "(a) 4D-STEM acquisition", fontsize=8.2, color=INK)
+    xc, ycross, slope = 0.36, 0.80, 0.52
+    ytop, yent, yexit, ydet = 0.95, 0.64, 0.42, 0.34
+    hw = lambda y: slope * abs(ycross - y)               # half-width = angle x distance (constant angle)
+    for s_ in (-1, 1):                                    # cone edges: straight lines through the crossover
+        a.plot([xc + s_ * hw(ytop), xc, xc + s_ * hw(ydet)], [ytop, ycross, ydet], color=ACCENT, lw=1.1)
+    a.add_patch(Polygon([(xc - hw(ytop), ytop), (xc + hw(ytop), ytop), (xc, ycross)], color=ACCENT, alpha=0.12, ec="none"))
+    a.add_patch(Polygon([(xc, ycross), (xc - hw(ydet), ydet), (xc + hw(ydet), ydet)], color=ACCENT, alpha=0.10, ec="none"))
+    a.add_patch(Rectangle((0.05, yexit), 0.60, yent - yexit, fc="#dfe6ee", ec="#9a9a9a", lw=0.7))   # sample slab
+    a.text(0.67, (yent + yexit) / 2, "sample\n~70 Å", fontsize=6.8, va="center", color=INK)
+    a.annotate("", xy=(xc - 0.135, ycross), xytext=(xc - 0.135, yent),
+               arrowprops=dict(arrowstyle="<->", color="#0a4e77", lw=0.8))
+    a.text(xc - 0.155, (ycross + yent) / 2, "overfocus\n20 Å", fontsize=6.3, color="#0a4e77", ha="right", va="center")
+    a.annotate("", xy=(xc + hw(ytop), 0.90), xytext=(xc - hw(ytop), 0.90),
+               arrowprops=dict(arrowstyle="-|>", color=INK, lw=0.8))
+    a.text(xc + hw(ytop) + 0.02, 0.90, "scan", fontsize=6.4, color=INK, ha="left", va="center")
+    # square detector, concentric disc + rings fitting inside
+    ds = 0.24; dx0, dy0 = xc - ds / 2, 0.05; dcx, dcy = xc, dy0 + ds / 2
+    a.add_patch(Rectangle((dx0, dy0), ds, ds, fc="#0f1216", ec="#9a9a9a", lw=0.6))
+    a.add_patch(Circle((dcx, dcy), 0.030, color="#f2c14e"))
+    for rr in (0.060, 0.092):
+        a.add_patch(Circle((dcx, dcy), rr, fc="none", ec="#6a5a30", lw=0.4))
+    a.annotate("", xy=(dcx, dy0 + ds + 0.004), xytext=(dcx, ydet - 0.004), arrowprops=dict(arrowstyle="-|>", color=MUTED, lw=0.7))
+    a.text(dx0 + ds + 0.02, dcy, "pixelated\ndetector:\nfull DP\nper position", fontsize=6.3, va="center", color=INK)
 
-    # (b) ptychography principle: overlapping probes -> interfering diffraction discs
-    b.text(0.02, 0.98, "(b) ptychographic overlap", fontsize=8.2, color=INK)
-    # real space: two overlapping probe discs over a row of atoms
-    for x0 in (0.30, 0.44):
-        b.add_patch(Circle((x0, 0.74), 0.13, fc=ACCENT, alpha=0.18, ec=ACCENT, lw=1.0))
-    for ax_ in np.linspace(0.16, 0.60, 8):
-        b.add_patch(Circle((ax_, 0.74), 0.012, color=INK))
-    b.annotate("", xy=(0.44, 0.90), xytext=(0.30, 0.90), arrowprops=dict(arrowstyle="-|>", color=INK, lw=0.7))
-    b.text(0.37, 0.925, r"shift $\ll$ probe", fontsize=6.4, color=INK, ha="center")
-    b.text(0.68, 0.74, "overlapping\nillumination", fontsize=6.6, color=INK, va="center")
-    # reciprocal space: two overlapping CBED discs with interference fringes in the overlap
-    c1, c2, R = (0.34, 0.30), (0.50, 0.30), 0.15
-    for cc in (c1, c2):
-        b.add_patch(Circle(cc, R, fc="#cfe0ee", ec=ACCENT, lw=1.0, alpha=0.7))
-    # fringes in the lens-shaped overlap
-    xm = 0.42
-    for yy in np.linspace(0.19, 0.41, 7):
-        hw = np.sqrt(max(R**2 - (yy - 0.30)**2, 0)) - (xm - c1[0])
-        if hw > 0:
-            b.plot([xm - hw, xm + hw], [yy, yy], color="#0a4e77", lw=0.8)
-    b.annotate("interference fringes\n$\\Rightarrow$ object phase", xy=(0.42, 0.30), xytext=(0.60, 0.14),
-               fontsize=6.6, color="#0a4e77", ha="center",
-               arrowprops=dict(arrowstyle="-|>", color="#0a4e77", lw=0.7))
-    b.text(0.16, 0.10, "diffraction plane", fontsize=6.6, color=MUTED)
+    # (b) DEPTH BY PARALLAX: two atoms at different z shift at different rates between adjacent DPs.
+    # A Ronchigram is a shadow image with the viewpoint at the crossover, so the atom NEARER the
+    # surface (nearer the crossover) sweeps FASTER as the probe steps (lit: parallax depth sectioning).
+    b.text(0.02, 0.985, "(b) depth by parallax", fontsize=8.2, color=INK)
+    # side view: two atoms at different depths on the beam; the probe steps by delta
+    ax0 = 0.10
+    b.plot([ax0, ax0], [0.60, 0.89], color=MUTED, lw=0.8, ls=":")
+    b.plot([ax0 + 0.05, ax0 + 0.05], [0.60, 0.89], color=MUTED, lw=0.8, ls=":")
+    b.annotate("", xy=(ax0 + 0.05, 0.90), xytext=(ax0, 0.90), arrowprops=dict(arrowstyle="-|>", color=INK, lw=0.7))
+    b.text(ax0 + 0.09, 0.90, r"probe step $\delta$", fontsize=6.2, va="center", color=INK)
+    b.add_patch(Circle((ax0 + 0.025, 0.80), 0.013, color=C_Pb, zorder=4))
+    b.text(ax0 + 0.075, 0.80, "near surface", fontsize=6.2, va="center", color=C_Pb)
+    b.add_patch(Circle((ax0 + 0.025, 0.66), 0.013, color=C_O, zorder=4))
+    b.text(ax0 + 0.075, 0.66, "deep", fontsize=6.2, va="center", color=C_O)
+
+    # two adjacent diffraction patterns: ghost = position in DP_j, solid = shifted in DP_{j+1}
+    s = 0.30; y0 = 0.14; cyy = y0 + s / 2; rings = (0.019, 0.031)
+    relS, relD, shS, shD = -0.05, 0.05, 0.10, 0.03          # shallow atom shifts ~3x the deep one
+    def dp(x0, ghost=False, label=""):
+        b.add_patch(Rectangle((x0, y0), s, s, fc="#0f1216", ec="#9a9a9a", lw=0.6))
+        xs, xd = x0 + s / 2 + relS, x0 + s / 2 + relD
+        if ghost:
+            for xr, col in [(xs, C_Pb), (xd, C_O)]:
+                b.add_patch(Circle((xr, cyy), 0.010, fc="none", ec=col, lw=0.7, ls=(0, (1, 1)), zorder=3))
+            b.annotate("", xy=(xs + shS, cyy), xytext=(xs, cyy), arrowprops=dict(arrowstyle="-|>", color=C_Pb, lw=1.1), zorder=5)
+            b.annotate("", xy=(xd + shD, cyy), xytext=(xd, cyy), arrowprops=dict(arrowstyle="-|>", color=C_O, lw=1.1), zorder=5)
+            xs += shS; xd += shD
+        _ripple(b, xs, cyy, C_Pb, rings=rings); _ripple(b, xd, cyy, C_O, rings=rings)
+        b.text(x0 + s / 2, y0 - 0.03, label, fontsize=6.3, ha="center", color=INK)
+    dp(0.05, label=r"probe $\mathbf{r}_j$")
+    dp(0.62, ghost=True, label=r"probe $\mathbf{r}_{j+1}$")
+    b.text(0.5, 0.03, r"near-surface atom shifts more $\Rightarrow$ depth", fontsize=6.8, color=INK, ha="center")
     save(fig, "technique")
 
 
