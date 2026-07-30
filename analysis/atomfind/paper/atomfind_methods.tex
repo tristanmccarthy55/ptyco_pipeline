@@ -25,13 +25,19 @@ resulting linear least-squares problem for $\{\beta_i\}$, which reproduces measu
 profiles with a correlation of $0.94$.
 
 The kernel $K$ is measured rather than parameterised: a single isolated atom is propagated
-through the identical simulation and reconstruction pipeline, and its reconstructed
-response is taken as $K$. This is material because $K$ is strongly anisotropic --- full
-width at half maximum (FWHM) $\approx 0.1$\,\AA{} in-plane against $2$--$3$\,\AA{} along
-the beam, the latter set by the missing-cone transfer of single-projection ptychography
-\citep{Chen2021} --- and because its axial width exceeds the projected interatomic spacing
-($1.9$--$3.9$\,\AA{} here). Neighbouring responses therefore overlap, the design is not
-separable, and localisation cannot be reduced to independent peak fits.
+through the identical multislice simulation and reconstruction pipeline, and its
+reconstructed response is taken as $K$. This is material because $K$ is strongly
+anisotropic --- full width at half maximum (FWHM) $\approx 0.1$\,\AA{} in-plane against
+$2$--$3$\,\AA{} along the beam. The anisotropy follows the aperture scaling of a
+single-orientation measurement: for a probe of convergence semi-angle $\alpha$ the lateral
+resolution is of order $\lambda/2\alpha$ but the axial resolution only of order
+$\lambda/\alpha^2$, which for the $300$\,keV, $\alpha=100$\,mrad probe used here are
+$\approx 0.10$\,\AA{} and $\approx 2.0$\,\AA{} respectively --- the limited-aperture, or
+missing-cone, regime of depth recovery from a single projection, here obtained by
+multislice electron ptychography without a tilt series \citep{Chen2021}. Because the axial
+width exceeds the projected interatomic spacing ($1.9$--$3.9$\,\AA{} here), neighbouring
+responses overlap, the design is not separable, and localisation cannot be reduced to
+independent peak fits.
 
 Estimation proceeds in two stages: greedy selection of the support and model order $N$,
 then continuous refinement of $\{\beta_i,\mathbf{r}_i\}$ against
@@ -110,7 +116,7 @@ is $1.04$ at the $3.9$\,\AA{} heavy-atom spacing but $2.0$ at the $1.95$\,\AA{}
 titanium--oxygen spacing --- i.e.\ $\sigma_z$ understated by ${\approx}1.4\times$ for every
 oxygen --- and $85\%$ of atoms in the field have a neighbour within $2.5$\,\AA. We therefore
 assemble $\mathbf{J}$ over all atoms in a subvolume and invert $\mathbf{F}$ once (a
-$4N\times4N$ system with $N\lesssim45$; negligible cost), taking each atom's marginal
+$4N\times4N$ system with $N\le45$; negligible cost), taking each atom's marginal
 variance. This restores the inflation per atom, automatically and without a tuned constant.
 The systematic term $\sigma_{\mathrm{sys}}$ is the position spread induced by kernel
 mismatch, estimated by fitting a synthetic response generated with one measured kernel using
