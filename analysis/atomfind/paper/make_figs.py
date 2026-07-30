@@ -66,8 +66,9 @@ def fig_sample():
     iy = np.clip(((Ti[sl, 1] - 3) / H).astype(int), 0, nb - 1)
     np.add.at(Px, (iy, ix), disp[sl, 0]); np.add.at(Py, (iy, ix), disp[sl, 1])
     np.add.at(C, (iy, ix), 1); Px /= np.maximum(C, 1); Py /= np.maximum(C, 1)
-    Px = gaussian_filter(Px, 1.2); Py = gaussian_filter(Py, 1.2); spd = np.hypot(Px, Py)
-    a.streamplot(g, g, Px, Py, color=spd, cmap="viridis", density=1.25, linewidth=0.9, arrowsize=0.8)
+    Px = gaussian_filter(Px, 0.7); Py = gaussian_filter(Py, 0.7); ang = np.arctan2(Py, Px)
+    a.streamplot(g, g, Px, Py, color=ang, cmap="hsv", density=1.5, linewidth=0.8,
+                 arrowsize=0.7)                                   # colour = polarisation direction
     a.add_patch(Rectangle((cx - win / 2, cy - win / 2), win, win, fc="none", ec=INK, lw=1.4, ls="--"))
     a.text(cx, cy - win / 2 - 3.0, "scan window", ha="center", fontsize=6.8, color=INK)
     a.set_aspect("equal"); a.set_xlim(3, 67); a.set_ylim(3, 67)
@@ -139,34 +140,31 @@ def fig_technique():
     # A Ronchigram is a shadow image with the viewpoint at the crossover, so the atom NEARER the
     # surface (nearer the crossover) sweeps FASTER as the probe steps (lit: parallax depth sectioning).
     b.text(0.02, 0.985, "(b) depth by parallax", fontsize=8.2, color=INK)
-    # side view: two atoms at different depths on the beam; the probe steps by delta
-    ax0 = 0.10
-    b.plot([ax0, ax0], [0.60, 0.89], color=MUTED, lw=0.8, ls=":")
-    b.plot([ax0 + 0.05, ax0 + 0.05], [0.60, 0.89], color=MUTED, lw=0.8, ls=":")
-    b.annotate("", xy=(ax0 + 0.05, 0.90), xytext=(ax0, 0.90), arrowprops=dict(arrowstyle="-|>", color=INK, lw=0.7))
-    b.text(ax0 + 0.09, 0.90, r"probe step $\delta$", fontsize=6.2, va="center", color=INK)
-    b.add_patch(Circle((ax0 + 0.025, 0.80), 0.013, color=C_Pb, zorder=4))
-    b.text(ax0 + 0.075, 0.80, "near surface", fontsize=6.2, va="center", color=C_Pb)
-    b.add_patch(Circle((ax0 + 0.025, 0.66), 0.013, color=C_O, zorder=4))
-    b.text(ax0 + 0.075, 0.66, "deep", fontsize=6.2, va="center", color=C_O)
-
-    # two adjacent diffraction patterns: ghost = position in DP_j, solid = shifted in DP_{j+1}
-    s = 0.30; y0 = 0.14; cyy = y0 + s / 2; rings = (0.019, 0.031)
-    relS, relD, shS, shD = -0.05, 0.05, 0.10, 0.03          # shallow atom shifts ~3x the deep one
-    def dp(x0, ghost=False, label=""):
-        b.add_patch(Rectangle((x0, y0), s, s, fc="#0f1216", ec="#9a9a9a", lw=0.6))
-        xs, xd = x0 + s / 2 + relS, x0 + s / 2 + relD
-        if ghost:
-            for xr, col in [(xs, C_Pb), (xd, C_O)]:
-                b.add_patch(Circle((xr, cyy), 0.010, fc="none", ec=col, lw=0.7, ls=(0, (1, 1)), zorder=3))
-            b.annotate("", xy=(xs + shS, cyy), xytext=(xs, cyy), arrowprops=dict(arrowstyle="-|>", color=C_Pb, lw=1.1), zorder=5)
-            b.annotate("", xy=(xd + shD, cyy), xytext=(xd, cyy), arrowprops=dict(arrowstyle="-|>", color=C_O, lw=1.1), zorder=5)
-            xs += shS; xd += shD
-        _ripple(b, xs, cyy, C_Pb, rings=rings); _ripple(b, xd, cyy, C_O, rings=rings)
-        b.text(x0 + s / 2, y0 - 0.03, label, fontsize=6.3, ha="center", color=INK)
-    dp(0.05, label=r"probe $\mathbf{r}_j$")
-    dp(0.62, ghost=True, label=r"probe $\mathbf{r}_{j+1}$")
-    b.text(0.5, 0.03, r"near-surface atom shifts more $\Rightarrow$ depth", fontsize=6.8, color=INK, ha="center")
+    yS, yShal, yDeep, yDet = 0.86, 0.66, 0.50, 0.22
+    S1, S2 = 0.43, 0.57                                   # two probe-crossover positions (step delta)
+    shadow = lambda xs, ya: xs + (0.5 - xs) * (yS - yDet) / (yS - ya)   # atom = pivot -> shadow on detector
+    b.plot([0.5, 0.5], [yDet, yS], color=MUTED, lw=0.6, ls=":")         # optic axis
+    for xs, dsh in [(S1, False), (S2, True)]:                            # rays: each source through each atom
+        for ya, col in [(yShal, C_Pb), (yDeep, C_O)]:
+            xsh = shadow(xs, ya)
+            b.plot([xs, 0.5, xsh], [yS, ya, yDet], color=col, lw=0.7,
+                   ls="--" if dsh else "-", alpha=0.9, zorder=3)
+            b.add_patch(Circle((xsh, yDet), 0.010, color=col, zorder=6))
+    b.add_patch(Rectangle((0.13, yDet - 0.028), 0.74, 0.028, fc="#0f1216", ec="#9a9a9a", lw=0.5, zorder=4))
+    b.text(0.875, yDet - 0.014, "detector", fontsize=6.0, va="center", ha="left", color=MUTED)
+    b.add_patch(Circle((S1, yS), 0.013, color=INK, zorder=7))            # crossover pos 1 (solid)
+    b.add_patch(Circle((S2, yS), 0.013, fc="white", ec=INK, lw=1.0, zorder=7))   # pos 2 (open)
+    b.annotate("", xy=(S2, yS + 0.055), xytext=(S1, yS + 0.055), arrowprops=dict(arrowstyle="-|>", color=INK, lw=0.7))
+    b.text(0.5, yS + 0.085, r"probe crossover (step $\delta$)", fontsize=6.3, ha="center", color=INK)
+    b.add_patch(Circle((0.5, yShal), 0.014, color=C_Pb, zorder=7))
+    b.text(0.5 + 0.028, yShal, "near-surface", fontsize=6.0, va="center", color=C_Pb)
+    b.add_patch(Circle((0.5, yDeep), 0.014, color=C_O, zorder=7))
+    b.text(0.5 + 0.028, yDeep, "deep", fontsize=6.0, va="center", color=C_O)
+    for ya, col, yb in [(yShal, C_Pb, yDet - 0.070), (yDeep, C_O, yDet - 0.115)]:   # shadow-shift spans
+        x1, x2 = shadow(S1, ya), shadow(S2, ya)
+        b.annotate("", xy=(max(x1, x2), yb), xytext=(min(x1, x2), yb), arrowprops=dict(arrowstyle="<->", color=col, lw=1.1))
+    b.text(0.5, 0.045, "near-surface shadow shifts more", fontsize=6.2, color=C_Pb, ha="center")
+    b.text(0.5, 0.008, r"$\Rightarrow$ shift rate encodes depth", fontsize=6.8, color=INK, ha="center")
     save(fig, "technique")
 
 
