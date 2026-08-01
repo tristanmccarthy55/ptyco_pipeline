@@ -71,25 +71,27 @@ def fig_sample():
     fig, (a, b) = plt.subplots(1, 2, figsize=(6.8, 3.5),
                                gridspec_kw=dict(width_ratios=[1, 1], wspace=0.26))
 
-    # (a) in-plane polarisation streamlines (the vortices / labyrinth) over faint atom columns,
-    #     with the scan window (dashed) and the exit-wave halo (dotted) the signal actually spans.
+    # (a) ONE mean-direction arrow per atomic column (unit arrows -> clean grid, not a hairball),
+    #     over a transparent filled scan window + exit-wave halo (fills read better than outlines).
     zc = pos[:, 2].mean()
-    gu, gv = np.mgrid[3:67:0.6, 3:67:0.6]
-    gr = lambda c: gaussian_filter(griddata((loc[:, 0], loc[:, 1]), c, (gu, gv), method="linear", fill_value=0), 2.5)
-    U, V = gr(vec[:, 0]), gr(vec[:, 1])
-    for el, cc, ss in [("Pb", "#c7b49e", 9), ("Ti", "#b6c9be", 4)]:      # faint atom columns
-        m = (syms == el) & (pos[:, 2] < zc); a.scatter(pos[m, 0], pos[m, 1], s=ss, color=cc, ec="none", zorder=1)
-    a.streamplot(gu.T, gv.T, U.T, V.T, color="#111111", linewidth=0.7, density=1.6, arrowsize=0.8, zorder=2)
-    a.add_patch(Rectangle((cx - win / 2, cy - win / 2), win, win, fc="none", ec="k", lw=1.7, ls="--", zorder=5))
-    a.add_patch(Circle((cx, cy), halo, fc="none", ec="k", lw=1.3, ls=":", zorder=5))
-    _bb = dict(fc="white", ec="none", alpha=0.82, pad=1)
-    a.annotate("scan window", xy=(cx - win / 2, cy - win / 2), xytext=(7, 5), fontsize=6.6, color="k",
-               bbox=_bb, arrowprops=dict(arrowstyle="-|>", color="k", lw=0.9))
-    a.annotate("beam exit halo", xy=(cx + halo * 0.72, cy - halo * 0.72), xytext=(43, 4.5), fontsize=6.6,
-               color="k", ha="center", bbox=_bb, arrowprops=dict(arrowstyle="-|>", color="k", lw=0.9))
+    key = np.round(loc[:, :2]).astype(int)                    # group Ti into columns (~3.9 Å apart)
+    uniq, inv = np.unique(key, axis=0, return_inverse=True)
+    U = np.zeros(len(uniq)); V = np.zeros(len(uniq)); C = np.zeros(len(uniq))
+    np.add.at(U, inv, vec[:, 0]); np.add.at(V, inv, vec[:, 1]); np.add.at(C, inv, 1)
+    U /= C; V /= C; mg = np.hypot(U, V) + 1e-9
+    m = (syms == "Pb") & (pos[:, 2] < zc); a.scatter(pos[m, 0], pos[m, 1], s=6, color="#dcd4ca", ec="none", zorder=1)
+    a.add_patch(Circle((cx, cy), halo, fc="#e0954a", ec="none", alpha=0.14, zorder=0))
+    a.add_patch(Rectangle((cx - win / 2, cy - win / 2), win, win, fc="#3b7dd8", ec="none", alpha=0.20, zorder=2))
+    a.quiver(uniq[:, 0], uniq[:, 1], U / mg, V / mg, scale=30, width=0.005, headwidth=4,
+             pivot="mid", color="#111111", zorder=3)
+    _bb = dict(fc="white", ec="none", alpha=0.8, pad=1)
+    a.annotate("scan window", xy=(cx, cy - win / 2), xytext=(29, 3.5), fontsize=6.5, color="#1a4a8a",
+               ha="center", bbox=_bb, arrowprops=dict(arrowstyle="-|>", color="#1a4a8a", lw=0.9))
+    a.annotate("beam exit halo", xy=(cx + halo * 0.72, cy - halo * 0.72), xytext=(55, 4), fontsize=6.5,
+               color="#a05a17", ha="center", bbox=_bb, arrowprops=dict(arrowstyle="-|>", color="#a05a17", lw=0.9))
     a.set_xlim(3, 67); a.set_ylim(3, 67); a.set_aspect("equal")
     a.set_xlabel("x (Å)"); a.set_ylabel("y (Å)")
-    a.set_title("(a) in-plane polarisation + scan footprint", fontsize=7.6, loc="left", pad=3)
+    a.set_title("(a) polarisation map + scan footprint", fontsize=7.6, loc="left", pad=3)
 
     # (b) atomic columns (beam projection) in the scan region + the probe -> Pb polar dumbbells
     zoom = 11
@@ -118,19 +120,24 @@ def fig_tornado():
     s = np.where(sub)[0]; s = s[::max(1, len(s) // 320)]
     zc = loc[s, 2]; cols = plt.cm.viridis((zc - zc.min()) / max(np.ptp(zc), 1e-9))
 
-    fig = plt.figure(figsize=(4.5, 4.7)); ax = fig.add_subplot(111, projection="3d")
+    fig = plt.figure(figsize=(3.9, 3.9)); ax = fig.add_subplot(111, projection="3d")
     ax.quiver(loc[s, 0], loc[s, 1], loc[s, 2], vec[s, 0], vec[s, 1], vec[s, 2],
               length=2.6, normalize=True, colors=cols, lw=0.7)
-    ax.set_xlim(28, 52); ax.set_ylim(8, 32); ax.set_zlim(1, 73)      # contain the arrows in the box
-    ax.set_xticks([30, 40, 50]); ax.set_yticks([10, 20, 30]); ax.set_zticks([10, 30, 50, 70])
+    ax.set_xlim(29, 51); ax.set_ylim(9, 31); ax.set_zlim(5, 69)      # tight -> less empty box
+    ax.set_xticks([30, 40, 50]); ax.set_yticks([10, 20, 30]); ax.set_zticks([10, 30, 50])
     ax.set_xlabel("x (Å)", fontsize=7); ax.set_ylabel("y (Å)", fontsize=7)
     ax.set_zlabel("z = depth (Å)", fontsize=7); ax.tick_params(labelsize=6)
-    ax.set_box_aspect((1, 1, 1.6)); ax.view_init(elev=20, azim=-68)
-    ax.set_title("polar vortex twisting through depth\n(the scanned volume)", fontsize=8.4)
-    sm = plt.cm.ScalarMappable(cmap="viridis", norm=plt.Normalize(zc.min(), zc.max()))
-    cb = fig.colorbar(sm, ax=ax, fraction=0.030, pad=0.02); cb.set_label("depth z (Å)", fontsize=6.5)
-    cb.ax.tick_params(labelsize=6)
-    save(fig, "tornado")
+    try:
+        ax.set_box_aspect((1, 1, 1.3), zoom=1.12)     # zoom trims the 3-D whitespace; leaves room for labels
+    except TypeError:
+        ax.set_box_aspect((1, 1, 1.3))
+    ax.view_init(elev=18, azim=-68)
+    # depth is the z-axis AND the arrow colour, so no colourbar is needed (avoids the z-axis clash)
+    ax.set_title("polar vortex twisting through depth\n(scanned volume; colour = depth)", fontsize=8.2)
+    for _ext in ("pdf", "png"):                        # small pad so mplot3d axis labels aren't cropped
+        fig.savefig(os.path.join(FIGS, f"tornado.{_ext}"), bbox_inches="tight", pad_inches=0.28,
+                    dpi=300, facecolor="white")
+    plt.close(fig); print("wrote figs/tornado.pdf (+ .png)")
 
 
 # ============================================================ Fig: technique (4D-STEM + depth parallax)
