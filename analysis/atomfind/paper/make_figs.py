@@ -43,97 +43,92 @@ def save(fig, name):
 
 
 # ============================================================ Fig: the sample
-def fig_sample():
+def _polarisation():
+    """Ti off-centring vs its O cage = the true local polarisation (the ground-truth
+    notebook method), in the prepared beam=z frame. Returns vec(N,3), loc(N,3), pos, syms, S."""
     sys.path.insert(0, os.path.join(REPO, "sim"))
     import simulate_4dstem as S
+    from scipy.spatial import KDTree
     atoms, _ = S.load_and_prepare_atoms()
-    p = atoms.get_positions(); sym = np.array(atoms.get_chemical_symbols())
-    cx, cy, win = S.SCAN_CENTER_X_A, S.SCAN_CENTER_Y_A, S.SCAN_WINDOW_A
+    pos = atoms.get_positions(); syms = np.array(atoms.get_chemical_symbols())
+    Ti = pos[syms == "Ti"]; O = pos[syms == "O"]
+    tree = KDTree(O); vec = []; loc = []
+    for t in Ti:
+        d, ind = tree.query(t, k=6)
+        if d.mean() > 2.8:
+            continue
+        vec.append(t - O[ind].mean(0)); loc.append(t)
+    return np.array(vec), np.array(loc), pos, syms, S
 
-    fig, (a, b) = plt.subplots(1, 2, figsize=(6.8, 3.25),
-                               gridspec_kw=dict(width_ratios=[1, 1], wspace=0.30))
 
-    # (a) polar domains: smoothed binned polarisation ARROWS over faint atom columns, zoomed
-    #     on the frustrated vortex and labelled, so it is unambiguous what to look for.
-    from scipy.spatial import cKDTree
+def fig_sample():
+    from scipy.interpolate import griddata
     from scipy.ndimage import gaussian_filter
-    Asite = p[(sym == "Pb") | (sym == "Sr")]; Ti = p[sym == "Ti"]
-    _, idx = cKDTree(Asite).query(Ti, k=8)
-    disp = Ti - Asite[idx].mean(1); mag = np.linalg.norm(disp, axis=1)
-    zc = p[:, 2].mean(); sl = (Ti[:, 2] < zc) & (mag < 0.5)      # entrance half
-    nb = 26; g = np.linspace(3, 67, nb); H = g[1] - g[0]
-    Px = np.zeros((nb, nb)); Py = np.zeros((nb, nb)); C = np.zeros((nb, nb))
-    ix = np.clip(((Ti[sl, 0] - 3) / H).astype(int), 0, nb - 1)
-    iy = np.clip(((Ti[sl, 1] - 3) / H).astype(int), 0, nb - 1)
-    np.add.at(Px, (iy, ix), disp[sl, 0]); np.add.at(Py, (iy, ix), disp[sl, 1])
-    np.add.at(C, (iy, ix), 1); Px /= np.maximum(C, 1); Py /= np.maximum(C, 1)
-    Px = gaussian_filter(Px, 0.8); Py = gaussian_filter(Py, 0.8)
-    for el, cc, ss in [("Pb", "#ddd3c8", 13), ("Ti", "#cdddd4", 5)]:      # faint atom columns
-        m = (sym == el) & (p[:, 2] < zc); a.scatter(p[m, 0], p[m, 1], s=ss, color=cc, ec="none", zorder=1)
-    GX, GY = np.meshgrid(g, g)
-    a.quiver(GX, GY, Px, Py, np.arctan2(Py, Px), cmap="hsv", scale=1.9, width=0.013,
-             pivot="mid", clim=(-np.pi, np.pi), zorder=3)          # colour = polarisation direction
-    a.add_patch(Rectangle((cx - win / 2, cy - win / 2), win, win, fc="none", ec=INK, lw=1.3, ls="--", zorder=4))
-    a.text(50, 28, "scan\nwindow", ha="left", va="center", fontsize=6.4, color=INK, zorder=5)
-    # the in-plane polarisation flips across a wall (the vortex axis lies in-plane -> see tornado fig)
-    a.annotate("domain\nwall", xy=(36, 24.5), xytext=(26.5, 10), fontsize=7.4, color=INK, ha="center", zorder=5,
-               arrowprops=dict(arrowstyle="-|>", color=INK, lw=1.2, connectionstyle="arc3,rad=-0.25"))
-    a.set_aspect("equal"); a.set_xlim(24, 54); a.set_ylim(6, 36)
-    a.set_xlabel("x (Å)"); a.set_ylabel("y (Å)")
-    a.set_title("(a) polar domains (viewed down beam)", fontsize=8.2, loc="left", pad=3)
+    vec, loc, pos, syms, S = _polarisation()
+    cx, cy, win = S.SCAN_CENTER_X_A, S.SCAN_CENTER_Y_A, S.SCAN_WINDOW_A
+    ewr = (74.0 + 20.0) * np.tan(0.1); halo = win / 2 + ewr        # exit-wave broadening radius
 
-    # (b) atomic columns (beam projection) in the scan region + the probe
-    style = [("Pb", C_Pb, 34), ("Sr", C_Sr, 26), ("Ti", C_Ti, 16), ("O", C_O, 5)]
-    zoom = 11
-    m0 = (np.abs(p[:, 0] - cx) < zoom + 1) & (np.abs(p[:, 1] - cy) < zoom + 1)
-    for el, cc, ss in style:
-        mm = m0 & (sym == el)
-        b.scatter(p[mm, 0], p[mm, 1], s=ss, color=cc, alpha=0.55, ec="none", label=el)
+    fig, (a, b) = plt.subplots(1, 2, figsize=(7.1, 3.35),
+                               gridspec_kw=dict(width_ratios=[1.12, 0.88], wspace=0.36))
+
+    # (a) polar domains over the WHOLE cell: bwr heatmap of P_z (along beam) + black streamlines
+    #     of the in-plane P; scan window (dashed) and the exit-wave halo (dotted) marked.
+    gu, gv = np.mgrid[3:67:0.6, 3:67:0.6]
+    gr = lambda c: gaussian_filter(griddata((loc[:, 0], loc[:, 1]), c, (gu, gv), method="linear", fill_value=0), 2.5)
+    U, V, Pz = gr(vec[:, 0]), gr(vec[:, 1]), gr(vec[:, 2])
+    lim = np.percentile(np.abs(Pz), 98)
+    im = a.imshow(Pz.T, origin="lower", extent=[3, 67, 3, 67], cmap="bwr", vmin=-lim, vmax=lim, alpha=0.85)
+    a.streamplot(gu.T, gv.T, U.T, V.T, color="k", linewidth=0.6, density=1.5, arrowsize=0.7)
+    a.add_patch(Rectangle((cx - win / 2, cy - win / 2), win, win, fc="none", ec="k", lw=1.6, ls="--", zorder=5))
+    a.add_patch(Circle((cx, cy), halo, fc="none", ec="k", lw=1.3, ls=":", zorder=5))
+    _bb = dict(fc="white", ec="none", alpha=0.75, pad=1)
+    a.annotate("scan window", xy=(cx - win / 2, cy - win / 2), xytext=(9, 4.5), fontsize=6.6, color="k",
+               bbox=_bb, arrowprops=dict(arrowstyle="-|>", color="k", lw=0.8))
+    a.annotate("beam exit\nhalo", xy=(cx + halo * 0.71, cy - halo * 0.71), xytext=(59, 7), fontsize=6.6,
+               color="k", ha="center", bbox=_bb, arrowprops=dict(arrowstyle="-|>", color="k", lw=0.8))
+    a.set_xlim(3, 67); a.set_ylim(3, 67); a.set_aspect("equal")
+    a.set_xlabel("x (Å)"); a.set_ylabel("y (Å)")
+    a.set_title("(a) polar domains + acquisition footprint", fontsize=7.8, loc="left", pad=3)
+    cb = fig.colorbar(im, ax=a, fraction=0.046, pad=0.02); cb.set_label(r"$P_z$ (along beam)", fontsize=6.3)
+    cb.ax.tick_params(labelsize=5.5)
+
+    # (b) atomic columns (beam projection) in the scan region + the probe -> Pb polar dumbbells
+    zc = pos[:, 2].mean(); zoom = 11
+    m0 = (np.abs(pos[:, 0] - cx) < zoom + 1) & (np.abs(pos[:, 1] - cy) < zoom + 1) & (pos[:, 2] < zc)
+    for el, cc, ss in [("Pb", C_Pb, 34), ("Sr", C_Sr, 26), ("Ti", C_Ti, 16), ("O", C_O, 5)]:
+        mm = m0 & (syms == el); b.scatter(pos[mm, 0], pos[mm, 1], s=ss, color=cc, alpha=0.55, ec="none", label=el)
     b.add_patch(Rectangle((cx - win / 2, cy - win / 2), win, win, fc="none", ec=INK, lw=1.0, ls="--"))
-    # probe: overfocus 20 A x conv 100 mrad -> ~2 A geometric radius at the entrance
     b.add_patch(Circle((cx, cy), 2.0, fc=ACCENT, alpha=0.20, ec=ACCENT, lw=1.4))
-    b.annotate("probe\n(~4 Å)", xy=(cx + 1.4, cy + 1.4), xytext=(cx + 5, cy + 6),
-               fontsize=6.8, color="#0a4e77", ha="center",
-               arrowprops=dict(arrowstyle="-|>", color="#0a4e77", lw=0.8))
+    b.annotate("probe\n(~4 Å)", xy=(cx + 1.4, cy + 1.4), xytext=(cx + 5, cy + 6), fontsize=6.8,
+               color="#0a4e77", ha="center", arrowprops=dict(arrowstyle="-|>", color="#0a4e77", lw=0.8))
     b.set_aspect("equal"); b.set_xlim(cx - zoom, cx + zoom); b.set_ylim(cy - zoom, cy + zoom)
-    b.set_xlabel("x (Å)")
-    b.set_title("(b) atomic columns + probe", fontsize=8.2, loc="left", pad=3)
-    b.legend(loc="upper right", fontsize=6.4, handletextpad=0.2, borderpad=0.3,
-             framealpha=0.85, markerscale=1.3)
+    b.set_xlabel("x (Å)"); b.set_title("(b) atomic columns + probe", fontsize=8.0, loc="left", pad=3)
+    b.legend(loc="upper right", fontsize=6.4, handletextpad=0.2, borderpad=0.3, framealpha=0.85, markerscale=1.3)
     save(fig, "sample")
 
 
-# ============================================================ Fig: the tornado (depth-evolving polarisation)
+# ============================================================ Fig: the tornado (3-D depth-evolving polarisation)
 def fig_tornado():
-    sys.path.insert(0, os.path.join(REPO, "sim"))
-    import simulate_4dstem as S
-    from scipy.spatial import cKDTree
-    from scipy.ndimage import gaussian_filter
-    atoms, _ = S.load_and_prepare_atoms()
-    p = atoms.get_positions(); sym = np.array(atoms.get_chemical_symbols())
-    Asite = p[(sym == "Pb") | (sym == "Sr")]; Ti = p[sym == "Ti"]
-    _, idx = cKDTree(Asite).query(Ti, k=8)
-    disp = Ti - Asite[idx].mean(1); mag = np.linalg.norm(disp, axis=1)
-    # cross-section containing the beam (x-z plane) through the vortex: P rotates with depth
-    y0 = 22; sl = (np.abs(Ti[:, 1] - y0) < 4) & (mag < 0.6)
-    lo, hi, nb = 3, 71, 34; g = np.linspace(lo, hi, nb); H = g[1] - g[0]
-    U = np.zeros((nb, nb)); W = np.zeros((nb, nb)); C = np.zeros((nb, nb))
-    ix = np.clip(((Ti[sl, 0] - lo) / H).astype(int), 0, nb - 1)
-    iz = np.clip(((Ti[sl, 2] - lo) / H).astype(int), 0, nb - 1)
-    np.add.at(U, (iz, ix), disp[sl, 0]); np.add.at(W, (iz, ix), disp[sl, 2])
-    np.add.at(C, (iz, ix), 1); U /= np.maximum(C, 1); W /= np.maximum(C, 1)
-    U = gaussian_filter(U, 0.9); W = gaussian_filter(W, 0.9)
+    from mpl_toolkits.mplot3d import Axes3D  # noqa: F401  (registers the 3d projection)
+    vec, loc, pos, syms, S = _polarisation()
+    cx, cy, win = S.SCAN_CENTER_X_A, S.SCAN_CENTER_Y_A, S.SCAN_WINDOW_A
+    mag = np.linalg.norm(vec, axis=1)
+    # the SCANNED sub-volume (x,y within the scan window; full depth): the polarisation twists
+    # into a vortex tube through the beam direction -> exactly what a depth-resolved recon recovers.
+    sub = (np.abs(loc[:, 0] - cx) < win / 2) & (np.abs(loc[:, 1] - cy) < win / 2) & (mag < 0.7) & (mag > 0.05)
+    s = np.where(sub)[0]; s = s[::max(1, len(s) // 340)]
+    zc = loc[s, 2]; cols = plt.cm.viridis((zc - zc.min()) / max(np.ptp(zc), 1e-9))
 
-    fig, ax = plt.subplots(figsize=(3.7, 3.5))
-    ax.streamplot(g, g, U, W, color=np.arctan2(W, U), cmap="hsv", density=1.5, linewidth=0.9,
-                  arrowsize=0.8)                                    # colour = polarisation direction
-    ax.annotate("polar vortex\n(rotates with depth)", xy=(31, 28), xytext=(40, 12), fontsize=7.4,
-                color=INK, ha="center", arrowprops=dict(arrowstyle="-|>", color=INK, lw=1.1))
-    ax.annotate("beam", xy=(6.5, 62), xytext=(6.5, 12), fontsize=7.0, color=MUTED,
-                arrowprops=dict(arrowstyle="-|>", color=MUTED, lw=1.1))
-    ax.set_xlim(lo, hi); ax.set_ylim(lo, hi); ax.invert_yaxis(); ax.set_aspect("equal")
-    ax.set_xlabel("x (Å)"); ax.set_ylabel(r"$z$ = depth (Å)  [entrance $\rightarrow$ exit]")
-    ax.set_title("polarisation rotating through depth", fontsize=8.6)
+    fig = plt.figure(figsize=(4.3, 4.6)); ax = fig.add_subplot(111, projection="3d")
+    ax.quiver(loc[s, 0], loc[s, 1], loc[s, 2], vec[s, 0], vec[s, 1], vec[s, 2],
+              length=3.2, normalize=True, colors=cols, lw=0.7)
+    ax.set_xlabel("x (Å)", fontsize=7); ax.set_ylabel("y (Å)", fontsize=7)
+    ax.set_zlabel("z = depth (Å)", fontsize=7); ax.tick_params(labelsize=6)
+    ax.set_box_aspect((1, 1, 1.5)); ax.view_init(elev=22, azim=-70)
+    ax.set_title("polar vortex twisting through depth\n(the scanned volume)", fontsize=8.4)
+    sm = plt.cm.ScalarMappable(cmap="viridis", norm=plt.Normalize(zc.min(), zc.max()))
+    cb = fig.colorbar(sm, ax=ax, fraction=0.030, pad=0.10); cb.set_label("depth z (Å)", fontsize=6.5)
+    cb.ax.tick_params(labelsize=6)
     save(fig, "tornado")
 
 
