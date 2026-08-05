@@ -76,7 +76,12 @@ averaging model is validated before any real spectrum:
   BiP-PRISM/scatterem is an *approximation to* exact abtem multislice, so on unit cells exact
   abtem is the accuracy reference and BiP-PRISM adds nothing until scale.
 
-## Pre-flight (CASTEP-independent) — ✅ ALL GREEN
+## Pre-flight (CASTEP-independent) — ✅ ALL GREEN (Mac + Blythe HPC)
+
+Also validated **on Blythe** (SLURM job 1240612, COMPLETED/0:0, in the `abtem` env, Python 3.11,
+NumPy 2.x, no spglib): 10/10 tests, ALL PASSED build, and the abtem-1.0.9 elastic multislice
+self-test passed unchanged — HPC env + code + `.cell` generation + the channelling engine all
+confirmed. (`run_pyeels.slurm`; graceful `sg=n/a` without spglib; NumPy-2 `trapezoid` shim.)
 
 `~/hyperspy-bundle/bin/python test_eels.py` → **10/10 passed**. Covers structure crystallography,
 **CASTEP `.cell` writer validity (ASE round-trips the files, incl. the `O:exc` custom species)**,
