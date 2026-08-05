@@ -1,0 +1,29 @@
+! coreloss.param -- M3/M4/M5: core-hole ELNES matrix elements for OptaDOS.
+! Pair with a core-hole .cell from structures/corehole/<name>_<site>.cell (one excited
+! atom labelled e.g. O:exc). Produces the binary OptaDOS reads (seed.elnes_bin) plus
+! seed.bands / seed.<pdos> for the core-loss task.
+!
+! !!! SCHEMATIC -- three things get LOCKED at M2(b) by matching a known TiO2/SrTiO3 edge:
+!     (1) exact spectral keyword spellings for THIS CASTEP version,
+!     (2) the core-hole OTFG string (see species_pot_corehole.cellblock),
+!     (3) the final-state / charge treatment (options A/B below).
+
+task            : spectral
+spectral_task   : coreloss
+spectral_theory : dft
+xc_functional   : PBE              ! same xc as the M2 benchmark
+cut_off_energy  : 800 eV          ! from M2(a)
+spin_polarised  : false
+fix_occupancy   : true
+elec_energy_tol : 1e-8 eV
+max_scf_cycles  : 200
+nextra_bands    : 100             ! MANY empty bands: the edge spans ~30-50 eV above onset
+num_dump_cycles : 0
+
+! ---- core-hole final-state treatment (pick ONE at M2, keep it fixed) --------------
+! A) FULL core hole, charged cell + neutralising background (common default):
+charge          : 1.0            ! one electron removed with the core hole
+! B) EXCITED electron (neutral, screened final state): set `charge : 0.0` instead and
+!    put the excited electron in the conduction band via the OTFG occupancy. Usually
+!    shifts absolute onset; the q||c - q_perp DICHROISM (a difference) is far less
+!    sensitive, which is why the difference is the robust observable.

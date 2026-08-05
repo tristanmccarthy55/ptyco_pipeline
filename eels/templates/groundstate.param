@@ -1,0 +1,22 @@
+! groundstate.param -- M2(a): plain SCF, no core hole.
+! Use for the cutoff/k-point convergence sweep and the cubic-vs-tetragonal energy
+! (ferroelectric double-well) validation. Pair with structures/<name>_1cell.cell.
+!
+! VERIFY at M0/M2: keyword spellings + pseudopotential library are correct for the
+! CASTEP version on Blythe (`castep.mpi --version`). Cutoff/k-points are provisional
+! until the M2(a) sweep locks them (see config.DFT_CFG).
+
+task            : singlepoint
+xc_functional   : PBE
+cut_off_energy  : 800 eV        ! <- sweep 600/700/800/900 at M2(a), then fix
+spin_polarised  : false
+fix_occupancy   : true          ! PbTiO3 is an insulator
+elec_energy_tol : 1e-8 eV
+max_scf_cycles  : 200
+opt_strategy    : speed
+num_dump_cycles : 0
+write_checkpoint : all          ! keep .check for the spectral restart if desired
+
+! Convergence bookkeeping -- report total energy per f.u. vs cutoff and k-grid.
+! Ferroelectric double-well test: E(cubic) - E(tetragonal, relaxed) should be tens
+! of meV/f.u. (tetragonal lower). Reproducing this validates the whole DFT setup.

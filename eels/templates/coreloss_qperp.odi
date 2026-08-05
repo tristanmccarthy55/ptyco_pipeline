@@ -1,0 +1,12 @@
+! coreloss_qperp.odi -- q PERPENDICULAR to the polar axis c == "P in-plane / not along beam".
+! Difference (qc - qperp) = the ELNES dichroism = the along-beam polarisation signal.
+task                 : core
+core_geom            : polarized
+core_qdir            : 1.0 0.0 0.0     ! tet_Px swaps axes -> use 0 0 1 there
+core_LAI_broadening  : true
+LAI_gaussian_width   : 0.5
+LAI_lorentzian_width : 0.2
+broadening           : adaptive
+dos_spacing          : 0.01
+efermi               : optados
+set_efermi_zero      : true

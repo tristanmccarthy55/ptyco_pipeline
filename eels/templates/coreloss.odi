@@ -1,0 +1,29 @@
+! coreloss.odi -- OptaDOS core-loss input. The q-direction knob is the whole experiment:
+! run this TWICE per structure, once with q||c (beam) and once with q_perp, and difference
+! the two spectra -> the ELNES dichroism = the along-beam polarisation signal.
+!
+! Usage: name it <seed>.odi next to the CASTEP <seed>.bands/.elnes_bin/.cell, then `optados`.
+! VERIFY keyword spellings against your OptaDOS version's user guide at M0/M3.
+
+task              : core
+
+! ---- the anisotropy knob -------------------------------------------------------------
+core_geom         : polarized      ! single q direction (anisotropic). Also run 'polycrystalline'
+!                                    for the isotropic average used in the M6 geometry model.
+core_qdir         : 0.0 0.0 1.0    ! q || c == beam == "P along beam".  M4 second run: 1.0 0.0 0.0
+!                                    NOTE: for tet_Px the axes are swapped -> use 1 0 0 for q||c.
+!                                    Confirm the frame (Cartesian vs fractional) at M3 null test.
+
+! ---- broadening (life-time + instrument) --------------------------------------------
+core_LAI_broadening  : true
+LAI_gaussian_width   : 0.5         ! eV, instrument (spectrometer) resolution
+LAI_lorentzian_width : 0.2         ! eV, core-hole lifetime (edge-dependent; O K ~0.2)
+broadening           : adaptive
+dos_spacing          : 0.01        ! eV
+
+! ---- energy zero / Fermi level (insulator: put E_F in the gap) -----------------------
+efermi            : optados
+set_efermi_zero   : true
+
+! M3 NULL TEST: for the cubic cell, the q||z and q_perp spectra MUST coincide. If they
+! don't, the q frame / k-grid / broadening is biased -- fix before trusting M4.

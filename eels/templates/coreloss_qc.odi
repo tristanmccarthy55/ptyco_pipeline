@@ -1,0 +1,12 @@
+! coreloss_qc.odi -- q PARALLEL to the polar axis c (= beam for tet_Pz) == "P along beam".
+! Concrete instance of coreloss.odi; see that file for the full documentation + M3 null test.
+task                 : core
+core_geom            : polarized
+core_qdir            : 0.0 0.0 1.0     ! tet_Px swaps axes -> use 1 0 0 there
+core_LAI_broadening  : true
+LAI_gaussian_width   : 0.5
+LAI_lorentzian_width : 0.2
+broadening           : adaptive
+dos_spacing          : 0.01
+efermi               : optados
+set_efermi_zero      : true

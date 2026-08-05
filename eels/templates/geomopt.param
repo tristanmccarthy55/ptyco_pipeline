@@ -1,0 +1,24 @@
+! geomopt.param -- M2(a): relax the tetragonal cell to check c/a and the polar
+! distortion come out right (a DFT self-consistency check on the M1 structure).
+! Pair with structures/tet_Pz_1cell.cell. PBE tends to slightly OVER-estimate c/a
+! for PbTiO3 (known "supertetragonal" tendency); LDA under-estimates. Note which xc
+! you lock at M2 and keep it for all later ELNES runs.
+
+task                : geometryoptimization
+xc_functional       : PBE
+cut_off_energy      : 800 eV
+spin_polarised      : false
+fix_occupancy       : true
+elec_energy_tol     : 1e-8 eV
+geom_energy_tol     : 1e-5 eV
+geom_force_tol      : 0.01 eV/ang
+geom_stress_tol     : 0.05 GPa
+geom_max_iter       : 200
+max_scf_cycles      : 200
+
+! Relax BOTH cell and ions:
+%block cell_constraints
+1 1 3          ! a=b free, c free (tetragonal); off-diagonals fixed at 90 deg
+0 0 0
+%endblock cell_constraints
+! PASS: relaxed c/a within a few % of 1.06 and |dTi| (Ti off O6 centroid) ~ 0.2-0.35 A.
