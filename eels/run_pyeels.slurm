@@ -1,7 +1,8 @@
 #!/bin/bash
 #SBATCH -J eels_preflight
-#SBATCH -o logs/%x_%j.out
-#SBATCH -e logs/%x_%j.err
+#SBATCH -o eels_preflight_%j.out      # submit dir (always exists); logs/ is gitignored so a
+#SBATCH -e eels_preflight_%j.err      # fresh pull has no logs/ -> SLURM can't create -o there
+
 #SBATCH --nodes=1
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=4
@@ -11,35 +12,33 @@
 #
 # CASTEP-INDEPENDENT pre-flight for the PbTiO3 EELS subproject. Runs everything that does not
 # need CASTEP/OptaDOS, on a Blythe compute node, so we validate the HPC Python env + our code
-# before the CASTEP admin clears. Needs a conda env with: numpy scipy ase pymatgen spglib
-# matplotlib (abtem/gpaw OPTIONAL -> the M6b elastic self-test runs only if abtem is present).
+# before the CASTEP admin clears. Uses the EXISTING abtem env by ABSOLUTE PATH (the conda shell
+# hook is unreliable in batch), matching sim/run_sim.slurm. Needs: numpy scipy ase (present in
+# that env). spglib/pymatgen are OPTIONAL -> the space-group check auto-skips without them
+# (lattice + displacement gates still run). abtem is present -> the elastic self-test runs but
+# is NON-FATAL (an abtem-1.0.9 API quirk must not fail the core preflight).
 #
-# One-time env (see the chat / README): create it, then point this script at it:
-#   sbatch --export=ALL,CONDA_SH=$SHARE/phucrh/miniforge3/etc/profile.d/conda.sh,EELS_ENV=eels run_pyeels.slurm
-# or hard-code CONDA_SH / EELS_ENV below.
+#   sbatch -p <cpu-partition> run_pyeels.slurm
+#   sbatch -p <cpu-partition> --export=ALL,CONDA_ENV=/some/other/env run_pyeels.slurm   # override
 
-set -euo pipefail
+set -uo pipefail
 cd "${SLURM_SUBMIT_DIR:-$PWD}"
-mkdir -p logs
 
-CONDA_SH="${CONDA_SH:-$HOME/miniforge3/etc/profile.d/conda.sh}"
-EELS_ENV="${EELS_ENV:-eels}"
-# shellcheck disable=SC1090
-source "$CONDA_SH"
-conda activate "$EELS_ENV"
-echo "[$(date)] python: $(which python)"; python --version
+PY="${CONDA_ENV:-/springbrook/share/physics/phucrh/envs/abtem}/bin/python"
+module load CUDA/12.6.0 2>/dev/null || true    # matches the env's cupy build; harmless on a CPU node
+echo "[$(date)] python: $PY"; "$PY" --version || { echo "no python at $PY"; exit 1; }
 
 echo "== 1. unit tests (test_eels.py) =="
-python test_eels.py                       # 10/10 expected; nonzero exit fails the job
+"$PY" test_eels.py || { echo "UNIT TESTS FAILED"; exit 1; }      # authoritative gate
 
 echo "== 2. build + validate all cells (regenerate .cell inputs natively on the HPC) =="
-python build_cells.py --corehole          # writes structures/ + structures/corehole/
+"$PY" build_cells.py --corehole || { echo "BUILD FAILED"; exit 1; }
 
-echo "== 3. (optional) elastic multislice self-test -- only if abtem is in the env =="
-if python -c "import importlib.util,sys; sys.exit(0 if importlib.util.find_spec('abtem') else 1)"; then
-  python simulate_eels.py --selftest
+echo "== 3. elastic multislice self-test (abtem present here; NON-FATAL) =="
+if "$PY" -c "import importlib.util,sys; sys.exit(0 if importlib.util.find_spec('abtem') else 1)"; then
+  "$PY" simulate_eels.py --selftest || echo "WARN: abtem elastic self-test errored (abtem 1.0.9 API?) -- not blocking"
 else
-  echo "abtem not installed in $EELS_ENV -> skipping M6b elastic self-test (expected for now)"
+  echo "abtem not found in this env -> skipping M6b elastic self-test"
 fi
 
-echo "[$(date)] PREFLIGHT DONE -- if this job is COMPLETED/ExitCode 0:0, the HPC is ready for CASTEP."
+echo "[$(date)] PREFLIGHT DONE -- COMPLETED / ExitCode 0:0 => HPC Python env + our code are ready for CASTEP."

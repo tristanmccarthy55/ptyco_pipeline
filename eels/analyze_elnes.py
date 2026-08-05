@@ -29,6 +29,9 @@ from scipy.integrate import quad
 import config as C
 from config import OPTICS
 
+# NumPy 2.0 renamed np.trapz -> np.trapezoid (old name removed). Support both.
+_trapz = getattr(np, "trapezoid", None) or np.trapz
+
 # edge onsets (eV) for theta_E; refined against the M2 benchmark spectra.
 EDGE_ONSET_eV = {"O_K": 532.0, "Ti_L23": 456.0, "Pb_M": 2484.0}
 
@@ -84,7 +87,7 @@ def dichroism_metric(e: np.ndarray, delta: np.ndarray, window: tuple | None = No
     """Scalar size of the dichroism: integral |Delta| dE over an (optional) energy window,
     normalised by the integrated edge so it reads as a fractional anisotropy."""
     m = np.ones_like(e, bool) if window is None else (e >= window[0]) & (e <= window[1])
-    return float(np.trapz(np.abs(delta[m]), e[m]))
+    return float(_trapz(np.abs(delta[m]), e[m]))
 
 
 # ---------------------------------------------------------------- detectability

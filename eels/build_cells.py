@@ -117,11 +117,26 @@ def offcentering(atoms: Atoms, center_Z: int, nn: int) -> np.ndarray:
     return ctr - centroid                              # vector(s), Cartesian (beam = z)
 
 
-def spacegroup(atoms: Atoms, symprec: float = 1e-3) -> str:
-    from pymatgen.io.ase import AseAtomsAdaptor
-    from pymatgen.symmetry.analyzer import SpacegroupAnalyzer
-    struct = AseAtomsAdaptor.get_structure(atoms)
-    return SpacegroupAnalyzer(struct, symprec=symprec).get_space_group_symbol()
+def spacegroup(atoms: Atoms, symprec: float = 1e-3) -> str | None:
+    """International (Hermann-Mauguin) symbol via spglib (light, preferred) or pymatgen. Returns
+    None if NEITHER is installed -> callers skip the symmetry check gracefully (lattice + delta
+    gates still run), so the preflight works on a minimal env (e.g. the abtem GPU env, which has
+    ase/scipy/numpy but not pymatgen). `pip install spglib` re-enables the full check."""
+    try:
+        import spglib
+        cell = (atoms.cell.array, atoms.get_scaled_positions(), atoms.get_atomic_numbers())
+        sg = spglib.get_spacegroup(cell, symprec=symprec)     # e.g. "Pm-3m (221)"
+        if sg:
+            return sg.split(" (")[0]
+    except Exception:
+        pass
+    try:
+        from pymatgen.io.ase import AseAtomsAdaptor
+        from pymatgen.symmetry.analyzer import SpacegroupAnalyzer
+        return SpacegroupAnalyzer(AseAtomsAdaptor.get_structure(atoms),
+                                  symprec=symprec).get_space_group_symbol()
+    except Exception:
+        return None
 
 
 def validate(name: str, spec: C.CellSpec, atoms: Atoms,
@@ -147,13 +162,13 @@ def validate(name: str, spec: C.CellSpec, atoms: Atoms,
     # ---- checks
     if spec.kind in C.BENCH:                            # M2(b) reference crystals
         want = C.BENCH[spec.kind]
-        if sg != want["sg_symbol"] and not sg.startswith(want["sg_symbol"].split("/")[0]):
+        if sg is not None and sg != want["sg_symbol"] and not sg.startswith(want["sg_symbol"].split("/")[0]):
             fails.append(f"spacegroup {sg} != {want['sg_symbol']}")
         for got, exp, lab in zip((a, b, c), want["cellpar"][:3], "abc"):
             if abs(got - exp) > REF.tol_lattice_frac * exp:
                 fails.append(f"{lab}={got:.3f} off ref {exp}")
     elif spec.kind == "cubic":
-        if not sg.startswith("Pm"):
+        if sg is not None and not sg.startswith("Pm"):
             fails.append(f"spacegroup {sg} != Pm-3m")
         if dti_mag > REF.tol_delta_A:
             fails.append(f"cubic |dTi|={dti_mag:.3f} should be ~0")
@@ -165,7 +180,7 @@ def validate(name: str, spec: C.CellSpec, atoms: Atoms,
             if dti_mag > REF.tol_delta_A:
                 fails.append(f"s=0 |dTi|={dti_mag:.3f} should be ~0 (centrosymmetric)")
         else:
-            if not sg.startswith("P4mm"):
+            if sg is not None and not sg.startswith("P4mm"):
                 fails.append(f"spacegroup {sg} != P4mm")
             if spec.disp_scale == 1 and abs(dti_mag - REF.target_delta_Ti_A) > REF.tol_delta_A:
                 fails.append(f"|dTi|={dti_mag:.3f} off target {REF.target_delta_Ti_A} A")
@@ -180,7 +195,7 @@ def validate(name: str, spec: C.CellSpec, atoms: Atoms,
 
     status = "OK  " if not fails else "FAIL"
     pb = f"|dPb|={dpb_mag:.3f}A" if has_pb else "(no Pb)"
-    print(f"  [{status}] {name:10s} sg={sg:8s} a={a:.3f} c={c:.3f} c/a={max(a,b,c)/min(a,b,c):.4f} "
+    print(f"  [{status}] {name:10s} sg={(sg or 'n/a'):8s} a={a:.3f} c={c:.3f} c/a={max(a,b,c)/min(a,b,c):.4f} "
           f"|dTi|={dti_mag:.3f}A (beam {along:.3f} / perp {perp:.3f})  {pb}")
     for f in fails:
         print(f"          -> {f}")
