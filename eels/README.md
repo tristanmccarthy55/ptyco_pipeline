@@ -71,6 +71,7 @@ scatterem (Pelz 2026, arXiv:2607.00756, code on publication) is the scale path f
 | `structures/*.cell` | generated geometries (`_1cell` for M2a, `_222` for core hole) |
 | `structures/corehole/*.cell` | one excited site per file (O_ap/O_eq/Ti/Pb labelled `X:exc`) |
 | `RESULTS.md` | milestone-by-milestone evidence log |
+| `HANDOVER.md` | **Blythe operator's guide** — environment, sync flow, CASTEP+OptaDOS recipe, how to run each step, gotchas. Read this first to run on the HPC. |
 
 ## Running it
 
