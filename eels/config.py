@@ -137,8 +137,8 @@ SCAN_SCALES = (0.0, 0.25, 0.5, 0.75, 1.0)
 OTFG = {
     "O":  "2|1.1|17|20|23|20:21(qc=8)",
     "Ti": "3|1.8|9|10|11|30U:40:31:32(qc=5.5)",
-    # "Pb": "...",   # from smoke.castep once captured
-    # "Sr": "...",
+    "Pb": "3|2.2|7|8|9|50U:60:51U:61:52",       # 5s5p5d6s6p semicore (22 e = ionic charge)
+    # "Sr": "...",   # from an SrTiO3 run, if an SrTiO3 core hole is ever needed
 }
 # Core-hole occupancy suffix per edge: reduce the ionised shell by one electron. Appended to the
 # excited species' OTFG string (Mizoguchi/NaGe convention: e.g. `...(qc=6){1s1}` = 1s K-hole).

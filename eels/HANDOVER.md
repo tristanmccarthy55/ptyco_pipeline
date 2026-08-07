@@ -130,8 +130,11 @@ core-hole cell (the hole breaks symmetry).
 |---|---|
 | O  | `2\|1.1\|17\|20\|23\|20:21(qc=8)` |
 | Ti | `3\|1.8\|9\|10\|11\|30U:40:31:32(qc=5.5)` |
-| Pb | **TODO** — `grep -A1 "Element: Pb" runs/smoke/smoke.castep` (needed for PbTiO₃ M4) |
-| Sr | TODO (only if an SrTiO₃ core hole is run) |
+| Pb | `3\|2.2\|7\|8\|9\|50U:60:51U:61:52` (no `qc=`; 5s5p5d6s6p semicore = 22 e) |
+| Sr | TODO — only if an SrTiO₃ core hole is run (`grep '"' <an-SrTiO3>.castep`) |
+
+O, Ti, Pb are wired into `config.OTFG`, so **PbTiO₃ and TiO₂ core-hole cells are turnkey**
+(complete `SPECIES_POT`). SrTiO₃ core-hole cells stay geometry-only until Sr is captured.
 
 **Core-hole occupancy suffix per edge** (reduce the ionised shell by one electron):
 `O K → {1s1}` · `Ti L₂,₃ → {2p5}` · `Pb M₄,₅ → {3d9}` · `Sr L₂,₃ → {2p5}`.
@@ -272,8 +275,8 @@ measured". Dipole limit: ELNES sees the *magnitude* of along-beam P, **not its s
 
 1. **M2(b):** read TiO₂ O-K spectrum (`runs/tio2_OK/tio2_O*.dat`), confirm endianness + shape vs
    textbook rutile O-K; this locks the recipe. Repeat for Ti-L / SrTiO₃ if desired.
-2. **Capture Pb (and Sr) OTFG strings** → add to `config.OTFG` → PbTiO₃/SrTiO₃ core-hole cells
-   become turnkey (rerun `build_cells.py --corehole`).
+2. ~~Capture Pb OTFG~~ ✅ done (Pb wired in → PbTiO₃ core-hole cells turnkey). Sr still TODO
+   (only needed for an SrTiO₃ core hole).
 3. **M3 null test** (cubic q∥ = q⊥) — the essential artifact check before trusting M4.
 4. **M4 dichroism** on `tet_Pz` (O-K primary; Ti-L for anisotropy only; Pb exploratory) + the
    `tet_Pz` q⊥ = `tet_Px` q∥ rotational-invariance cross-check.
