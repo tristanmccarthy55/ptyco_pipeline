@@ -13,6 +13,11 @@ logs/
 eels/eels_preflight_*.out
 eels/eels_preflight_*.err
 
+# EELS CASTEP/OptaDOS run dirs + outputs (large: .castep/.check/.bands/.elnes_bin; live on $SHARE)
+eels/runs/
+eels/**/castep_*.out
+eels/**/castep_*.err
+
 # abTEM simulation outputs (large diffraction data + reconstructions; keep on
 # the shared FS, never in git). sim_meta.mat is tiny but regenerated each run.
 sim_out/
