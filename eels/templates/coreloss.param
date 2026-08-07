@@ -1,29 +1,19 @@
-! coreloss.param -- M3/M4/M5: core-hole ELNES matrix elements for OptaDOS.
-! Pair with a core-hole .cell from structures/corehole/<name>_<site>.cell (one excited
-! atom labelled e.g. O:exc). Produces the binary OptaDOS reads (seed.elnes_bin) plus
-! seed.bands / seed.<pdos> for the core-loss task.
+! coreloss.param -- M2(b)/M3/M4 core-hole ELNES SCF. Matches the OptaDOS Mizoguchi/NaGe
+! working example for CASTEP 24.1. Pair with a core-hole .cell from structures/corehole/
+! (excited atom labelled X:exc, with the %BLOCK SPECIES_POT ...{1s1}/{2p5} appended by
+! build_cells.py). CASTEP writes the binaries OptaDOS `task:core` then reads.
 !
-! !!! SCHEMATIC -- three things get LOCKED at M2(b) by matching a known TiO2/SrTiO3 edge:
-!     (1) exact spectral keyword spellings for THIS CASTEP version,
-!     (2) the core-hole OTFG string (see species_pot_corehole.cellblock),
-!     (3) the final-state / charge treatment (options A/B below).
+!   castep.mpi <seed>     # this SCF
+!   optados   <seed>      # reads <seed>.odi (task:core) -> the spectrum
 
 task            : spectral
 spectral_task   : coreloss
-spectral_theory : dft
-xc_functional   : PBE              ! same xc as the M2 benchmark
-cut_off_energy  : 800 eV          ! from M2(a)
-spin_polarised  : false
-fix_occupancy   : true
-elec_energy_tol : 1e-8 eV
-max_scf_cycles  : 200
-nextra_bands    : 100             ! MANY empty bands: the edge spans ~30-50 eV above onset
-num_dump_cycles : 0
+xc_functional   : PBE
+cut_off_energy  : 800 eV        ! same as the M2(a) ground state (convergence-checked there)
+charge          : +1            ! FULL core hole: one electron removed with the 1s/2p/3d hole
+nextra_bands    : 100           ! many empty bands span the edge (~30-50 eV above onset)
+write_checkpoint : none
 
-! ---- core-hole final-state treatment (pick ONE at M2, keep it fixed) --------------
-! A) FULL core hole, charged cell + neutralising background (common default):
-charge          : 1.0            ! one electron removed with the core hole
-! B) EXCITED electron (neutral, screened final state): set `charge : 0.0` instead and
-!    put the excited electron in the conduction band via the OTFG occupancy. Usually
-!    shifts absolute onset; the q||c - q_perp DICHROISM (a difference) is far less
-!    sensitive, which is why the difference is the robust observable.
+! Absolute edge onset (optional, for comparing to experiment) = the Mizoguchi chemical shift
+! from a separate no-hole singlepoint (templates/groundstate.param) + tools/miz_chemical_shift.
+! NOT needed for the q||c - q-perp DICHROISM (a difference), which is our primary observable.

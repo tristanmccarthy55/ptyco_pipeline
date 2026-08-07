@@ -131,6 +131,22 @@ SCAN_SCALES = (0.0, 0.25, 0.5, 0.75, 1.0)
 # ---------------------------------------------------------------- DFT / core-hole choices
 # SCHEMATIC values; the cutoff/k-points are LOCKED by the M2(a) convergence run and the
 # core-hole treatment by the M2(b) benchmark against TiO2/SrTiO3. Do not treat as final.
+# CASTEP 24.1 default on-the-fly (OTFG) pseudopotential strings, read from the M0 smoke-run
+# pseudopotential report (runs/smoke/smoke.castep). Used to build COMPLETE core-hole SPECIES_POT
+# blocks. Fill Pb/Sr from a run that includes them before doing PbTiO3/SrTiO3 core holes.
+OTFG = {
+    "O":  "2|1.1|17|20|23|20:21(qc=8)",
+    "Ti": "3|1.8|9|10|11|30U:40:31:32(qc=5.5)",
+    # "Pb": "...",   # from smoke.castep once captured
+    # "Sr": "...",
+}
+# Core-hole occupancy suffix per edge: reduce the ionised shell by one electron. Appended to the
+# excited species' OTFG string (Mizoguchi/NaGe convention: e.g. `...(qc=6){1s1}` = 1s K-hole).
+COREHOLE_OCC = {"O_K": "{1s1}", "Ti_L23": "{2p5}", "Pb_M": "{3d9}", "Sr_L23": "{2p5}"}
+# Map an excited-site tag (from corehole_sites) to its edge, hence its occupancy suffix.
+SITE_EDGE = {"O": "O_K", "Oap": "O_K", "Oeq": "O_K", "Ti": "Ti_L23", "Pb": "Pb_M"}
+
+
 @dataclass(frozen=True)
 class DFT:
     xc: str = "PBE"

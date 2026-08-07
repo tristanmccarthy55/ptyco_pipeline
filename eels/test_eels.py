@@ -88,6 +88,19 @@ def test_corehole_single_excited_atom():
         assert sum(1 for x in cs if x.endswith(":exc")) == 1, f"{tag}: not exactly one :exc"
 
 
+def test_corehole_species_pot():
+    """Core-hole cells get a complete SPECIES_POT with the right core-hole occupancy suffix;
+    species with no known OTFG string (Pb/Sr) fall back to a geometry-only cell (None)."""
+    spec = C.CELLS["tio2"]
+    sup = B.make_cell(spec).repeat(spec.supercell)
+    ok = B.species_pot_block(sup, B.excited_index(sup, "O"), "O_K")
+    assert ok and "O:exc" in ok and "{1s1}" in ok and "Ti " in ok      # O K = 1s hole
+    ti = B.species_pot_block(sup, B.excited_index(sup, "Ti"), "Ti_L23")
+    assert ti and "Ti:exc" in ti and "{2p5}" in ti                     # Ti L = 2p hole
+    ps = C.CELLS["tet_Pz"]; psup = B.make_cell(ps).repeat(ps.supercell)
+    assert B.species_pot_block(psup, B.excited_index(psup, "Pb"), "Pb_M") is None  # Pb OTFG TBD
+
+
 # ---------------------------------------------------------------- M2(b) benchmarks
 def test_benchmarks_correct():
     """SrTiO3 (Pm-3m) and rutile TiO2 (P4_2/mnm) build with the right symmetry + lattice, and

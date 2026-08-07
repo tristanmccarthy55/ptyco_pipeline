@@ -242,6 +242,23 @@ def excited_index(atoms: Atoms, site_value: str) -> int | None:
     return int(idx[int(np.argmin(d))])
 
 
+def species_pot_block(atoms: Atoms, exc_index: int, edge: str) -> str | None:
+    """Complete CASTEP %BLOCK SPECIES_POT for a core-hole cell: every species gets its default
+    CASTEP-24.1 OTFG string (config.OTFG), and the excited species additionally carries the
+    core-hole occupancy suffix (config.COREHOLE_OCC[edge], e.g. '{1s1}'). Returns None if any
+    species' OTFG string is not yet known (e.g. Pb/Sr) -> caller falls back to geometry-only."""
+    elements = sorted(set(atoms.get_chemical_symbols()))
+    if not all(e in C.OTFG for e in elements):
+        return None
+    exc_elem = atoms.get_chemical_symbols()[exc_index]
+    occ = C.COREHOLE_OCC.get(edge, "")
+    lines = ["%BLOCK SPECIES_POT"]
+    lines += [f"{e} {C.OTFG[e]}" for e in elements]
+    lines.append(f"{exc_elem}:{DFT_CFG.corehole_label} {C.OTFG[exc_elem]}{occ}")
+    lines.append("%ENDBLOCK SPECIES_POT")
+    return "\n".join(lines)
+
+
 def corehole_sites(spec: C.CellSpec) -> dict[str, str]:
     """Excited sites to emit per structure (tag -> site_label). Cubic O are all equivalent."""
     if spec.kind in C.BENCH:                            # benchmark: Ti + O (site_label=element)
@@ -252,9 +269,12 @@ def corehole_sites(spec: C.CellSpec) -> dict[str, str]:
 
 
 # ---------------------------------------------------------------- CASTEP .cell writer
-def write_castep_cell(atoms: Atoms, path: str, kgrid: tuple, exc_index: int | None = None) -> None:
+def write_castep_cell(atoms: Atoms, path: str, kgrid: tuple, exc_index: int | None = None,
+                      species_pot: str | None = None) -> None:
     """Minimal, explicit CASTEP .cell. If exc_index is set, that atom gets the core-hole
-    species label (e.g. 'O:exc') and SYMMETRY_GENERATE is omitted (the hole breaks symmetry)."""
+    species label (e.g. 'O:exc') and SYMMETRY_GENERATE is omitted (the hole breaks symmetry).
+    If species_pot is given, the %BLOCK SPECIES_POT (with the core-hole OTFG) is appended, and a
+    SPECTRAL_KPOINT_MP_GRID is added for the spectral/coreloss task."""
     cell = atoms.cell.array
     symbols = atoms.get_chemical_symbols()
     frac = atoms.get_scaled_positions()
@@ -269,6 +289,9 @@ def write_castep_cell(atoms: Atoms, path: str, kgrid: tuple, exc_index: int | No
           f"KPOINT_MP_GRID {kgrid[0]} {kgrid[1]} {kgrid[2]}"]
     if exc_index is None:
         L.append("SYMMETRY_GENERATE")
+    if species_pot is not None:
+        # plural form matches the OptaDOS Si2_CORE core-loss example (proven for spectral task)
+        L += [f"SPECTRAL_KPOINTS_MP_GRID {kgrid[0]} {kgrid[1]} {kgrid[2]}", "", species_pot]
     os.makedirs(os.path.dirname(path), exist_ok=True)
     with open(path, "w") as fh:
         fh.write("\n".join(L) + "\n")
@@ -320,9 +343,10 @@ def main() -> None:
                 for tag, site in corehole_sites(spec).items():
                     ei = excited_index(super_atoms, site)
                     if ei is not None:
+                        sp = species_pot_block(super_atoms, ei, C.SITE_EDGE.get(tag, ""))
                         write_castep_cell(super_atoms,
                                           os.path.join(C.OUT_DIR, "corehole", f"{name}_{tag}.cell"),
-                                          DFT_CFG.kgrid_2x2x2, exc_index=ei)
+                                          DFT_CFG.kgrid_2x2x2, exc_index=ei, species_pot=sp)
 
     # scan ladder must be a clean linear calibration axis (dichroism vs |P| needs this at M5)
     if len(scan_ladder) >= 3:
