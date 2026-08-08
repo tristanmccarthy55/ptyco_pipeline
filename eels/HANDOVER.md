@@ -19,16 +19,17 @@ that projected ptychography (in-plane only) misses? Method: **CASTEP** core-hole
 | M0  | CASTEP 24.1 + OptaDOS on Blythe | ✅ both live (CASTEP smoke ran; OptaDOS built) |
 | M1  | build + validate PTO/benchmark cells | ✅ 11/11 unit tests; HPC preflight green |
 | M2a | ferroelectric double-well | ✅ **PASSED** — polar 203 meV/f.u. below centrosymmetric, min at exp. displacement |
-| M2b | TiO₂/SrTiO₃ benchmark ELNES → lock recipe | ⏳ **in progress** — first TiO₂ O-K core-loss running |
-| M3  | cubic null test (dichroism must vanish) | ☐ |
-| M4  | tetragonal q∥c vs q⊥ dichroism (the result) | ☐ |
+| M2b | TiO₂/SrTiO₃ benchmark ELNES → lock recipe | ✅ **PASSED** — TiO₂ O-K matches textbook (t₂g/e_g split 2.7 eV, e_g>t₂g); recipe LOCKED |
+| M3  | cubic null test (dichroism must vanish) | ☐ next |
+| M4  | tetragonal q∥c vs q⊥ dichroism (the result) | ☐ (turnkey) |
 | M5  | dichroism vs \|P\| calibration | ☐ |
 | M6  | detectability model (analytic magic-angle) | ✅ validated locally + on Blythe |
 | M6b | abtem multislice EELS (Channel B) | ◐ elastic path works on Blythe; core-loss needs gpaw |
 
-**Immediate next step:** finish M2(b) — read the TiO₂ O-K spectrum out of `runs/tio2_OK/`,
-confirm endianness + shape vs the textbook rutile O-K edge; capture the **Pb OTFG string** to
-complete the PbTiO₃ core-hole cells; then M3 (null) → M4 (dichroism).
+**Immediate next step:** M3 cubic null test (q∥z must equal q⊥z — the artifact check), then
+M4 dichroism on `tet_Pz` (O-K, `core_qdir` 0 0 1 vs 1 0 0). Recipe is locked, Pb OTFG captured,
+PbTiO₃ core-hole cells turnkey. **When reading an OptaDOS `_core_edge.dat`: select the `O:exc`
+block, never sum the per-atom blocks** (`analyze_elnes.load_optados_core`).
 
 ---
 

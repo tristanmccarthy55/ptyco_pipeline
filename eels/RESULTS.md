@@ -93,9 +93,44 @@ this any time the code changes.
 a=4.593 c=2.959) build + validate; core-hole cells `srtio3_{Ti,O}` / `tio2_{Ti,O}` emitted.
 So the first CASTEP calculation has its structures waiting.
 
-## M0, M2–M5 — pending (require CASTEP/OptaDOS on Blythe)
+## M0 — CASTEP + OptaDOS live on Blythe — ✅
 
-Next actions when CASTEP lands: M0 env check → M2(a) convergence + double-well → M2(b)
-TiO₂/SrTiO₃ benchmark to lock the cutoff, k-points, OTFG core-hole string, and final-state
-treatment. Structures + templates are prepared; only the version-specific keyword/OTFG values
-remain to fill. Record numbers here as they land.
+CASTEP `24.1-foss-2023b` (`castep.mpi`); OptaDOS built from source (`$SHARE/phucrh/optados/
+optados/optados.x`, big-endian). Smoke run: PbTiO₃ `tet_Pz` SCF `Final energy −8306.82 eV`,
+and the reported Ti–O bonds (apical 1.745 Å / equatorial 1.980 Å) reproduce the ferroelectric
+off-centering. Default OTFG pseudopotentials auto-generate (no SPECIES_POT for plain SCF).
+
+## M2(a) — ferroelectric double-well — ✅ PASSED
+
+Single-point SCF across `scan_0.00 → scan_1.00` (P4/mmm → P4mm, fixed exp. strain):
+
+| s | 0.00 | 0.25 | 0.50 | 0.75 | 1.00 |
+|---|---|---|---|---|---|
+| E − E(s=0), meV/f.u. | 0 | −30.5 | −106.3 | −185.4 | **−203.5** |
+
+Monotonic; **polar 203 meV/f.u. below centrosymmetric**, and the descent flattens toward s=1
+(last step −18 meV) → the **experimental displacement sits at the PBE minimum**. CASTEP+PBE
+captures PbTiO₃ ferroelectricity. (Deeper than the ~50–100 meV cubic-referenced well because
+the strained-non-polar reference is itself high-energy.)
+
+## M2(b) — benchmark ELNES (rutile TiO₂ O-K) — ✅ PASSED, recipe LOCKED
+
+`run_coreloss.slurm` on `tio2_O` (48-atom rutile, O:exc `{1s1}`, `charge:+1`): CASTEP wrote
+`.elnes_bin` (big-endian), **OptaDOS read it cleanly** (endianness ✓), `_core_edge.dat` produced.
+The physical spectrum is the `# O 1 K1 O:exc` block (OptaDOS writes one block per O atom; only
+the excited one is the ELNES — **select, never sum**; `analyze_elnes.load_optados_core` does this).
+
+Excited-atom O-K edge vs textbook rutile:
+- **t₂g / e_g near-edge peaks split ~2.7 eV** (exp. ~2.5–3 eV) ✓
+- **e_g taller than t₂g** (correct rutile intensity ordering) ✓
+- broad O 2p–Ti 4sp band ~10–16 eV above onset ✓
+
+→ the CASTEP 24.1 + OptaDOS core-hole recipe is **validated and locked**: `{1s1}`/`{2p5}`/`{3d9}`
+OTFG core hole, `charge:+1`, `core_type:absorption`, O:exc-block selection.
+
+## M3–M5 — pending (turnkey: cells + recipe ready)
+
+Next: M3 cubic null test (q∥z must equal q⊥z) → M4 tetragonal dichroism (`tet_Pz`, `core_qdir`
+0 0 1 vs 1 0 0; O-K primary) + the `tet_Pz` q⊥ = `tet_Px` q∥ cross-check → M5 `scan_*` calibration.
+All PbTiO₃ core-hole cells are turnkey (Pb OTFG captured). Add an explicit OptaDOS energy window
+to stop writing million-row `.dat` files.

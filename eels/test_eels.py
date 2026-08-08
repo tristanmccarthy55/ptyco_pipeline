@@ -149,6 +149,22 @@ def test_optados_parser():
     assert A.dichroism_metric(e, np.array([0.0, 1.0, -1.0])) > 0
 
 
+def test_optados_core_section_parser():
+    """load_optados_core selects the excited-atom (:exc) block only, returns the broadened col
+    (matches the real OptaDOS <seed>_core_edge.dat format from the M2(b) TiO2 benchmark)."""
+    with tempfile.TemporaryDirectory() as d:
+        p = os.path.join(d, "x_core_edge.dat")
+        with open(p, "w") as f:
+            f.write("# Core loss function\n")
+            f.write(" #  O 1 K1\n 0.0 9.9 9.9\n 1.0 9.9 9.9\n")        # normal block (ignore)
+            f.write(" #  O 1 K1 O:exc\n 0.0 1.0 2.0\n 1.0 3.0 4.0\n")  # excited block (physical)
+            f.write(" #  O 2 K1\n 0.0 9.9 9.9\n")                      # another normal (ignore)
+        e, y = A.load_optados_core(p)                         # default :exc, broadened (col3)
+        assert list(e) == [0.0, 1.0] and list(y) == [2.0, 4.0]
+        _, yr = A.load_optados_core(p, broadened=False)       # raw (col2)
+        assert list(yr) == [1.0, 3.0]
+
+
 # ---------------------------------------------------------------- submit-readiness preflight
 def test_templates_present():
     """All HPC input templates exist so submission is turnkey once CASTEP lands."""

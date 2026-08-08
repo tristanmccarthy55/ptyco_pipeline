@@ -34,15 +34,16 @@ grep -qiE 'Total time|finished' "${SEED}.castep" 2>/dev/null \
   || { echo "CASTEP did not finish -- see ${SEED}.castep / coreloss_${SLURM_JOB_ID}.err"; exit 1; }
 echo "[$(date)] CASTEP done. Binary files written for OptaDOS:"; ls -1 "${SEED}".*bin* 2>/dev/null || true
 
-echo "[$(date)] OptaDOS core-loss: $SEED   ($OPTADOS)"
+echo "[$(date)] OptaDOS core-loss (primary / q_c): $SEED   ($OPTADOS)"
 "$OPTADOS" "$SEED" || { echo "OptaDOS failed -- ENDIANNESS? rebuild CASTEP or OptaDOS to match; see ${SEED}.odo"; exit 1; }
+# SAVE the primary (q_c) spectrum BEFORE any second pass can overwrite <seed>_core_edge.dat:
+[ -f "${SEED}_core_edge.dat" ] && cp "${SEED}_core_edge.dat" "${SEED}.qc_core_edge.dat"
 
-# optional second q-direction pass (M4): swap the .odi and re-run OptaDOS (CASTEP not repeated)
+# optional second q-direction pass (M3/M4): swap the .odi, re-run OptaDOS only (CASTEP reused)
 if [ -n "${ODI2:-}" ] && [ -f "$ODI2" ]; then
-  echo "[$(date)] OptaDOS second pass with $ODI2"
-  cp "${SEED}.odi" "${SEED}.odi.bak"; cp "$ODI2" "${SEED}.odi"
-  "$OPTADOS" "$SEED" && for f in "${SEED}"*dat "${SEED}"*.agr; do [ -e "$f" ] && cp "$f" "${SEED}.qperp.$(basename "$f")"; done
-  mv "${SEED}.odi.bak" "${SEED}.odi"
+  echo "[$(date)] OptaDOS second pass (q_perp) with $ODI2"
+  cp "$ODI2" "${SEED}.odi"
+  "$OPTADOS" "$SEED" && cp "${SEED}_core_edge.dat" "${SEED}.qperp_core_edge.dat"
 fi
 
-echo "[$(date)] CORELOSS DONE -> spectrum in ${SEED}*.dat / .agr (see ${SEED}.odo for the OptaDOS log)"
+echo "[$(date)] CORELOSS DONE -> ${SEED}.qc_core_edge.dat${ODI2:+ + ${SEED}.qperp_core_edge.dat} (see ${SEED}.odo)"

@@ -74,9 +74,38 @@ def magic_angle_rad(theta_E: float) -> float:
 
 # ---------------------------------------------------------------- spectra I/O + dichroism
 def load_spectrum(path: str) -> tuple[np.ndarray, np.ndarray]:
-    """Two-column (energy, intensity) OptaDOS core-loss text; skips # / ! comment lines."""
+    """Two-column (energy, intensity) text; skips # / ! comments. For generic/synthetic files;
+    for a real OptaDOS core-loss .dat use load_optados_core (multi-section)."""
     data = np.loadtxt(path, comments=("#", "!"))
     return data[:, 0], data[:, 1]
+
+
+def load_optados_core(path: str, section: str = ":exc",
+                      broadened: bool = True) -> tuple[np.ndarray, np.ndarray]:
+    """Parse an OptaDOS `<seed>_core_edge.dat`. It holds ONE block per atom, each preceded by a
+    header like `# O 1 K1` or `# O 1 K1 O:exc`; columns are (energy, raw, broadened). The
+    PHYSICAL core-hole ELNES is the excited atom's block — the header containing `section`
+    (default ':exc'). Non-excited blocks use the perturbed conduction states with un-cored
+    atoms and are NOT the ELNES, so we must select, never sum. Returns (energy, intensity)
+    for the matched block (broadened col by default). Verified on the M2(b) TiO2 O-K benchmark."""
+    col = 2 if broadened else 1
+    e, y, grabbing = [], [], False
+    with open(path) as fh:
+        for line in fh:
+            s = line.strip()
+            if s.startswith("#"):
+                grabbing = section in s          # (re)start capture iff this header matches
+                continue
+            if grabbing and s:
+                p = s.split()
+                if len(p) > col:
+                    try:
+                        e.append(float(p[0])); y.append(float(p[col]))
+                    except ValueError:
+                        pass
+    if not e:
+        raise ValueError(f"no core-loss block matching {section!r} in {path}")
+    return np.asarray(e), np.asarray(y)
 
 
 def dichroism(e: np.ndarray, s_par: np.ndarray, s_perp: np.ndarray) -> np.ndarray:
