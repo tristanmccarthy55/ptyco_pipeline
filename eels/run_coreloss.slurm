@@ -31,11 +31,17 @@ BIN="$(command -v castep.mpi || command -v castep.serial || command -v castep ||
 [ -n "$BIN" ] || { echo "no castep binary after 'module load $CASTEP_MODULE'"; exit 1; }
 [ -x "$OPTADOS" ] || { echo "optados not executable at $OPTADOS"; exit 1; }
 
-echo "[$(date)] CASTEP core-hole SCF: $SEED   ($BIN)"
-if [[ "$BIN" == *.mpi ]]; then srun "$BIN" "$SEED"; else "$BIN" "$SEED"; fi
-grep -qiE 'Total time|finished' "${SEED}.castep" 2>/dev/null \
-  || { echo "CASTEP did not finish -- see ${SEED}.castep / coreloss_${SLURM_JOB_ID}.err"; exit 1; }
-echo "[$(date)] CASTEP done. Binary files written for OptaDOS:"; ls -1 "${SEED}".*bin* 2>/dev/null || true
+# Reuse an existing CASTEP result if SKIP_CASTEP is set and the .elnes_bin is present (e.g. a
+# prior run whose OptaDOS pass timed out) -- avoids redoing the expensive SCF.
+if [ -n "${SKIP_CASTEP:-}" ] && [ -f "${SEED}.elnes_bin" ]; then
+  echo "[$(date)] SKIP_CASTEP set + ${SEED}.elnes_bin present -> reusing existing CASTEP output"
+else
+  echo "[$(date)] CASTEP core-hole SCF: $SEED   ($BIN)"
+  if [[ "$BIN" == *.mpi ]]; then srun "$BIN" "$SEED"; else "$BIN" "$SEED"; fi
+  grep -qiE 'Total time|finished' "${SEED}.castep" 2>/dev/null \
+    || { echo "CASTEP did not finish -- see ${SEED}.castep / coreloss_${SLURM_JOB_ID}.err"; exit 1; }
+  echo "[$(date)] CASTEP done. Binary files written for OptaDOS:"; ls -1 "${SEED}".*bin* 2>/dev/null || true
+fi
 
 echo "[$(date)] OptaDOS core-loss (primary / q_c): $SEED   ($OPTADOS)"
 "$OPTADOS" "$SEED" || { echo "OptaDOS failed -- ENDIANNESS? rebuild CASTEP or OptaDOS to match; see ${SEED}.odo"; exit 1; }
