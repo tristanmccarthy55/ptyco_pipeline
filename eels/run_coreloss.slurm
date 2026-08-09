@@ -3,10 +3,13 @@
 #SBATCH -o coreloss_%j.out
 #SBATCH -e coreloss_%j.err
 #SBATCH --nodes=1
-#SBATCH --ntasks=16
-#SBATCH --time=02:00:00
-#SBATCH --mem=48G
+#SBATCH --ntasks=32
+#SBATCH --time=12:00:00
+#SBATCH --mem=64G
 #SBATCH -p compute
+# NB: OptaDOS is SERIAL — extra ntasks only speed CASTEP. PbTiO3 (Pb semicore) + two OptaDOS
+# passes overran 2 h; 12 h is generous. See §speedup: OptaDOS recomputes core-loss for EVERY
+# atom (100+ blocks) though we use only the O:exc/Ti:exc one -- an energy window would cut this.
 #
 # Core-loss ELNES: CASTEP core-hole SCF (spectral/coreloss) then OptaDOS (task:core).
 # Needs <SEED>.cell (core-hole, with SPECIES_POT), <SEED>.param (coreloss.param), and
