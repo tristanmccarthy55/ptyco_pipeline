@@ -151,7 +151,33 @@ also needed for the full O-K: multiplicity-weight 1×apical + 2×equatorial (`te
 *Runtime note:* PbTiO₃ core-hole SCF ~40–45 min (32 cores); OptaDOS core-loss ~75–90 min/pass
 (SERIAL) because it recomputes every atom/edge — the M5 bottleneck (see below).
 
-## M5 — displacement scan — next (needs OptaDOS speedup)
+## M5 — displacement scan (apical O-K, q∥c & q⊥c, s = 0 → 1) — ✅ DONE — the decomposition
 
-`scan_0.00→1.00` core-hole SCF + q∥c/q⊥c OptaDOS → dichroism vs off-centering. Blocked on
-trimming OptaDOS (energy window / edge restriction) so 5 cells × 2 passes is hours not days.
+Lattice held fixed (a, c); only the internal Ti/O displacement s varies, so the tetragonal
+**strain** contribution is constant and the s-dependence is **purely the off-centering**.
+
+| s | dichroism q∥c−q⊥ (peak) | along-beam (q∥c) spectrum change vs s=0 |
+|---|---|---|
+| 0.00 (zero-P) | **70.1%** | 0 |
+| 0.50 | 70.5% | 4.3% |
+| 1.00 (full P) | **78.2%** | **18.7%** |
+
+**Key result:** ~70 of the 78% orientation dichroism is the **tetragonal backbone σ/π**, present
+at *zero* polarization. The **ferroelectric off-centering's own signature** is a distinct,
+**monotonic ~19%** change in the along-beam-probed O-K spectrum (and +8% to the dichroism),
+cleanly isolated by the zero-P reference. Reproduces Bugnet et al. "O-K responds to Ti
+off-centering" from first principles.
+
+**Honest headline:** the O-K edge is 78% dichroic to the polar-**axis** orientation vs the beam
+(what maps a vortex, since P and the tetragonal axis co-rotate); of that, ~19% is the
+polarization's own displacement effect. Dipole limit: axis + magnitude, not sign.
+
+PI-meeting figures (on ~/Desktop/eels_figs): fig1 validation, fig2 result + object + zero-P
+overlay, fig3 decomposition/scan; SLIDE_NOTES.md.
+
+## M4 cross-checks + M6 — pending
+
+tet_Px (rotational-invariance q x-check), tet_Pz_Oeq (full O-K = 1×apical + 2×equatorial), then
+M6: fold the intrinsic dichroism through the 300 keV convergence/collection geometry (magic angle
+≈ 4·θ_E ≈ 4.3 mrad; the 100 mrad ptychography probe would average it — a small EELS aperture is
+needed) for the measurable detectability number.
