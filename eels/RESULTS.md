@@ -128,9 +128,30 @@ Excited-atom O-K edge vs textbook rutile:
 → the CASTEP 24.1 + OptaDOS core-hole recipe is **validated and locked**: `{1s1}`/`{2p5}`/`{3d9}`
 OTFG core hole, `charge:+1`, `core_type:absorption`, O:exc-block selection.
 
-## M3–M5 — pending (turnkey: cells + recipe ready)
+## M3 — cubic null test — ✅ PASSED
 
-Next: M3 cubic null test (q∥z must equal q⊥z) → M4 tetragonal dichroism (`tet_Pz`, `core_qdir`
-0 0 1 vs 1 0 0; O-K primary) + the `tet_Pz` q⊥ = `tet_Px` q∥ cross-check → M5 `scan_*` calibration.
-All PbTiO₃ core-hole cells are turnkey (Pb OTFG captured). Add an explicit OptaDOS energy window
-to stop writing million-row `.dat` files.
+Cubic Ti L₂,₃ (isotropic Ti site), q∥z vs q⊥z: dichroism **0.02%** (max|Δ|/max S and ∫|Δ|/∫S) —
+the two spectra are identical, as symmetry demands. **The q-machinery is unbiased**; any
+dichroism elsewhere is physical, not numerical. (OptaDOS writes the excited atom's full edge
+family — Ti K/L1/L2,3/M1/M2,3; we take the L2,3 block.)
+
+## M4 — tetragonal along-beam dichroism (tet_Pz, apical O-K) — ✅ LARGE SIGNAL
+
+`tet_Pz` (c∥beam), apical O:exc K-edge, q∥c vs q⊥c: **max|Δ|/max S = 78%, ∫|Δ|/∫S = 47%** — a
+clean σ/π anisotropy. q⊥c → sharp **π\*** peak ~8.5 eV (O p_{x,y}); q∥c → **σ\*** features
+~11 & ~18.5 eV (O p_z along the Ti–O–Ti / polar axis). **Along-beam polar-axis orientation
+imprints strongly on the O-K edge** — far above any detectability floor.
+
+*Interpretation / caveat:* this apical-O dichroism is dominated by the **tetragonal backbone
+σ/π anisotropy**, which the ferroelectric off-centering modulates. **M5** (dichroism/spectrum vs
+displacement `s`) isolates the displacement-specific part (s=0 backbone baseline → s=1 polar);
+also needed for the full O-K: multiplicity-weight 1×apical + 2×equatorial (`tet_Pz_Oeq`), and the
+`tet_Pz` q⊥ = `tet_Px` q∥ rotational-invariance cross-check.
+
+*Runtime note:* PbTiO₃ core-hole SCF ~40–45 min (32 cores); OptaDOS core-loss ~75–90 min/pass
+(SERIAL) because it recomputes every atom/edge — the M5 bottleneck (see below).
+
+## M5 — displacement scan — next (needs OptaDOS speedup)
+
+`scan_0.00→1.00` core-hole SCF + q∥c/q⊥c OptaDOS → dichroism vs off-centering. Blocked on
+trimming OptaDOS (energy window / edge restriction) so 5 cells × 2 passes is hours not days.
