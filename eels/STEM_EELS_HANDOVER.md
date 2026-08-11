@@ -58,23 +58,25 @@ gpaw must live in the SAME env abtem imports it from: `$SHARE/phucrh/envs/abtem`
 `sim/run_sim.slurm`). It needs compiled deps (libxc, BLAS) best handled by conda-forge. Add it to
 the existing env, protecting the validated pip abtem/cupy with `--freeze-installed`:
 
+Run these **one line at a time** (a scrambled multi-line paste is what breaks it). Two gotchas
+baked in below: `unset PYTHONPATH` (a stray PYTHONPATH gives `conda: No module named 'conda'`),
+and `conda shell.bash hook` (robust init — don't rely on `conda info --base`, chicken-and-egg).
+
 ```bash
-# Blythe login node
-module load Miniconda3/24.7.1-0
-source "$(conda info --base)/etc/profile.d/conda.sh"
-export CONDA_PKGS_DIRS="$SHARE/phucrh/conda/pkgs" PIP_CACHE_DIR="$SHARE/phucrh/conda/pip-cache"
-conda activate "$SHARE/phucrh/envs/abtem"
+# Blythe login node -- ONE LINE AT A TIME
+unset PYTHONPATH                                   # stray PYTHONPATH breaks conda's own python
+module purge && module load Miniconda3/24.7.1-0
+eval "$(conda shell.bash hook)"
+conda --version                                    # MUST print a version before continuing
 
-# gpaw + libxc/BLAS from conda-forge, WITHOUT touching the pip abtem/cupy:
-conda install -c conda-forge --freeze-installed gpaw libxc
-#  ^ if the solver refuses (wants to change abtem/cupy/numpy), STOP and use the dedicated env below.
+export CONDA_PKGS_DIRS="$SHARE/phucrh/conda/pkgs"
+# install BY PREFIX (-p) -> no activation needed; --freeze-installed protects pip abtem/cupy:
+conda install -y -p "$SHARE/phucrh/envs/abtem" -c conda-forge --freeze-installed gpaw libxc
+#  ^ if the solver insists on changing abtem/cupy/numpy, Ctrl-C -> use the dedicated env below.
 
-# PAW datasets + make gpaw find them:
-gpaw install-data "$SHARE/phucrh/envs/abtem/share/gpaw-setups"
+# PAW datasets + verify (the last line runs the exact atomic solver abtem calls):
+"$SHARE/phucrh/envs/abtem/bin/gpaw" install-data "$SHARE/phucrh/envs/abtem/share/gpaw-setups"
 export GPAW_SETUP_PATH="$(ls -d $SHARE/phucrh/envs/abtem/share/gpaw-setups/gpaw-setups-* | head -1)"
-
-# verify (the atomic solver is exactly what abtem calls):
-"$SHARE/phucrh/envs/abtem/bin/gpaw" info
 "$SHARE/phucrh/envs/abtem/bin/python" -c "import abtem, gpaw, ase; print('abtem', abtem.__version__, 'gpaw', gpaw.__version__)"
 "$SHARE/phucrh/envs/abtem/bin/python" -c "from gpaw.atom.all_electron import AllElectron; AllElectron('O').run(); print('gpaw atomic O OK')"
 ```
