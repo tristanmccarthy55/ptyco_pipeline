@@ -203,6 +203,7 @@ def run_membrane(out_dir: str, cfg: C.STEMEELS = None, n_lat: int = 8, n_thick: 
     import os
     import abtem
     from abtem.inelastic.core_loss import SubshellTransitions
+    from abtem.multislice import transition_potential_multislice_and_detect   # abtem 1.0.9 API
     cfg = cfg or C.STEMEELS_CFG
     # default injected ELNES = the M4 tet_Pz O-K (on Blythe: runs/exc/)
     here = os.path.dirname(__file__)
@@ -228,8 +229,11 @@ def run_membrane(out_dir: str, cfg: C.STEMEELS = None, n_lat: int = 8, n_thick: 
     print("[membrane] O-K core-loss (transition potentials + gpaw) ...")
     tp = SubshellTransitions(Z=8, n=1, l=0).get_transition_potentials(
         extent=pot.extent, gpts=pot.gpts, energy=probe.energy)
-    eels = probe.transition_potential_scan(potential=pot, transition_potentials=tp, scan=scan,
-                                           detectors=abtem.FlexibleAnnularDetector()).compute()
+    waves = probe.build(scan)                          # scanned entrance probe waves (1.0.9)
+    eels_out = transition_potential_multislice_and_detect(
+        waves, pot, tp, detectors=[abtem.FlexibleAnnularDetector()])
+    eels = eels_out[0] if isinstance(eels_out, (list, tuple)) else eels_out
+    eels = eels.compute() if hasattr(eels, "compute") else eels
     weight = np.asarray(eels.integrate_radial(0.0, beta).array).reshape(-1)   # per-scan-pixel coupling
 
     # inject the CASTEP ELNES energy shape (aperture-averaged over β) + power-law background

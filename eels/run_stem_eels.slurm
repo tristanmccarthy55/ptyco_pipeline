@@ -34,6 +34,7 @@ echo "[$(date)] python: $PY"; "$PY" --version
 
 "$PY" simulate_stem_eels.py --membrane \
   --scan "${SCAN:-5x5}" --n-lat "${NLAT:-8}" --n-thick "${NTHICK:-6}" \
-  --domains "${DOMAINS:-updown}" --device gpu
+  --domains "${DOMAINS:-updown}" --device gpu \
+  || { echo "[$(date)] STEM-EELS FAILED (exit $?) -- see stem_eels_${SLURM_JOB_ID}.err"; exit 1; }
 
 echo "[$(date)] done -> eels/runs/stem_eels_membrane_*  (dp.npy + eels.npz)"
