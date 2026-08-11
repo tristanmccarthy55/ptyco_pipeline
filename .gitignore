@@ -17,6 +17,7 @@ eels/eels_preflight_*.err
 eels/runs/
 eels/**/castep_*.out
 eels/**/castep_*.err
+eels/*_selftest.png
 
 # abTEM simulation outputs (large diffraction data + reconstructions; keep on
 # the shared FS, never in git). sim_meta.mat is tiny but regenerated each run.

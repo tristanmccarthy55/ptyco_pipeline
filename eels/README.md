@@ -62,6 +62,7 @@ scatterem (Pelz 2026, arXiv:2607.00756, code on publication) is the scale path f
 | `build_cells.py` | M1: build/validate cells → CASTEP `.cell` (+ `--corehole` variants) |
 | `analyze_elnes.py` | M4–M6: dichroism, calibration, geometry-averaging, SNR (`--selftest`) |
 | `simulate_eels.py` | M6b: dynamical abtem multislice STEM-EELS forward model (Channel B); `--selftest` runs without gpaw, core-loss needs gpaw |
+| `simulate_stem_eels.py` | full STEM-EELS forward sim: **reuses `sim/simulate_4dstem.py`** for the scattering (probe/potential/phonons/scan), adds the EELS detector-hole (β=det/2) + simultaneous HAADF, and injects the CASTEP/OptaDOS ELNES + background. `--selftest` = the gpaw-free spectrum core on real M4 data |
 | `test_eels.py` | unit tests for everything not needing CASTEP (`python test_eels.py`, 10/10) |
 | `templates/groundstate.param`, `geomopt.param` | M2a SCF / relaxation |
 | `templates/coreloss.param` | M3+ core-hole spectral task |

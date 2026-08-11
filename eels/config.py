@@ -176,6 +176,65 @@ class Optics:
 
 OPTICS = Optics()
 
+# ---------------------------------------------------------------- STEM-EELS acquisition config
+# The parameter home for the full forward simulator (simulate_stem_eels.py): a scanned STEM
+# probe through a thick, phonon-averaged specimen producing SIMULTANEOUS HAADF + a full core-loss
+# EELS spectrum (edges with the injected CASTEP/OptaDOS ELNES + a background). Optics conventions
+# match sim/simulate_4dstem.py; phonon B values are the room-temperature isotropic Debye-Waller
+# factors used there. NB the probe CONVERGENCE (alpha) and the EELS COLLECTION (beta) are separate
+# angles: alpha forms the probe, beta is the spectrometer entrance aperture that sets how much of
+# the anisotropy survives (magic angle ~4*theta_E; see analyze_elnes.py).
+@dataclass(frozen=True)
+class STEMEELS:
+    # ---- beam / probe ----
+    energy_keV: float = 300.0
+    convergence_mrad: float = 20.0          # probe semi-angle (alpha). EELS: ~20-30 (NOT the 100 ptycho probe)
+    defocus_A: float = 0.0
+    # ---- EELS spectrometer collection (round aperture) ----
+    # DETECTOR-HOLE geometry (simultaneous ptychography + EELS on ONE pixelated detector, per the
+    # sim/simulate_4dstem.py setup): the spectrometer takes the inner HALF of the detector radius,
+    # so beta = DETECTOR_MAX_ANGLE_MRAD / 2 = 100 mrad. simulate_stem_eels.eels_collection_mrad()
+    # derives it from sim; this default mirrors it. (beta drives the OptaDOS q-anisotropy averaging,
+    # M6: 100 mrad is far past the magic angle -> the along-beam dichroism is largely averaged out.)
+    collection_mrad: float = 100.0          # = DETECTOR_MAX_ANGLE_MRAD / 2 (the EELS hole)
+    # ---- simultaneous HAADF = the OUTER annulus [beta, detector_max] of the same scan ----
+    haadf_inner_mrad: float = 100.0         # = beta (the hole edge)
+    haadf_outer_mrad: float = 200.0         # = DETECTOR_MAX_ANGLE_MRAD
+    # ---- specimen / multislice ----
+    thickness_nm: float = 20.0              # specimen thickness along the beam (repeats the cell in z)
+    slice_thickness_A: float = 2.0
+    sampling_A: float = 0.05                # real-space potential sampling (band-limits the detector)
+    # ---- scan ----
+    scan_step_A: float = 0.2
+    scan_window_A: float | None = None      # None -> full in-plane cell; else a square window (A)
+    scan_center_A: tuple | None = None      # (x,y) window centre; None -> cell centre
+    # ---- frozen phonons (thermal diffuse scattering) ----
+    n_phonons: int = 8                      # 0 = coherent; 8-16 for realistic TDS
+    phonon_seed: int = 1
+    phonon_B: dict = field(default_factory=lambda: {"Pb": 0.90, "Sr": 0.55, "Ti": 0.45, "O": 0.80})  # A^2, RT
+    # ---- energy-loss axis (the spectrum) ----
+    eloss_min_eV: float = 500.0
+    eloss_max_eV: float = 600.0
+    eloss_dispersion_eV: float = 0.1        # eV per channel
+    # ---- edges: onset (eV) + the OptaDOS ELNES source (a .exc.txt or processed shape) ----
+    # The injected shape is the q-resolved OptaDOS ELNES, aperture-averaged over `collection_mrad`.
+    edges: tuple = ("O_K",)                 # keys into EDGES; each contributes an edge to the spectrum
+    edge_onset_eV: dict = field(default_factory=lambda: {"O_K": 532.0, "Ti_L23": 456.0, "Pb_M": 2484.0})
+    elnes_source: dict = field(default_factory=dict)  # {"O_K": "runs/exc/tet_Pz_Oap.{q}.exc.txt"} injected shapes
+    # ---- background ----
+    background_model: str = "powerlaw"      # "powerlaw" (A*E^-r) now; "plasmon" (abtem low-loss) later; "none"
+    background_r: float = 3.0               # power-law exponent
+    background_frac: float = 0.5            # background height at the first edge onset, as a fraction of the edge jump
+    # ---- dose / noise (optional Poisson) ----
+    dose_e_per_A2: float | None = None      # None -> noiseless; else Poisson at this dose
+    # ---- rigour / device ----
+    inelastic_model: str = "channelling"    # "channelling" (elastic multislice x sigma, NO gpaw) |
+    #                                         "transition_potential" (abtem rigorous, NEEDS gpaw)
+    device: str = "gpu"                     # Blythe abtem env has cupy+CUDA
+
+
+STEMEELS_CFG = STEMEELS()
+
 # ---------------------------------------------------------------- output
 OUT_DIR = os.path.join(os.path.dirname(__file__), "structures")   # .cell/.param land here
 
