@@ -30,6 +30,12 @@ import os
 
 import numpy as np
 
+# abtem 1.0.9's core_loss.py calls np.trapz, which NumPy 2.0 REMOVED (renamed to np.trapezoid).
+# Alias it back so abtem's transition-potential build works on numpy>=2 without downgrading numpy
+# (which would risk the elastic sim / cupy / gpaw stack that already works).
+if not hasattr(np, "trapz"):
+    np.trapz = np.trapezoid
+
 import config as C
 import analyze_elnes as A
 
