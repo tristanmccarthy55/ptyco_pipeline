@@ -101,6 +101,39 @@ def eloss_axis(cfg: C.STEMEELS) -> np.ndarray:
     return np.arange(cfg.eloss_min_eV, cfg.eloss_max_eV, cfg.eloss_dispersion_eV)
 
 
+# ---------------------------------------------------------------- membrane sample (up/down P_z)
+def build_membrane(n_lat: int = 8, n_thick: int = 4, vacuum_A: float = 6.0,
+                   domains: str = "updown"):
+    """A thin PbTiO3 membrane of the SIMPLE unit cell (tet_Pz: polar c || beam z) as a PERIODIC
+    slab: n_lat x n_lat cells laterally (periodic in x,y), n_thick cells thick, free-standing
+    (vacuum along the beam z). Polarisation DOMAINS along z: `updown` = left half P_z UP (+z) /
+    right half DOWN (-z), split down the middle (periodic -> a wall at the middle and at the box
+    edge); `up`/`down` = uniform. Beam = z (cell already oriented -> NO rotation, so the labyrinth
+    load_and_prepare_atoms path is untouched). The data-fusion testbed: ptychography reads the
+    domain (direction) from the depth-resolved DP; EELS reads |P| (magnitude) from the O-K ELNES.
+    Scan its CENTRE (the run picks a small window across the middle wall)."""
+    import build_cells as B
+    from ase import Atoms
+    up = B.make_cell(C.CELLS["tet_Pz"])                  # P4mm, polar along z, 5 atoms
+    a, _, c = up.cell.lengths()
+    down = up.copy()                                     # mirror z -> polar flips sign
+    sp = down.get_scaled_positions(); sp[:, 2] = (-sp[:, 2]) % 1.0
+    down.set_scaled_positions(sp)
+
+    memb = Atoms(cell=[n_lat * a, n_lat * a, n_thick * c], pbc=True)   # periodic slab
+    for ix in range(n_lat):
+        base = up if (domains == "up" or (domains == "updown" and ix < n_lat // 2)) \
+            else (down if domains in ("down", "updown") else up)
+        for iy in range(n_lat):
+            for iz in range(n_thick):
+                cell_ij = base.copy(); cell_ij.translate([ix * a, iy * a, iz * c])
+                memb += cell_ij
+    memb.center(vacuum=vacuum_A, axis=2)                 # free-standing along the beam only
+    print(f"[membrane] {len(memb)} atoms | {n_lat}x{n_lat} cells x {n_thick} thick | "
+          f"box {np.round(memb.cell.lengths(),1)} A (periodic x,y; vacuum z) | domains={domains}")
+    return memb, float(memb.cell.lengths()[0])
+
+
 # ---------------------------------------------------------------- STEM dynamics (REUSE sim/, Blythe)
 def _import_sim4d():
     """Import sim/simulate_4dstem.py so we REUSE its scattering (no duplication)."""
@@ -160,6 +193,63 @@ def _edge_nl(edge):
     return {"O_K": (8, 1, 0), "Ti_L23": (22, 2, 1), "Pb_M": (82, 3, 2)}[edge]
 
 
+def run_membrane(out_dir: str, cfg: C.STEMEELS = None, n_lat: int = 8, n_thick: int = 6,
+                 domains: str = "updown", scan_gpts: tuple = (5, 5), device: str = "gpu") -> str:
+    """Membrane STEM-EELS test -> ITS OWN FOLDER: the pixelated 4D-STEM DP (for ptychography +
+    other uses) AND a full O-K EELS spectrum-image (injected CASTEP ELNES + power-law background).
+    Reuses sim/simulate_4dstem.py for the scattering (potential/probe); the EELS map uses abtem
+    transition_potential_scan (needs gpaw). Small quick scan across the up/down domain wall.
+    NOTE: first Blythe run of the abtem/gpaw path -- abtem-1.0.9 detector API may need a tweak."""
+    import os
+    import abtem
+    from abtem.inelastic.core_loss import SubshellTransitions
+    cfg = cfg or C.STEMEELS_CFG
+    # default injected ELNES = the M4 tet_Pz O-K (on Blythe: runs/exc/)
+    here = os.path.dirname(__file__)
+    src = cfg.elnes_source.get("O_K") or {
+        "qc": os.path.join(here, "runs/exc/tet_Pz_Oap.qc_core_edge.exc.txt"),
+        "qperp": os.path.join(here, "runs/exc/tet_Pz_Oap.qperp_core_edge.exc.txt")}
+    s4 = _import_sim4d(); s4.DEVICE = device
+    os.makedirs(out_dir, exist_ok=True)
+
+    memb, box = build_membrane(n_lat, n_thick, domains=domains)
+    pot = s4.build_potential(memb, announce=True)        # reuse sim's Lobato potential
+    probe = s4.build_probe(pot)                          # reuse sim's overfocused 100 mrad probe
+    beta = eels_collection_mrad(s4)                      # EELS hole = det/2 = 100 mrad
+    ctr = box / 2.0                                      # scan a small window ACROSS the mid wall
+    scan = abtem.GridScan(start=(ctr - 6, ctr - 2), end=(ctr + 6, ctr + 2), gpts=scan_gpts)
+    pos = np.asarray(scan.get_positions()).reshape(-1, 2)
+
+    print(f"[membrane] pixelated 4D-STEM ({scan_gpts} scan) ...")
+    dp = probe.scan(pot, scan=scan,
+                    detectors=abtem.PixelatedDetector(max_angle=s4.DETECTOR_MAX_ANGLE_MRAD)).compute()
+    dp_arr = np.asarray(dp.array).astype(np.float32)     # (Nscan..., Kx, Ky) pixelated DP
+
+    print("[membrane] O-K core-loss (transition potentials + gpaw) ...")
+    tp = SubshellTransitions(Z=8, n=1, l=0).get_transition_potentials(
+        extent=pot.extent, gpts=pot.gpts, energy=probe.energy)
+    eels = probe.transition_potential_scan(potential=pot, transition_potentials=tp, scan=scan,
+                                           detectors=abtem.FlexibleAnnularDetector()).compute()
+    weight = np.asarray(eels.integrate_radial(0.0, beta).array).reshape(-1)   # per-scan-pixel coupling
+
+    # inject the CASTEP ELNES energy shape (aperture-averaged over β) + power-law background
+    E = eloss_axis(cfg)
+    shape = aperture_averaged_elnes(src["qc"], src["qperp"], cfg.edge_onset_eV["O_K"],
+                                    beta, cfg.energy_keV, E)
+    shape = shape / max(shape.max(), 1e-30)
+    spectra = np.outer(weight, shape)                    # (Nscan, Neloss): edge scaled by channelling
+    bg = powerlaw_background(E, cfg.edge_onset_eV["O_K"], spectra.max(), cfg.background_r, cfg.background_frac)
+    spectra = (spectra + bg).astype(np.float32)
+
+    np.save(os.path.join(out_dir, "dp.npy"), dp_arr)     # the pixelated DP you asked for
+    np.savez(os.path.join(out_dir, "eels.npz"), eloss=E, spectra=spectra, weight=weight,
+             positions=pos, background=bg.astype(np.float32), beta_mrad=beta,
+             box_A=box, n_lat=n_lat, n_thick=n_thick, domains=domains)
+    print(f"[membrane] DONE -> {out_dir}\n  dp.npy {dp_arr.shape} (pixelated DP)"
+          f"\n  eels.npz: spectra {spectra.shape} (scan × e-loss), + weight/positions/background")
+    return out_dir
+
+
 # ---------------------------------------------------------------- self-test (spectroscopy core)
 def selftest() -> None:
     """Build a full O-K spectrum (edge + background) from the REAL M4 OptaDOS data if present on
@@ -214,13 +304,21 @@ def selftest() -> None:
 def main() -> None:
     ap = argparse.ArgumentParser(description="Full STEM-EELS forward simulator (HAADF + spectrum).")
     ap.add_argument("--selftest", action="store_true", help="spectrum core on real M4 data (no abtem)")
-    ap.add_argument("--run", action="store_true", help="full sim incl. abtem channelling (Blythe)")
-    ap.add_argument("--cell", default="tet_Pz")
+    ap.add_argument("--membrane", action="store_true",
+                    help="membrane test (Blythe/gpaw): pixelated DP + O-K EELS spectrum-image -> --out-dir")
+    ap.add_argument("--out-dir", default=None, help="output folder (default stem_eels_out_<tag>/)")
+    ap.add_argument("--n-lat", type=int, default=8, help="membrane lateral cells (x=y)")
+    ap.add_argument("--n-thick", type=int, default=6, help="membrane thickness in cells (along beam)")
+    ap.add_argument("--domains", default="updown", choices=["updown", "up", "down"])
+    ap.add_argument("--scan", default="5x5", help="scan gpts as NxN (small = quick, e.g. 3x3)")
+    ap.add_argument("--device", default="gpu", choices=["gpu", "cpu"])
     args = ap.parse_args()
-    if args.run:
-        haadf, weights = probe_channelling(args.cell, C.STEMEELS_CFG)   # abtem, Blythe
-        out = assemble_spectrum(eloss_axis(C.STEMEELS_CFG), weights, C.STEMEELS_CFG)
-        print("HAADF + spectrum computed:", out["total"].shape)
+    if args.membrane:
+        gx, gy = (int(v) for v in args.scan.lower().split("x"))
+        tag = f"membrane_{args.domains}_{args.n_lat}x{args.n_lat}x{args.n_thick}_{gx}x{gy}"
+        out = args.out_dir or os.path.join(os.path.dirname(__file__), "runs", f"stem_eels_{tag}")
+        run_membrane(out, n_lat=args.n_lat, n_thick=args.n_thick, domains=args.domains,
+                     scan_gpts=(gx, gy), device=args.device)
     else:
         selftest()
 
