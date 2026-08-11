@@ -74,6 +74,7 @@ scatterem (Pelz 2026, arXiv:2607.00756, code on publication) is the scale path f
 | `RESULTS.md` | milestone-by-milestone evidence log |
 | `HANDOVER.md` | **Blythe operator's guide** — environment, sync flow, CASTEP+OptaDOS recipe, how to run each step, gotchas. Read this first to run on the HPC. |
 | `LITERATURE.md` | targeted literature review (deliverable) — method refs, reproducible benchmarks, displacement→ELNES prior work, anisotropy/magic-angle, and the gap we address |
+| `STEM_EELS_HANDOVER.md` | the full STEM-EELS forward simulator — architecture (reuse `simulate_4dstem` + inject CASTEP ELNES), **gpaw setup**, EELS-hole geometry, how to run, open items |
 
 ## Running it
 
