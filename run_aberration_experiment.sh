@@ -30,7 +30,8 @@ INPUTS=(data_dp.hdf5 data_position.hdf5 sim_meta.mat)   # probe_initial chosen p
 NL=70; STEP="${STEP:-0.3}"; SLICE=2; BIN=1; CONV=70; NITER="${NITER:-100}"; PSTART="${PSTART:-10}"
 
 sim_job () {  # $1 tag  $2 ABERRATED(0/1)
-    local tag="$1" ab="$2" dir="${REPO_DIR}/sim_out_${tag}"
+    local tag="$1" ab="$2"
+    local dir="${REPO_DIR}/sim_out_${tag}"
     sbatch --parsable --job-name="ab_sim_${tag}" --time=1-00:00:00 \
         --output="logs/ab_sim_${tag}_%j.out" --error="logs/ab_sim_${tag}_%j.err" \
         --export=ALL,JOB_DIR="${dir}",SCAN_STEP="${STEP}",SLICE_THICKNESS="${SLICE}",CONVERGENCE="${CONV}",BIN_FACTOR="${BIN}",ABERRATED="${ab}",PROBE_INITIAL=nominal \
