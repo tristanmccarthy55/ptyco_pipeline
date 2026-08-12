@@ -14,14 +14,19 @@ this injects), **LITERATURE.md**.
 |---|---|
 | STEM-EELS acquisition config (`config.STEMEELS`) | ✅ done |
 | Spectrum core: inject ELNES (aperture-avg over β) + power-law background | ✅ built, **validated on real M4 O-K data** (`--selftest`) |
-| Reuse `sim/simulate_4dstem.py` for scattering (probe/potential/phonons/scan) | ✅ `simulate_stem_eels.probe_channelling` imports it — no duplication |
-| EELS detector-hole geometry (β = det/2) + simultaneous HAADF | ✅ wired |
-| abtem core-loss coupling (`transition_potential_scan`) | ⏳ needs **gpaw** in the abtem env + a Blythe run (untested) |
+| Reuse `sim/simulate_4dstem.py` for scattering (probe/potential/phonons/scan) | ✅ imports it — no duplication |
+| EELS detector-hole geometry (β = det/2 = 100 mrad) + membrane sample | ✅ built + validated |
+| gpaw in the abtem env + abtem core-loss run on Blythe | ✅ **DONE — first membrane run works** (`run_membrane`) |
+| First result | ✅ pixelated DP + O-K spectrum-image; **up vs down P_z domains identical in EELS (1.0%) — magnitude, sign-blind** |
 | Per-atom ELNES for the labyrinth vortex | ☐ design (the payoff — see §7) |
 | Plasmon low-loss background (Phase 2) | ☐ (power-law is in now) |
 
-**Immediate next step:** install gpaw (§2), then run `probe_channelling` on Blythe and wire its
-output weights into `assemble_spectrum`.
+**abtem-1.0.9 gotchas (all fixed in `simulate_stem_eels.py` — needed to make the core-loss run):**
+`Probe.transition_potential_scan` removed → use `probe.build(scan)` +
+`abtem.multislice.transition_potential_multislice_and_detect`; needs **`sympy`** (`pip install`);
+abtem's `core_loss.py` calls the removed `np.trapz` → shim `np.trapz = np.trapezoid`; loss
+accumulation does a numpy `+=` dask → build waves `lazy=False`; **pass `sites=` (the O atoms)** or
+the signal is zero; collect with `AnnularDetector(0, β)`.
 
 ---
 
@@ -52,10 +57,21 @@ more custom code; with Blythe + a small gpaw install, `transition_potential_scan
 
 ---
 
-## 2. Set up gpaw in the abtem env  ← DO THIS
+## 2. gpaw in the abtem env  — ✅ DONE (2026-08-11)
 
-gpaw must live in the SAME env abtem imports it from: `$SHARE/phucrh/envs/abtem` (per
-`sim/run_sim.slurm`). It needs compiled deps (libxc, BLAS) best handled by conda-forge. Add it to
+Installed into `$SHARE/phucrh/envs/abtem` (gpaw 25.7.0, conda-forge; env intact: abtem 1.0.9,
+cupy 14.1.1, numpy 2.4.6). **What actually worked** (being *inside* the env shadows `conda`, and
+its shebang resolves to the wrong python → run conda with Miniconda's python EXPLICITLY):
+```bash
+MC=/springbrook/apps/software/Miniconda3/24.7.1-0
+"$MC/bin/python" "$MC/bin/conda" install -y -p "$SHARE/phucrh/envs/abtem" -c conda-forge --freeze-installed gpaw libxc
+"$SHARE/phucrh/envs/abtem/bin/pip" install sympy          # abtem core-loss needs it (Wigner-3j)
+```
+Setups are bundled in `gpaw-data` (no GPAW_SETUP_PATH needed). Verified: `AllElectron('O').run()`.
+
+<details><summary>Original generic recipe (if ever rebuilding the env from scratch)</summary>
+
+It needs compiled deps (libxc, BLAS) best handled by conda-forge. Add it to
 the existing env, protecting the validated pip abtem/cupy with `--freeze-installed`:
 
 Run these **one line at a time** (a scrambled multi-line paste is what breaks it). Two gotchas
@@ -80,6 +96,8 @@ export GPAW_SETUP_PATH="$(ls -d $SHARE/phucrh/envs/abtem/share/gpaw-setups/gpaw-
 "$SHARE/phucrh/envs/abtem/bin/python" -c "import abtem, gpaw, ase; print('abtem', abtem.__version__, 'gpaw', gpaw.__version__)"
 "$SHARE/phucrh/envs/abtem/bin/python" -c "from gpaw.atom.all_electron import AllElectron; AllElectron('O').run(); print('gpaw atomic O OK')"
 ```
+
+</details>
 
 **Fallback — a dedicated env** (use only if the `--freeze-installed` solve fails; keeps the
 ptychography env pristine but re-installs abtem):
@@ -125,10 +143,10 @@ not a bug — flag it in any writeup of the combined-detector design.
 # spectrum core, no abtem/gpaw (works now, on the Mac or Blythe):
 $SHARE/phucrh/envs/abtem/bin/python simulate_stem_eels.py --selftest    # full O-K spectrum vs β
 
-# full sim incl. abtem channelling + HAADF (Blythe GPU, AFTER gpaw is installed):
-#   run via sim/run_sim.sh conventions (GPU partition, CUDA/12.6.0); simulate_stem_eels imports
-#   simulate_4dstem, so the same env + GPU apply. Wire a run_stem_eels.slurm mirroring run_sim.slurm.
-$SHARE/phucrh/envs/abtem/bin/python simulate_stem_eels.py --run --cell tet_Pz
+# membrane STEM-EELS (Blythe GPU): pixelated DP + O-K spectrum-image -> eels/runs/stem_eels_<tag>/
+#   dp.npy (pixelated 4D-STEM) + eels.npz (spectra scan×e-loss, weight, positions, background)
+sbatch --export=ALL,SCAN=3x3,NLAT=6,NTHICK=4 eels/run_stem_eels.slurm   # small/quick
+sbatch --export=ALL,SCAN=8x8,NTHICK=8,DOMAINS=updown eels/run_stem_eels.slurm  # fuller
 ```
 (`--run` calls `probe_channelling`; finish wiring its `weights` into `assemble_spectrum` and add a
 `run_stem_eels.slurm` GPU submit script modelled on `sim/run_sim.slurm`.)
