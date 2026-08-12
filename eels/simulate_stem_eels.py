@@ -238,11 +238,16 @@ def run_membrane(out_dir: str, cfg: C.STEMEELS = None, n_lat: int = 8, n_thick: 
     # lazy=False -> eager numpy waves: abtem 1.0.9's loss-accumulation does an in-place += of a
     # dask array into a numpy array, which newer dask rejects; eager arrays avoid that path.
     waves = probe.build(scan, lazy=False)
+    o_sites = memb[memb.get_atomic_numbers() == 8]     # excite the O atoms (the O-K element)
+    # AnnularDetector(0, beta) integrates the EELS collection hole directly (no integrate_radial
+    # unit ambiguity). sites= tells the function WHICH atoms to ionise (None -> no signal).
     eels_out = transition_potential_multislice_and_detect(
-        waves, pot, tp, detectors=[abtem.FlexibleAnnularDetector()])
+        waves, pot, tp, detectors=[abtem.AnnularDetector(inner=0.0, outer=beta)], sites=o_sites)
     eels = eels_out[0] if isinstance(eels_out, (list, tuple)) else eels_out
     eels = eels.compute() if hasattr(eels, "compute") else eels
-    weight = np.asarray(eels.integrate_radial(0.0, beta).array).reshape(-1)   # per-scan-pixel coupling
+    warr = np.asarray(eels.array, dtype=float)
+    print(f"[membrane] EELS O-K map: shape {warr.shape}  sum {warr.sum():.3e}  max {warr.max():.3e}")
+    weight = warr.reshape(-1)                           # per-scan-pixel O-K signal (collected in beta)
 
     # inject the CASTEP ELNES energy shape (aperture-averaged over β) + power-law background
     E = eloss_axis(cfg)
