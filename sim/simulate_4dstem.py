@@ -95,29 +95,29 @@ DEVICE = "gpu"   # "gpu" on the HPC L40; "cpu" for a laptop test
 
 # --- structure prep ---
 # --- aberrations beyond defocus (--aberrated) ---
-# A Cs(C3)-corrected instrument tuned for ~30 mrad, then opened to 100 mrad. The corrector
-# leaves a residual Cs ~ 0.7 µm (cf. Nguyen et al., Science 2024: their aberration-CORRECTED
-# value is 1 µm; UNcorrected is 1.1 mm). Cs is a fixed coefficient, but its phase ∝ α⁴ is
-# negligible at 30 mrad (<π/4) and EXPLODES to ~9 waves by 100 mrad — so opening the aperture
-# makes Cs "pop back out" as the dominant aberration (~95% of χ at 100 mrad). A truly horrific
-# mm-scale Cs is IMPOSSIBLE here: at 100 mrad it delocalises the probe by ~1 µm (χ ~ 14000
-# waves); the aperture caps usable Cs at ~1.5 µm. Even 0.7 µm delocalises the probe to ~7 Å,
-# too big for the 4×-binned (17.5 Å) recon window — so the aberrated experiment runs at
-# BIN=2 (35 Å window, finer k-sampling), exactly Nguyen et al.'s Fig-3B fix for aberrated
-# probes. Residual sweet spot ~30 mrad. The recon starts from a NOMINAL aperture+defocus probe
-# and must FIT these with probe update on: if it recovers them, a 30-mrad corrector buys
-# 100-mrad depth resolution. C10 (defocus) is the operating condition (via _defocus(), same as
-# the aberration-free NL70 reference); ABERRATIONS holds the corrector residuals only.
+# A REAL JEOL ARM (hexapole C3/Cs corrector), tuned for its usable aperture (~28 mrad) then
+# opened wide. Truthful residuals (JEOL: "corrected to 3rd order, measured to 5th"):
+#   * C3 (Cs) = 1 µm  — NOT zero; perfect nulling isn't real, a residual Cs always remains.
+#   * C5 = C56 = 1 mm — the UNcorrected 5th order: fifth-order spherical + six-fold astig
+#     (the hexapole's signature). These are what "pop out" when you open the aperture (∝α⁶),
+#     NOT Cs — a C3-corrector nulls Cs, so Cs does not reappear; the 5th order does.
+#   * residual two-fold astig 0.5 nm (JEOL: "some residual two-fold astigmatism may remain").
+# Flat sweet-spot ~24 mrad (matches the ARM's real ~28 mrad max). This is why you CANNOT open
+# an ARM to 100 mrad: there the 5th order is ~85 waves and delocalises the probe to ~10 nm,
+# bigger than the sample box. At 70 mrad it's 24 waves / 21 Å (fits the 70 Å box, edge wrap
+# 0.7%) — 2.5× beyond the ARM's spec, still a big aperture widening. Run at --convergence 70
+# --bin-factor 1 (the delocalised probe needs the full 70 Å real-space window). The recon
+# starts from a NOMINAL aperture+defocus probe and must FIT these with probe update on: if it
+# recovers them, ptycho squeezes 70-mrad depth resolution out of a 28-mrad corrector. C10
+# (defocus) is the operating condition (via _defocus()); ABERRATIONS holds the residuals only.
+# NOTE: the reference is a PERFECT 70-mrad recon (NOT the 100-mrad NL70 — different NA changes
+# depth resolution λ/NA² on its own: 2.0 Å at 100 mrad vs 4.0 Å at 70).
 ABERRATED = False        # --aberrated: inject the residuals below into the SIM probe
 ABERRATIONS = {
-    "C30": 7.0e3,                              # Cs = 0.7 µm — the DOMINANT residual (∝α⁴):
-    #                                            flat to ~30 mrad, ~9 waves by 100 mrad
-    "C50": 3.0e5,                              # 30 µm residual 5th-order spherical (secondary)
-    "C56": 2.0e5, "phi56": 0.0,                # 20 µm six-fold astig (hexapole signature)
-    "C12": 1.0,   "phi12": np.deg2rad(30),     # 0.1 nm two-fold astigmatism
-    "C21": 30.0,  "phi21": 0.0,                # 3 nm axial coma
-    "C23": 30.0,  "phi23": np.deg2rad(20),     # 3 nm trefoil
-    "C34": 500.0, "phi34": np.deg2rad(10),     # 50 nm quadrafoil
+    "C30": 1.0e4,                              # Cs = 1 µm — residual (imperfect C3 correction)
+    "C50": 1.0e7,                              # C5 = 1 mm — 5th-order spherical (uncorrected)
+    "C56": 1.0e7, "phi56": 0.0,                # 1 mm six-fold astigmatism (hexapole signature)
+    "C12": 5.0,   "phi12": np.deg2rad(30),     # 0.5 nm residual two-fold astigmatism
 }
 # probe_initial.mat: False = NOMINAL (aperture+defocus) -> the recon must FIT the aberrations
 # (the real experiment); True = the true aberrated probe (a known-probe control).
@@ -357,7 +357,8 @@ def build_probe(potential):
           f"crossover before entrance surface)")
     if ABERRATED:
         print(f"[probe] ABERRATED (Cnm Å / phi rad): {ABERRATIONS}")
-        print(f"[probe] Cs-corrected flat to ~30 mrad, aberrated to {CONVERGENCE_MRAD:.0f} mrad")
+        print(f"[probe] JEOL-ARM residual (C3 1µm + C5/C56 1mm), flat to ~24 mrad, "
+              f"opened to {CONVERGENCE_MRAD:.0f} mrad")
     return probe
 
 
@@ -656,7 +657,7 @@ def write_driver_geometry(n_b: int, box_a: float, beam_thickness_a: float,
 # MAIN
 # ======================================================================
 def main(argv=None) -> int:
-    global DEVICE, SLICE_THICKNESS_A, SCAN_STEP_A, DOSE_E, N_PHONONS, PHONON_SIGMA_A, PER_SPECIES_SIGMA, PHONON_SEED, SCAN_WINDOW_A, ABERRATED, PROBE_INITIAL_ABERRATED, BIN_FACTOR
+    global DEVICE, SLICE_THICKNESS_A, SCAN_STEP_A, DOSE_E, N_PHONONS, PHONON_SIGMA_A, PER_SPECIES_SIGMA, PHONON_SEED, SCAN_WINDOW_A, ABERRATED, PROBE_INITIAL_ABERRATED, BIN_FACTOR, CONVERGENCE_MRAD
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--test", action="store_true",
                     help="Tiny 3x3 scan for fast local shape/geometry validation.")
@@ -707,10 +708,15 @@ def main(argv=None) -> int:
                     help='HPC tiling: run only scan x-band I of N, as "I/N" (0-indexed). '
                          'Each tile is an independent job; sim/merge_tiles.py reassembles '
                          'them into the full dataset (bit-exact, consistent dose scale).')
+    ap.add_argument("--convergence", type=float, default=CONVERGENCE_MRAD,
+                    help="probe convergence semi-angle [mrad] (default 100). The aberration "
+                         "experiment uses 70 (a JEOL ARM opened 2.5x past its ~28 mrad spec; "
+                         "100 mrad delocalises the 5th-order residual probe past the box).")
     ap.add_argument("--bin-factor", type=int, default=BIN_FACTOR,
                     help="NxN detector binning (default 4 -> 356 px / 17.5 Å probe window). "
-                         "Use 2 for the aberrated run: a Cs probe delocalises past the 4x window, "
-                         "so it needs finer k-sampling (712 px / 35 Å) — Nguyen et al. Fig 3B.")
+                         "The aberrated run needs BIN=1 (1424 px / full 70 Å window): the "
+                         "delocalised 5th-order probe fills the box — finer k-sampling, cf. "
+                         "Nguyen et al. Fig 3B.")
     ap.add_argument("--aberrated", action="store_true",
                     help="inject the corrector residuals (ABERRATIONS: Cs≈0.7 µm dominant, flat "
                          "to ~30 mrad, ~9 waves by 100 mrad) into the SIM probe, on top of "
@@ -731,6 +737,7 @@ def main(argv=None) -> int:
     ABERRATED = args.aberrated
     PROBE_INITIAL_ABERRATED = (args.probe_initial == "true")
     BIN_FACTOR = args.bin_factor
+    CONVERGENCE_MRAD = args.convergence
 
     tile = None
     if args.scan_tile:

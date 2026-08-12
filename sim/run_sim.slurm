@@ -111,6 +111,7 @@ VAC_ARG=()
 AB_ARG=()
 [ "${ABERRATED:-0}" = "1" ] && AB_ARG=(--aberrated --probe-initial "${PROBE_INITIAL:-nominal}")
 BIN_ARG=(); [ -n "${BIN_FACTOR:-}" ] && BIN_ARG=(--bin-factor "${BIN_FACTOR}")
+CONV_ARG=(); [ -n "${CONVERGENCE:-}" ] && CONV_ARG=(--convergence "${CONVERGENCE}")
 
 # per-species RMS thermal displacements (Pb/Sr/Ti/O) instead of one sigma for all
 PS_ARG=(); [ "${PER_SPECIES_SIGMA:-0}" = "1" ] && PS_ARG=(--per-species-sigma)
@@ -122,4 +123,4 @@ PS_ARG=(); [ "${PER_SPECIES_SIGMA:-0}" = "1" ] && PS_ARG=(--per-species-sigma)
     --scan-step "${SCAN_STEP}" \
     --phonons "${PHONONS}" \
     --phonon-sigma "${PHONON_SIGMA}" \
-    "${TILE_ARG[@]}" "${SA_ARG[@]}" "${VAC_ARG[@]}" "${PS_ARG[@]}" "${AB_ARG[@]}" "${BIN_ARG[@]}"
+    "${TILE_ARG[@]}" "${SA_ARG[@]}" "${VAC_ARG[@]}" "${PS_ARG[@]}" "${AB_ARG[@]}" "${BIN_ARG[@]}" "${CONV_ARG[@]}"

@@ -1,58 +1,64 @@
 #!/usr/bin/env bash
-# Aberration-retrieval experiment: can ptychography FIT out the residual Cs of a corrector
-# tuned for ~30 mrad but opened to 100 mrad? If yes, a modest corrector buys large-aperture
-# depth resolution — the "cheaper/older scope" story (cf. Nguyen et al., Science 383, 865).
+# Aberration-retrieval experiment on a TRUTHFUL JEOL ARM (hexapole C3/Cs corrector).
+# Question: can ptychography FIT out a real ARM's residual aberrations when you open the
+# aperture far past its ~28 mrad spec — squeezing large-aperture depth resolution from a
+# modest corrector? (cf. Nguyen et al., Science 383, 865, "uncorrected" ptychography.)
 #
-# Noiseless, NO phonons (perfect coherent data) so the ONLY variable is the probe aberration.
-# NL70 geometry (0.15 Å step, slice 2, 20 Å window, reg off, defocus -20) — IDENTICAL to the
-# clean NL70 depth run, so ~/Desktop/NL70_new_vol.npy IS the aberration-free reference (no
-# need to re-run "perfect"). Aberrations (sim/simulate_4dstem.py ABERRATIONS): Cs=0.7 µm
-# dominant (∝α⁴: flat to ~30 mrad, ~9 waves / 95% of χ at 100 mrad — "Cs pops back out"),
-# plus C5/C56 + small parasitics. A Cs probe delocalises ~7 Å, past the default 4x-binned
-# 17.5 Å window, so this runs at BIN=2 (35 Å window / 712 px, finer k-sampling — Nguyen Fig 3B).
+# TRUTHFUL residual (sim/simulate_4dstem.py ABERRATIONS): C3 (Cs)=1 µm residual (perfect
+# nulling isn't real) + C5=C56=1 mm UNcorrected 5th order (a C3-corrector nulls Cs, so the
+# 5th order is what pops out ∝α⁶) + 0.5 nm residual astig. Flat sweet-spot ~24 mrad (= the
+# ARM's real max). At 100 mrad the 5th order is ~85 waves / ~10 nm probe (bigger than the
+# sample — un-simulable, and un-usable: why an ARM caps at ~28 mrad). At 70 mrad it's 24
+# waves / 21 Å (fits the 70 Å box, edge wrap 0.7%) — 2.5× past spec, still a big widening.
 #
-# Legs (both aberrated recons at BIN=2, reg off, NL70; compare to NL70_new_vol):
-#   AB + FITPROBE : NOMINAL probe start, PROBE UPDATE ON -> the experiment
-#   AB + KNOWN    : TRUE probe, fixed                    -> control (data OK iff probe known)
-# Read depth resolution off each vs NL70_new_vol: FITPROBE ~ NL70 => ptycho retrieved the
-# aberrations. FITPROBE << NL70 but KNOWN ~ NL70 => info is there, the fit failed (raise
-# PMODES / lower PSTART). NL70 (BIN=4) vs BIN=2 differ only in k-sampling, not object pixel
-# (0.049 Å) — depth resolution is object-domain, so the comparison holds.
+# Noiseless, NO phonons; the ONLY variable is the probe. All legs: 70 mrad, BIN=1 (full 70 Å
+# real-space window for the delocalised probe), NL70, reg off, step 0.3 (~4500 pos; big
+# overlap given the wide probe; BIN=1 patterns are 1424² so the scan is coarsened to fit RAM).
+#
+# The reference is a PERFECT 70-mrad recon (NOT the 100-mrad NL70_new_vol: different NA sets
+# depth resolution λ/NA² by itself — 2.0 Å at 100 vs 4.0 Å at 70). Three legs:
+#   1 PERFECT-70   : no aberration, probe fixed            -> the 70-mrad reference
+#   2 AB + FITPROBE: aberrated, NOMINAL start, PROBE UPDATE-> the experiment
+#   3 AB + KNOWN   : aberrated, TRUE probe, fixed          -> control (data OK iff probe known)
+# 2 ~ 1 => ptycho retrieved the ARM residual. 2 << 1 but 3 ~ 1 => info there, fit failed
+# (raise PMODES / lower PSTART).
 #
 #   bash run_aberration_experiment.sh
 set -euo pipefail
 REPO_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"; cd "${REPO_DIR}"; mkdir -p logs
 INPUTS=(data_dp.hdf5 data_position.hdf5 sim_meta.mat)   # probe_initial chosen per-leg
-NL=70; STEP=0.15; SLICE=2; BIN=2; NITER="${NITER:-100}"; PSTART="${PSTART:-10}"
-SIMDIR="${REPO_DIR}/sim_out_aberrated"
+NL=70; STEP="${STEP:-0.3}"; SLICE=2; BIN=1; CONV=70; NITER="${NITER:-100}"; PSTART="${PSTART:-10}"
 
-# 1) ONE aberrated sim (BIN=2): writes data + NOMINAL probe_initial.mat + probe_initial_true.mat
-SA=$(sbatch --parsable --job-name="ab_sim" --time=12:00:00 \
-    --output="logs/ab_sim_%j.out" --error="logs/ab_sim_%j.err" \
-    --export=ALL,JOB_DIR="${SIMDIR}",SCAN_STEP="${STEP}",SLICE_THICKNESS="${SLICE}",ABERRATED=1,PROBE_INITIAL=nominal,BIN_FACTOR="${BIN}" \
-    sim/run_sim.slurm)
-echo "sim aberrated (BIN=${BIN}) : ${SA} -> sim_out_aberrated/01/ (+ probe_initial_true.mat)"
-
-recon_job () {  # $1 name  $2 probe_file  $3 PROBE_START("" = fixed)
-    local name="$1" probe="$2" pstart="$3"
-    local rdir="${REPO_DIR}/recon_${name}_NL${NL}_reg0_p1"
+sim_job () {  # $1 tag  $2 ABERRATED(0/1)
+    local tag="$1" ab="$2" dir="${REPO_DIR}/sim_out_${tag}"
+    sbatch --parsable --job-name="ab_sim_${tag}" --time=1-00:00:00 \
+        --output="logs/ab_sim_${tag}_%j.out" --error="logs/ab_sim_${tag}_%j.err" \
+        --export=ALL,JOB_DIR="${dir}",SCAN_STEP="${STEP}",SLICE_THICKNESS="${SLICE}",CONVERGENCE="${CONV}",BIN_FACTOR="${BIN}",ABERRATED="${ab}",PROBE_INITIAL=nominal \
+        sim/run_sim.slurm
+}
+recon_job () {  # $1 name  $2 sim_dir  $3 probe_file  $4 PROBE_START("" = fixed)  $5 dep
+    local name="$1" simdir="$2" probe="$3" pstart="$4" dep="$5"
+    local rdir="${REPO_DIR}/recon_${name}_NL${NL}_c${CONV}_reg0_p1"
     mkdir -p "${rdir}/01"
-    for f in "${INPUTS[@]}"; do ln -sf "${SIMDIR}/01/${f}" "${rdir}/01/${f}"; done
-    ln -sf "${SIMDIR}/01/${probe}" "${rdir}/01/probe_initial.mat"       # chosen starting probe
+    for f in "${INPUTS[@]}"; do ln -sf "${simdir}/01/${f}" "${rdir}/01/${f}"; done
+    ln -sf "${simdir}/01/${probe}" "${rdir}/01/probe_initial.mat"       # chosen starting probe
     local psx=""; [ -n "${pstart}" ] && psx=",PROBE_START=${pstart}"
-    sbatch --parsable --job-name="ab_rec_${name}" --time=1-12:00:00 \
-        --dependency="afterok:${SA}" \
+    sbatch --parsable --job-name="ab_rec_${name}" --time=2-00:00:00 \
+        --dependency="afterok:${dep}" \
         --output="${rdir}/slurm_%j.out" --error="${rdir}/slurm_%j.err" \
         --export=ALL,NLAYERS="${NL}",SIM_BASE="${rdir}/",REGLAYER=0,PROBE_MODES=1,NITER="${NITER}"${psx} \
         run_recon_synthetic_ML.slurm
 }
-R2=$(recon_job ab_fitprobe   probe_initial.mat      "${PSTART}")   # nominal start, probe update on
-R3=$(recon_job ab_knownprobe probe_initial_true.mat "")            # true probe, fixed (control)
-echo "recon AB+FITPROBE   : ${R2} -> recon_ab_fitprobe_NL70_reg0_p1/   (probe update from iter ${PSTART})"
-echo "recon AB+KNOWNPROBE : ${R3} -> recon_ab_knownprobe_NL70_reg0_p1/ (control)"
+SP=$(sim_job perfect70 0);   echo "sim perfect-70   : ${SP} -> sim_out_perfect70/01/"
+SA=$(sim_job aberrated70 1); echo "sim aberrated-70 : ${SA} -> sim_out_aberrated70/01/ (+ probe_initial_true.mat)"
+
+R1=$(recon_job perfect70     "${REPO_DIR}/sim_out_perfect70"   probe_initial.mat      ""          "${SP}")
+R2=$(recon_job ab_fitprobe   "${REPO_DIR}/sim_out_aberrated70" probe_initial.mat      "${PSTART}" "${SA}")
+R3=$(recon_job ab_knownprobe "${REPO_DIR}/sim_out_aberrated70" probe_initial_true.mat ""          "${SA}")
+echo "recon 1 PERFECT-70    : ${R1} -> recon_perfect70_NL70_c70_reg0_p1/"
+echo "recon 2 AB+FITPROBE    : ${R2} -> recon_ab_fitprobe_NL70_c70_reg0_p1/   (probe update from iter ${PSTART})"
+echo "recon 3 AB+KNOWNPROBE  : ${R3} -> recon_ab_knownprobe_NL70_c70_reg0_p1/ (control)"
 echo
-echo "Reference (aberration-free) = ~/Desktop/NL70_new_vol.npy (already have it)."
-echo "Pull the newest Niter*.mat from each recon; compare depth resolution (kz plane peak /"
-echo "column cross-sections) against NL70_new_vol. The recovered probe is outputs.probe of"
-echo "AB+FITPROBE — compare it to sim_out_aberrated/01/probe_initial_true.mat to see what"
-echo "ptycho pulled back."
+echo "Pull the newest Niter*.mat from each; compare depth resolution (kz plane peak / column"
+echo "cross-sections) across the three. The recovered probe is outputs.probe of recon 2 —"
+echo "compare it to sim_out_aberrated70/01/probe_initial_true.mat to see what ptycho retrieved."
