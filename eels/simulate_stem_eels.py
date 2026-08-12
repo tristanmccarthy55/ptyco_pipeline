@@ -235,7 +235,9 @@ def run_membrane(out_dir: str, cfg: C.STEMEELS = None, n_lat: int = 8, n_thick: 
     print("[membrane] O-K core-loss (transition potentials + gpaw) ...")
     tp = SubshellTransitions(Z=8, n=1, l=0).get_transition_potentials(
         extent=pot.extent, gpts=pot.gpts, energy=probe.energy)
-    waves = probe.build(scan)                          # scanned entrance probe waves (1.0.9)
+    # lazy=False -> eager numpy waves: abtem 1.0.9's loss-accumulation does an in-place += of a
+    # dask array into a numpy array, which newer dask rejects; eager arrays avoid that path.
+    waves = probe.build(scan, lazy=False)
     eels_out = transition_potential_multislice_and_detect(
         waves, pot, tp, detectors=[abtem.FlexibleAnnularDetector()])
     eels = eels_out[0] if isinstance(eels_out, (list, tuple)) else eels_out
