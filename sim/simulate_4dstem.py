@@ -94,6 +94,28 @@ PER_SPECIES_SIGMA = False   # False = scalar PHONON_SIGMA_A; True = the per-spec
 DEVICE = "gpu"   # "gpu" on the HPC L40; "cpu" for a laptop test
 
 # --- structure prep ---
+# --- aberrations beyond defocus (--aberrated) ---
+# A Cs (C3)-corrected hexapole instrument is flat only to ~30 mrad; opening the aperture to
+# 100 mrad exposes the UNcorrected higher orders. This residual set (Cnm in Å, phi in rad,
+# abTEM polar convention) is flat (|chi|<pi/4) to ~30 mrad and reaches ~7 waves by 100 mrad
+# -> the probe delocalises ~1.9->4.1 Å (still contained in the 70 Å box). The recon is given
+# a NOMINAL (aperture+defocus) probe and must FIT these with probe update on: if it recovers
+# them, a 30-mrad corrector buys 100-mrad depth resolution. C10 (defocus) is the operating
+# condition, applied separately via _defocus(); ABERRATIONS holds the higher orders only.
+ABERRATED = False        # --aberrated: inject the residuals below into the SIM probe
+ABERRATIONS = {
+    "C30": 0.0,                                # Cs corrected
+    "C50": 6.0e5,                              # 60 µm residual 5th-order spherical
+    "C56": 4.0e5, "phi56": 0.0,                # 40 µm six-fold astig (hexapole signature)
+    "C12": 2.0,   "phi12": np.deg2rad(30),     # 0.2 nm two-fold astigmatism
+    "C21": 50.0,  "phi21": 0.0,                # 5 nm axial coma
+    "C23": 60.0,  "phi23": np.deg2rad(20),     # 6 nm trefoil
+    "C34": 1500.0,"phi34": np.deg2rad(10),     # 0.15 µm quadrafoil
+}
+# probe_initial.mat: False = NOMINAL (aperture+defocus) -> the recon must FIT the aberrations
+# (the real experiment); True = the true aberrated probe (a known-probe control).
+PROBE_INITIAL_ABERRATED = False
+
 ROTATE_DEG_Y = -90.0     # rotation about y to set the beam (z) axis
 Z_VACUUM_A   = 2.0       # center(axis=2, vacuum=...) padding each side along beam
 
@@ -314,37 +336,42 @@ def _defocus():
 
 
 def build_probe(potential):
-    """Probe on the full simulation grid, used for the scan (accurate multislice)."""
-    probe = abtem.Probe(
-        energy=ENERGY_EV,
-        semiangle_cutoff=CONVERGENCE_MRAD,
-        defocus=_defocus(),
-        device=DEVICE,
-    )
+    """Probe on the full simulation grid, used for the scan (accurate multislice).
+
+    With --aberrated the higher-order corrector residuals (ABERRATIONS) are added on top of
+    the defocus, so the simulated data carries them; abTEM combines defocus= with aberrations=."""
+    kw = dict(energy=ENERGY_EV, semiangle_cutoff=CONVERGENCE_MRAD, defocus=_defocus(), device=DEVICE)
+    if ABERRATED:
+        kw["aberrations"] = ABERRATIONS
+    probe = abtem.Probe(**kw)
     probe.grid.match(potential)
     print(f"[probe] semiangle = {CONVERGENCE_MRAD:.0f} mrad, "
           f"abTEM defocus = {_defocus():+.1f} Å (overfocus {OVERFOCUS_A:.1f} Å: "
           f"crossover before entrance surface)")
+    if ABERRATED:
+        print(f"[probe] ABERRATED (Cnm Å / phi rad): {ABERRATIONS}")
+        print(f"[probe] Cs-corrected flat to ~30 mrad, aberrated to {CONVERGENCE_MRAD:.0f} mrad")
     return probe
 
 
-def build_initial_probe(n_b: int, box_a: float):
+def build_initial_probe(n_b: int, box_a: float, aberrated: bool = False):
     """Probe on the BINNED grid for probe_initial.mat.
 
     The binned detector has reciprocal pixel dk_b = BIN_FACTOR / box and N_b pixels.
     A probe with gpts=N_b and real-space extent = box / BIN_FACTOR has exactly that
     dk_b, the same object pixel dx = box/(N_b*BIN_FACTOR), and the same outer angle
     as the binned DP — so it is geometrically consistent with the saved data.
+
+    aberrated=False (default) writes a NOMINAL aperture+defocus probe, so an aberrated-data
+    recon must FIT the residuals (probe update on). aberrated=True writes the true aberrated
+    probe — the known-probe control.
     """
     extent = box_a / BIN_FACTOR
-    probe = abtem.Probe(
-        energy=ENERGY_EV,
-        semiangle_cutoff=CONVERGENCE_MRAD,
-        defocus=_defocus(),
-        gpts=(n_b, n_b),
-        extent=(extent, extent),
-        device="cpu",   # tiny; keep off the GPU
-    )
+    kw = dict(energy=ENERGY_EV, semiangle_cutoff=CONVERGENCE_MRAD, defocus=_defocus(),
+              gpts=(n_b, n_b), extent=(extent, extent), device="cpu")   # tiny; keep off the GPU
+    if aberrated:
+        kw["aberrations"] = ABERRATIONS       # known-probe control: hand the recon the truth
+    probe = abtem.Probe(**kw)
     return np.asarray(probe.build().compute().array).astype(np.complex64)
 
 
@@ -500,7 +527,8 @@ def save_outputs(arr, pos_xy, out_dir: Path, box_a: float):
           f"-> MATLAB [{npos},2])")
 
     # --- probe_initial.mat (binned grid; scipy for MATLAB load()+complex) ----
-    probe_wave = build_initial_probe(n_b, box_a)
+    # NOMINAL by default (recon FITS any aberrations); PROBE_INITIAL_ABERRATED -> true probe.
+    probe_wave = build_initial_probe(n_b, box_a, aberrated=PROBE_INITIAL_ABERRATED)
     itot = float(A.reshape(npos, -1).sum(axis=1).mean())
     probe_wave *= np.sqrt(itot) / (np.linalg.norm(probe_wave) + 1e-30)
     probe_wave = probe_wave.astype(np.complex64)
@@ -512,6 +540,17 @@ def save_outputs(arr, pos_xy, out_dir: Path, box_a: float):
         "p": {"binning": False, "detector": {"binning": False}},
     })
     print(f"[save] {mat_path}  (probe {probe_wave.shape} complex)")
+
+    # aberrated + nominal init -> also emit the TRUE aberrated probe so the known-probe
+    # control recon needs no second sim (identical data, different starting probe).
+    if ABERRATED and not PROBE_INITIAL_ABERRATED:
+        tw = build_initial_probe(n_b, box_a, aberrated=True)
+        tw *= np.sqrt(itot) / (np.linalg.norm(tw) + 1e-30)
+        savemat(str(out_dir / "probe_initial_true.mat"), {
+            "probe": tw.astype(np.complex64),
+            "p": {"binning": False, "detector": {"binning": False}},
+        })
+        print(f"[save] {out_dir / 'probe_initial_true.mat'}  (true aberrated probe; known-probe control)")
 
     return dp_path, pos_path, A
 
@@ -610,7 +649,7 @@ def write_driver_geometry(n_b: int, box_a: float, beam_thickness_a: float,
 # MAIN
 # ======================================================================
 def main(argv=None) -> int:
-    global DEVICE, SLICE_THICKNESS_A, SCAN_STEP_A, DOSE_E, N_PHONONS, PHONON_SIGMA_A, PER_SPECIES_SIGMA, PHONON_SEED, SCAN_WINDOW_A
+    global DEVICE, SLICE_THICKNESS_A, SCAN_STEP_A, DOSE_E, N_PHONONS, PHONON_SIGMA_A, PER_SPECIES_SIGMA, PHONON_SEED, SCAN_WINDOW_A, ABERRATED, PROBE_INITIAL_ABERRATED
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--test", action="store_true",
                     help="Tiny 3x3 scan for fast local shape/geometry validation.")
@@ -661,6 +700,13 @@ def main(argv=None) -> int:
                     help='HPC tiling: run only scan x-band I of N, as "I/N" (0-indexed). '
                          'Each tile is an independent job; sim/merge_tiles.py reassembles '
                          'them into the full dataset (bit-exact, consistent dose scale).')
+    ap.add_argument("--aberrated", action="store_true",
+                    help="inject the higher-order corrector residuals (ABERRATIONS: Cs-corrected "
+                         "flat to ~30 mrad, aberrated to 100 mrad) into the SIM probe, on top of "
+                         "defocus. The recon fits them with probe update on.")
+    ap.add_argument("--probe-initial", default="nominal", choices=["nominal", "true"],
+                    help="probe_initial.mat: 'nominal' (aperture+defocus; recon must FIT any "
+                         "aberrations) or 'true' (the aberrated probe; known-probe control).")
     args = ap.parse_args(argv)
     DEVICE = args.device
     SLICE_THICKNESS_A = args.slice_thickness
@@ -671,6 +717,8 @@ def main(argv=None) -> int:
     PER_SPECIES_SIGMA = args.per_species_sigma
     PHONON_SEED = args.phonon_seed
     SCAN_WINDOW_A = args.scan_window
+    ABERRATED = args.aberrated
+    PROBE_INITIAL_ABERRATED = (args.probe_initial == "true")
 
     tile = None
     if args.scan_tile:
@@ -713,6 +761,14 @@ def main(argv=None) -> int:
         import json
         (args.out_dir / "vacancy_info.json").write_text(json.dumps(vac_info, indent=2))
         print(f"[vacancy] wrote {args.out_dir / 'vacancy_info.json'}: {vac_info}")
+    if ABERRATED:
+        # sidecar: the exact aberrations in the data + which probe the recon starts from
+        import json
+        info = {"energy_eV": ENERGY_EV, "convergence_mrad": CONVERGENCE_MRAD,
+                "defocus_A": _defocus(), "aberrations_Cnm_A_phi_rad": ABERRATIONS,
+                "probe_initial": "true (aberrated)" if PROBE_INITIAL_ABERRATED else "nominal (aperture+defocus)"}
+        (args.out_dir / "aberrations.json").write_text(json.dumps(info, indent=2))
+        print(f"[aberr] wrote {args.out_dir / 'aberrations.json'}")
     if tile is not None:
         # record this band's global position range so merge can order + verify
         np.save(args.out_dir / "tile_range.npy", np.array(grange, dtype=np.int64))
