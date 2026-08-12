@@ -106,9 +106,11 @@ VAC_ARG=()
     --vacancy-column "${VACANCY_COLUMN:-any}" --vacancy-z "${VACANCY_Z:-35}")
 
 # aberration mode: Cs-corrected-to-30mrad probe opened to 100 mrad. ABERRATED=1 injects the
-# higher-order residuals; PROBE_INITIAL=nominal|true (nominal -> recon must fit them).
+# residuals; PROBE_INITIAL=nominal|true (nominal -> recon must fit them). Needs BIN_FACTOR=2
+# (the Cs probe delocalises past the default 4x window).
 AB_ARG=()
 [ "${ABERRATED:-0}" = "1" ] && AB_ARG=(--aberrated --probe-initial "${PROBE_INITIAL:-nominal}")
+BIN_ARG=(); [ -n "${BIN_FACTOR:-}" ] && BIN_ARG=(--bin-factor "${BIN_FACTOR}")
 
 # per-species RMS thermal displacements (Pb/Sr/Ti/O) instead of one sigma for all
 PS_ARG=(); [ "${PER_SPECIES_SIGMA:-0}" = "1" ] && PS_ARG=(--per-species-sigma)
@@ -120,4 +122,4 @@ PS_ARG=(); [ "${PER_SPECIES_SIGMA:-0}" = "1" ] && PS_ARG=(--per-species-sigma)
     --scan-step "${SCAN_STEP}" \
     --phonons "${PHONONS}" \
     --phonon-sigma "${PHONON_SIGMA}" \
-    "${TILE_ARG[@]}" "${SA_ARG[@]}" "${VAC_ARG[@]}" "${PS_ARG[@]}" "${AB_ARG[@]}"
+    "${TILE_ARG[@]}" "${SA_ARG[@]}" "${VAC_ARG[@]}" "${PS_ARG[@]}" "${AB_ARG[@]}" "${BIN_ARG[@]}"

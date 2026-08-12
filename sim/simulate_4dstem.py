@@ -95,22 +95,29 @@ DEVICE = "gpu"   # "gpu" on the HPC L40; "cpu" for a laptop test
 
 # --- structure prep ---
 # --- aberrations beyond defocus (--aberrated) ---
-# A Cs (C3)-corrected hexapole instrument is flat only to ~30 mrad; opening the aperture to
-# 100 mrad exposes the UNcorrected higher orders. This residual set (Cnm in Å, phi in rad,
-# abTEM polar convention) is flat (|chi|<pi/4) to ~30 mrad and reaches ~7 waves by 100 mrad
-# -> the probe delocalises ~1.9->4.1 Å (still contained in the 70 Å box). The recon is given
-# a NOMINAL (aperture+defocus) probe and must FIT these with probe update on: if it recovers
-# them, a 30-mrad corrector buys 100-mrad depth resolution. C10 (defocus) is the operating
-# condition, applied separately via _defocus(); ABERRATIONS holds the higher orders only.
+# A Cs(C3)-corrected instrument tuned for ~30 mrad, then opened to 100 mrad. The corrector
+# leaves a residual Cs ~ 0.7 µm (cf. Nguyen et al., Science 2024: their aberration-CORRECTED
+# value is 1 µm; UNcorrected is 1.1 mm). Cs is a fixed coefficient, but its phase ∝ α⁴ is
+# negligible at 30 mrad (<π/4) and EXPLODES to ~9 waves by 100 mrad — so opening the aperture
+# makes Cs "pop back out" as the dominant aberration (~95% of χ at 100 mrad). A truly horrific
+# mm-scale Cs is IMPOSSIBLE here: at 100 mrad it delocalises the probe by ~1 µm (χ ~ 14000
+# waves); the aperture caps usable Cs at ~1.5 µm. Even 0.7 µm delocalises the probe to ~7 Å,
+# too big for the 4×-binned (17.5 Å) recon window — so the aberrated experiment runs at
+# BIN=2 (35 Å window, finer k-sampling), exactly Nguyen et al.'s Fig-3B fix for aberrated
+# probes. Residual sweet spot ~30 mrad. The recon starts from a NOMINAL aperture+defocus probe
+# and must FIT these with probe update on: if it recovers them, a 30-mrad corrector buys
+# 100-mrad depth resolution. C10 (defocus) is the operating condition (via _defocus(), same as
+# the aberration-free NL70 reference); ABERRATIONS holds the corrector residuals only.
 ABERRATED = False        # --aberrated: inject the residuals below into the SIM probe
 ABERRATIONS = {
-    "C30": 0.0,                                # Cs corrected
-    "C50": 6.0e5,                              # 60 µm residual 5th-order spherical
-    "C56": 4.0e5, "phi56": 0.0,                # 40 µm six-fold astig (hexapole signature)
-    "C12": 2.0,   "phi12": np.deg2rad(30),     # 0.2 nm two-fold astigmatism
-    "C21": 50.0,  "phi21": 0.0,                # 5 nm axial coma
-    "C23": 60.0,  "phi23": np.deg2rad(20),     # 6 nm trefoil
-    "C34": 1500.0,"phi34": np.deg2rad(10),     # 0.15 µm quadrafoil
+    "C30": 7.0e3,                              # Cs = 0.7 µm — the DOMINANT residual (∝α⁴):
+    #                                            flat to ~30 mrad, ~9 waves by 100 mrad
+    "C50": 3.0e5,                              # 30 µm residual 5th-order spherical (secondary)
+    "C56": 2.0e5, "phi56": 0.0,                # 20 µm six-fold astig (hexapole signature)
+    "C12": 1.0,   "phi12": np.deg2rad(30),     # 0.1 nm two-fold astigmatism
+    "C21": 30.0,  "phi21": 0.0,                # 3 nm axial coma
+    "C23": 30.0,  "phi23": np.deg2rad(20),     # 3 nm trefoil
+    "C34": 500.0, "phi34": np.deg2rad(10),     # 50 nm quadrafoil
 }
 # probe_initial.mat: False = NOMINAL (aperture+defocus) -> the recon must FIT the aberrations
 # (the real experiment); True = the true aberrated probe (a known-probe control).
@@ -649,7 +656,7 @@ def write_driver_geometry(n_b: int, box_a: float, beam_thickness_a: float,
 # MAIN
 # ======================================================================
 def main(argv=None) -> int:
-    global DEVICE, SLICE_THICKNESS_A, SCAN_STEP_A, DOSE_E, N_PHONONS, PHONON_SIGMA_A, PER_SPECIES_SIGMA, PHONON_SEED, SCAN_WINDOW_A, ABERRATED, PROBE_INITIAL_ABERRATED
+    global DEVICE, SLICE_THICKNESS_A, SCAN_STEP_A, DOSE_E, N_PHONONS, PHONON_SIGMA_A, PER_SPECIES_SIGMA, PHONON_SEED, SCAN_WINDOW_A, ABERRATED, PROBE_INITIAL_ABERRATED, BIN_FACTOR
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--test", action="store_true",
                     help="Tiny 3x3 scan for fast local shape/geometry validation.")
@@ -700,10 +707,14 @@ def main(argv=None) -> int:
                     help='HPC tiling: run only scan x-band I of N, as "I/N" (0-indexed). '
                          'Each tile is an independent job; sim/merge_tiles.py reassembles '
                          'them into the full dataset (bit-exact, consistent dose scale).')
+    ap.add_argument("--bin-factor", type=int, default=BIN_FACTOR,
+                    help="NxN detector binning (default 4 -> 356 px / 17.5 Å probe window). "
+                         "Use 2 for the aberrated run: a Cs probe delocalises past the 4x window, "
+                         "so it needs finer k-sampling (712 px / 35 Å) — Nguyen et al. Fig 3B.")
     ap.add_argument("--aberrated", action="store_true",
-                    help="inject the higher-order corrector residuals (ABERRATIONS: Cs-corrected "
-                         "flat to ~30 mrad, aberrated to 100 mrad) into the SIM probe, on top of "
-                         "defocus. The recon fits them with probe update on.")
+                    help="inject the corrector residuals (ABERRATIONS: Cs≈0.7 µm dominant, flat "
+                         "to ~30 mrad, ~9 waves by 100 mrad) into the SIM probe, on top of "
+                         "defocus. The recon fits them with probe update on. Use --bin-factor 2.")
     ap.add_argument("--probe-initial", default="nominal", choices=["nominal", "true"],
                     help="probe_initial.mat: 'nominal' (aperture+defocus; recon must FIT any "
                          "aberrations) or 'true' (the aberrated probe; known-probe control).")
@@ -719,6 +730,7 @@ def main(argv=None) -> int:
     SCAN_WINDOW_A = args.scan_window
     ABERRATED = args.aberrated
     PROBE_INITIAL_ABERRATED = (args.probe_initial == "true")
+    BIN_FACTOR = args.bin_factor
 
     tile = None
     if args.scan_tile:
