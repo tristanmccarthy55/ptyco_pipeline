@@ -102,7 +102,8 @@ fprintf('apply_multimodal_update = %d ; variable_probe_modes = %d\n', multimodal
 rl_env = getenv('REGLAYER');
 if ~isempty(rl_env); reglayer = [str2double(rl_env), str2double(rl_env)]; else; reglayer = [1, 0.5]; end
 fprintf('regularize_layers (per engine) = [%g %g]\n', reglayer(1), reglayer(2));
-Np_presolve               = [round(Ndpx/2), Ndpx];   % 178 -> 356
+Np_presolve               = [2*floor(Ndpx/4), Ndpx]; % half-Ndp, forced EVEN (the GPU engine
+%   uses even FFT sizes; Ndpx=1426 -> round(/2)=713 is ODD -> 713/712 size clash). 356->178.
 Niter_save_results        = [50,  50];
 Niter_save_exit_wave      = [200, 200];
 strcustom0                = 'synthetic_ML';
