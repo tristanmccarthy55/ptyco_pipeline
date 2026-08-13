@@ -22,7 +22,16 @@ det.mask_below_value = [];              % mask pixels below given value
 det.data_stored = true;                % false == data are generated "onfly", no need to load / store
 %det.geometry.sz = [1030 514];           % detector readout size
 % det.geometry.sz = [256 256];           % detector readout size
-det.geometry.sz = [512 512];           % detector readout size, By Zhen Chen, 512x512 supported
+% det.geometry.sz = [512 512];           % Zhen Chen: 512x512 supported (hardcode BREAKS Ndp>512
+%                                          -- the mask is allocated at this size and get_mask then
+%                                          crops it to the data, overrunning for BIN=1 Ndp=1426).
+% Size the readout/mask to the ACTUAL pattern size (p.asize); keep >=512 so existing
+% <=512 px recons are byte-for-byte unchanged.
+if isfield(p, 'asize') && ~isempty(p.asize)
+    det.geometry.sz = double(max([512 512], reshape(p.asize, 1, [])));
+else
+    det.geometry.sz = [512 512];
+end
 
 det.geometry.mask = [];                 % if the mask is larger than the readout 
                                         % geometry (det.geometry.sz), geometry.mask defines the readout for the mask

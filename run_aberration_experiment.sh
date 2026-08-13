@@ -44,14 +44,26 @@ recon_job () {  # $1 name  $2 sim_dir  $3 probe_file  $4 PROBE_START("" = fixed)
     for f in "${INPUTS[@]}"; do ln -sf "${simdir}/01/${f}" "${rdir}/01/${f}"; done
     ln -sf "${simdir}/01/${probe}" "${rdir}/01/probe_initial.mat"       # chosen starting probe
     local psx=""; [ -n "${pstart}" ] && psx=",PROBE_START=${pstart}"
+    local dep_arg=(); [ -n "${dep}" ] && dep_arg=(--dependency="afterok:${dep}")   # empty dep -> run now (RECON_ONLY)
     sbatch --parsable --job-name="ab_rec_${name}" --time=2-00:00:00 \
-        --dependency="afterok:${dep}" \
+        ${dep_arg[@]+"${dep_arg[@]}"} \
         --output="${rdir}/slurm_%j.out" --error="${rdir}/slurm_%j.err" \
         --export=ALL,NLAYERS="${NL}",SIM_BASE="${rdir}/",REGLAYER=0,PROBE_MODES=1,NITER="${NITER}"${psx} \
         run_recon_synthetic_ML.slurm
 }
-SP=$(sim_job perfect70 0);   echo "sim perfect-70   : ${SP} -> sim_out_perfect70/01/"
-SA=$(sim_job aberrated70 1); echo "sim aberrated-70 : ${SA} -> sim_out_aberrated70/01/ (+ probe_initial_true.mat)"
+# RECON_ONLY=1 reuses existing sim_out_{perfect70,aberrated70}/01/ (sims already done) and
+# resubmits just the recons with no afterok dependency -> they start immediately.
+if [ "${RECON_ONLY:-0}" = "1" ]; then
+    SP=""; SA=""
+    for t in perfect70 aberrated70; do
+        [ -e "${REPO_DIR}/sim_out_${t}/01/data_dp.hdf5" ] || {
+            echo "ERROR: sim_out_${t}/01/data_dp.hdf5 missing — run the sims first (unset RECON_ONLY)." >&2; exit 1; }
+    done
+    echo "RECON_ONLY: reusing existing sim_out_{perfect70,aberrated70}/01/ (no sims)"
+else
+    SP=$(sim_job perfect70 0);   echo "sim perfect-70   : ${SP} -> sim_out_perfect70/01/"
+    SA=$(sim_job aberrated70 1); echo "sim aberrated-70 : ${SA} -> sim_out_aberrated70/01/ (+ probe_initial_true.mat)"
+fi
 
 R1=$(recon_job perfect70     "${REPO_DIR}/sim_out_perfect70"   probe_initial.mat      ""          "${SP}")
 R2=$(recon_job ab_fitprobe   "${REPO_DIR}/sim_out_aberrated70" probe_initial.mat      "${PSTART}" "${SA}")
