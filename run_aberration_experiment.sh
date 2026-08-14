@@ -32,6 +32,9 @@ GROUP="${GROUP:-16}"   # full-engine GPU batch: 32 needs 52 GB > 47 GB L40 at Nd
 # fit-probe leg only: blind probe retrieval (nominal start vs a 24-wave aberrated truth) NaN'd
 # at full res with beta 0.1 / release at 10; release later + smaller LSQ step to stabilise.
 BETA="${BETA:-0.05}"
+# host RAM: the BIN=1 full engine holds the 36 GB patterns + ~36 GB amplitudes; the slurm
+# default 64 GB OOM-kills it (exit 9). 128 GB clears the ~80 GB peak.
+MEM="${MEM:-128G}"
 
 sim_job () {  # $1 tag  $2 ABERRATED(0/1)
     local tag="$1" ab="$2"
@@ -49,7 +52,7 @@ recon_job () {  # $1 name  $2 sim_dir  $3 probe_file  $4 PROBE_START("" = fixed)
     ln -sf "${simdir}/01/${probe}" "${rdir}/01/probe_initial.mat"       # chosen starting probe
     local psx=""; [ -n "${pstart}" ] && psx=",PROBE_START=${pstart},BETA_LSQ=${BETA}"   # probe-fit legs: stabilised
     local dep_arg=(); [ -n "${dep}" ] && dep_arg=(--dependency="afterok:${dep}")   # empty dep -> run now (RECON_ONLY)
-    sbatch --parsable --job-name="ab_rec_${name}" --time=2-00:00:00 \
+    sbatch --parsable --job-name="ab_rec_${name}" --time=2-00:00:00 --mem="${MEM}" \
         ${dep_arg[@]+"${dep_arg[@]}"} \
         --output="${rdir}/slurm_%j.out" --error="${rdir}/slurm_%j.err" \
         --export=ALL,NLAYERS="${NL}",SIM_BASE="${rdir}/",REGLAYER=0,PROBE_MODES=1,NITER="${NITER}",GROUPING="${GROUP}"${psx} \

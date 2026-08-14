@@ -24,6 +24,7 @@ EL="${EL:-Pb}"; ATOMZ=37; GRID="${GRID_SPACING:-4}"; WIN="${WIN:-14}"
 NL=70; STEP="${STEP:-0.3}"; SLICE=2; BIN=1; CONV=70
 GROUP="${GROUP:-16}"; NITER="${NITER:-100}"; PSTART="${PSTART:-30}"
 BETA="${BETA:-0.05}"   # fit-probe leg: stabilise blind probe retrieval (see run_aberration_experiment.sh)
+MEM="${MEM:-128G}"     # BIN=1 full engine needs >64 GB host RAM (36 GB patterns + amplitudes)
 
 sim_job () {  # $1 tag  $2 ABERRATED(0/1)
     local tag="$1" ab="$2"
@@ -41,7 +42,7 @@ recon_job () {  # $1 name  $2 sim_dir  $3 probe_file  $4 PROBE_START("" = fixed)
     ln -sf "${simdir}/01/${probe}" "${rdir}/01/probe_initial.mat"
     local psx=""; [ -n "${pstart}" ] && psx=",PROBE_START=${pstart},BETA_LSQ=${BETA}"   # probe-fit legs: stabilised
     local dep_arg=(); [ -n "${dep}" ] && dep_arg=(--dependency="afterok:${dep}")
-    sbatch --parsable --job-name="psfab_rec_${name}" --time=1-12:00:00 \
+    sbatch --parsable --job-name="psfab_rec_${name}" --time=1-12:00:00 --mem="${MEM}" \
         ${dep_arg[@]+"${dep_arg[@]}"} \
         --output="${rdir}/slurm_%j.out" --error="${rdir}/slurm_%j.err" \
         --export=ALL,NLAYERS="${NL}",SIM_BASE="${rdir}/",REGLAYER=0,PROBE_MODES=1,NITER="${NITER}",GROUPING="${GROUP}"${psx} \
