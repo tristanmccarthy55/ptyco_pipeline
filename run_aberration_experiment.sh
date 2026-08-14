@@ -34,7 +34,7 @@ GROUP="${GROUP:-16}"   # full-engine GPU batch: 32 needs 52 GB > 47 GB L40 at Nd
 BETA="${BETA:-0.05}"
 # host RAM: the BIN=1 full engine holds the 36 GB patterns + ~36 GB amplitudes; the slurm
 # default 64 GB OOM-kills it (exit 9). 128 GB clears the ~80 GB peak.
-MEM="${MEM:-128G}"
+MEM="${MEM:-192G}"
 
 sim_job () {  # $1 tag  $2 ABERRATED(0/1)
     local tag="$1" ab="$2"
