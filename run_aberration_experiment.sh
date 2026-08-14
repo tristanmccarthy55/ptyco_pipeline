@@ -32,8 +32,9 @@ GROUP="${GROUP:-16}"   # full-engine GPU batch: 32 needs 52 GB > 47 GB L40 at Nd
 # fit-probe leg only: blind probe retrieval (nominal start vs a 24-wave aberrated truth) NaN'd
 # at full res with beta 0.1 / release at 10; release later + smaller LSQ step to stabilise.
 BETA="${BETA:-0.05}"
-# host RAM: the BIN=1 full engine holds the 36 GB patterns + ~36 GB amplitudes; the slurm
-# default 64 GB OOM-kills it (exit 9). 128 GB clears the ~80 GB peak.
+# host RAM: the BIN=1 full engine peaks at ~150 GB (36 GB patterns + amplitudes + prep copies);
+# the slurm default 64 GB node-OOMs it (exit 9). GPU nodes are 192 GB, so --mem=192G reserves
+# the whole node (nothing co-locates) and the peak fits. See HPC_COMMANDS.md § Hardware.
 MEM="${MEM:-192G}"
 
 sim_job () {  # $1 tag  $2 ABERRATED(0/1)
