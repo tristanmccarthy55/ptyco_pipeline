@@ -39,6 +39,7 @@ def _newest_mat(d):
     m = glob.glob(os.path.join(d, "**", "Niter*.mat"), recursive=True)
     if not m:
         raise SystemExit(f"no Niter*.mat under {d} — pull the recon first (see run_aberration_experiment.sh)")
+    m = [p for p in m if "step02" in p] or m        # full-resolution engine, not the presolve
     return sorted(m, key=lambda p: int("".join(filter(str.isdigit, os.path.basename(p)))))[-1]
 
 
