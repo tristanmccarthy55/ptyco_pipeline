@@ -33,9 +33,10 @@ GROUP="${GROUP:-16}"   # full-engine GPU batch: 32 needs 52 GB > 47 GB L40 at Nd
 # at full res with beta 0.1 / release at 10; release later + smaller LSQ step to stabilise.
 BETA="${BETA:-0.05}"
 # host RAM: the BIN=1 full engine peaks at ~150 GB (36 GB patterns + amplitudes + prep copies);
-# the slurm default 64 GB node-OOMs it (exit 9). GPU nodes are 192 GB, so --mem=192G reserves
-# the whole node (nothing co-locates) and the peak fits. See HPC_COMMANDS.md § Hardware.
-MEM="${MEM:-192G}"
+# the slurm default 64 GB node-OOMs it (exit 9). GPU nodes are 192 GB / 32 cores (~6 GB/core), so --mem
+# is capped ~184 GB (full 192G forces >32 cores -> "CPU count cannot be satisfied"); 175G
+# clears the peak, reserves most of the node, and stays under the core limit. See HPC_COMMANDS.md § Hardware.
+MEM="${MEM:-175G}"
 
 sim_job () {  # $1 tag  $2 ABERRATED(0/1)
     local tag="$1" ab="$2"

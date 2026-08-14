@@ -24,7 +24,7 @@ EL="${EL:-Pb}"; ATOMZ=37; GRID="${GRID_SPACING:-4}"; WIN="${WIN:-14}"
 NL=70; STEP="${STEP:-0.3}"; SLICE=2; BIN=1; CONV=70
 GROUP="${GROUP:-16}"; NITER="${NITER:-100}"; PSTART="${PSTART:-30}"
 BETA="${BETA:-0.05}"   # fit-probe leg: stabilise blind probe retrieval (see run_aberration_experiment.sh)
-MEM="${MEM:-192G}"     # BIN=1 full engine needs >64 GB host RAM (36 GB patterns + amplitudes)
+MEM="${MEM:-175G}"     # BIN=1 full engine needs >64 GB host RAM (36 GB patterns + amplitudes)
 
 sim_job () {  # $1 tag  $2 ABERRATED(0/1)
     local tag="$1" ab="$2"
