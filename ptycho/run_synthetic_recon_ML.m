@@ -61,8 +61,18 @@ delta_z = thick / Nlayers;                      % actual layer spacing [Å]
 fprintf('multislice: Nlayers=%d, delta_z=%.3f A (planes ~1.95 A; ratio %.2f)\n', ...
         Nlayers, delta_z, 1.95/delta_z);
 
-% two-engine schedule (coarse presolve -> full), modelled on the proven baseline
+% two-engine schedule (coarse presolve -> full), modelled on the proven baseline.
+% grouping = diffraction patterns per GPU batch; GPU memory ~ grouping * Ndp^2, so large Ndp
+% (BIN=1 -> 1426) OOMs at 32 (needs 52 GB > 47 GB L40). GROUPING env overrides the full-engine
+% value ("g_pre g_full" or a single g_full); default 32.
 grouping                  = [64,  32];
+gr_env = getenv('GROUPING');
+if ~isempty(gr_env)
+    gv = str2num(gr_env); %#ok<ST2NM>
+    if numel(gv) >= 2; grouping = [round(gv(1)), round(gv(2))];
+    else;              grouping = [grouping(1), round(gv(1))]; end
+end
+fprintf('grouping (per engine) = [%d %d]\n', grouping(1), grouping(2));
 % iterations per engine; the lattice converges well before 200, so NITER lets the
 % heavy deep/fine runs fit walltime (e.g. NITER=120 for 70-layer ~1 A slices).
 ni_env = getenv('NITER');
