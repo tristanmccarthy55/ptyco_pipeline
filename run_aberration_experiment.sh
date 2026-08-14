@@ -27,8 +27,11 @@
 set -euo pipefail
 REPO_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"; cd "${REPO_DIR}"; mkdir -p logs
 INPUTS=(data_dp.hdf5 data_position.hdf5 sim_meta.mat)   # probe_initial chosen per-leg
-NL=70; STEP="${STEP:-0.3}"; SLICE=2; BIN=1; CONV=70; NITER="${NITER:-100}"; PSTART="${PSTART:-10}"
+NL=70; STEP="${STEP:-0.3}"; SLICE=2; BIN=1; CONV=70; NITER="${NITER:-100}"; PSTART="${PSTART:-30}"
 GROUP="${GROUP:-16}"   # full-engine GPU batch: 32 needs 52 GB > 47 GB L40 at Ndp=1426; 16 -> ~29 GB
+# fit-probe leg only: blind probe retrieval (nominal start vs a 24-wave aberrated truth) NaN'd
+# at full res with beta 0.1 / release at 10; release later + smaller LSQ step to stabilise.
+BETA="${BETA:-0.05}"
 
 sim_job () {  # $1 tag  $2 ABERRATED(0/1)
     local tag="$1" ab="$2"
@@ -44,7 +47,7 @@ recon_job () {  # $1 name  $2 sim_dir  $3 probe_file  $4 PROBE_START("" = fixed)
     mkdir -p "${rdir}/01"
     for f in "${INPUTS[@]}"; do ln -sf "${simdir}/01/${f}" "${rdir}/01/${f}"; done
     ln -sf "${simdir}/01/${probe}" "${rdir}/01/probe_initial.mat"       # chosen starting probe
-    local psx=""; [ -n "${pstart}" ] && psx=",PROBE_START=${pstart}"
+    local psx=""; [ -n "${pstart}" ] && psx=",PROBE_START=${pstart},BETA_LSQ=${BETA}"   # probe-fit legs: stabilised
     local dep_arg=(); [ -n "${dep}" ] && dep_arg=(--dependency="afterok:${dep}")   # empty dep -> run now (RECON_ONLY)
     sbatch --parsable --job-name="ab_rec_${name}" --time=2-00:00:00 \
         ${dep_arg[@]+"${dep_arg[@]}"} \

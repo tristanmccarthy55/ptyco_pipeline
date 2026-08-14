@@ -22,7 +22,8 @@ REPO_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"; cd "${REPO_DIR}"; mkdi
 INPUTS=(data_dp.hdf5 data_position.hdf5 sim_meta.mat)      # probe_initial chosen per-leg
 EL="${EL:-Pb}"; ATOMZ=37; GRID="${GRID_SPACING:-4}"; WIN="${WIN:-14}"
 NL=70; STEP="${STEP:-0.3}"; SLICE=2; BIN=1; CONV=70
-GROUP="${GROUP:-16}"; NITER="${NITER:-100}"; PSTART="${PSTART:-10}"
+GROUP="${GROUP:-16}"; NITER="${NITER:-100}"; PSTART="${PSTART:-30}"
+BETA="${BETA:-0.05}"   # fit-probe leg: stabilise blind probe retrieval (see run_aberration_experiment.sh)
 
 sim_job () {  # $1 tag  $2 ABERRATED(0/1)
     local tag="$1" ab="$2"
@@ -38,7 +39,7 @@ recon_job () {  # $1 name  $2 sim_dir  $3 probe_file  $4 PROBE_START("" = fixed)
     mkdir -p "${rdir}/01"
     for f in "${INPUTS[@]}"; do ln -sf "${simdir}/01/${f}" "${rdir}/01/${f}"; done
     ln -sf "${simdir}/01/${probe}" "${rdir}/01/probe_initial.mat"
-    local psx=""; [ -n "${pstart}" ] && psx=",PROBE_START=${pstart}"
+    local psx=""; [ -n "${pstart}" ] && psx=",PROBE_START=${pstart},BETA_LSQ=${BETA}"   # probe-fit legs: stabilised
     local dep_arg=(); [ -n "${dep}" ] && dep_arg=(--dependency="afterok:${dep}")
     sbatch --parsable --job-name="psfab_rec_${name}" --time=1-12:00:00 \
         ${dep_arg[@]+"${dep_arg[@]}"} \
@@ -47,8 +48,19 @@ recon_job () {  # $1 name  $2 sim_dir  $3 probe_file  $4 PROBE_START("" = fixed)
         run_recon_synthetic_ML.slurm
 }
 
-SP=$(sim_job perfect70 0);   echo "sim perfect-70 grid   : ${SP} -> sim_out_psfab_perfect70/01/"
-SA=$(sim_job aberrated70 1); echo "sim aberrated-70 grid : ${SA} -> sim_out_psfab_aberrated70/01/ (+ probe_initial_true.mat)"
+# RECON_ONLY=1 reuses existing sim_out_psfab_{perfect70,aberrated70}/01/ and resubmits just the
+# recons (no dependency) — e.g. to redo the fit-probe leg with the stabilised PSTART/BETA.
+if [ "${RECON_ONLY:-0}" = "1" ]; then
+    SP=""; SA=""
+    for t in perfect70 aberrated70; do
+        [ -e "${REPO_DIR}/sim_out_psfab_${t}/01/data_dp.hdf5" ] || {
+            echo "ERROR: sim_out_psfab_${t}/01/data_dp.hdf5 missing — run the sims first (unset RECON_ONLY)." >&2; exit 1; }
+    done
+    echo "RECON_ONLY: reusing existing sim_out_psfab_{perfect70,aberrated70}/01/ (no sims)"
+else
+    SP=$(sim_job perfect70 0);   echo "sim perfect-70 grid   : ${SP} -> sim_out_psfab_perfect70/01/"
+    SA=$(sim_job aberrated70 1); echo "sim aberrated-70 grid : ${SA} -> sim_out_psfab_aberrated70/01/ (+ probe_initial_true.mat)"
+fi
 
 R1=$(recon_job perfect70     "${REPO_DIR}/sim_out_psfab_perfect70"   probe_initial.mat      ""          "${SP}")
 R2=$(recon_job ab_fitprobe   "${REPO_DIR}/sim_out_psfab_aberrated70" probe_initial.mat      "${PSTART}" "${SA}")
