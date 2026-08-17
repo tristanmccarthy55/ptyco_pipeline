@@ -27,7 +27,8 @@
 set -euo pipefail
 REPO_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"; cd "${REPO_DIR}"; mkdir -p logs
 INPUTS=(data_dp.hdf5 data_position.hdf5 sim_meta.mat)   # probe_initial chosen per-leg
-NL=70; STEP="${STEP:-0.3}"; SLICE=2; BIN=1; CONV=70; NITER="${NITER:-100}"; PSTART="${PSTART:-30}"
+NL="${NL:-70}"; STEP="${STEP:-0.3}"; SLICE=2; BIN=1; CONV=70; NITER="${NITER:-100}"; PSTART="${PSTART:-30}"
+SAVE="${SAVE_EVERY:-25}"   # checkpoint every 25 iters so a NaN/timeout still leaves a usable .mat
 GROUP="${GROUP:-16}"   # full-engine GPU batch: 32 needs 52 GB > 47 GB L40 at Ndp=1426; 16 -> ~29 GB
 # fit-probe leg only: blind probe retrieval (nominal start vs a 24-wave aberrated truth) NaN'd
 # at full res with beta 0.1 / release at 10; release later + smaller LSQ step to stabilise.
@@ -57,7 +58,7 @@ recon_job () {  # $1 name  $2 sim_dir  $3 probe_file  $4 PROBE_START("" = fixed)
     sbatch --parsable --job-name="ab_rec_${name}" --time=2-00:00:00 --mem="${MEM}" \
         ${dep_arg[@]+"${dep_arg[@]}"} \
         --output="${rdir}/slurm_%j.out" --error="${rdir}/slurm_%j.err" \
-        --export=ALL,NLAYERS="${NL}",SIM_BASE="${rdir}/",REGLAYER=0,PROBE_MODES=1,NITER="${NITER}",GROUPING="${GROUP}"${psx} \
+        --export=ALL,NLAYERS="${NL}",SIM_BASE="${rdir}/",REGLAYER=0,PROBE_MODES=1,NITER="${NITER}",GROUPING="${GROUP}",SAVE_EVERY="${SAVE}"${psx} \
         run_recon_synthetic_ML.slurm
 }
 # RECON_ONLY=1 reuses existing sim_out_{perfect70,aberrated70}/01/ (sims already done) and
