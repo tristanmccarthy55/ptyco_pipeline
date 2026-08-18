@@ -4,9 +4,10 @@
 # defocus to a COMPACT probe that fits standard BIN=4. Few layers + a compact probe = fast AND
 # well-conditioned, so blind probe retrieval has a real chance.
 #
-# Physics: at 70 mrad, defocus (+165 Å) cancels the round C3+C5 ray spread -> Cs=1µm + C5=1mm
-# gives a ~10 Å compact-but-aberrated probe (vs ~35 Å unbalanced). Non-round terms (C56/C12)
-# are OUT (defocus can't cancel them). See run_aberration_experiment.sh for the thick version.
+# Physics: at 70 mrad a round C5=1mm can't be flattened by defocus alone (α² can't match α⁶),
+# so we use TWO knobs — C3=−4 µm (coarse) + C1=0 (fine) — to hold the α⁴+α⁶ sum within ~4 Å
+# across the whole aperture -> a compact ~4 Å probe carrying the residual C5. Non-round terms
+# (C56/C12) are OUT (uncancellable). See run_aberration_experiment.sh for the thick version.
 #
 # Legs (all thin, BIN=4, NL few, reg off):
 #   perfect    : aberration-free compact probe (df=30 -> ~4 Å)        -> resolution reference
@@ -22,7 +23,9 @@ set -euo pipefail
 REPO_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"; cd "${REPO_DIR}"; mkdir -p logs
 INPUTS=(data_dp.hdf5 data_position.hdf5 sim_meta.mat)          # probe chosen per-leg
 THIN="${THIN:-3}"; SLICE=2; CONV=70; BIN=4; STEP="${STEP:-0.5}"
-CS="${CS:-1e4}"; C5="${C5:-1e7}"; DF="${DF:-165}"; DF_PERF="${DF_PERF:-30}"
+# Round aberration C5=1mm balanced to a ~4 Å probe by TWO knobs (no single C1 can hold the
+# α⁴+α⁶ sum flat over 0–70 mrad): C3=−4 µm coarse + C1=0 fine -> d90≈3.9 Å (verified).
+CS="${CS:-"-4e4"}"; C5="${C5:-1e7}"; DF="${DF:-0}"; DF_PERF="${DF_PERF:-30}"
 NL="${NL:-6}"; NITER="${NITER:-100}"; PSTART="${PSTART:-30}"; BETA="${BETA:-0.05}"
 
 sim_job () {  # $1 tag  $2 aberrated(0/1)
