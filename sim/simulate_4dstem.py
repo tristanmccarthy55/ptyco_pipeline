@@ -755,6 +755,10 @@ def main(argv=None) -> int:
                     help="[thin-ab] with --aberrated: ROUND-only C30 (Cs) [Å], replacing the ARM set.")
     ap.add_argument("--c5", type=float, default=None,
                     help="[thin-ab] with --aberrated: ROUND-only C50 (C5) [Å], replacing the ARM set.")
+    ap.add_argument("--aberrations-json", default=None,
+                    help="[campaign] full abTEM Cnm/phi dict as JSON (e.g. non-round terms "
+                         "'{\"C30\":-4e4,\"C50\":1e7,\"C56\":5e6,\"phi56\":0}'), replacing the "
+                         "ARM set and the --cs/--c5 override. Implies --aberrated. Defocus stays --defocus.")
     ap.add_argument("--probe-initial", default="nominal", choices=["nominal", "true"],
                     help="probe_initial.mat: 'nominal' (aperture+defocus; recon must FIT any "
                          "aberrations) or 'true' (the aberrated probe; known-probe control).")
@@ -773,7 +777,11 @@ def main(argv=None) -> int:
     BIN_FACTOR = args.bin_factor
     CONVERGENCE_MRAD = args.convergence
     DEFOCUS_A = args.defocus                                  # [thin-ab] None -> -OVERFOCUS_A
-    if args.cs is not None or args.c5 is not None:            # [thin-ab] round-only override
+    if args.aberrations_json is not None:                     # [campaign] full override (non-round)
+        import json as _json
+        ABERRATIONS = {k: float(v) for k, v in _json.loads(args.aberrations_json).items()}
+        ABERRATED = True
+    elif args.cs is not None or args.c5 is not None:          # [thin-ab] round-only override
         ABERRATIONS = {"C30": args.cs or 0.0, "C50": args.c5 or 0.0}
 
     tile = None

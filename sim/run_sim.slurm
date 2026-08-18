@@ -122,6 +122,8 @@ TH_ARG=(); [ -n "${THIN_CELLS:-}" ] && TH_ARG=(--thin-cells="${THIN_CELLS}")
 DEF_ARG=(); [ -n "${DEFOCUS:-}" ] && DEF_ARG=(--defocus="${DEFOCUS}")
 CS_ARG=(); [ -n "${CS:-}" ] && CS_ARG=(--cs="${CS}")
 [ -n "${C5:-}" ] && CS_ARG+=(--c5="${C5}")
+# [campaign] full aberration dict as JSON (non-round terms); overrides CS/C5, implies --aberrated
+AJ_ARG=(); [ -n "${ABERRATIONS_JSON:-}" ] && AJ_ARG=(--aberrations-json="${ABERRATIONS_JSON}")
 
 "${PYBIN}" "${SIM_DIR}/simulate_4dstem.py" \
     --device gpu \
@@ -131,4 +133,4 @@ CS_ARG=(); [ -n "${CS:-}" ] && CS_ARG=(--cs="${CS}")
     --phonons "${PHONONS}" \
     --phonon-sigma "${PHONON_SIGMA}" \
     "${TILE_ARG[@]}" "${SA_ARG[@]}" "${VAC_ARG[@]}" "${PS_ARG[@]}" "${AB_ARG[@]}" "${BIN_ARG[@]}" "${CONV_ARG[@]}" \
-    "${TH_ARG[@]}" "${DEF_ARG[@]}" "${CS_ARG[@]}"
+    "${TH_ARG[@]}" "${DEF_ARG[@]}" "${CS_ARG[@]}" "${AJ_ARG[@]}"
