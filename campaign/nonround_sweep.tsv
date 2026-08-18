@@ -2,10 +2,11 @@
 # ROUND probe, see round_sweep). Round C5=1mm balanced by C3=-4um + C1=+2 (round a070);
 # non-round terms added ON TOP, WORST first: C56 = 6-fold astigmatism, the intrinsic
 # hexapole-corrector residual (uncancellable by round C1/C3), escalated 0.6->1.2->2.5
-# waves, then a combined C56+C34 (4-fold) level. aber_json overrides c3/c5. All BIN=4.
-label	alpha	c5	c3	c1	df_perf	bin	aber_json	note
-nr0_round	70	1e7	-4e4	2	-30	4	-	round-only baseline (=round a070)
-nr1_C56_0p6w	70	1e7	-4e4	2	-30	4	{"C30":-4e4,"C50":1e7,"C56":6e5,"phi56":0}	6-fold astig 0.6 wave
-nr2_C56_1p2w	70	1e7	-4e4	2	-30	4	{"C30":-4e4,"C50":1e7,"C56":1.2e6,"phi56":0}	6-fold astig 1.2 wave
-nr3_C56_2p5w	70	1e7	-4e4	2	-30	4	{"C30":-4e4,"C50":1e7,"C56":2.5e6,"phi56":0}	6-fold astig 2.5 wave
-nr4_C56_C34	70	1e7	-4e4	2	-30	4	{"C30":-4e4,"C50":1e7,"C56":1.2e6,"phi56":0,"C34":4e3,"phi34":0}	6-fold 1.2w + 4-fold 1.2w
+# waves, then a combined C56+C34 (4-fold) level. NL=6 (Nyquist of 4A depth res @70mrad).
+# aber_json overrides c3/c5. All BIN=4. Sim slab fixed 0.9 A (run_campaign SLICE default).
+label	alpha	c5	c3	c1	df_perf	bin	nl	aber_json	note
+nr0_round	70	1e7	-4e4	2	-30	4	6	-	round-only baseline (=round a070)
+nr1_C56_0p6w	70	1e7	-4e4	2	-30	4	6	{"C30":-4e4,"C50":1e7,"C56":6e5,"phi56":0}	6-fold astig 0.6 wave
+nr2_C56_1p2w	70	1e7	-4e4	2	-30	4	6	{"C30":-4e4,"C50":1e7,"C56":1.2e6,"phi56":0}	6-fold astig 1.2 wave
+nr3_C56_2p5w	70	1e7	-4e4	2	-30	4	6	{"C30":-4e4,"C50":1e7,"C56":2.5e6,"phi56":0}	6-fold astig 2.5 wave
+nr4_C56_C34	70	1e7	-4e4	2	-30	4	6	{"C30":-4e4,"C50":1e7,"C56":1.2e6,"phi56":0,"C34":4e3,"phi34":0}	6-fold 1.2w + 4-fold 1.2w

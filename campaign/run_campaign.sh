@@ -29,8 +29,11 @@ TSV="${TSV:-campaign/${CAMPAIGN}_sweep.tsv}"
 [ -f "${TSV}" ] || { echo "ERROR: sweep file '${TSV}' not found." >&2; exit 1; }
 
 # thin-slab + fit-probe-HARD defaults (all env-overridable)
-THIN="${THIN:-3}"; SLICE="${SLICE:-2}"; STEP="${STEP:-0.5}"
-NL="${NL:-6}"; NITER="${NITER:-200}"; PSTART="${PSTART:-8}"; BETA="${BETA:-0.1}"; PMODES="${PMODES:-1}"
+# SLICE (sim slab) is FIXED FINE at 0.9 A — below the ~1.94 A atomic-plane spacing along the beam,
+# so the ground truth resolves the interatomic depth structure at EVERY alpha and only the recon
+# NL (Nyquist per alpha, from the sweep .tsv) decides what's recovered. 2 A merges the planes.
+THIN="${THIN:-3}"; SLICE="${SLICE:-0.9}"; STEP="${STEP:-0.5}"
+NL_OV="${NL:-}"; NITER="${NITER:-200}"; PSTART="${PSTART:-8}"; BETA="${BETA:-0.1}"; PMODES="${PMODES:-1}"
 C5DEF="${C5:-1e7}"; SAVE="${SAVE_EVERY:-25}"
 INPUTS=(data_dp.hdf5 data_position.hdf5 sim_meta.mat)               # probe chosen per-leg
 TS="$(date +%Y%m%d_%H%M)"; PACK="${SHARE:-$REPO_DIR}/${CAMPAIGN}_results_${TS}.tgz"
@@ -55,9 +58,9 @@ sim_job(){   # $1 dir $2 alpha $3 bin $4 defocus $5 mode(perfect|round|json) $6 
         --output="logs/${CAMPAIGN}_sim_%j.out" --error="logs/${CAMPAIGN}_sim_%j.err" \
         --export="${exp}" sim/run_sim.slurm
 }
-recon_job(){ # $1 name $2 datadir $3 probe $4 pstart(""=fixed) $5 bin $6 dep(""=now)  -> jobid
-    local name="$1" datadir="$2" probe="$3" pstart="$4" bin="$5" dep="$6"
-    local rdir="${REPO_DIR}/recon_${CAMPAIGN}_${name}_NL${NL}"
+recon_job(){ # $1 name $2 datadir $3 probe $4 pstart(""=fixed) $5 bin $6 nl $7 dep(""=now)  -> jobid
+    local name="$1" datadir="$2" probe="$3" pstart="$4" bin="$5" nl="$6" dep="$7"
+    local rdir="${REPO_DIR}/recon_${CAMPAIGN}_${name}_NL${nl}"
     mkdir -p "${rdir}/01"
     local f; for f in "${INPUTS[@]}"; do ln -sf "${datadir}/01/${f}" "${rdir}/01/${f}"; done
     ln -sf "${probe}" "${rdir}/01/probe_initial.mat"               # start probe (may be another leg's)
@@ -68,16 +71,17 @@ recon_job(){ # $1 name $2 datadir $3 probe $4 pstart(""=fixed) $5 bin $6 dep(""=
     sbatch --parsable --job-name="${CAMPAIGN}_rec_${name}" --time="$(rtime_for "$bin")" --mem="$(mem_for "$bin")" \
         ${dep_arg[@]+"${dep_arg[@]}"} \
         --output="${rdir}/slurm_%j.out" --error="${rdir}/slurm_%j.err" \
-        --export=ALL,NLAYERS="${NL}",SIM_BASE="${rdir}/",REGLAYER=0,PROBE_MODES="${pm}",NITER="${NITER}",SAVE_EVERY="${SAVE}"${psx} \
+        --export=ALL,NLAYERS="${nl}",SIM_BASE="${rdir}/",REGLAYER=0,PROBE_MODES="${pm}",NITER="${NITER}",SAVE_EVERY="${SAVE}"${psx} \
         run_recon_synthetic_ML.slurm
 }
 
-echo "CAMPAIGN=${CAMPAIGN}  tsv=${TSV}  NL=${NL} NITER=${NITER} PSTART=${PSTART} BETA=${BETA} PMODES=${PMODES}"
+echo "CAMPAIGN=${CAMPAIGN}  tsv=${TSV}  NL=${NL_OV:-per-alpha(Nyquist)} sim_slab=${SLICE}A NITER=${NITER} PSTART=${PSTART} BETA=${BETA} PMODES=${PMODES}"
 echo "fit-probe legs update the probe from iter ${PSTART}; results pack to ${PACK}"; echo
 RIDS=()                                                             # every recon jobid, for the tar dep
-while IFS=$'\t' read -r label alpha c5 c3 c1 dfp bin aj _rest; do
+while IFS=$'\t' read -r label alpha c5 c3 c1 dfp bin nl aj _rest; do
     case "$label" in ''|'#'*|label) continue;; esac                # skip blank/comment/header
     bin="${bin:-4}"; c5="${c5:--}"; [ "$c5" = "-" ] && c5="$C5DEF"
+    nl="${nl:-6}"; [ "$nl" = "-" ] && nl=6; [ -n "$NL_OV" ] && nl="$NL_OV"   # per-alpha Nyquist unless NL= overrides
     PDIR="${REPO_DIR}/sim_out_${CAMPAIGN}_${label}_perf"
     ADIR="${REPO_DIR}/sim_out_${CAMPAIGN}_${label}_aber"
     # aberrated sim aberration spec: JSON (non-round) overrides the round c3/c5 knobs
@@ -93,12 +97,13 @@ while IFS=$'\t' read -r label alpha c5 c3 c1 dfp bin aj _rest; do
         SA=$(sim_job "$ADIR" "$alpha" "$bin" "$c1"   "$amode" "$aarg")  # aberrated (+probe_initial_true.mat)
         depP="$SP"; depK="$SA"; depF="${SA}:${SP}"
     fi
-    R1=$(recon_job "${label}_perfect"  "$PDIR" "${PDIR}/01/probe_initial.mat"      ""         "$bin" "$depP")
-    R2=$(recon_job "${label}_known"    "$ADIR" "${ADIR}/01/probe_initial_true.mat" ""         "$bin" "$depK")
-    R3=$(recon_job "${label}_fitprobe" "$ADIR" "${PDIR}/01/probe_initial.mat"      "$PSTART"  "$bin" "$depF")
+    R1=$(recon_job "${label}_perfect"  "$PDIR" "${PDIR}/01/probe_initial.mat"      ""         "$bin" "$nl" "$depP")
+    R2=$(recon_job "${label}_known"    "$ADIR" "${ADIR}/01/probe_initial_true.mat" ""         "$bin" "$nl" "$depK")
+    R3=$(recon_job "${label}_fitprobe" "$ADIR" "${PDIR}/01/probe_initial.mat"      "$PSTART"  "$bin" "$nl" "$depF")
     RIDS+=("$R1" "$R2" "$R3")
-    printf 'row %-6s alpha=%-3s bin=%s  sims[P=%s A=%s]  recon[perfect=%s known=%s fitprobe=%s]\n' \
-        "$label" "$alpha" "$bin" "${SP:-reuse}" "${SA:-reuse}" "$R1" "$R2" "$R3"
+    dz=$(awk "BEGIN{printf \"%.2f\", 11.7/${nl}}")
+    printf 'row %-9s alpha=%-3s bin=%s NL=%-2s(dz %sA)  sims[P=%s A=%s]  recon[perf=%s known=%s fit=%s]\n' \
+        "$label" "$alpha" "$bin" "$nl" "$dz" "${SP:-reuse}" "${SA:-reuse}" "$R1" "$R2" "$R3"
 done < "${TSV}"
 
 # one tar job, after ALL recons (afterany: partial sweeps still pack)

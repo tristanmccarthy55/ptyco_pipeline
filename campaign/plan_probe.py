@@ -44,10 +44,11 @@ def best_c1(abtem, alpha, C3, C5, target, ext, N):
         c = best[1]; grid = list(range(c-8, c+9, 2))          # refine ±8 Å @2 Å
     return best[1], best[2]                                    # C1, d90
 
-def plan(alphas, C5, target, out):
+def plan(alphas, C5, target, thick, out):
     import abtem
     try: abtem.config.set({"local_diagnostics.progress_bar": False})
     except Exception: pass
+    LAM = 0.0196877                   # 300 keV electron wavelength [Å]; depth res = LAM/alpha^2
     EXT_S, N_S = 30.0, 512            # fast search grid (maxk 8.5 A^-1 covers <=168 mrad)
     EXT_M, N_M = 60.0, 1024           # high-quality remeasure of the winner (captures tails)
     rows = []
@@ -72,13 +73,19 @@ def plan(alphas, C5, target, out):
         # window sizing: BIN4=17.5 Å, BIN2=35 Å, BIN1=70 Å real-space window
         binf = 4 if d99 < 15 else (2 if d99 < 31 else 1)
         note = "ok" if abs(d90-target) < 0.6 else "FLOOR>%.1f" % d90
+        # Depth sampling: recon at NL layers = Nyquist of the depth resolution LAM/alpha^2
+        # (slice = depthres/2). The sim slab is a fixed 0.9 A (< the ~1.94 A plane spacing, run_campaign
+        # SLICE default) so the GROUND TRUTH always resolves the planes and only alpha + NL decide
+        # what the recon recovers -- low alpha CAN'T see the interatomic spacing, high alpha can.
+        depthres = LAM/(a/1000.0)**2
+        nl = max(1, round(thick / (depthres/2.0)))
         rows.append(dict(label="a%03d"%a, alpha=a, c5=C5, c3=c3um*1e4, c1=float(C1),
-                         df_perf=float(dfp), bin=binf, aber_json="-",
+                         df_perf=float(dfp), bin=binf, nl=nl, aber_json="-",
                          d50=d50, d90=d90, d99=d99, note=note))
-        print(f"  alpha={a:3d}  C3={c3um:+3d}um  C1={C1:+4.0f}A  d50={d50:.1f} d90={d90:.1f} "
-              f"d99={d99:.1f}  BIN={binf}  df_perf={dfp:+.0f}  [{note}]", flush=True)
+        print(f"  alpha={a:3d}  C3={c3um:+3d}um  C1={C1:+4.0f}A  d90={d90:.1f} BIN={binf}  "
+              f"depthres={depthres:.1f}A -> NL={nl} (dz {thick/nl:.2f}A)  [{note}]", flush=True)
     # write tsv
-    cols = ["label","alpha","c5","c3","c1","df_perf","bin","aber_json","d50","d90","d99","note"]
+    cols = ["label","alpha","c5","c3","c1","df_perf","bin","nl","aber_json","d50","d90","d99","note"]
     with open(out, "w") as f:
         f.write("# round alpha-sweep probe plan | C5=%.3g A (1mm) | target d90=%.1f A\n" % (C5, target))
         f.write("# alpha=semiangle(mrad) c3=C30/Cs(A) c1=defocus(A) df_perf=aberr-free 4A defocus(A)\n")
@@ -92,9 +99,10 @@ if __name__ == "__main__":
     ap.add_argument("--alphas", type=int, nargs="+", default=[30,50,70,90,100,110,120])
     ap.add_argument("--c5", type=float, default=1e7)          # 1 mm
     ap.add_argument("--target", type=float, default=4.0)      # d90 Å
+    ap.add_argument("--thick", type=float, default=11.715)    # slab beam thickness [Å] (3 cells) for NL
     ap.add_argument("--out", default=None)
     a = ap.parse_args()
     import os
     out = a.out or os.path.join(os.path.dirname(__file__), "round_sweep.tsv")
-    print(f"planning C5={a.c5:.3g} A target d90={a.target} A alphas={a.alphas}")
-    plan(a.alphas, a.c5, a.target, out)
+    print(f"planning C5={a.c5:.3g} A target d90={a.target} A thick={a.thick} A alphas={a.alphas}")
+    plan(a.alphas, a.c5, a.target, a.thick, out)
