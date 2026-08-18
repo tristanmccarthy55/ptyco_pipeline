@@ -47,6 +47,7 @@ OUT_DIR      = PROJECT_ROOT / "sim_out" / "01"
 ENERGY_EV          = 300e3     # beam energy [eV]
 CONVERGENCE_MRAD   = 100.0     # probe convergence semi-angle [mrad]
 OVERFOCUS_A        = 20.0      # overfocus MAGNITUDE [Å] (2 nm). Sign handled below.
+DEFOCUS_A          = None      # [thin-ab] --defocus: use this abTEM defocus directly (else -OVERFOCUS_A)
 
 # --- detector / sampling / binning ---
 DETECTOR_MAX_ANGLE_MRAD = 200.0   # full detector outer angle [mrad]
@@ -307,6 +308,28 @@ def load_and_prepare_atoms():
     return atoms, float(bx)
 
 
+def build_thin_sample(n_cells, cell_z=3.905):
+    """[thin-ab] Thin PTO/STO slab for a fast, well-conditioned ptycho test. Same orient +
+    square-pad as load_and_prepare_atoms, then crop the beam (z) axis to a central slab
+    n_cells unit cells thick (~3.905 Å each) — few slices instead of ~70. In-plane kept full."""
+    atoms = ase.io.read(str(POSCAR_PATH))
+    atoms.rotate(ROTATE_DEG_Y, "y", rotate_cell=True)
+    atoms = abtem.orthogonalize_cell(atoms)
+    Lx, Ly, _ = atoms.cell.lengths()
+    side = max(Lx, Ly)
+    atoms.cell[0, 0] = side; atoms.cell[1, 1] = side
+    atoms.center(axis=0); atoms.center(axis=1)
+    thick = n_cells * cell_z
+    z = atoms.get_positions()[:, 2]; zc = 0.5 * (z.min() + z.max())
+    atoms = atoms[np.abs(z - zc) <= thick / 2.0]          # central slab (ASE boolean index)
+    atoms.center(axis=2, vacuum=Z_VACUUM_A)
+    bx, by, bz = atoms.cell.lengths()
+    print(f"[atoms] THIN slab: {len(atoms)} atoms, {n_cells} cells (~{thick:.1f} Å) thick; "
+          f"box {bx:.2f} × {by:.2f} × {bz:.2f} Å (beam path ≈ {bz - 2*Z_VACUUM_A:.1f} Å)")
+    assert abs(bx - by) < 1e-6, f"in-plane box not square: {bx} vs {by}"
+    return atoms, float(bx)
+
+
 # ======================================================================
 # 2. POTENTIAL & PROBES
 # ======================================================================
@@ -339,7 +362,8 @@ def _defocus():
     #   wave as the in-focus probe propagated FORWARD by |defocus| -> the crossover
     #   is |defocus| ABOVE the entrance surface (in vacuum) = OVERFOCUS.
     # => overfocus of magnitude OVERFOCUS_A is defocus = -OVERFOCUS_A.
-    return -OVERFOCUS_A
+    # [thin-ab] --defocus overrides: e.g. +165 Å to balance the round C3+C5 spread to a compact probe.
+    return DEFOCUS_A if DEFOCUS_A is not None else -OVERFOCUS_A
 
 
 def build_probe(potential):
@@ -657,7 +681,7 @@ def write_driver_geometry(n_b: int, box_a: float, beam_thickness_a: float,
 # MAIN
 # ======================================================================
 def main(argv=None) -> int:
-    global DEVICE, SLICE_THICKNESS_A, SCAN_STEP_A, DOSE_E, N_PHONONS, PHONON_SIGMA_A, PER_SPECIES_SIGMA, PHONON_SEED, SCAN_WINDOW_A, ABERRATED, PROBE_INITIAL_ABERRATED, BIN_FACTOR, CONVERGENCE_MRAD
+    global DEVICE, SLICE_THICKNESS_A, SCAN_STEP_A, DOSE_E, N_PHONONS, PHONON_SIGMA_A, PER_SPECIES_SIGMA, PHONON_SEED, SCAN_WINDOW_A, ABERRATED, PROBE_INITIAL_ABERRATED, BIN_FACTOR, CONVERGENCE_MRAD, DEFOCUS_A, ABERRATIONS
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--test", action="store_true",
                     help="Tiny 3x3 scan for fast local shape/geometry validation.")
@@ -721,6 +745,16 @@ def main(argv=None) -> int:
                     help="inject the corrector residuals (ABERRATIONS: Cs≈0.7 µm dominant, flat "
                          "to ~30 mrad, ~9 waves by 100 mrad) into the SIM probe, on top of "
                          "defocus. The recon fits them with probe update on. Use --bin-factor 2.")
+    ap.add_argument("--thin-cells", type=int, default=0,
+                    help="[thin-ab] >0: thin PTO/STO slab this many unit cells (~3.9 Å) thick "
+                         "along the beam (few slices, fast). In-plane kept full.")
+    ap.add_argument("--defocus", type=float, default=None,
+                    help="[thin-ab] abTEM defocus [Å] override (else -OVERFOCUS_A). +165 balances "
+                         "round C3+C5 (Cs 1µm + C5 1mm) to a compact ~10 Å probe at 70 mrad.")
+    ap.add_argument("--cs", type=float, default=None,
+                    help="[thin-ab] with --aberrated: ROUND-only C30 (Cs) [Å], replacing the ARM set.")
+    ap.add_argument("--c5", type=float, default=None,
+                    help="[thin-ab] with --aberrated: ROUND-only C50 (C5) [Å], replacing the ARM set.")
     ap.add_argument("--probe-initial", default="nominal", choices=["nominal", "true"],
                     help="probe_initial.mat: 'nominal' (aperture+defocus; recon must FIT any "
                          "aberrations) or 'true' (the aberrated probe; known-probe control).")
@@ -738,6 +772,9 @@ def main(argv=None) -> int:
     PROBE_INITIAL_ABERRATED = (args.probe_initial == "true")
     BIN_FACTOR = args.bin_factor
     CONVERGENCE_MRAD = args.convergence
+    DEFOCUS_A = args.defocus                                  # [thin-ab] None -> -OVERFOCUS_A
+    if args.cs is not None or args.c5 is not None:            # [thin-ab] round-only override
+        ABERRATIONS = {"C30": args.cs or 0.0, "C50": args.c5 or 0.0}
 
     tile = None
     if args.scan_tile:
@@ -753,7 +790,9 @@ def main(argv=None) -> int:
     print("=" * 64)
 
     vac_info = None
-    if args.vacancy:
+    if args.thin_cells > 0:                                   # [thin-ab] thin slab, few slices
+        atoms, box_a = build_thin_sample(args.thin_cells)
+    elif args.vacancy:
         atoms, box_a, vac_info = build_vacancy(args.vacancy, args.vacancy_column, args.vacancy_z)
     elif args.single_atom:
         if args.grid_spacing > 0:

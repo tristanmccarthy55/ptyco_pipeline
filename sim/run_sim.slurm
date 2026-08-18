@@ -116,6 +116,12 @@ CONV_ARG=(); [ -n "${CONVERGENCE:-}" ] && CONV_ARG=(--convergence "${CONVERGENCE
 # per-species RMS thermal displacements (Pb/Sr/Ti/O) instead of one sigma for all
 PS_ARG=(); [ "${PER_SPECIES_SIGMA:-0}" = "1" ] && PS_ARG=(--per-species-sigma)
 
+# [thin-ab] thin slab + settable defocus + round-only Cs/C5 (defocus-balanced compact probe)
+TH_ARG=(); [ -n "${THIN_CELLS:-}" ] && TH_ARG=(--thin-cells "${THIN_CELLS}")
+DEF_ARG=(); [ -n "${DEFOCUS:-}" ] && DEF_ARG=(--defocus "${DEFOCUS}")
+CS_ARG=(); [ -n "${CS:-}" ] && CS_ARG=(--cs "${CS}")
+[ -n "${C5:-}" ] && CS_ARG+=(--c5 "${C5}")
+
 "${PYBIN}" "${SIM_DIR}/simulate_4dstem.py" \
     --device gpu \
     --out-dir "${OUT_DIR}" \
@@ -123,4 +129,5 @@ PS_ARG=(); [ "${PER_SPECIES_SIGMA:-0}" = "1" ] && PS_ARG=(--per-species-sigma)
     --scan-step "${SCAN_STEP}" \
     --phonons "${PHONONS}" \
     --phonon-sigma "${PHONON_SIGMA}" \
-    "${TILE_ARG[@]}" "${SA_ARG[@]}" "${VAC_ARG[@]}" "${PS_ARG[@]}" "${AB_ARG[@]}" "${BIN_ARG[@]}" "${CONV_ARG[@]}"
+    "${TILE_ARG[@]}" "${SA_ARG[@]}" "${VAC_ARG[@]}" "${PS_ARG[@]}" "${AB_ARG[@]}" "${BIN_ARG[@]}" "${CONV_ARG[@]}" \
+    "${TH_ARG[@]}" "${DEF_ARG[@]}" "${CS_ARG[@]}"
