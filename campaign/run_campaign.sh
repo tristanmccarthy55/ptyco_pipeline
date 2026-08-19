@@ -106,11 +106,15 @@ while IFS=$'\t' read -r label alpha c5 c3 c1 dfp bin nl aj _rest; do
         "$label" "$alpha" "$bin" "$nl" "$dz" "${SP:-reuse}" "${SA:-reuse}" "$R1" "$R2" "$R3"
 done < "${TSV}"
 
-# one tar job, after ALL recons (afterany: partial sweeps still pack)
+# one tar job, after ALL recons (afterany: partial sweeps still pack).
+# CLEANDATA=1: once results are tarred, delete this campaign's raw 4D data (data_dp/position.hdf5,
+# ~13 GB/point at BIN=1) to keep $SHARE from filling. Trade-off: RECON_ONLY re-fits then need a re-sim.
 DEP=$(IFS=:; echo "${RIDS[*]}")
+CLEAN=""; [ "${CLEANDATA:-0}" = "1" ] && \
+    CLEAN=" && find '${REPO_DIR}'/sim_out_${CAMPAIGN}_* \\( -name data_dp.hdf5 -o -name data_position.hdf5 \\) -delete"
 PJ=$(sbatch --parsable --job-name="${CAMPAIGN}_pack" --time=00:20:00 --mem=8G \
         --dependency="afterany:${DEP}" \
         --output="logs/${CAMPAIGN}_pack_%j.out" --error="logs/${CAMPAIGN}_pack_%j.err" \
-        --wrap="bash '${REPO_DIR}/campaign/pack_results.sh' '${CAMPAIGN}' '${PACK}' '${TSV}'")
-echo; echo "pack job ${PJ} -> ${PACK} (runs after all ${#RIDS[@]} recons)"
+        --wrap="bash '${REPO_DIR}/campaign/pack_results.sh' '${CAMPAIGN}' '${PACK}' '${TSV}'${CLEAN}")
+echo; echo "pack job ${PJ} -> ${PACK} (runs after all ${#RIDS[@]} recons)${CLEANDATA:+ then deletes raw 4D data}"
 echo "when done:  scp -O 'phucrh@blythe.scrtp.warwick.ac.uk:${PACK}' ~/Desktop/"

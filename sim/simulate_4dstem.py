@@ -546,7 +546,7 @@ def save_outputs(arr, pos_xy, out_dir: Path, box_a: float):
     H_dp = np.ascontiguousarray(A.transpose(0, 2, 1))
     dp_path = out_dir / "data_dp.hdf5"        # NOTE: .hdf5 (PtychoShelves loader name)
     with h5py.File(dp_path, "w") as f:
-        f.create_dataset("dp", data=H_dp)
+        f.create_dataset("dp", data=H_dp)     # uncompressed: noiseless DPs are dense (gzip only ~1.2x)
     print(f"[save] {dp_path}  (HDF5 /dp {H_dp.shape} -> MATLAB [{n_b},{n_b},{npos}])")
 
     # --- data_position.hdf5 ------------------------------------------

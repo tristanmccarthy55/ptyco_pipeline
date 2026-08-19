@@ -56,6 +56,12 @@ set `PMODES=2` to give only the blind-fit leg extra incoherent freedom.
 Re-fit without re-simulating: `RECON_ONLY=1 CAMPAIGN=round bash campaign/run_campaign.sh`.
 Re-simulate over an existing sweep: add `OVERWRITE=1`.
 
+**Disk.** The raw 4D data is big and uncompressed (noiseless DPs are dense — gzip only ~1.2×):
+~0.8 GB/point at BIN=4, ~3 GB at BIN=2, **~13 GB at BIN=1**; the full round sweep is ~78 GB. Add
+`CLEANDATA=1` so the pack job deletes each point's `data_dp/position.hdf5` once results are tarred
+(the recon `.h5` keeps object + probe + params). Old raw data is regenerable — reclaim it anytime with
+`find <repo> \( -name data_dp.hdf5 -o -name data_position.hdf5 \) -delete`.
+
 ## `.tsv` schema
 TAB-separated; `#`/header/blank lines skipped; the driver reads the **first 9** columns and
 ignores the rest (planner appends d50/d90/d99/note as diagnostics):
