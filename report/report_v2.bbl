@@ -715,11 +715,10 @@
   {M.}~\bibnamefont {Qi}}, \bibinfo {author} {\bibfnamefont {H.}~\bibnamefont
   {Zheng}}, \bibinfo {author} {\bibfnamefont {P.}~\bibnamefont {Zhao}},
   \bibinfo {author} {\bibfnamefont {S.}~\bibnamefont {Jia}},\ and\ \bibinfo
-  {author} {\bibfnamefont {J.}~\bibnamefont {Wang}},\ }\bibfield  {journal}
-  {\bibinfo  {journal} {Ultramicroscopy}\ }\href
-  {https://doi.org/10.1016/j.ultramic.2026.114166}
-  {10.1016/j.ultramic.2026.114166} (\bibinfo {year} {2026})\BibitemShut
-  {NoStop}%
+  {author} {\bibfnamefont {J.}~\bibnamefont {Wang}},\ }\href
+  {https://doi.org/10.1016/j.ultramic.2026.114374} {\bibfield  {journal}
+  {\bibinfo  {journal} {Ultramicroscopy}\ }\textbf {\bibinfo {volume} {284}},\
+  \bibinfo {pages} {114374} (\bibinfo {year} {2026})}\BibitemShut {NoStop}%
 \bibitem [{\citenamefont {Huang}\ \emph {et~al.}(2026)\citenamefont {Huang},
   \citenamefont {Gong}, \citenamefont {Yan}, \citenamefont {Aoki},\ and\
   \citenamefont {Pan}}]{Huang2026}%

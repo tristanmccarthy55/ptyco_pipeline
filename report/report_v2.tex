@@ -55,8 +55,8 @@ an independent reconstruction. Propagated through the Ti--O$_6$ off-centring, th
 local polarisation with error bars. The in-plane component is recovered to a median
 $0.007$\,\AA{} and $0.9^\circ$, while the along-beam component is not determined, and that
 conclusion is reached without reference to ground truth. Core-hole DFT indicates the missing
-component remains spectroscopically accessible, the O~K edge being $78\%$ dichroic to the
-polar-axis orientation with a monotonic $19\%$ arising from the displacement itself. Recovering
+component remains spectroscopically accessible, the apical-oxygen O~K edge being $78\%$
+dichroic to the polar-axis orientation with a monotonic $19\%$ arising from the displacement itself. Recovering
 it would nonetheless require a collection aperture $\lesssim2$\,mrad rather than the
 $100$\,mrad ptychography optics.
 \end{abstract}
@@ -508,8 +508,9 @@ depth accuracy is therefore a prerequisite for correct chemistry.
     averaged per atomic column: recovered (blue) over ground truth (grey). (b) Recovered against
     true in-plane off-centring, with propagated $95\%$ intervals; open red circles mark the
     $5\%$ of titanium whose oxygen cage has the wrong composition. (c) The same for the
-    along-beam component. (d) The propagated uncertainty against the true spread of each
-    component. In-plane the uncertainty is a small fraction of the signal, whereas along the
+    along-beam component. (d) Signal-to-noise per component, defined as the true spread of the
+    component divided by the propagated $\sigma$ on it, on a logarithmic axis with the decision
+    line at unity. In-plane the uncertainty is a small fraction of the signal, whereas along the
     beam it exceeds it, which is a ground-truth-free statement that the along-beam polarisation
     is not determined by this measurement.}
   \label{fig:pol}
@@ -572,7 +573,8 @@ physical rather than numerical.
 \begin{figure*}[t]
   \centering
   \includegraphics[width=0.74\linewidth]{figs/eels_dichroism}
-  \caption{Orientation dichroism of the PbTiO$_3$ O~K edge from core-hole CASTEP and OptaDOS.
+  \caption{Orientation dichroism of the PbTiO$_3$ apical-oxygen O~K edge from core-hole CASTEP
+    and OptaDOS.
     With the momentum transfer across the polar axis ($\mathbf{q}\perp c$, beam $\perp$
     $\mathbf{P}$) the edge shows a sharp $\pi^*$ peak; along it ($\mathbf{q}\parallel c$, beam
     $\parallel\mathbf{P}$) it shows the $\sigma^*$ features of the O~$2p_z$ states directed
@@ -582,12 +584,15 @@ physical rather than numerical.
   \label{fig:eels}
 \end{figure*}
 
-For the tetragonal cell with its polar axis along the beam, the O~K edge is strongly dichroic,
-with $\max|\Delta|/\max S = 78\%$ and $\int|\Delta|/\int S=47\%$ (Fig.~\ref{fig:eels}). The
+For the tetragonal cell with its polar axis along the beam, the apical-oxygen O~K edge is
+strongly dichroic, with $\max|\Delta|/\max S = 78\%$ and $\int|\Delta|/\int S=47\%$ (Fig.~\ref{fig:eels}). The
 origin is a $\sigma/\pi$ anisotropy: with $\mathbf{q}\perp c$ the edge shows a sharp $\pi^*$ peak
 $\approx8.5$\,eV above onset from O~$2p_{x,y}$, whereas with $\mathbf{q}\parallel c$ it shows
 $\sigma^*$ features at $\approx11$ and $18.5$\,eV from the O~$2p_z$ states directed along the
-Ti--O--Ti chain.
+Ti--O--Ti chain. The excited site throughout is the apical oxygen, which lies on that chain
+parallel to the polar axis. The O~K edge of the cell as a whole is the multiplicity-weighted sum
+of one apical and two equatorial oxygen, and the equatorial calculation is outstanding, so the
+values quoted here are those of the apical edge rather than of the weighted edge.
 
 \begin{figure}[!htb]
   \centering
@@ -660,8 +665,8 @@ against a $0.27$\,\AA{} signal. The along-beam component, by contrast, is not me
 because differencing two $0.3$\,\AA{} depth coordinates cannot resolve a $0.07$\,\AA{}
 displacement. The calibrated uncertainty establishes this without ground truth, which is the
 purpose of such machinery. First-principles core-hole DFT indicates that the missing component is
-spectroscopically accessible in principle, the O~K edge being $78\%$ dichroic to the polar-axis
-orientation, of which a monotonic $19\%$ is the signature of the displacement rather than of the
+spectroscopically accessible in principle, the apical-oxygen O~K edge being $78\%$ dichroic to
+the polar-axis orientation, of which a monotonic $19\%$ is the signature of the displacement rather than of the
 tetragonal backbone. The dipole limit nevertheless forbids recovery of the sign, and the magic
 angle forbids use of the $100$\,mrad ptychography aperture for the purpose.
 

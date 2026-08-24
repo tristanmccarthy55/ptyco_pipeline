@@ -4,8 +4,9 @@
 
   fig_polarisation.pdf -- (a) in-plane off-centring map (located atoms vs ground truth);
                           (b) recovered vs true off-centring, in-plane and along the beam;
-                          (c) propagated uncertainty against the true spread of each component
-                              -- the blind statement that the along-beam component is not measured.
+                          (d) signal-to-noise per component (true spread / propagated sigma,
+                              log axis, decision line at 1) -- the blind statement that the
+                              along-beam component is not measured.
 
 Run:  ~/hyperspy-bundle/bin/python atomfind/paper/make_pol_fig.py   (cwd analysis/)
 Needs <out_dir>/polarisation.npz from atomfind/polarisation.py.
@@ -78,20 +79,29 @@ def main():
             ax.legend(loc="lower right", framealpha=0.95, markerscale=1.1,
                       handletextpad=0.3, borderpad=0.3, fontsize=7)
 
-    # (d) propagated sigma against the true spread of each component
+    # (d) is each component actually measured?  Signal-to-noise = the true spread of that
+    # component divided by the propagated sigma on it, on a log axis with the decision line
+    # at 1, so the reader is asked for no arithmetic: a bar below the line is a component
+    # whose error bar exceeds the entire signal it is meant to resolve.
     ax = fig.add_subplot(gs[0, 3])
     x = np.arange(3)
-    spread = [B[:, k].std() for k in range(3)]
-    smc = [np.median(sig[:, k]) for k in range(3)]
-    ax.bar(x - 0.2, spread, 0.4, color="#8a8f98", label="true spread of $\\delta$")
-    ax.bar(x + 0.2, smc, 0.4, color=REC, label="propagated $\\sigma$")
+    snr = np.array([B[:, k].std() / np.median(sig[:, k]) for k in range(3)])
+    ax.bar(x, snr, 0.55, color=[REC if v >= 1 else "#d6604d" for v in snr], zorder=2)
+    ax.axhline(1.0, color="#d6604d", lw=0.9, ls="--", zorder=1)
+    ax.set_yscale("log")
+    ax.set_ylim(0.15, 90); ax.set_xlim(-0.6, 2.6)
     ax.set_xticks(x); ax.set_xticklabels([r"$\delta_x$", r"$\delta_y$", r"$\delta_z$"])
-    ax.set_ylabel("Å", labelpad=1); ax.set_ylim(0, 0.36)
+    ax.set_ylabel("signal-to-noise", labelpad=2)
     ax.set_title("(d) is it measured?", fontsize=8.5)
-    ax.legend(loc="upper left", framealpha=0.95, handlelength=1.0,
-              handletextpad=0.4, borderpad=0.3, fontsize=6.8)
-    ax.text(2, smc[2] + 0.012, "not\nmeasured", fontsize=6.5, color="#d6604d",
-            ha="center", va="bottom", linespacing=0.95)
+    for xi, v in zip(x, snr):
+        if v >= 1:                       # value sits above the bar
+            ax.text(xi, v * 1.25, f"{v:.0f}", fontsize=7, ha="center",
+                    va="bottom", color=REC)
+        else:                            # short bar: value inside, verdict above
+            ax.text(xi, v * 0.78, f"{v:.2f}", fontsize=7, ha="center", va="top",
+                    color="white")
+            ax.text(xi, v * 1.22, "not measured", fontsize=6.5, ha="center",
+                    va="bottom", color="#d6604d")
 
     for ext in ("pdf", "png"):
         fig.savefig(os.path.join(FIGDIR, f"fig_polarisation.{ext}"), bbox_inches="tight")
