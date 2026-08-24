@@ -37,8 +37,15 @@ from config import OPTICS
 # NumPy 2.0 renamed np.trapz -> np.trapezoid (old name removed). Support both.
 _trapz = getattr(np, "trapezoid", None) or np.trapz
 
-# edge onsets (eV) for theta_E; refined against the M2 benchmark spectra.
+# ABSOLUTE edge onsets (eV). Used ONLY to compute the characteristic angle theta_E, which
+# needs the real edge energy. They are NOT the axis of an OptaDOS core-loss spectrum.
 EDGE_ONSET_eV = {"O_K": 532.0, "Ti_L23": 456.0, "Pb_M": 2484.0}
+
+# OptaDOS writes its core-loss energy axis RELATIVE to the edge (a measured tet_Pz_Oap file
+# spans -136.8 to +35.7 eV with the onset at +1.3 eV and the near-edge structure between
+# +8 and +19 eV), so the analysis window is relative too. Building it from EDGE_ONSET_eV
+# instead selects zero points -- the near-edge region simply is not at 532 eV in this file.
+ANALYSIS_WINDOW_eV = (-2.0, 30.0)
 
 
 # ---------------------------------------------------------------- electron-optics geometry
@@ -263,14 +270,25 @@ def crystal_frame_spectra(seed: str, swap: bool | None = None):
 def dichroism_fractions(e, s_par, s_perp, window=None) -> dict:
     """@brief The two fractional metrics quoted for M4: max|Delta|/max S and int|Delta|/int S.
 
-    S is the MEAN of the two orientations, so the fraction does not depend on which spectrum
-    is nominated as parallel. `dichroism_metric` returns the UNnormalised int|Delta| dE.
+    NORMALISERS (these matter, and reproduce the published M4 value):
+      peak     max|Delta| / max(S_par, S_perp) -- "max S" is the height of the edge itself.
+               Verified: 78.2% for tet_Pz_Oap, matching the reported 78%. Normalising by the
+               MEAN of the two instead gives 105%, a ratio that can exceed unity wherever one
+               orientation is near zero at the other's peak, so it is not a usable fraction.
+      integral int|Delta| dE / int S_mean dE, S_mean the mean of the two orientations. This one
+               is symmetric in the two spectra by construction.
+    Both are computed over `window`, in the OptaDOS energy units (see ANALYSIS_WINDOW_eV --
+    the axis is RELATIVE to the edge, not absolute).
     """
     m = np.ones_like(e, bool) if window is None else (e >= window[0]) & (e <= window[1])
-    d = np.abs(np.asarray(s_par) - np.asarray(s_perp))[m]
-    s = (0.5 * (np.asarray(s_par) + np.asarray(s_perp)))[m]
-    return {"peak": float(d.max() / s.max()),
-            "integral": float(_trapz(d, e[m]) / _trapz(s, e[m]))}
+    if not m.any():
+        raise ValueError(f"analysis window {window} selects no points from an axis spanning "
+                         f"{e.min():.1f}..{e.max():.1f} eV (is the window absolute rather "
+                         f"than relative to the edge?)")
+    par, perp = np.asarray(s_par)[m], np.asarray(s_perp)[m]
+    d = np.abs(par - perp)
+    return {"peak": float(d.max() / max(par.max(), perp.max())),
+            "integral": float(_trapz(d, e[m]) / _trapz(0.5 * (par + perp), e[m]))}
 
 
 def analyze_seed(seed: str, edge: str, swap: bool | None = None) -> None:
@@ -281,7 +299,7 @@ def analyze_seed(seed: str, edge: str, swap: bool | None = None) -> None:
               f"Running --selftest instead so the pipeline is validated.")
         return selftest()
     e, s_par, s_perp = got
-    win = (EDGE_ONSET_eV[edge] - 2, EDGE_ONSET_eV[edge] + 30)
+    win = ANALYSIS_WINDOW_eV
     fr = dichroism_fractions(e, s_par, s_perp, win)
     sw = q_is_swapped(seed) if swap is None else swap
     print(f"{seed} ({edge}){'  [q axes swapped: c||x]' if sw else ''}")
@@ -326,7 +344,7 @@ def weighted_edge(cell: str, edge: str = "O_K", shift_eV: float = 0.0):
 def weighted_edge_report(cell: str, edge: str = "O_K",
                          shifts=(-1.0, -0.5, 0.0, 0.5, 1.0)) -> None:
     """@brief Per-site and multiplicity-weighted dichroism, with the chemical-shift sensitivity."""
-    win = (EDGE_ONSET_eV[edge] - 2, EDGE_ONSET_eV[edge] + 30)
+    win = ANALYSIS_WINDOW_eV
     print(f"== full {edge} edge for {cell}: 1 x apical + 2 x equatorial ==")
     for site in ("Oap", "Oeq"):
         got = crystal_frame_spectra(f"{cell}_{site}")
@@ -370,7 +388,7 @@ def compare_seeds(seed_a: str, seed_b: str, edge: str) -> None:
     eb, b_par, b_perp = gb
     if len(eb) != len(e) or not np.allclose(eb, e):
         b_par, b_perp = np.interp(e, eb, b_par), np.interp(e, eb, b_perp)
-    win = (EDGE_ONSET_eV[edge] - 2, EDGE_ONSET_eV[edge] + 30)
+    win = ANALYSIS_WINDOW_eV
     print(f"== M4 rotational invariance: {seed_a} vs {seed_b} ({edge}) ==")
     print(f"   pairing is crystal-frame; swapped: {seed_a}={q_is_swapped(seed_a)}, "
           f"{seed_b}={q_is_swapped(seed_b)}")

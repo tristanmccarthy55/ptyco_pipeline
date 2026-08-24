@@ -176,10 +176,90 @@ polarization's own displacement effect. Dipole limit: axis + magnitude, not sign
 PI-meeting figures (on ~/Desktop/eels_figs): fig1 validation, fig2 result + object + zero-P
 overlay, fig3 decomposition/scan; SLIDE_NOTES.md.
 
-## M4 cross-checks + M6 — pending
+## M4 cross-checks — ✅ DONE 2026-08-24 (B1 equatorial O, B2 rotational invariance)
 
-tet_Px (rotational-invariance x-check, `analyze_elnes.py --compare`), tet_Pz_Oeq (full O-K =
-1×apical + 2×equatorial), then
-M6: fold the intrinsic dichroism through the 300 keV convergence/collection geometry (magic angle
-≈ 4·θ_E ≈ 4.3 mrad; the 100 mrad ptychography probe would average it — a small EELS aperture is
-needed) for the measurable detectability number.
+Both jobs turned out to have completed in the M5 batch and never been analysed; the analysis
+path itself had four bugs (see below), so none of this had ever been read.
+
+### B2 — rotational invariance: ✅ PASS, essentially exact
+
+```bash
+~/hyperspy-bundle/bin/python analyze_elnes.py --compare tet_Pz_Oap tet_Px_Oap
+```
+
+| paired in the crystal frame | residual max\|Δ\|/max S | ∫\|Δ\|/∫S |
+|---|---|---|
+| `tet_Pz` q∥c vs `tet_Px` q∥c | **0.02 %** | 0.01 % |
+| `tet_Pz` q⊥c vs `tet_Px` q⊥c | **0.03 %** | 0.01 % |
+
+At the M3 cubic-null floor (0.02 %). **The 78 % apical dichroism is physical, not numerical.**
+
+This is also the direct demonstration of the lab-vs-crystal q trap: pairing the files by NAME
+instead of by crystal axis gives a residual of **78.2 %** — the entire signal — on a calculation
+that is in fact exact to 0.0 %. Both HANDOFF.md and HANDOVER.md described the check that way.
+
+### B1 — the multiplicity-weighted FULL O K edge
+
+```bash
+~/hyperspy-bundle/bin/python analyze_elnes.py --weighted tet_Pz
+```
+
+| site | max\|Δ\|/max S | ∫\|Δ\|/∫S |
+|---|---|---|
+| apical (1×) — *the previously published number* | **78.2 %** | 62.8 % |
+| equatorial (2×) | **22.1 %** | 18.7 % |
+| **weighted full edge (1 ap + 2 eq)** | **39–46 %** | 27–32 % |
+
+**The headline nearly halves.** The apical oxygen sits on the Ti–O–Ti chain parallel to the
+polar axis and is strongly dichroic; the equatorial oxygen, whose chain lies in-plane, is not.
+Since the equatorial site carries twice the multiplicity, the edge of the cell as a whole is far
+less dichroic than the apical site alone. **"The O K edge is 78 % dichroic" was never right; it
+is the apical site that is 78 % dichroic, and the full edge is roughly 40 %.**
+
+Two systematics are folded into the 39–46 % range, both quantified rather than assumed:
+
+1. **Apical/equatorial chemical shift (±1 eV → 36–46 %).** The two sites come from separate
+   core-hole SCF runs whose absolute O 1s energies differ by a shift OptaDOS does not supply
+   (it needs the Mizoguchi correction from a no-hole singlepoint). Each site's OWN dichroism is
+   a within-run difference and is shift-independent; the weighted SUM is not. The integral
+   metric is far more robust to it (30–32 % across the same sweep) than the peak metric.
+2. **The second equatorial orientation (39 % vs 46 %).** The 2c site holds *two* atoms, O_a at
+   (½,0,z) with its chain along x and O_b at (0,½,z) with its chain along y, related by the C4
+   about z. For **q∥c the two are equivalent**, so counting one spectrum twice is exact. For
+   **q⊥c they are not**: O_a's chain lies along q and O_b's across it. The correct sum needs
+   `spectrum(O_a, ŷ)` — a third q direction. Counting O_a twice gives 46 %; proxying O_b by the
+   measured q=ẑ spectrum (also perpendicular to the chain) gives 39 %.
+
+**One cheap job closes systematic 2:** a third OptaDOS pass with `core_qdir 0 1 0` on the
+existing `tet_Pz_Oeq.elnes_bin`, i.e. **`SKIP_CASTEP=1`, no new SCF** (~90 min serial).
+
+### Four bugs in the analysis path, all fixed
+
+None of `analyze_seed` had ever run on real data (M4/M5 were read from hand-extracted
+`.exc.txt`), and it contained: (1) a glob that could never match the slurm's output naming;
+(2) `load_spectrum` instead of `load_optados_core`, i.e. summing all 162 per-atom blocks rather
+than selecting `:exc`; (3) the lab-vs-crystal q-frame error above; and (4) **an analysis window
+built from the ABSOLUTE edge energy (532 eV) when OptaDOS writes its axis RELATIVE to the edge**
+(a real file spans −136.8 to +35.7 eV, onset +1.3 eV, near-edge structure +8 to +19 eV), so the
+window selected zero points and the metric crashed.
+
+**Metric conventions, now pinned by reproducing the published value.** `max|Δ|/max S` with
+S = max over BOTH orientations reproduces 78.2 % exactly; normalising by the mean of the two
+gives 105 %, which is not a usable fraction. The published **∫|Δ|/∫S = 47 % does NOT reproduce**
+under any window or normaliser tried (closest 55 %, and 60–63 % on the natural conventions).
+Recommend quoting the recomputed integral with its stated convention, or dropping it — the peak
+metric is the one the paper leads with and it is exact.
+
+Validation that the right block is being read: q⊥c gives a sharp π\* peak at **+8.64 eV** and
+q∥c gives σ\* features at **+11 and +18.67 eV**, matching the M4 description (~8.5, ~11, ~18.5).
+
+---
+
+## M6 — detectability geometry — pending only the folding-through
+
+tet_Px (rotational-invariance x-check) and tet_Pz_Oeq (full O-K) are **done** — see the M4
+cross-checks section above. What remains is M6: folding the intrinsic dichroism through the
+300 keV convergence/collection geometry (magic angle ≈ 4·θ_E ≈ 4.3 mrad; the 100 mrad
+ptychography probe averages it away) for the measurable detectability number. The geometry model
+itself is already validated (`analyze_elnes.py --selftest`); it now needs to be applied to the
+**weighted** edge rather than the apical one, since the weighted edge is the physical observable.
