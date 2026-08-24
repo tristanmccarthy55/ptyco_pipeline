@@ -289,6 +289,70 @@ def analyze_seed(seed: str, edge: str, swap: bool | None = None) -> None:
     geometry_report(edge)
 
 
+def weighted_edge(cell: str, edge: str = "O_K", shift_eV: float = 0.0):
+    """@brief The multiplicity-weighted full O K edge: (1 x apical + 2 x equatorial) / 3.
+
+    M4 computed the APICAL site only. The edge of the unit cell is the multiplicity-weighted
+    sum over inequivalent oxygen sites (config.O_SITE_MULTIPLICITY: 1 apical, 2 equatorial),
+    which is what "the O K edge is X% dichroic" has to mean.
+
+    @param cell    cell name, e.g. "tet_Pz" (seeds <cell>_Oap and <cell>_Oeq must both exist)
+    @param shift_eV energy of the EQUATORIAL edge relative to the apical one (see below)
+    @return (energy, S_par, S_perp) for the weighted edge, or None if a site is missing.
+
+    IMPORTANT -- the chemical shift. The two sites come from separate core-hole SCF runs, so
+    their absolute 1s binding energies differ by a chemical shift that OptaDOS does not supply
+    (it needs the Mizoguchi correction from a separate no-hole singlepoint; see HANDOVER.md
+    section 3). Each SITE's own dichroism is a difference of two spectra from the SAME run and
+    is therefore insensitive to it, but the WEIGHTED SUM is not: a relative shift changes where
+    the two edges add. `shift_eV` exposes that, and `weighted_edge_report` sweeps it so the
+    sensitivity is measured rather than assumed. Treat shift_eV=0 as an assumption, not a result.
+    """
+    got_ap = crystal_frame_spectra(f"{cell}_Oap")
+    got_eq = crystal_frame_spectra(f"{cell}_Oeq")
+    if got_ap is None or got_eq is None:
+        return None
+    e, ap_par, ap_perp = got_ap
+    e_eq, eq_par, eq_perp = got_eq
+    n_ap = C.O_SITE_MULTIPLICITY["O_ap"]
+    n_eq = C.O_SITE_MULTIPLICITY["O_eq"]
+    tot = n_ap + n_eq
+    # put the equatorial site on the apical grid, displaced by the assumed chemical shift
+    eq_par = np.interp(e, e_eq + shift_eV, eq_par, left=0.0, right=0.0)
+    eq_perp = np.interp(e, e_eq + shift_eV, eq_perp, left=0.0, right=0.0)
+    return e, (n_ap * ap_par + n_eq * eq_par) / tot, (n_ap * ap_perp + n_eq * eq_perp) / tot
+
+
+def weighted_edge_report(cell: str, edge: str = "O_K",
+                         shifts=(-1.0, -0.5, 0.0, 0.5, 1.0)) -> None:
+    """@brief Per-site and multiplicity-weighted dichroism, with the chemical-shift sensitivity."""
+    win = (EDGE_ONSET_eV[edge] - 2, EDGE_ONSET_eV[edge] + 30)
+    print(f"== full {edge} edge for {cell}: 1 x apical + 2 x equatorial ==")
+    for site in ("Oap", "Oeq"):
+        got = crystal_frame_spectra(f"{cell}_{site}")
+        if got is None:
+            print(f"   {cell}_{site}: no OptaDOS output yet")
+            continue
+        e, par, perp = got
+        fr = dichroism_fractions(e, par, perp, win)
+        print(f"   {cell}_{site:4s} (per-site)   max|D|/max S = {fr['peak']:6.1%}   "
+              f"int|D|/int S = {fr['integral']:6.1%}")
+
+    base = weighted_edge(cell, edge, 0.0)
+    if base is None:
+        print("   weighted edge unavailable (need BOTH sites)")
+        return
+    print(f"\n   weighted, assuming zero apical-equatorial chemical shift:")
+    for s in shifts:
+        got = weighted_edge(cell, edge, s)
+        e, par, perp = got
+        fr = dichroism_fractions(e, par, perp, win)
+        tag = "  <- assumed" if s == 0.0 else ""
+        print(f"     shift {s:+.1f} eV   max|D|/max S = {fr['peak']:6.1%}   "
+              f"int|D|/int S = {fr['integral']:6.1%}{tag}")
+    print("   (the per-site dichroisms above are shift-INDEPENDENT; the weighted sum is not,")
+    print("    so quote the spread across this sweep as the systematic on the weighted number)")
+
 def compare_seeds(seed_a: str, seed_b: str, edge: str) -> None:
     """@brief M4 rotational-invariance cross-check: two cells must agree in the CRYSTAL frame.
 
@@ -329,13 +393,18 @@ def main() -> None:
     ap.add_argument("--compare", nargs=2, metavar=("SEED_A", "SEED_B"),
                     help="M4 rotational-invariance cross-check, e.g. "
                          "--compare tet_Pz_Oap tet_Px_Oap")
+    ap.add_argument("--weighted", metavar="CELL",
+                    help="multiplicity-weighted FULL O K edge for a cell "
+                         "(1 apical + 2 equatorial), e.g. --weighted tet_Pz")
     g = ap.add_mutually_exclusive_group()
     g.add_argument("--swap-q", dest="swap", action="store_true", default=None,
                    help="force the lab->crystal q swap (default: derived from config.CELLS)")
     g.add_argument("--no-swap-q", dest="swap", action="store_false",
                    help="force NO q swap")
     args = ap.parse_args()
-    if args.compare:
+    if args.weighted:
+        weighted_edge_report(args.weighted, args.edge)
+    elif args.compare:
         compare_seeds(args.compare[0], args.compare[1], args.edge)
     elif args.selftest or not args.seed:
         selftest()
