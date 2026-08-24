@@ -2,13 +2,14 @@
 """@file run_atomfind.py
 @brief End-to-end atom-finding driver: PSF -> deconvolution -> fit/find -> validation.
 
-Runs unchanged across volumes (switch with --preset). Needs the hyperspy-bundle Python:
+Runs unchanged across volumes (switch with --preset). Needs numpy/scipy/h5py/matplotlib/ase:
 
-    ~/hyperspy-bundle/bin/python run_atomfind.py                 # NL70, gold PSF (default)
-    ~/hyperspy-bundle/bin/python run_atomfind.py --psf all       # compare data vs synthetic
-    ~/hyperspy-bundle/bin/python run_atomfind.py --preset reviewer2 --dose 1e8
+    python run_atomfind.py                       # NL70, gold PSF (default)
+    python run_atomfind.py --psf all             # compare data vs synthetic
+    python run_atomfind.py --preset reviewer2 --dose 1e8
+    python run_atomfind.py --data-dir ./data --out ./out    # explicit, for a fresh machine
 
-Outputs to cfg.out_dir (default ~/Desktop/atomfind_out): figures + report.json + a printed
+Outputs to cfg.out_dir ($ATOMFIND_OUT, else ./atomfind_out): figures + report.json + a printed
 CAN / CAN'T-SHOW verdict. See README.md.
 """
 from __future__ import annotations
@@ -220,17 +221,26 @@ def main():
                     choices=["auto", "data", "synthetic", "empirical", "all"])
     ap.add_argument("--single-atom-vol", default=None)
     ap.add_argument("--dose", type=float, default=None)
-    ap.add_argument("--out", default=None)
+    ap.add_argument("--out", default=None,
+                    help="output directory (default $ATOMFIND_OUT, else ./atomfind_out)")
+    ap.add_argument("--data-dir", default=None,
+                    help="directory holding the volume + kernels + reference structure "
+                         "(default $ATOMFIND_DATA, then <package>/data, then ~/Desktop)")
     ap.add_argument("--n-null", type=int, default=400)
     args = ap.parse_args()
 
+    if args.data_dir: config.set_data_dir(args.data_dir)
     cfg = config.preset(args.preset)
     if args.single_atom_vol: cfg.single_atom_vol = args.single_atom_vol
     if args.dose is not None: cfg.dose_e_per_A2 = args.dose
     if args.out: cfg.out_dir = args.out
+    cfg = cfg.resolve()          # data names -> absolute paths, or a named failure
     os.makedirs(cfg.out_dir, exist_ok=True)
 
-    print(f"[atomfind] preset={cfg.name}  vol={cfg.recon_vol}  dose={cfg.dose_e_per_A2}")
+    print(f"[atomfind] preset={cfg.name}  dose={cfg.dose_e_per_A2}")
+    print(f"[atomfind]   volume  {cfg.recon_vol}")
+    print(f"[atomfind]   kernels {cfg.single_atom_vol} | {cfg.ti_kernel_vol}")
+    print(f"[atomfind]   output  {cfg.out_dir}")
     V, dx = align.load_phase(cfg)
     pos, Z = align.load_gt(cfg)
     al = align.register(V, dx, pos, Z, cfg)

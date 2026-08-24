@@ -12,7 +12,7 @@ NO ground truth goes into the finding -- GT is only overlaid to judge it.
   2) fig_atoms_3d.png -- a small 3-D crop (fig7-style): blind atoms as spheres with +/-1
      sigma error crosses, GT model ghosted over the top; side-on + down-the-beam.
 
-Run:  ~/hyperspy-bundle/bin/python atomfind/fig_check.py
+Run:  python atomfind/fig_check.py
 """
 from __future__ import annotations
 import os, sys

@@ -10,7 +10,7 @@ propagated by Monte Carlo from the per-atom 95% conformal half-widths exported b
 run_atomfind.py, i.e. from quantities available WITHOUT ground truth. Ground truth enters
 only to score the result.
 
-Run:  ~/hyperspy-bundle/bin/python atomfind/polarisation.py   (cwd analysis/)
+Run:  python atomfind/polarisation.py [--out DIR] [--data-dir DIR]   (cwd analysis/)
 Outputs <out_dir>/polarisation.npz + a printed report.
 """
 from __future__ import annotations
@@ -50,7 +50,7 @@ def offcentring(ti, ox, cut=CAGE_CUT_A, need=N_CAGE):
 
 def analyse(cfg=None, csv_path=None, out_dir=None, seed=0):
     """@brief Full pipeline: cages from found atoms, MC uncertainty, scoring vs GT."""
-    cfg = cfg or config.preset("NL70_coherent")
+    cfg = (cfg or config.preset("NL70_coherent")).resolve()
     out_dir = out_dir or cfg.out_dir
     csv_path = csv_path or os.path.join(out_dir, "found_atoms.csv")
     zlo, zhi = cfg.bulk_z_A
@@ -152,5 +152,23 @@ def report(R):
     return "\n".join(L)
 
 
+def main():
+    import argparse
+    ap = argparse.ArgumentParser(description="Ti-O6 off-centring from the located atoms.")
+    ap.add_argument("--preset", default="NL70_coherent")
+    ap.add_argument("--out", default=None,
+                    help="directory holding found_atoms.csv, and where the outputs go "
+                         "(default $ATOMFIND_OUT, else ./atomfind_out)")
+    ap.add_argument("--data-dir", default=None, help="see run_atomfind.py --data-dir")
+    ap.add_argument("--seed", type=int, default=0, help="Monte-Carlo seed")
+    a = ap.parse_args()
+    if a.data_dir:
+        config.set_data_dir(a.data_dir)
+    cfg = config.preset(a.preset)
+    if a.out:
+        cfg.out_dir = a.out
+    print(report(analyse(cfg=cfg, out_dir=cfg.out_dir, seed=a.seed)))
+
+
 if __name__ == "__main__":
-    print(report(analyse()))
+    main()

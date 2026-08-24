@@ -12,6 +12,8 @@ see METHODS.md ("Calibration infrastructure").
 """
 from __future__ import annotations
 from dataclasses import dataclass
+import os
+
 import numpy as np
 
 
@@ -29,10 +31,14 @@ def load_phase(cfg):
     return V, dx
 
 
-def load_gt(cfg):
-    """GT atoms in the RECON physical frame (identical prep to the sim). -> pos, Z."""
+GT_CACHE = "gt_prepared.npz"
+
+
+def _prepare_gt(vasp_path):
+    """The sim's exact preparation of the reference structure: rotate so the beam is +z,
+    orthogonalize, pad to a square cell, centre, add vacuum. Needs ase + abtem."""
     import ase.io, abtem
-    a = ase.io.read(cfg.vasp())
+    a = ase.io.read(vasp_path)
     a.rotate(-90, "y", rotate_cell=True)
     a = abtem.orthogonalize_cell(a)
     Lx, Ly, Lz = a.cell.lengths()
@@ -43,6 +49,24 @@ def load_gt(cfg):
     a.center(axis=1)
     a.center(axis=2, vacuum=2.0)
     return a.get_positions(), a.get_atomic_numbers()
+
+
+def load_gt(cfg):
+    """@brief Ground-truth atoms in the RECON physical frame (identical prep to the sim).
+
+    Prefers the precomputed `gt_prepared.npz` cache if one is on the data path. The cache
+    exists so a reproduction run needs only numpy: preparing the frame from the .vasp calls
+    abtem.orthogonalize_cell, and abtem is a heavy dependency to install for one function.
+    Build or refresh the cache with `python -m atomfind.make_gt_cache`.
+
+    @return (pos, Z) -- positions (N,3) in angstrom and atomic numbers (N,).
+    """
+    from . import config as _cfg
+    cache = _cfg.data_path(GT_CACHE)
+    if os.path.exists(cache):
+        d = np.load(cache)
+        return d["pos"], d["Z"]
+    return _prepare_gt(cfg.vasp())
 
 
 def in_window(pos, cfg):

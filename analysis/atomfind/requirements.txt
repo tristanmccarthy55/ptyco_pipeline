@@ -1,0 +1,14 @@
+# Runtime dependencies for the atom-finding pipeline (run_atomfind.py, polarisation.py).
+# Deliberately small: a peer reproducing the nominated result needs nothing else.
+#
+# Lower bounds are the versions the published results were produced with; the pipeline is
+# pure numpy/scipy array work and is not sensitive to minor versions.
+numpy>=1.24
+scipy>=1.10
+h5py>=3.8            # only for reading PtychoShelves Niter*.mat volumes (dose_series.py)
+matplotlib>=3.7      # figures; the numbers in report.json do not depend on it
+ase>=3.22            # writing found_atoms.extxyz, and reading the reference .vasp
+
+# OPTIONAL -- not needed to reproduce the result.
+#   abtem>=1.0   only to REGENERATE data/gt_prepared.npz from the .vasp
+#                (python -m atomfind.make_gt_cache); the shipped cache makes this unnecessary.

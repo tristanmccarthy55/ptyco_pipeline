@@ -1,0 +1,33 @@
+# NOTICE
+
+## What this package is, and is not
+
+`atomfind` locates atoms in an ALREADY-RECONSTRUCTED three-dimensional phase volume. It is a
+downstream consumer of ptychographic reconstruction output and contains no reconstruction
+code. In particular it contains **no part of the cSAXS PtychoShelves MATLAB package**, and is
+therefore not a derivative work of it. This package is released under the MIT License (see
+LICENSE).
+
+## Upstream software used to produce the input data
+
+The reconstructions this package analyses were produced with the **cSAXS ptychography MATLAB
+package** (PtychoShelves), developed by the Science IT and the Coherent X-ray Scattering (CXS)
+groups, Paul Scherrer Institut, Switzerland, which is distributed under its own academic,
+non-commercial licence. That licence governs the reconstruction step, not this package. Any
+publication describing reconstructions made with it must state:
+
+> Data processing was carried out using the cSAXS ptychography MATLAB package developed by the
+> Science IT and the coherent X-ray scattering (CXS) groups, Paul Scherrer Institut,
+> Switzerland.
+
+and cite the relevant PtychoShelves / difference-map references.
+
+The forward simulations that generated the 4D-STEM data used **abTEM** (Madsen and Susi, Open
+Research Europe 1, 24 (2021)).
+
+## Data
+
+The reference structure `PTO6_STO6_18_18_labyrinthPoscar.vasp` is a relaxed PbTiO3/SrTiO3
+supercell **provided by collaborators** and used with their agreement. It is redistributed here
+for reproduction of the published result. Please contact the authors before reusing it for an
+unrelated purpose.

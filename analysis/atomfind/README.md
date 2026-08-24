@@ -29,19 +29,38 @@ blur is just kernel overlap and inverting it recovers the atoms. Two complementa
   off-lattice null (ROC/AUC). The honest oxygen-contrast measurement.
 
 ## Run it
-Needs abtem + skimage + scipy — the **hyperspy-bundle** Python, not system `python3`:
+Needs numpy, scipy, h5py, matplotlib and ase — a plain virtualenv is enough
+(`pip install -r requirements.txt`). abtem is **optional**: it is used only to prepare the
+ground-truth frame, and the shipped `data/gt_prepared.npz` cache makes it unnecessary.
+
 ```bash
 cd ptychoshelves-clean/analysis
-~/hyperspy-bundle/bin/python atomfind/run_atomfind.py                 # NL70 + gold Pb PSF (default)
-~/hyperspy-bundle/bin/python atomfind/run_atomfind.py --psf all       # empirical vs data vs synthetic
-~/hyperspy-bundle/bin/python atomfind/run_atomfind.py --preset reviewer2 --dose 1e8   # when it lands
+python atomfind/run_atomfind.py                        # NL70 + gold Pb PSF (default)
+python atomfind/run_atomfind.py --psf all              # empirical vs data vs synthetic
+python atomfind/run_atomfind.py --preset reviewer2 --dose 1e8
+python atomfind/polarisation.py                        # Ti-O6 off-centring from the found atoms
 ```
-The gold Pb + Ti kernels and preset paths are wired into `config.preset()`. Outputs →
-`~/Desktop/atomfind_out/`: **`found_atoms.extxyz`** (ASE object: element + xyz + per-atom
-σ/amplitude/quality, in the prepared-cell frame — overlays the GT VASP directly in
-OVITO/VESTA), **`found_atoms.csv`** (same + error bars), `found_atoms.npy`, plus figures
+
+**Data files are resolved by name, never by an absolute path**, so the same commands run on a
+machine that has never seen the author's Desktop. `config.data_path()` searches, in order:
+`$ATOMFIND_DATA` (or `--data-dir`) → `atomfind/data/` → the repo's `sim/` → `~/Desktop`. A
+missing file raises with the name it wanted and the full search path. Outputs go to
+`$ATOMFIND_OUT`, else `./atomfind_out` (`--out` overrides).
+
+Rebuild the ground-truth cache after changing the reference structure (needs abtem):
+```bash
+python -m atomfind.make_gt_cache            # write data/gt_prepared.npz
+python -m atomfind.make_gt_cache --check    # verify it matches the abtem path exactly
+```
+
+Outputs: **`found_atoms.extxyz`** (ASE object: element + xyz + per-atom σ/amplitude/quality,
+in the prepared-cell frame — overlays the GT VASP directly in OVITO/VESTA),
+**`found_atoms.csv`** (same + error bars), `found_atoms.npy`, figures
 (`detection_overlay.png`, `z_accuracy.png`, `psf_compare.png`, `amplitude_vs_Z.png`,
-`roc_oxygen.png`), `deconvolved_vol.npy`, and `report.json`.
+`roc_oxygen.png`), `deconvolved_vol.npy`, `uq_conformal.json` and `report.json`.
+
+**Reproducing the published result:** see [PEER.md](PEER.md) — inputs, the two commands, and
+the expected numbers with their tolerances.
 
 ## Modules
 | file | role |
@@ -57,6 +76,7 @@ OVITO/VESTA), **`found_atoms.csv`** (same + error bars), `found_atoms.npy`, plus
 | `run_atomfind.py` | end-to-end driver + figures + `report.json` + printed verdict. |
 | `fig_check.py` | visual sanity checks (cross-sections, single-column overlay, 3-D atoms). |
 | `dose_series.py` | portability harness: NL105 `.mat` loader + per-dose run. |
+| `make_gt_cache.py` | precompute `data/gt_prepared.npz` so a reproduction run needs no abtem. |
 
 ## Results (headline)
 On NL70 (0.15 Å, coherent, noiseless), gold Pb+Ti kernels: bulk recall (z 10–56 Å)

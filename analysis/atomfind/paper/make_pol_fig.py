@@ -8,7 +8,7 @@
                               log axis, decision line at 1) -- the blind statement that the
                               along-beam component is not measured.
 
-Run:  ~/hyperspy-bundle/bin/python atomfind/paper/make_pol_fig.py   (cwd analysis/)
+Run:  python atomfind/paper/make_pol_fig.py   (cwd analysis/)
 Needs <out_dir>/polarisation.npz from atomfind/polarisation.py.
 """
 from __future__ import annotations
@@ -33,9 +33,9 @@ plt.rcParams.update({
 REC, GT = "#2166ac", "#b0b4b8"
 
 
-def main():
+def main(out_dir=None):
     cfg = config.preset("NL70_coherent")
-    d = np.load(os.path.join(cfg.out_dir, "polarisation.npz"))
+    d = np.load(os.path.join(out_dir or cfg.out_dir, "polarisation.npz"))
     ti, A, B, sig, tail = d["ti"], d["delta"], d["delta_gt"], d["sigma"], d["tail"]
 
     fig = plt.figure(figsize=(7.4, 2.6), constrained_layout=True)
@@ -110,4 +110,7 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    import argparse
+    ap = argparse.ArgumentParser(description="Polarisation figure from polarisation.npz.")
+    ap.add_argument("--out", default=None, help="directory holding polarisation.npz")
+    main(ap.parse_args().out)

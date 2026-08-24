@@ -5,34 +5,99 @@
 Everything that changes between reconstructions lives here, so the same code runs unchanged
 across volumes: edit one Config or pass --preset (no code edits). Calibration constants are
 kept identical to the validated overlay (analysis/column_cross_section_overlay.py), so the
-alignment reproduces the tested overlay exactly. Needs the hyperspy-bundle Python (abtem +
-skimage + scipy): ~/hyperspy-bundle/bin/python run_atomfind.py.
+alignment reproduces the tested overlay exactly.
+
+Data files (the reconstructed volume, the measured kernels, the reference structure) are
+resolved by NAME through data_path(), never by an absolute path, so the pipeline runs on a
+machine that has never seen this author's Desktop. Search order:
+
+  1. $ATOMFIND_DATA            -- an explicit directory (also settable with --data-dir)
+  2. <package>/data/           -- what the peer-reproduction tarball unpacks into
+  3. <repo>/sim/               -- the reference structure as committed in this repo
+  4. ~/Desktop/                -- the original development location, kept so existing
+                                 local runs keep working unchanged
+
+Outputs go to $ATOMFIND_OUT, else ./atomfind_out.
+
+Requires numpy, scipy, h5py, matplotlib and ase. abtem is optional: it is used only to
+prepare the ground-truth frame, and only when the precomputed data/gt_prepared.npz cache is
+absent (see align.load_gt).
 """
 from __future__ import annotations
 from dataclasses import dataclass, field, replace
 import os
 
-# The ground-truth structure (same file the sim consumed). Absolute so it works
-# from any CWD; falls back to the repo copy under sim/.
-_REPO = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
-_VASP_CANDIDATES = [
-    os.path.join(_REPO, "sim", "PTO6_STO6_18_18_labyrinthPoscar.vasp"),
-    os.path.join(_REPO, "..", "PTO6_STO6_18_18_labyrinthPoscar.vasp"),
-]
+_PKG = os.path.dirname(os.path.abspath(__file__))
+_REPO = os.path.abspath(os.path.join(_PKG, "..", ".."))
+
+#: the ground-truth structure the simulation consumed
+VASP_NAME = "PTO6_STO6_18_18_labyrinthPoscar.vasp"
 
 
-def _find_vasp() -> str:
-    for p in _VASP_CANDIDATES:
+def data_dirs() -> list[str]:
+    """Directories searched for data files, most specific first (see the module docstring)."""
+    dirs = []
+    env = os.environ.get("ATOMFIND_DATA")
+    if env:
+        dirs.extend(os.path.abspath(os.path.expanduser(d)) for d in env.split(os.pathsep) if d)
+    dirs += [os.path.join(_PKG, "data"),
+             os.path.join(_REPO, "sim"),
+             os.path.join(_REPO, ".."),
+             os.path.expanduser("~/Desktop")]
+    return dirs
+
+
+def data_path(name: str, required: bool = False) -> str:
+    """@brief Resolve a data file by BASENAME across data_dirs().
+    @param name basename, e.g. "NL70_new_vol.npy"; an absolute path is returned unchanged.
+    @param required raise FileNotFoundError instead of returning the first candidate.
+    @return the first existing match, else the preferred location (so error messages name it).
+    """
+    if os.path.isabs(name):
+        return name
+    for d in data_dirs():
+        p = os.path.join(d, name)
         if os.path.exists(p):
             return os.path.abspath(p)
-    return _VASP_CANDIDATES[0]
+    if required:
+        raise FileNotFoundError(
+            f"{name!r} not found in any of:\n  " + "\n  ".join(data_dirs()) +
+            "\nSet $ATOMFIND_DATA (or pass --data-dir) to the directory holding the data files.")
+    return os.path.join(data_dirs()[0] if os.environ.get("ATOMFIND_DATA")
+                        else os.path.join(_PKG, "data"), name)
+
+
+def set_data_dir(path: str) -> None:
+    """Prepend a directory to the search path for the rest of the process (used by --data-dir)."""
+    path = os.path.abspath(os.path.expanduser(path))
+    cur = os.environ.get("ATOMFIND_DATA")
+    os.environ["ATOMFIND_DATA"] = path + (os.pathsep + cur if cur else "")
+
+
+def default_out_dir() -> str:
+    """@brief Where results are written: $ATOMFIND_OUT, else ./atomfind_out.
+
+    Exception, mirroring the data search path: if ./atomfind_out does not exist but the
+    original development location ~/Desktop/atomfind_out does, that one is kept, so the
+    figure scripts that read cfg.out_dir (fig_check, paper/make_*_fig) are not silently
+    repointed at an empty directory on this machine. A fresh checkout has neither and gets
+    ./atomfind_out. --out overrides in every entry point.
+    """
+    env = os.environ.get("ATOMFIND_OUT")
+    if env:
+        return os.path.abspath(os.path.expanduser(env))
+    local = os.path.abspath(os.path.join(os.getcwd(), "atomfind_out"))
+    legacy = os.path.expanduser("~/Desktop/atomfind_out")
+    if not os.path.isdir(local) and os.path.isdir(legacy):
+        return legacy
+    return local
 
 
 @dataclass
 class Config:
     # ---- which reconstructed volume -------------------------------------
     name: str = "NL70_coherent"
-    recon_vol: str = os.path.expanduser("~/Desktop/NL70_new_vol.npy")   # complex64 (nL, Ny, Nx)
+    recon_vol: str = "NL70_new_vol.npy"       # complex64 (nL, Ny, Nx); resolved by data_path()
 
     # ---- calibration ----------------------------------------------------
     # In-plane object pixel. The VALIDATED overlay uses scan_window / Nx
@@ -208,7 +273,7 @@ class Config:
     reference_columns: tuple = ()     # (row,col) seeds; empty => auto from GT Pb columns
 
     # ---- output ---------------------------------------------------------
-    out_dir: str = os.path.expanduser("~/Desktop/atomfind_out")
+    out_dir: str = field(default_factory=default_out_dir)
 
     # ---- external empirical PSF (drops in when the sim thread delivers) --
     # Path to a reconstructed single-isolated-atom volume (.npy, same format).
@@ -217,7 +282,20 @@ class Config:
     single_atom_species: int = 82
 
     def vasp(self) -> str:
-        return _find_vasp()
+        """Absolute path to the ground-truth structure."""
+        return data_path(VASP_NAME)
+
+    def resolve(self) -> "Config":
+        """Return a copy with every data field turned into an absolute path. Called once at
+        load time so a missing file is reported by name, with the full search path."""
+        out = replace(self)
+        out.recon_vol = data_path(self.recon_vol, required=True)
+        for f in ("single_atom_vol", "ti_kernel_vol"):
+            v = getattr(self, f)
+            if v:
+                setattr(out, f, data_path(v, required=True))
+        out.out_dir = os.path.abspath(os.path.expanduser(self.out_dir))
+        return out
 
     def effective_rl_iters(self) -> int:
         """Cap RL iterations more aggressively at low dose (deconv amplifies noise)."""
@@ -239,24 +317,24 @@ def preset(name: str) -> Config:
         # thread we use the Pb SHAPE for every species (it's the imaging-system response;
         # the element only sets amplitude), so this is the default kernel for all atoms.
         "NL70_coherent": Config(name="NL70_coherent",
-                                recon_vol=os.path.expanduser("~/Desktop/NL70_new_vol.npy"),
+                                recon_vol="NL70_new_vol.npy",
                                 dz=0.999, dose_e_per_A2=None,
-                                single_atom_vol=os.path.expanduser("~/Desktop/psf_Pb_NL70_vol.npy"),
+                                single_atom_vol="psf_Pb_NL70_vol.npy",
                                 single_atom_species=82,
-                                ti_kernel_vol=os.path.expanduser("~/Desktop/psf_Ti_NL70_vol.npy")),
+                                ti_kernel_vol="psf_Ti_NL70_vol.npy"),
         "NL42_coherent": Config(name="NL42_coherent",
-                                recon_vol=os.path.expanduser("~/Desktop/NL42_new_vol.npy"),
+                                recon_vol="NL42_new_vol.npy",
                                 dz=1.665, dose_e_per_A2=None,
-                                single_atom_vol=os.path.expanduser("~/Desktop/psf_Pb_NL70_vol.npy"),
+                                single_atom_vol="psf_Pb_NL70_vol.npy",
                                 single_atom_species=82,
-                                ti_kernel_vol=os.path.expanduser("~/Desktop/psf_Ti_NL70_vol.npy")),
+                                ti_kernel_vol="psf_Ti_NL70_vol.npy"),
         # TEMPLATE for the reviewer-2 data (0.1 A-binned, 16-phonon, dosed). Set recon_vol
         # + dose when it lands; dose-MATCH the kernel (d1e8 kernel <-> 1e8 recon). dz=0.666
         # (NL105), per docs/history/PSF_SIM_RESPONSE.md sec.4.
         "reviewer2": Config(name="reviewer2",
-                            recon_vol=os.path.expanduser("~/Desktop/recon_new/REVIEWER2/vol.npy"),
+                            recon_vol="REVIEWER2_vol.npy",
                             dz=0.666, dose_e_per_A2=1e8,
-                            single_atom_vol=os.path.expanduser("~/Desktop/psf_Pb_rev2_d1e8_vol.npy"),
+                            single_atom_vol="psf_Pb_rev2_d1e8_vol.npy",
                             single_atom_species=82),
     }
     if name not in presets:
