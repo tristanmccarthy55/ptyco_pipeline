@@ -54,7 +54,7 @@ On this input the run is deterministic and should reproduce
 |---|---|
 | atoms found | 1834 |
 | precision | 0.97 |
-| bulk recall, Pb / Ti / O | 96 / 96 / 96 % |
+| bulk recall, Pb / Ti / O | 95.6 / 96.4 / 95.5 % |
 | species confusion | 1.1 % |
 | in-plane RMS accuracy | 0.032 Å |
 | depth RMS accuracy | 0.37 Å |

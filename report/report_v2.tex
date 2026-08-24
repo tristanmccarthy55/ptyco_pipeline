@@ -46,7 +46,7 @@ which buries the oxygen sublattice beneath its titanium neighbours. 4D-STEM of a
 PbTiO$_3$/SrTiO$_3$ supercell was simulated, inverted, and every atom located by fitting the
 volume as a superposition of a measured single-atom response. The method recovers $95.5\%$ of
 bulk oxygen with $1.1\%$ species confusion, whereas three-dimensional deconvolution followed by
-peak detection reaches at most $59\%$. That advantage is concentrated entirely in the axially
+peak detection reaches at most $68\%$ over the same band. That advantage is concentrated entirely in the axially
 overlapped oxygen, for which recall is $82\%$ against $9$--$26\%$. Per-atom uncertainties combine
 a joint Cram\'er--Rao bound with Mondrian conformal calibration, the former correcting the
 twofold variance inflation a per-peak bound misses at the $1.95$\,\AA{} Ti--O spacing. The
@@ -365,7 +365,7 @@ which is why a method that models the overlap can outperform one that does not.
     1-D per-column deconv.        & 91 & 65 & 49 & 62 & 20 \\
     3-D model fit                 & 88 & 89 & 89 & 92 & 82 \\
     \quad unconstrained only      & 88 & 89 & 86 & 92 & 71 \\
-    \quad bulk, $z=10$--$56$\,\AA & 96 & 96 & 96 & --- & --- \\
+    \quad bulk, $z=10$--$56$\,\AA & 95.6 & 96.4 & 95.5 & --- & --- \\
     \bottomrule
   \end{tabular}
   \caption{Recovery of each sublattice, whole field unless stated, on the same reconstruction
@@ -644,8 +644,8 @@ computed here is therefore an upper bound for this orientation.
 
 Fitting a reconstructed multislice-ptychographic volume as a superposition of a measured
 single-atom response recovers the oxygen sublattice of a PbTiO$_3$/SrTiO$_3$ superlattice where
-the established deconvolve-then-detect workflow does not, at $96\%$ bulk recall against at most
-$59\%$. The whole of that margin lies in the axially overlapped oxygen ($82\%$ against
+the established deconvolve-then-detect workflow does not, at $95.5\%$ bulk recall against at
+most $68\%$ over the same band. The whole of that margin lies in the axially overlapped oxygen ($82\%$ against
 $9$--$26\%$). It is not a tuning artefact, since the limitation of deconvolution is the axial
 spatial frequencies the aperture never records. The method also returns species labels ($1.1\%$
 confusion) and calibrated per-atom uncertainty, neither of which a peak detector provides.
@@ -993,7 +993,7 @@ $(x,y,z)$ in \aa{}ngstr\"om in the reference frame, the per-axis $95\%$ conforma
 the model $\sigma$, the species confidence and a flag marking lattice-constrained detections,
 together with the conformal quantile table. The second writes the Ti--O$_6$ off-centring with
 its propagated uncertainty. On the same input the run is deterministic and should reproduce
-$1834$ atoms with precision $0.97$, bulk recall $96/96/96\%$ for Pb/Ti/O, species confusion
+$1834$ atoms with precision $0.97$, bulk recall $95.6/96.4/95.5\%$ for Pb/Ti/O, species confusion
 $1.1\%$, in-plane RMS accuracy $0.032$\,\AA{} and depth RMS $0.37$\,\AA.
 
 The uncertainty attached to each reported coordinate is the exported conformal half-width, and
