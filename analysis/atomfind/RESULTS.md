@@ -142,50 +142,74 @@ than fabricate.
 
 ## 4. Dose series — real reconstruction noise (NL105, 0.1 Å, coherent)
 
-This is the **portability benchmark**: a different reconstruction geometry (105 layers,
-dz 0.666 Å, 405², ~half NL70's phase amplitude, real reconstruction noise), run with the
-**same configuration as NL70** — no per-dataset tuning. Harness: `atomfind/dose_series.py`.
+Re-run **2026-08-24** under the current config (removes the pre-deduplication caveat), now with
+the deconvolve-then-peak-pick baselines scored on the same volumes:
 
-After the §7 fixes:
+```bash
+python atomfind/dose_series.py --json dose.json          # all four doses + baselines
+```
 
-| dose (e/Å²) | found | precision | Pb | Ti | O | confusion | z-RMS |
-|---|---|---|---|---|---|---|---|
-| 1e10 | 1694 | 0.83 | 86 % | **74 %** | 63 % | **13.7 %** | 0.87 Å |
-| 1e8 | 1679 | 0.87 | 87 % | 72 % | 67 % | **11.8 %** | 0.85 Å |
-| 1e6 | 529 | 0.95 | 75 % | 25 % | 7 % | 38.0 % | 0.73 Å |
-| 1e4 | 0 | — | 0 % | 0 % | 0 % | — | — |
+### v3, bulk band (z = 10–58 Å)
 
-Effect of each fix on dose 1e10 (cumulative):
+| dose (e Å⁻²) | found | precision | Pb | Ti | O | confusion |
+|---|---|---|---|---|---|---|
+| 10¹⁰ | 1575 | 0.85 | 89 % | 74 % | 60 % | 12.4 % |
+| 10⁸  | 1593 | 0.88 | 89 % | 77 % | 66 % | 11.3 % |
+| 10⁶  |  521 | 0.96 | 76 % | 26 % |  5 % | 37.8 % |
+| 10⁴  |    0 | —    | —    | —    | —    | —      |
 
-| configuration | Pb | Ti | O | confusion | z-RMS |
-|---|---|---|---|---|---|
-| as first run (absolute floor, no depth refinement) | 85 % | 53 % | 51 % | 19.0 % | 1.01 Å |
-| + depth-offset refinement (OFF 1.26 → 0.43 Å) | 87 % | 71 % | 50 % | 16.3 % | 0.89 Å |
-| + label-independent fiducials (OFF → 0.29 Å) | 86 % | 71 % | 50 % | — | — |
-| + noise-relative CLEAN floor (k = 2.0) | 86 % | **74 %** | **63 %** | **13.7 %** | 0.87 Å |
-| *NL70 reference, same config* | *88 %* | *89 %* | *90 %* | *1.1 %* | *0.37 Å* |
+Unchanged in substance from the pre-dedup run: usable to 10⁸, collapsing below 10⁶. At 10⁴ the
+finder returns **nothing at all** rather than reporting noise, which is the intended behaviour.
 
-Registration quality remains the discriminator, and is now largely repaired:
+### The head-to-head — and why it does NOT discriminate at dose
 
-| volume | corr_depth | OFF before → after | xy-RMS | z-RMS |
-|---|---|---|---|---|
-| NL70 | 0.63 | 0.36 → 0.08 Å | 0.032 Å | 0.37 Å |
-| dose1e10 | 0.44 | **1.26 → 0.29 Å** | 0.142 Å | 0.87 Å |
-| dose1e8 | 0.45 | **1.32 → 0.32 Å** | 0.128 Å | 0.85 Å |
+This was run to test the expectation that the oxygen margin *widens* with dose. **It does not,
+and the reason is a measurement artefact in the baseline, not a loss for either method.**
 
-**1e6 is the §3 failure mode in the wild:** precision reads **0.95** while Ti recall is 25 %,
-O is 7 % and 38 % of labels are wrong. The health check fires on confusion and coverage;
-precision does not. 1e4 finds nothing at all (and the depth refinement correctly declines to
-fit on <20 fiducials rather than inventing a correction). Neither was chased.
+| dose | detector | emitted | precision | O bulk | O overlapped | O isolated |
+|---|---|---|---|---|---|---|
+| 10¹⁰ | v3 | 1575 | **0.85** | 60 % | 46 % | 65 % |
+|      | peak-pick raw | **2500 (cap)** | 0.56 | 59 % | 71 % | 49 % |
+|      | RL + peak-pick | 2199 | 0.55 | 54 % | 35 % | 59 % |
+|      | MEM + peak-pick | 1955 | 0.64 | 49 % | 35 % | 51 % |
+| 10⁸  | v3 | 1593 | **0.88** | 66 % | 46 % | 72 % |
+|      | peak-pick raw | **2500 (cap)** | 0.56 | 59 % | 77 % | 45 % |
+|      | RL + peak-pick | 1781 | 0.67 | 56 % | 36 % | 58 % |
+|      | MEM + peak-pick | 1802 | 0.68 | 48 % | 35 % | 49 % |
+| 10⁶  | v3 | 521 | 0.96 | 5 % | 22 % | 0 % |
+|      | MEM + peak-pick | 3165 | 0.45 | 69 % | 48 % | 72 % |
+| 10⁴  | v3 | **0** | — | — | — | — |
+|      | MEM + peak-pick | 3803 | 0.34 | 65 % | 49 % | 67 % |
 
-Residual gap to NL70 (Ti 74 % vs 89 %, z-RMS 0.87 vs 0.37 Å) is **not** our constants: it is
-a genuinely harder reconstruction (105 thin slices, 16-phonon kernel of 2.0 Å axial FWHM vs
-1.0 Å, corr_depth 0.44 vs 0.63).
+Three facts make the baseline's apparent advantage uninterpretable:
 
-**Structural lesson:** species assignment is *coupled to depth registration*. A ~1 Å depth
-error on a lattice whose Ti/O alternate every 1.95 Å swaps labels wholesale — which is why
-confusion sat at 19 % on near-noiseless data before the depth refinement. Sub-Å depth
-accuracy is not merely a precision figure; it is a prerequisite for correct chemistry.
+1. **It is saturated.** `peaks3d` takes `max_atoms` (2500 for raw/RL, 4000 for MEM). Raw
+   peak-picking emits **exactly 2500 at every one of the four doses** — the cap, not the data,
+   is setting its output. At 10¹⁰ and 10⁸ it returns *identical* true-detection counts (1407)
+   and *identical* false positives (1093), despite a hundredfold change in dose.
+2. **Its recall ordering is physically impossible.** It scores axially overlapped oxygen (71 %,
+   77 %) *higher* than in-plane-isolated oxygen (49 %, 45 %). Isolated oxygen occupies its own
+   column and is the easy case for any detector. A method that finds the hard population more
+   often than the easy one is not detecting oxygen; it is carpeting the volume and being
+   credited for whatever it lands near.
+3. **The true-detection counts are the same.** At 10⁸, v3 makes 1404 true detections from 1593
+   emitted; raw peak-picking makes 1407 from 2500, buying the same true detections with
+   **1093 false positives** (44 % of its output) against v3's ~190 (12 %).
+
+Below 10⁶ this becomes stark: v3 abstains entirely at 10⁴ while MEM reports 49 % overlapped-O
+recall at precision 0.34, i.e. it reports oxygen where there is no signal.
+
+**Consequence for the paper.** The discriminating comparison is the *noiseless* one (§2), where
+no detector is saturated — v3 1834, raw 1884, RL 1436, MEM 1670 emitted, at precision 0.84–0.99
+— so recalls are commensurable. At finite dose the comparison stops being a comparison, because
+the baseline's recall is set by its detection cap. Any claim that the margin widens with dose
+must **not** be made; what dose actually demonstrates is the value of a method that abstains
+(v3: 0 atoms at 10⁴) over one that does not (MEM: 3803 detections at precision 0.34).
+
+A fair finite-dose comparison would need the baselines re-thresholded to emit a matched number
+of detections, or scored on a precision-recall curve rather than at one operating point. That is
+worth doing and is left as further work; it does not affect §2, which is the claim the paper
+actually makes.
 
 ---
 

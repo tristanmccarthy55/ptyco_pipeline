@@ -350,6 +350,7 @@ depth--$x$ cross-section. The blur is consequently kernel overlap rather than lo
 which is why a method that models the overlap can outperform one that does not.
 
 \subsection{Localisation performance}
+\label{sec:bench}
 
 \begin{table}[t]
   \centering \small
@@ -400,8 +401,9 @@ precisely those separating an oxygen atom from the flank of its titanium neighbo
 was reproduced on a dense lattice, so the limitation appears structural rather than a tuning
 artefact. The second surprise is that on noiseless data a good peak-picker is competitive on the
 heavy atoms, a raw local maximum being already a clean estimator of an isolated bright column. The margin quoted
-here is consequently a lower bound, and the discriminating comparison is at finite dose
-(Sec.~\ref{sec:dose}). A peak-picker cannot, at any dose, provide a species label or a
+here is consequently a lower bound. It is tempting to expect the margin to widen at finite
+dose; Sec.~\ref{sec:dose} shows that this cannot be tested at a single operating point, because
+the baseline saturates its detection limit there. A peak-picker cannot, at any dose, provide a species label or a
 calibrated error bar.
 
 \subsection{Calibrated uncertainty}
@@ -464,38 +466,52 @@ per volume and exports the per-stratum coverage.
 
 \begin{table}[tb]
   \centering \small
-  \begin{tabular}{@{}lccccc@{}}
+  \begin{tabular}{@{}lcccccc@{}}
     \toprule
-    dose (e\,\AA$^{-2}$) & precision & Pb & Ti & O & confusion \\
+    dose (e\,\AA$^{-2}$) & found & precision & Pb & Ti & O & confusion \\
     \midrule
-    $10^{10}$ & 0.83 & 86\,\% & 74\,\% & 63\,\% & 13.7\,\% \\
-    $10^{8}$  & 0.87 & 87\,\% & 72\,\% & 67\,\% & 11.8\,\% \\
-    $10^{6}$  & 0.95 & 75\,\% & 25\,\% & \phantom{0}7\,\% & 38.0\,\% \\
-    $10^{4}$  & ---  & \phantom{0}0\,\% & \phantom{0}0\,\% & \phantom{0}0\,\% & --- \\
+    $10^{10}$ & 1575 & 0.85 & 89\,\% & 74\,\% & 60\,\% & 12.4\,\% \\
+    $10^{8}$  & 1593 & 0.88 & 89\,\% & 77\,\% & 66\,\% & 11.3\,\% \\
+    $10^{6}$  & \phantom{0}521 & 0.96 & 76\,\% & 26\,\% & \phantom{0}5\,\% & 37.8\,\% \\
+    $10^{4}$  & \phantom{000}0 & ---  & --- & --- & --- & --- \\
     \bottomrule
   \end{tabular}
   \caption{Dose series on an independent reconstruction ($105$ layers, $0.10$\,\AA{} sampling),
-    run with the same configuration as the coherent reference. The $10^{6}$ row illustrates the
-    uninformativeness of precision. A guided-detection deduplication guard added subsequently
-    reduces the $10^{10}$ confusion to $12.4\%$ with titanium recall unchanged.}
+    run with the same configuration as the coherent reference. Recalls are over the bulk band.
+    The $10^{6}$ row illustrates the uninformativeness of precision, which reads $0.96$ while
+    oxygen recall is $5\%$. At $10^{4}$ the method returns no atoms at all rather than reporting
+    noise.}
   \label{tab:dose}
 \end{table}
 
 Table~\ref{tab:dose} applies the same configuration over a dose series on the independent
 reconstruction. Performance is maintained to $10^{8}$\,e\,\AA$^{-2}$ and collapses below
-$10^{6}$. The residual gap to the coherent reference (Ti $74\%$ against $89\%$) is attributable
+$10^{6}$. The residual gap to the coherent reference (Ti $74\%$ against $96\%$ on the same bulk band) is attributable
 not to the localisation constants but to a harder reconstruction, having a $2.0$\,\AA{} axial
 kernel against $1.0$\,\AA{} and a depth-registration correlation of $0.44$ against $0.63$.
 
-The series carries a lesson that outlives this dataset. Precision is not a safety indicator: at
-$10^{6}$\,e\,\AA$^{-2}$ it reads $0.95$ while titanium recall is $25\%$, oxygen $7\%$ and $38\%$
-of labels are wrong, because it measures only the surviving bright lead atoms, which are
-correctly placed. Species confusion and $\sigma$-coverage are the diagnostics that respond, and
+The baselines of Sec.~\ref{sec:bench} were run over the same series, expecting the oxygen margin
+to widen once noise was present. It does not, for an instructive reason: peak detection is
+subject to a cap on the number of maxima returned, and it reaches that cap at every dose,
+returning the same $2500$ detections at $10^{10}$ as at $10^{4}$. Recall is then set by the cap
+rather than by the data, and the ordering becomes impossible, axially overlapped oxygen scoring
+$71$--$77\%$ against $45$--$49\%$ for the easier isolated oxygen. Counting true detections shows
+why: at $10^{8}$ the model fit makes $1404$ from $1593$ returned and peak-picking $1407$ from
+$2500$, buying the same true detections with $1093$ false ones. Discriminating at finite dose
+would need the baselines re-thresholded to a matched count, or a precision-recall curve rather
+than one operating point, so no claim is made from it here. What the series does establish is
+the value of abstention: at $10^{4}$ the model fit returns nothing, whereas maximum-entropy
+deconvolution returns $3803$ detections at a precision of $0.34$.
+
+The series carries a further lesson that outlives this dataset. Precision is not a safety
+indicator: at $10^{6}$\,e\,\AA$^{-2}$ it reads $0.96$ while titanium recall is $26\%$, oxygen
+$5\%$ and $38\%$ of labels are wrong, because it measures only the surviving bright lead atoms,
+which are correctly placed. Species confusion and $\sigma$-coverage are the diagnostics that respond, and
 both are printed as health warnings. Species assignment is coupled to depth registration as
 well, since a $1$\,\AA{} depth error on a lattice whose Ti and O alternate every $1.95$\,\AA{}
 swaps labels wholesale:
 correcting the offset from $1.26$ to $0.29$\,\AA{} raised titanium recall from $53\%$ to $74\%$
-and reduced confusion from $19.0\%$ to $13.7\%$ at $10^{10}$\,e\,\AA$^{-2}$. Sub-\aa{}ngstr\"om
+and reduced confusion from $19.0\%$ to $12.4\%$ at $10^{10}$\,e\,\AA$^{-2}$. Sub-\aa{}ngstr\"om
 depth accuracy is therefore a prerequisite for correct chemistry.
 
 \subsection{Polarisation with error bars}
