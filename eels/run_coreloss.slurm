@@ -16,6 +16,9 @@
 # <SEED>.odi in the submit dir. OptaDOS is serial; CASTEP is MPI.
 #
 #   sbatch -p compute --export=ALL,SEED=tio2_O run_coreloss.slurm
+#   # a THIRD q direction on an existing SCF -- name the outputs so nothing is overwritten:
+#   sbatch -p compute --export=ALL,SEED=tet_Pz_Oeq,SKIP_CASTEP=1,ODI2=qy.odi,TAG1=keep,TAG2=qy \
+#          run_coreloss.slurm
 #   # optional second OptaDOS pass with a different .odi (e.g. the q-perp direction for M4):
 #   sbatch -p compute --export=ALL,SEED=tet_Pz_Oap,ODI2=coreloss_qperp.odi run_coreloss.slurm
 
@@ -45,14 +48,23 @@ fi
 
 echo "[$(date)] OptaDOS core-loss (primary / q_c): $SEED   ($OPTADOS)"
 "$OPTADOS" "$SEED" || { echo "OptaDOS failed -- ENDIANNESS? rebuild CASTEP or OptaDOS to match; see ${SEED}.odo"; exit 1; }
-# SAVE the primary (q_c) spectrum BEFORE any second pass can overwrite <seed>_core_edge.dat:
-[ -f "${SEED}_core_edge.dat" ] && cp "${SEED}_core_edge.dat" "${SEED}.qc_core_edge.dat"
+# SAVE the primary spectrum BEFORE any second pass can overwrite <seed>_core_edge.dat.
+# TAG1/TAG2 name the outputs after the q DIRECTION rather than assuming pass 1 is always q_c:
+# on a SKIP_CASTEP re-run the leftover <seed>.odi is whatever the PREVIOUS job's ODI2 left
+# behind, so a blind "qc" label silently overwrites a good spectrum with a different one.
+# (This is exactly what happened adding the q=y equatorial pass on 2026-08-24: the surviving
+# q=z spectrum existed only in an off-cluster copy.)
+: "${TAG1:=qc}"
+: "${TAG2:=qperp}"
+echo "[$(date)] pass 1 core_qdir: $(grep -i core_qdir "${SEED}.odi" 2>/dev/null || echo '?')"
+[ -f "${SEED}_core_edge.dat" ] && cp "${SEED}_core_edge.dat" "${SEED}.${TAG1}_core_edge.dat"
 
 # optional second q-direction pass (M3/M4): swap the .odi, re-run OptaDOS only (CASTEP reused)
 if [ -n "${ODI2:-}" ] && [ -f "$ODI2" ]; then
   echo "[$(date)] OptaDOS second pass (q_perp) with $ODI2"
   cp "$ODI2" "${SEED}.odi"
-  "$OPTADOS" "$SEED" && cp "${SEED}_core_edge.dat" "${SEED}.qperp_core_edge.dat"
+  echo "[$(date)] pass 2 core_qdir: $(grep -i core_qdir "${SEED}.odi")"
+  "$OPTADOS" "$SEED" && cp "${SEED}_core_edge.dat" "${SEED}.${TAG2}_core_edge.dat"
 fi
 
-echo "[$(date)] CORELOSS DONE -> ${SEED}.qc_core_edge.dat${ODI2:+ + ${SEED}.qperp_core_edge.dat} (see ${SEED}.odo)"
+echo "[$(date)] CORELOSS DONE -> ${SEED}.${TAG1}_core_edge.dat${ODI2:+ + ${SEED}.${TAG2}_core_edge.dat} (see ${SEED}.odo)"

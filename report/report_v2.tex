@@ -57,8 +57,7 @@ $0.007$\,\AA{} and $0.9^\circ$, while the along-beam component is not determined
 conclusion is reached without reference to ground truth. Core-hole DFT indicates the missing
 component remains spectroscopically accessible, the apical-oxygen O~K edge being $78\%$
 dichroic to the polar-axis orientation with a monotonic $19\%$ arising from the displacement
-itself, although weighted over both oxygen sites the full edge retains $39$--$46\%$ of that
-dichroism. Recovering
+itself, although weighted over both oxygen sites the full edge retains $37\%$ of that dichroism. Recovering
 it would nonetheless require a collection aperture $\lesssim2$\,mrad rather than the
 $100$\,mrad ptychography optics.
 \end{abstract}
@@ -611,11 +610,12 @@ Ti--O--Ti chain. The excited site here is the apical oxygen, which lies on that 
 to the polar axis. The edge of the cell as a whole is the multiplicity-weighted sum of one
 apical and two equatorial oxygen, and the equatorial site behaves very differently: its own
 chain lies in-plane, and it is only $22\%$ dichroic. Carrying twice the multiplicity, it brings
-the weighted full O~K edge to $39$--$46\%$ rather than $78\%$. That range spans two systematics,
-the chemical shift between the two sites, which these calculations do not fix and to which the
-integral metric is much less sensitive at $30$--$32\%$, and the second equatorial orientation,
-equivalent to the first for $\mathbf{q}\parallel c$ but not for $\mathbf{q}\perp c$, which would
-need a third momentum-transfer direction to settle. The rotational-invariance test passes
+the weighted full O~K edge to $37\%$ rather than $78\%$. The two equatorial atoms are equivalent
+for $\mathbf{q}\parallel c$ but not for $\mathbf{q}\perp c$, so the second orientation was computed
+explicitly as a third momentum-transfer direction rather than estimated. One systematic remains,
+the chemical shift between the two oxygen sites, which these calculations do not fix; sweeping it
+over $\pm1$\,eV moves the weighted edge over $22$--$37\%$, while the integral metric is more
+stable at $16$--$23\%$. The rotational-invariance test passes
 essentially exactly: mapped into the crystal frame the $c\parallel z$ and $c\parallel x$ cells
 agree to $0.02$--$0.03\%$, the floor set by the cubic null test, so the anisotropy is physical
 rather than an artefact of the momentum-transfer machinery.
@@ -661,8 +661,20 @@ dynamical multislice core-loss simulation of up- and down-polarised domains conf
 the two giving O~K spectra identical to within $1.0\%$. In the labyrinth itself, viewed along
 this zone axis, the polarisation is in any case mostly in-plane: over $2560$ polar titanium the
 median angle from the beam is $82^\circ$
-(interquartile range $73$--$87^\circ$), an along-beam fraction of only $\approx0.14$. The case
-computed here is therefore an upper bound for this orientation.
+(interquartile range $73$--$87^\circ$), an along-beam fraction of only $\approx0.14$.
+
+That last point does not, however, make the computed case an upper bound that a real measurement
+would fall far below. Repeating the calculation on a cell built at the labyrinth's median
+$82^\circ$ tilt gives a dichroism of $76.3\%$, against $78.2\%$ for the fully aligned case. What
+changes is not the magnitude but the character, and exactly so: with the polar axis along the
+beam, $\mathbf{q}\parallel$~beam gives the $\sigma^*$ feature at $18.7$\,eV and
+$\mathbf{q}\perp$~beam the $\pi^*$ at $8.6$\,eV, whereas with the axis in-plane the same two
+features appear at the same two energies with their assignments exchanged. The edge reports the
+\emph{orientation} of the polar axis relative to the beam, the sense of the asymmetry
+identifying which way it lies, rather than the magnitude of the along-beam component. A
+measurement on the labyrinth would therefore return a large dichroism reporting an in-plane axis,
+not an absence of signal. It remains true that only a small part of the effect belongs to the
+off-centring rather than to the tetragonal backbone, and that the dipole limit forbids the sign.
 
 % ===========================================================================
 \section{Conclusions and further work}
@@ -694,7 +706,7 @@ purpose of such machinery. First-principles core-hole DFT indicates that the mis
 spectroscopically accessible in principle, the apical-oxygen O~K edge being $78\%$ dichroic to
 the polar-axis orientation, of which a monotonic $19\%$ is the signature of the displacement
 rather than of the tetragonal backbone. Weighted over both oxygen sites the full edge retains
-$39$--$46\%$ of that dichroism. The dipole limit nevertheless forbids recovery of the sign, and the magic
+$37\%$ of that dichroism. The dipole limit nevertheless forbids recovery of the sign, and the magic
 angle forbids use of the $100$\,mrad ptychography aperture for the purpose.
 
 This leaves clear openings for further work. The assumption of one kernel for all species is
@@ -703,9 +715,8 @@ response under thermal scattering; in-situ vacancy-difference kernels would supp
 oxygen matched filter. The $5\%$ cage-composition tail of Sec.~\ref{sec:pol} is a detection rather than a
 localisation problem and requires a calibrated cage-completeness criterion, while learned
 denoising before fitting \citep{Wu2026} is a natural route below $10^{6}$\,e\,\AA$^{-2}$. The
-weighted O~K edge is pinned only to $39$--$46\%$; narrowing it needs one further
-momentum-transfer direction on the equatorial site and a chemical shift from a separate no-hole
-calculation. Beyond that, a faithful vortex simulation would inject a per-atom $\sigma(E)$
+weighted O~K edge carries a $22$--$37\%$ systematic from the inter-site chemical shift, which a
+separate no-hole calculation would fix. Beyond that, a faithful vortex simulation would inject a per-atom $\sigma(E)$
 keyed to each oxygen's local polar-axis orientation. The clearest instrumental conclusion is a
 design constraint, in that a combined depth-resolved-imaging and polarisation-spectroscopy
 experiment cannot share one large aperture. The open question is whether the two can be fused into a

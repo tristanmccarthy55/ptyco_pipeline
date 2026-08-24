@@ -208,30 +208,74 @@ that is in fact exact to 0.0 %. Both HANDOFF.md and HANDOVER.md described the ch
 |---|---|---|
 | apical (1×) — *the previously published number* | **78.2 %** | 62.8 % |
 | equatorial (2×) | **22.1 %** | 18.7 % |
-| **weighted full edge (1 ap + 2 eq)** | **39–46 %** | 27–32 % |
+| **weighted full edge (1 ap + 2 eq)** | **37.1 %** | 18.4 % |
 
 **The headline nearly halves.** The apical oxygen sits on the Ti–O–Ti chain parallel to the
 polar axis and is strongly dichroic; the equatorial oxygen, whose chain lies in-plane, is not.
 Since the equatorial site carries twice the multiplicity, the edge of the cell as a whole is far
 less dichroic than the apical site alone. **"The O K edge is 78 % dichroic" was never right; it
-is the apical site that is 78 % dichroic, and the full edge is roughly 40 %.**
+is the apical site that is 78 % dichroic, and the full edge is 37 %.**
 
-Two systematics are folded into the 39–46 % range, both quantified rather than assumed:
+The second equatorial orientation is now **measured, not estimated** (third OptaDOS pass,
+`core_qdir 0 1 0`, `SKIP_CASTEP=1`). The 2c site holds two atoms, O_a at (½,0,z) and O_b at
+(0,½,z), related by the C4 about z; `spectrum(O_b, x̂) = spectrum(O_a, ŷ)`. For **q∥c the two are
+equivalent**, so counting one twice is exact there; for **q⊥c they are not**, and the measured
+q=ŷ spectrum supplies the missing half.
 
-1. **Apical/equatorial chemical shift (±1 eV → 36–46 %).** The two sites come from separate
-   core-hole SCF runs whose absolute O 1s energies differ by a shift OptaDOS does not supply
-   (it needs the Mizoguchi correction from a no-hole singlepoint). Each site's OWN dichroism is
-   a within-run difference and is shift-independent; the weighted SUM is not. The integral
-   metric is far more robust to it (30–32 % across the same sweep) than the peak metric.
-2. **The second equatorial orientation (39 % vs 46 %).** The 2c site holds *two* atoms, O_a at
-   (½,0,z) with its chain along x and O_b at (0,½,z) with its chain along y, related by the C4
-   about z. For **q∥c the two are equivalent**, so counting one spectrum twice is exact. For
-   **q⊥c they are not**: O_a's chain lies along q and O_b's across it. The correct sum needs
-   `spectrum(O_a, ŷ)` — a third q direction. Counting O_a twice gives 46 %; proxying O_b by the
-   measured q=ẑ spectrum (also perpendicular to the chain) gives 39 %.
+**The earlier estimate was wrong, and not merely imprecise.** Counting O_a twice gave 46.4 % and
+proxying O_b by the q=ẑ spectrum gave 39.1 %; those were quoted as a bracket on the true value.
+The measured answer is **37.1 %, below both**. The proxy failed because q=ŷ is not a mild variant
+of q=x̂ or q=ẑ: it differs from them by 64 % and 58 % respectively, and peaks at +19.0 eV rather
+than +11.8 / +11.4 eV. Treat this as a caution about bracketing an unmeasured direction by
+"similar" ones.
 
-**One cheap job closes systematic 2:** a third OptaDOS pass with `core_qdir 0 1 0` on the
-existing `tet_Pz_Oeq.elnes_bin`, i.e. **`SKIP_CASTEP=1`, no new SCF** (~90 min serial).
+**Geometry self-check.** With Ti at (½,½,z), the 2c oxygen at (½,0,z) bonds along **y**, not x.
+The spectra confirm it independently: q=ŷ (along its chain) gives a σ\*-like peak at **+19.0 eV**,
+while q=x̂ and q=ẑ (both across it) give π\*-like peaks at **+11.8** and **+11.4 eV** — mirroring
+the apical site, whose chain is along z and whose q=ẑ peak is at +18.7 eV.
+
+**Remaining systematic: the chemical shift.** Still not fixed by these calculations (it needs the
+Mizoguchi correction from a no-hole singlepoint). Sweeping ±1 eV on the weighted edge:
+
+| shift (eV) | −1.0 | −0.5 | 0.0 | +0.5 | +1.0 |
+|---|---|---|---|---|---|
+| peak | 22.4 % | 31.5 % | **37.1 %** | 36.2 % | 34.3 % |
+| integral | 15.6 % | 16.8 % | **18.4 %** | 20.3 % | 22.5 % |
+
+So the weighted edge is **37 % assuming no shift, and 22–37 % across the sweep**. Quote it with
+that systematic attached, or fix the shift.
+
+### B3 — the `real` cell: the dichroism reports the polar-axis ORIENTATION, not its along-beam size
+
+`real_Oap`, the apical oxygen of the labyrinth-derived cell whose polar axis is tilted 82° from
+the beam (only ~14 % of |P| along it):
+
+| cell | polar axis | max\|Δ\|/max S | ∫\|Δ\|/∫S |
+|---|---|---|---|
+| `tet_Pz` | fully along the beam | 78.2 % | 62.8 % |
+| `real` | 82° from the beam (in-plane) | **76.3 %** | 60.4 % |
+
+**Near-identical magnitude — which is not what "upper bound" framing predicts.** The reason is
+that the character is *inverted*, and exactly so:
+
+| cell | q along beam | q in-plane |
+|---|---|---|
+| `tet_Pz` (chain ∥ beam) | **σ\*** at +18.67 eV | π\* at +8.64 eV |
+| `real` (chain in-plane) | **π\*** at +8.64 eV | σ\* at +18.67 eV |
+
+The same two features at the same two energies, with their assignments swapped. In `real` the
+whole tetragonal axis is rotated, not just the displacement: its short 1.745 Å Ti–O bond lies
+along x and along the beam the titanium is centred (1.980 / 1.980 Å).
+
+**Consequence.** The O K dichroism measures the **orientation of the polar axis relative to the
+beam**, and *which* of q∥/q⊥ carries the σ\* says which way it points. It is not a magnitude that
+shrinks toward zero as P rotates out of the beam. A measurement on the real labyrinth would
+therefore still see a large dichroism, reporting "axis in-plane" rather than "no signal".
+
+This does **not** rescue the along-beam component. M5 already showed only ~8 of the 78 points is
+the off-centring's own signature, the rest being the tetragonal backbone; and the dipole limit
+still forbids the sign of P. What changes is the framing: `tet_Pz` is not an upper bound that the
+real geometry falls far below, it is one of two orientations that the edge distinguishes.
 
 ### Four bugs in the analysis path, all fixed
 
