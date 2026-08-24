@@ -70,10 +70,19 @@ spacing:
 python atomfind/run_atomfind.py --recon /path/to/Niter200.mat --dz 0.666 --out ./out
 ```
 
-`--dz` matters: the depth spacing sets the registration, and Ti and O alternate every 1.95 Å, so
-a wrong value swaps species labels wholesale rather than failing loudly. Scoring against the
-reference structure will be meaningless for a different specimen, but `found_atoms.csv` and the
-uncertainty export are still produced.
+Two things carry over from the shipped preset and will not be right for someone else's data:
+
+- **`--dz`.** The depth spacing sets the registration, and Ti and O alternate every 1.95 Å, so a
+  wrong value swaps species labels wholesale rather than failing loudly.
+- **The single-atom kernel.** It is the forward model the fit inverts, and it belongs to the
+  reconstruction it was measured from. Running the shipped NL70 kernel against a different
+  reconstruction of the same specimen (105 layers, dz 0.666, dosed) drops lead recall from
+  $86\%$ to $75\%$ and oxygen from $59\%$ to $26\%$ — nothing is broken, the model is simply
+  wrong for that volume. Supply a matched one with `--single-atom-vol`, or measure one with
+  `extract_psf.py`.
+
+Scoring against the reference structure is meaningless for a different specimen, but
+`found_atoms.csv` and the uncertainty export are still produced.
 
 ## 3. What you should get
 
