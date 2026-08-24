@@ -72,6 +72,33 @@ peak-picking with sub-voxel refinement at its **best-effort threshold** (floor s
 
 ---
 
+### Is the overlapped-oxygen margin a matching artefact? (checked 2026-08-24)
+
+`cfg.match_tol_z_A` is **2.0 Å** and the axial overlap being scored is **1.95 Å**, so in
+principle a detection sitting on the *titanium* can be credited as its apical oxygen, which
+would inflate exactly the number the headline claim rests on. Re-scored the same detections at
+tighter depth tolerances (no re-running of any finder — only the matcher changes):
+
+| depth tolerance | v3 model fit | peak-pick raw | RL + peak-pick |
+|---|---|---|---|
+| 2.0 Å (shipped) | 0.821 | 0.258 | 0.092 |
+| 1.0 Å | 0.796 | 0.258 | 0.098 |
+| 0.6 Å | 0.725 | 0.246 | 0.087 |
+
+**The margin is not an artefact.** The baselines are essentially *insensitive* to the tolerance
+— they are not placing detections near the oxygen at all, at any tolerance — while v3 degrades
+gracefully (0.82 → 0.80 → 0.73), which is the signature of detections that really do sit near
+the oxygen sites and are progressively excluded as the gate closes below the localisation error.
+The published 82% against 9–26% therefore stands, and would stand at a stricter gate.
+
+**Caveat for the dose series (§4):** this reassurance is for the *coherent NL70* volume. On the
+dose volumes the raw peak-picker scores a much higher overlapped-O recall than v3, while scoring
+*lower* on in-plane-isolated oxygen — an ordering that is backwards from the physics (isolated
+oxygen is the easier case) and therefore a warning that recall alone is not interpretable there.
+Read it beside precision and the detection count; see §4.
+
+---
+
 ## 3. Noise robustness — injected Gaussian noise, everything else fixed
 
 Same geometry, kernel and calibration; only noise varies. Regenerated **2026-08-24** under the

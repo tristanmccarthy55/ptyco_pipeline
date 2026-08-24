@@ -131,16 +131,22 @@ def run_one(dose_tag, verbose=True, baselines=True):
                   f"z-RMS {r['z_rms_A']:.2f} A")
         print(f"  {validate.confusion_line(rep)}")
         if base:
+            # Recall alone cannot be read for these baselines: a peak-picker run at a low
+            # relative floor emits thousands of candidates and can score high recall purely
+            # by covering the volume. Precision and the detection count are printed beside
+            # it so the comparison is interpretable.
+            print(f"  {'detector':>20}  {'found':>6} {'prec':>6} {'O bulk':>7} "
+                  f"{'O overlap':>10} {'O isolated':>11}")
             ov, iso = _o_split(rep)
-            print(f"  {'detector':>20}  {'O bulk':>7} {'O overlap':>10} {'O isolated':>11}")
-            print(f"  {'v3 (this work)':>20}  {rep['O']['recall_bulk']:>6.0%} "
-                  f"{ov:>10.0%} {iso:>11.0%}")
+            print(f"  {'v3 (this work)':>20}  {rep['n_found']:>6} {rep['precision']:>6.2f} "
+                  f"{rep['O']['recall_bulk']:>6.0%} {ov:>10.0%} {iso:>11.0%}")
             for k, lbl in (("peaks3d_raw", "peak-pick (raw)"),
                            ("peaks3d_rl", "RL + peak-pick"),
                            ("peaks3d_mem", "MEM + peak-pick")):
                 r = base[k]
                 bov, biso = _o_split(r)
-                print(f"  {lbl:>20}  {r['O']['recall_bulk']:>6.0%} {bov:>10.0%} {biso:>11.0%}")
+                print(f"  {lbl:>20}  {r['n_found']:>6} {r['precision']:>6.2f} "
+                      f"{r['O']['recall_bulk']:>6.0%} {bov:>10.0%} {biso:>11.0%}")
         # UQ: model sigma (single kernel here -> kernel-mismatch term is 0) + conformal.
         # This exercises the TRANSFER path: calibrate on THIS volume's own matched atoms.
         try:
@@ -181,6 +187,9 @@ def main():
                      validate.confusion_rate(rep), rep["z_rms_A"], ov, iso,
                      {k: _o_split(v)[0] for k, v in out["baselines"].items()}))
         blob[t] = {"v3": rep, "baselines": out["baselines"]}
+        if a.json:                      # checkpoint: a long run that dies still leaves data
+            with open(a.json, "w") as f:
+                json.dump(blob, f, indent=2, default=float)
 
     if rows:
         print("\n" + "=" * 78)
