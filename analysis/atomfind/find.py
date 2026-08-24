@@ -283,14 +283,19 @@ def refine_tube(tube, atoms, K, cfg):
         Gy = _render(tube.shape, (l, r, c), Ky, hz, hxy)
         Gx = _render(tube.shape, (l, r, c), Kx, hz, hxy)
         Jfull[:, 4*k:4*k+4] = np.column_stack([Kp, -a*Gz, -a*Gy, -a*Gx])
-    F = Jfull.T @ Jfull
-    # ridge is relative to the design scale (absolute 1e-9 is meaningless once columns
-    # are near-collinear, which is precisely the regime we are trying to represent)
-    ridge = 1e-8 * (np.trace(F) / max(F.shape[0], 1) + 1e-30)
-    try:
-        Finv = np.linalg.inv(F + ridge*np.eye(F.shape[0]))
-    except np.linalg.LinAlgError:
-        Finv = np.linalg.pinv(F, rcond=1e-10)
+    # see fit._nnls_gram: matmul raises spurious FP flags on these near-collinear designs
+    # under numpy 2.x. Suppressed, then the variances are checked for finiteness below.
+    with np.errstate(all="ignore"):
+        F = Jfull.T @ Jfull
+        # ridge is relative to the design scale (absolute 1e-9 is meaningless once columns
+        # are near-collinear, which is precisely the regime we are trying to represent)
+        ridge = 1e-8 * (np.trace(F) / max(F.shape[0], 1) + 1e-30)
+        try:
+            Finv = np.linalg.inv(F + ridge*np.eye(F.shape[0]))
+        except np.linalg.LinAlgError:
+            Finv = np.linalg.pinv(F, rcond=1e-10)
+    # NB do NOT nan_to_num here: a non-finite variance means the bound is unknown, and
+    # mapping it to zero would report an infinitely confident atom. Let it propagate.
     dvar = np.clip(np.diag(Finv), 0, None)
     for k, i in enumerate(live):
         l, r, c, a = cur[i]

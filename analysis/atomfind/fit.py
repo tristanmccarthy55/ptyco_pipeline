@@ -46,20 +46,22 @@ def _nnls_gram(A, b, ridge=0.0):
     min_{x>=0} ||A x - b||  has a solution depending only on G=A'A and f=A'b. With
     G = R'R (Cholesky), ||Ax-b||^2 = ||R x - R^{-T} f||^2 + const, so nnls(R, R^{-T}f)
     gives the same x in n rows instead of m -- turns a 40k-row solve into a 60-row one."""
-    G = A.T @ A
-    f = A.T @ b
-    n = G.shape[0]
-    G = G + (ridge + 1e-9 * (np.trace(G) / n + 1e-12)) * np.eye(n)
-    R = np.linalg.cholesky(G).T                     # upper-triangular
-    y = np.linalg.solve(R.T, f)
-    # scipy's pure-Python NNLS (< 1.15) raises floating-point flags on the near-collinear
-    # designs this problem generates -- ~26k RuntimeWarnings over a full run on scipy 1.13,
-    # none on 1.15. The warnings are spurious: the solution is identical either way (verified
-    # against a scipy-1.15 run, max relative difference 1e-11 across report.json, no
-    # non-finite value in any export). Silence them, then check the result is actually finite
-    # so a REAL failure still surfaces instead of being hidden by the filter.
+    # Floating-point flags are suppressed across this whole solve. Both the Gram products
+    # here and scipy's pure-Python NNLS (< 1.15) raise spurious 'overflow'/'invalid value'/
+    # 'divide by zero' from matmul on the near-collinear designs this problem generates:
+    # ~26k RuntimeWarnings over a full run on numpy 2.0 + scipy 1.13, and NONE on
+    # numpy 1.26 + scipy 1.15, for output that agrees to a relative 1e-11 across the whole
+    # of report.json with no non-finite value in any export. Suppressing is therefore safe,
+    # but it is paired with an explicit finiteness check below so a REAL numerical failure
+    # still raises instead of being swallowed by the filter.
     with warnings.catch_warnings(), np.errstate(all="ignore"):
         warnings.filterwarnings("ignore", category=RuntimeWarning)
+        G = A.T @ A
+        f = A.T @ b
+        n = G.shape[0]
+        G = G + (ridge + 1e-9 * (np.trace(G) / n + 1e-12)) * np.eye(n)
+        R = np.linalg.cholesky(G).T                 # upper-triangular
+        y = np.linalg.solve(R.T, f)
         x, _ = nnls(R, y, maxiter=10 * n)
     if not np.all(np.isfinite(x)):
         raise FloatingPointError("NNLS returned a non-finite amplitude vector")
