@@ -14,7 +14,7 @@ machine that has never seen this author's Desktop. Search order:
   1. $ATOMFIND_DATA            -- an explicit directory (also settable with --data-dir)
   2. <package>/data/           -- what the peer-reproduction tarball unpacks into
   3. <repo>/sim/               -- the reference structure as committed in this repo
-  4. ~/Desktop/                -- the original development location, kept so existing
+  4. ~/Desktop/                -- the original development location, kept last so existing
                                  local runs keep working unchanged
 
 Outputs go to $ATOMFIND_OUT, else ./atomfind_out.
@@ -42,7 +42,6 @@ def data_dirs() -> list[str]:
         dirs.extend(os.path.abspath(os.path.expanduser(d)) for d in env.split(os.pathsep) if d)
     dirs += [os.path.join(_PKG, "data"),
              os.path.join(_REPO, "sim"),
-             os.path.join(_REPO, ".."),
              os.path.expanduser("~/Desktop")]
     return dirs
 

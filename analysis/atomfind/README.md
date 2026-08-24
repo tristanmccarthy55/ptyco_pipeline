@@ -33,8 +33,9 @@ Needs numpy, scipy, h5py, matplotlib and ase — a plain virtualenv is enough
 (`pip install -r requirements.txt`). abtem is **optional**: it is used only to prepare the
 ground-truth frame, and the shipped `data/gt_prepared.npz` cache makes it unnecessary.
 
+Run from the directory that CONTAINS `atomfind/` (`analysis/` in the pipeline repo, the repo
+root in the standalone one):
 ```bash
-cd ptychoshelves-clean/analysis
 python atomfind/run_atomfind.py                        # NL70 + gold Pb PSF (default)
 python atomfind/run_atomfind.py --psf all              # empirical vs data vs synthetic
 python atomfind/run_atomfind.py --preset reviewer2 --dose 1e8
