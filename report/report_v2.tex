@@ -910,33 +910,34 @@ broader than the lead response, and the assumption weakens exactly where it matt
 
 Table~\ref{tab:noise} reports a controlled noise sweep in which Gaussian noise is injected into
 the reconstructed volume with geometry, kernel and calibration held fixed. The intrinsic vacuum
-noise floor of the volume is $\sigma\approx0.023$ and the oxygen peak amplitude
+noise floor of the volume is $\sigma\approx0.022$ and the oxygen peak amplitude
 $\approx0.06$, so the collapse of oxygen recall between $\sigma=0.01$ and $\sigma=0.02$
 corresponds to the oxygen signal falling below the noise. It is not a thresholding artefact and
 no choice of detection floor removes it. The sweep also demonstrates the insensitivity of
 precision as a diagnostic: at $\sigma=0.08$ the recall of both titanium and oxygen is zero and
-four in five species labels are wrong, yet precision still reads $0.95$, because the surviving
+three in four species labels are wrong, yet precision still reads $0.95$, because the surviving
 bright lead atoms remain correctly placed. Species confusion and $\sigma$-coverage are the
 quantities that respond, and the failure is at least conservative, the lattice-consistency
 amplitude gate causing constrained oxygen detections to abstain rather than fabricate.
 
 \begin{table}[t]
   \centering \small
-  \begin{tabular}{@{}lccccc@{}}
+  \begin{tabular}{@{}lcccccc@{}}
     \toprule
-    injected $\sigma$ & found & precision & Pb & Ti & O \\
+    injected $\sigma$ & found & precision & Pb & Ti & O & O overlapped \\
     \midrule
-    0                 & 1878 & 0.95 & 88\,\% & 89\,\% & 90\,\% \\
-    0.01              & 1825 & 0.96 & 88\,\% & 90\,\% & 87\,\% \\
-    0.02              & 1462 & 0.98 & 87\,\% & 89\,\% & 60\,\% \\
-    0.04              & \phantom{0}786 & 0.96 & 87\,\% & 82\,\% & \phantom{0}5\,\% \\
-    0.08              & \phantom{0}407 & 0.95 & 87\,\% & \phantom{0}0\,\% & \phantom{0}0\,\% \\
+    0                 & 1834 & 0.97 & 88\,\% & 89\,\% & 89\,\% & 82\,\% \\
+    0.01              & 1793 & 0.97 & 88\,\% & 91\,\% & 86\,\% & 74\,\% \\
+    0.02              & 1421 & 0.98 & 87\,\% & 90\,\% & 57\,\% & 37\,\% \\
+    0.04              & \phantom{0}795 & 0.96 & 87\,\% & 86\,\% & \phantom{0}5\,\% & 18\,\% \\
+    0.08              & \phantom{0}408 & 0.95 & 87\,\% & \phantom{0}0\,\% & \phantom{0}0\,\% & \phantom{0}0\,\% \\
     \bottomrule
   \end{tabular}
-  \caption{Injected-noise sweep on the coherent volume, all other settings fixed. Species
-    confusion rises from $1.1\%$ at $\sigma=0$ to $3.9\%$ at $0.02$, $65\%$ at $0.04$ and $76\%$
-    at $0.08$. Run, as with Table~\ref{tab:dose}, in the configuration preceding the
-    guided-detection deduplication guard.}
+  \caption{Injected-noise sweep on the coherent volume, all other settings fixed. Recalls are
+    over the full depth rather than the bulk band. Species confusion rises from $1.1\%$ at
+    $\sigma=0$ to $3.7\%$ at $0.02$, $58.7\%$ at $0.04$ and $74.6\%$ at $0.08$. The final column
+    is the axially overlapped oxygen of Sec.~\ref{sec:bench}, the population on which the
+    method's advantage rests, and it is also the population the noise removes first.}
   \label{tab:noise}
 \end{table}
 

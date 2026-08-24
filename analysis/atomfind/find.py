@@ -518,7 +518,8 @@ def _fit_single_guided(resid, K, Kgrads, l_s, r_s, c_s, cfg, dx, min_corr=None):
     Gx = _render(patch.shape, ctr, Kx, hz, hxy).reshape(patch.shape)
     J = np.column_stack([Kp.ravel(), -a*Gz.ravel(), -a*Gy.ravel(), -a*Gx.ravel()])
     rvec = (patch - a*Kp).ravel()
-    rvar = float(rvec @ rvec) / max(rvec.size - 4, 1)
+    with np.errstate(all="ignore"):        # spurious BLAS flags, as in _nnls_gram
+        rvar = float(rvec @ rvec) / max(rvec.size - 4, 1)
     # NOTE: a guided atom is fitted on the residual with its neighbours already removed, so
     # this IS the conditional (neighbours-known) covariance. The joint/conditional gap is
     # restored downstream by the conformal calibration, whose `guided` stratum absorbs
