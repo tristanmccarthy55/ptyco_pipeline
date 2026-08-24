@@ -366,7 +366,7 @@ def analyze_seed(seed: str, edge: str, swap: bool | None = None) -> None:
     geometry_report(edge)
 
 
-def weighted_edge(cell: str, edge: str = "O_K", shift_eV: float = 0.0):
+def weighted_edge(cell: str, edge: str = "O_K", shift_eV: float | None = None):
     """@brief The multiplicity-weighted full O K edge: (1 x apical + 2 x equatorial) / 3.
 
     M4 computed the APICAL site only. The edge of the unit cell is the multiplicity-weighted
@@ -374,7 +374,8 @@ def weighted_edge(cell: str, edge: str = "O_K", shift_eV: float = 0.0):
     which is what "the O K edge is X% dichroic" has to mean.
 
     @param cell    cell name, e.g. "tet_Pz" (seeds <cell>_Oap and <cell>_Oeq must both exist)
-    @param shift_eV energy of the EQUATORIAL edge relative to the apical one (see below)
+    @param shift_eV displacement of the EQUATORIAL edge onto the apical frame. Defaults to
+                    -config.O_SITE_SHIFT_eV, the MEASURED Delta-SCF core-level shift.
     @return (energy, S_par, S_perp) for the weighted edge, or None if a site is missing.
 
     IMPORTANT -- the chemical shift. The two sites come from separate core-hole SCF runs, so
@@ -385,6 +386,8 @@ def weighted_edge(cell: str, edge: str = "O_K", shift_eV: float = 0.0):
     the two edges add. `shift_eV` exposes that, and `weighted_edge_report` sweeps it so the
     sensitivity is measured rather than assumed. Treat shift_eV=0 as an assumption, not a result.
     """
+    if shift_eV is None:                      # measured Delta-SCF shift, see config
+        shift_eV = -getattr(C, "O_SITE_SHIFT_eV", 0.0)
     got_ap = crystal_frame_spectra(f"{cell}_Oap")
     got_eq = crystal_frame_spectra(f"{cell}_Oeq")
     if got_ap is None or got_eq is None:
@@ -394,10 +397,27 @@ def weighted_edge(cell: str, edge: str = "O_K", shift_eV: float = 0.0):
     n_ap = C.O_SITE_MULTIPLICITY["O_ap"]
     n_eq = C.O_SITE_MULTIPLICITY["O_eq"]
     tot = n_ap + n_eq
-    # put the equatorial site on the apical grid, displaced by the assumed chemical shift
-    eq_par = np.interp(e, e_eq + shift_eV, eq_par, left=0.0, right=0.0)
-    eq_perp = np.interp(e, e_eq + shift_eV, eq_perp, left=0.0, right=0.0)
-    return e, (n_ap * ap_par + n_eq * eq_par) / tot, (n_ap * ap_perp + n_eq * eq_perp) / tot
+    onto = lambda y: np.interp(e, e_eq + shift_eV, y, left=0.0, right=0.0)
+    eq_par, eq_perp = onto(eq_par), onto(eq_perp)
+
+    # The 2c site holds TWO atoms, O_a and O_b, related by the C4 about z.
+    #   q||c  : C4 preserves c, so they are equivalent -> 2 x eq_par is EXACT.
+    #   q-perp: they are NOT equivalent -- one chain lies along q, the other across it -- and
+    #           spectrum(O_b, x) = spectrum(O_a, y). Use the measured q=y pass when present.
+    qy_path = find_core_dat(f"{cell}_Oeq", "qy")
+    if qy_path:
+        e_y, eq_y = _load_edge(qy_path)
+        eq_b = np.interp(e, e_y + shift_eV, eq_y, left=0.0, right=0.0)
+    else:
+        import warnings
+        warnings.warn(f"{cell}_Oeq q=y pass not found; counting the same equatorial spectrum "
+                      f"twice for q-perp. That is NOT a bound on the true value -- measured, it "
+                      f"moved the weighted edge from 46% to 36%. Run core_qdir 0 1 0 with "
+                      f"SKIP_CASTEP=1.")
+        eq_b = eq_perp
+    return (e,
+            (n_ap * ap_par + n_eq * eq_par) / tot,
+            (n_ap * ap_perp + eq_perp + eq_b) / tot)
 
 
 def weighted_edge_report(cell: str, edge: str = "O_K",
@@ -419,7 +439,12 @@ def weighted_edge_report(cell: str, edge: str = "O_K",
     if base is None:
         print("   weighted edge unavailable (need BOTH sites)")
         return
-    print(f"\n   weighted, assuming zero apical-equatorial chemical shift:")
+    meas = -getattr(C, "O_SITE_SHIFT_eV", 0.0)
+    got = weighted_edge(cell, edge, meas)
+    fr = dichroism_fractions(got[0], got[1], got[2], win)
+    print(f"\n   WEIGHTED, measured shift {meas:+.4f} eV:  max|D|/max S = {fr['peak']:.1%}   "
+          f"int|D|/int S = {fr['integral']:.1%}")
+    print(f"\n   sensitivity to the shift (the measured value is {meas:+.4f}):")
     for s in shifts:
         got = weighted_edge(cell, edge, s)
         e, par, perp = got

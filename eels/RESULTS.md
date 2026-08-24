@@ -129,10 +129,10 @@ Defocus does not enter — it moves the probe in real space, not its angular con
 
 | geometry | surviving | contrast, axis ∥beam vs ⊥beam | counts/channel, SNR 3 |
 |---|---|---|---|
-| **as designed, α=100, β=100** | −0.32 | **11.9 %** | **1.3 × 10³** |
-| α=100, β=50 | −0.32 | 12.2 % | 1.2 × 10³ |
-| α=20, β=100 | — | 12.5 % | 1.2 × 10³ |
-| near-parallel α=2, β=2 | +0.25 | 9.6 % | 2.0 × 10³ |
+| **as designed, α=100, β=100** | −0.32 | **12.1 %** | **1.2 × 10³** |
+| α=100, β=50 | −0.32 | 12.4 % | 1.2 × 10³ |
+| α=100, β=5 (best) | −0.34 | 12.9 % | 1.1 × 10³ |
+| near-parallel α=2, β=2 | +0.25 | 9.3 % | 2.1 × 10³ |
 
 **The anisotropy does not vanish past the magic angle — it inverts and saturates near a third of
 intrinsic.** At α = 100 mrad the surviving fraction is −0.32 to −0.34 for *every* β from 1 to
@@ -147,20 +147,20 @@ full bright-field disc gives maximum signal.
 ### The real limit is the specimen, not the detector
 
 The labyrinth's polar axes cluster near in-plane (median 82°, IQR 73–87°), so the *available*
-orientation contrast is far below the 11.9 % between limiting orientations:
+orientation contrast is far below the 12.1 % between limiting orientations:
 
 | domains compared | contrast | counts/channel |
 |---|---|---|
-| IQR edge to edge (73° vs 87°) | 1.0 % | 1.9 × 10⁵ |
-| median vs fully in-plane (82° vs 90°) | 0.2 % | 3.4 × 10⁶ |
-| a favourable tail (60° vs 90°) | 3.0 % | 2.0 × 10⁴ |
+| IQR edge to edge (73° vs 87°) | 1.00 % | 1.8 × 10⁵ |
+| median vs fully in-plane (82° vs 90°) | 0.23 % | 3.3 × 10⁶ |
+| a favourable tail (60° vs 90°) | 3.03 % | 2.0 × 10⁴ |
 
 A zone axis presenting a wider spread of polar-axis directions would serve far better. This is the
 same conclusion the M1 geometry finding reached, now quantified through the actual detector.
 
 *Caveats:* kinematic dipole, incoherent average over incident directions, no channelling, no
-thickness dependence, and the intrinsic 37 % still carries the 22–37 % chemical-shift systematic
-which propagates directly into every contrast above.
+thickness dependence, and the intrinsic 35.8 % now carries no free parameter
+which is now MEASURED, so every contrast above is free of it.
 
 ---
 
@@ -314,13 +314,13 @@ that is in fact exact to 0.0 %. Both HANDOFF.md and HANDOVER.md described the ch
 |---|---|---|
 | apical (1×) — *the previously published number* | **78.2 %** | 62.8 % |
 | equatorial (2×) | **22.1 %** | 18.7 % |
-| **weighted full edge (1 ap + 2 eq)** | **37.1 %** | 18.4 % |
+| **weighted full edge (1 ap + 2 eq)** | **35.8 %** | 17.9 % |
 
 **The headline nearly halves.** The apical oxygen sits on the Ti–O–Ti chain parallel to the
 polar axis and is strongly dichroic; the equatorial oxygen, whose chain lies in-plane, is not.
 Since the equatorial site carries twice the multiplicity, the edge of the cell as a whole is far
 less dichroic than the apical site alone. **"The O K edge is 78 % dichroic" was never right; it
-is the apical site that is 78 % dichroic, and the full edge is 37 %.**
+is the apical site that is 78 % dichroic, and the full edge is 35.8 %.**
 
 The second equatorial orientation is now **measured, not estimated** (third OptaDOS pass,
 `core_qdir 0 1 0`, `SKIP_CASTEP=1`). The 2c site holds two atoms, O_a at (½,0,z) and O_b at
@@ -340,16 +340,21 @@ The spectra confirm it independently: q=ŷ (along its chain) gives a σ\*-like p
 while q=x̂ and q=ẑ (both across it) give π\*-like peaks at **+11.8** and **+11.4 eV** — mirroring
 the apical site, whose chain is along z and whose q=ẑ peak is at +18.7 eV.
 
-**Remaining systematic: the chemical shift.** Still not fixed by these calculations (it needs the
-Mizoguchi correction from a no-hole singlepoint). Sweeping ±1 eV on the weighted edge:
+**The chemical shift is now MEASURED, and the systematic is closed.** Both core-hole runs use
+the same tet_Pz 2×2×2 supercell and therefore share a ground state, so the difference of their
+ΔSCF total energies *is* the final-state core-level shift — no extra calculation was needed:
 
-| shift (eV) | −1.0 | −0.5 | 0.0 | +0.5 | +1.0 |
-|---|---|---|---|---|---|
-| peak | 22.4 % | 31.5 % | **37.1 %** | 36.2 % | 34.3 % |
-| integral | 15.6 % | 16.8 % | **18.4 %** | 20.3 % | 22.5 % |
+```
+E(core hole on apical)      = -66672.67284 eV
+E(core hole on equatorial)  = -66672.84345 eV
+BE(apical) - BE(equatorial) = +0.1706 eV
+```
 
-So the weighted edge is **37 % assuming no shift, and 22–37 % across the sweep**. Quote it with
-that systematic attached, or fix the shift.
+OptaDOS writes each spectrum on an E_F-referenced axis and does not include the core binding
+energy, so the equatorial edge is displaced by **−0.1706 eV** onto the apical frame
+(`config.O_SITE_SHIFT_eV`, now the default in `weighted_edge`). The weighted edge moves
+37.1 % → **35.8 %**, well inside the ±1 eV sweep (22–37 %) that previously stood as the
+systematic. **D3 now carries no free parameter.**
 
 ### B3 — the `real` cell: the dichroism reports the polar-axis ORIENTATION, not its along-beam size
 

@@ -57,7 +57,7 @@ $0.007$\,\AA{} and $0.9^\circ$, while the along-beam component is not determined
 conclusion is reached without reference to ground truth. Core-hole DFT indicates the missing
 component remains spectroscopically accessible, the apical-oxygen O~K edge being $78\%$
 dichroic to the polar-axis orientation with a monotonic $19\%$ arising from the displacement
-itself, although weighted over both oxygen sites the full edge retains $37\%$ of that dichroism. Recovering
+itself, although weighted over both oxygen sites the full edge retains $36\%$ of that dichroism. Recovering
 it would nonetheless require a collection aperture $\lesssim2$\,mrad rather than the
 $100$\,mrad ptychography optics.
 \end{abstract}
@@ -610,12 +610,13 @@ Ti--O--Ti chain. The excited site here is the apical oxygen, which lies on that 
 to the polar axis. The edge of the cell as a whole is the multiplicity-weighted sum of one
 apical and two equatorial oxygen, and the equatorial site behaves very differently: its own
 chain lies in-plane, and it is only $22\%$ dichroic. Carrying twice the multiplicity, it brings
-the weighted full O~K edge to $37\%$ rather than $78\%$. The two equatorial atoms are equivalent
+the weighted full O~K edge to $35.8\%$ rather than $78\%$. The two equatorial atoms are equivalent
 for $\mathbf{q}\parallel c$ but not for $\mathbf{q}\perp c$, so the second orientation was computed
-explicitly as a third momentum-transfer direction rather than estimated. One systematic remains,
-the chemical shift between the two oxygen sites, which these calculations do not fix; sweeping it
-over $\pm1$\,eV moves the weighted edge over $22$--$37\%$, while the integral metric is more
-stable at $16$--$23\%$. The rotational-invariance test passes
+explicitly as a third momentum-transfer direction rather than estimated. Combining two sites also
+requires the core-level shift between them, which the spectra themselves do not carry; because
+both core-hole calculations share a supercell and a ground state, the difference of their
+total energies supplies it directly as $0.171$\,eV, leaving the weighted edge with no free
+parameter. The rotational-invariance test passes
 essentially exactly: mapped into the crystal frame the $c\parallel z$ and $c\parallel x$ cells
 agree to $0.02$--$0.03\%$, the floor set by the cubic null test, so the anisotropy is physical
 rather than an artefact of the momentum-transfer machinery.
@@ -669,7 +670,7 @@ ptychography requires, the surviving fraction is $-0.32$ to $-0.34$ for every co
 between $1$ and $100$\,mrad. It is, in other words, flat: the spectrometer aperture is no longer a
 design variable, because the convergence already sets the averaging. Folding the measured
 weighted edge through this geometry, a domain with its polar axis along the beam differs from one
-with the axis in-plane by $11.9\%$ in the collected O~K edge, which needs $\approx1.3\times10^{3}$
+with the axis in-plane by $12.1\%$ in the collected O~K edge, which needs $\approx1.2\times10^{3}$
 counts per channel for SNR $3$ rather than the $4.5\times10^{4}$ implied by a $2\%$ anisotropy.
 
 This is the quantitative case for a hollow detector. Placing the spectrometer entrance in the
@@ -729,7 +730,7 @@ purpose of such machinery. First-principles core-hole DFT indicates that the mis
 spectroscopically accessible in principle, the apical-oxygen O~K edge being $78\%$ dichroic to
 the polar-axis orientation, of which a monotonic $19\%$ is the signature of the displacement
 rather than of the tetragonal backbone. Weighted over both oxygen sites the full edge retains
-$37\%$ of that dichroism. The dipole limit nevertheless forbids recovery of the sign, and the magic
+$36\%$ of that dichroism. The dipole limit nevertheless forbids recovery of the sign, and the magic
 angle forbids use of the $100$\,mrad ptychography aperture for the purpose.
 
 This leaves clear openings for further work. The assumption of one kernel for all species is
@@ -738,8 +739,8 @@ response under thermal scattering; in-situ vacancy-difference kernels would supp
 oxygen matched filter. The $5\%$ cage-composition tail of Sec.~\ref{sec:pol} is a detection rather than a
 localisation problem and requires a calibrated cage-completeness criterion, while learned
 denoising before fitting \citep{Wu2026} is a natural route below $10^{6}$\,e\,\AA$^{-2}$. The
-weighted O~K edge carries a $22$--$37\%$ systematic from the inter-site chemical shift, which a
-separate no-hole calculation would fix. Beyond that, a faithful vortex simulation would inject a per-atom $\sigma(E)$
+weighted O~K edge is now free of adjustable parameters, so the remaining uncertainty in it is
+that of the underlying functional rather than of the analysis. Beyond that, a faithful vortex simulation would inject a per-atom $\sigma(E)$
 keyed to each oxygen's local polar-axis orientation. The clearest instrumental conclusion is that a
 hollow detector is the right geometry, for a reason that is not the obvious one. A convergent
 probe spreads the momentum transfer by itself, so beyond the magic angle the anisotropy inverts

@@ -89,6 +89,18 @@ EDGES = {
 # multiplicity-weighted sum (1 apical + 2 equatorial per formula unit).
 O_SITE_MULTIPLICITY = {"O_ap": 1, "O_eq": 2}
 
+# MEASURED final-state core-level shift between the two inequivalent oxygen sites, BE(apical) -
+# BE(equatorial), in eV. Both core-hole runs use the SAME tet_Pz 2x2x2 supercell and therefore
+# share a ground state, so the difference of their Delta-SCF total energies IS the shift:
+#   E(hole on apical)     = -66672.67284 eV
+#   E(hole on equatorial) = -66672.84345 eV   ->   +0.1706 eV
+# OptaDOS writes each spectrum on an E_F-referenced axis and does NOT include the core binding
+# energy, so combining the two sites into the full O K edge requires displacing the equatorial
+# spectrum by -O_SITE_SHIFT_eV onto the apical frame. Each site's OWN dichroism is a within-run
+# difference and is unaffected. (Measured 2026-08-24; previously assumed zero, which left the
+# weighted edge uncertain over 22-37%.)
+O_SITE_SHIFT_eV = 0.1706
+
 # ---------------------------------------------------------------- momentum-transfer directions
 # The ELNES anisotropy knob (OptaDOS core_qdir). Beam = +z. q||z == "P along beam"; q perp z
 # (x) == "P in-plane". Fractional/Cartesian handling is verified against OptaDOS at M3/M4.
