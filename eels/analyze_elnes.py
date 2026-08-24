@@ -78,6 +78,58 @@ def surviving_anisotropy(beta_rad: float, theta_E: float) -> float:
     return (parallel_weight(beta_rad, theta_E) - 1.0 / 3.0) / (1.0 - 1.0 / 3.0)
 
 
+def surviving_anisotropy_convergent(alpha_rad: float, beta_rad: float, theta_E: float,
+                                    n: int = 400_000, seed: int = 0) -> float:
+    """@brief Surviving dichroism for a CONVERGENT probe: averages over alpha as well as beta.
+
+    `surviving_anisotropy` is the textbook PARALLEL-illumination result -- one incident
+    direction, collect out to beta -- and it is the only geometry the magic angle is defined
+    for. A focused STEM probe is not that: the incident direction is itself spread over the
+    convergence cone alpha, and the momentum transfer is the VECTOR difference of the incident
+    and scattered transverse angles, q_t = k(theta_f - theta_i). So the probe spreads q even
+    when the spectrometer aperture is tiny, and closing beta alone cannot recover the anisotropy.
+
+    Weights are the dipole ones used in parallel_weight, q_z^2 = theta_E^2 and
+    q_t^2 = |theta_f - theta_i|^2 over q^4, Monte-Carlo integrated over both discs (incoherent
+    average over incident directions). alpha -> 0 reproduces the analytic model to <1e-3.
+
+    @return signed fraction of the intrinsic dichroism surviving, same convention as
+            surviving_anisotropy (1 = full, 0 = washed out, <0 = inverted).
+    """
+    rng = np.random.default_rng(seed)
+    ri = alpha_rad * np.sqrt(rng.random(n)); pi_ = 2*np.pi*rng.random(n)
+    rf = beta_rad * np.sqrt(rng.random(n)); pf = 2*np.pi*rng.random(n)
+    t2 = ((rf*np.cos(pf) - ri*np.cos(pi_))**2 + (rf*np.sin(pf) - ri*np.sin(pi_))**2)
+    den = (theta_E**2 + t2)**2
+    w_par = np.sum(theta_E**2 / den)
+    w_perp = np.sum(t2 / den)
+    f = w_par / (w_par + w_perp)
+    return float((f - 1.0/3.0) / (1.0 - 1.0/3.0))
+
+
+def convergence_report(edge: str, alphas_mrad=(0, 1, 2, 5, 10, 20, 100)) -> None:
+    """@brief What survives as a function of BOTH convergence and collection.
+
+    The single most consequential number in the study: the parallel-beam model says a small
+    collection aperture recovers the anisotropy, but that conclusion does not survive a
+    convergent probe.
+    """
+    tE = characteristic_angle_rad(EDGE_ONSET_eV[edge], OPTICS.energy_keV)
+    betas = (1, 2, 5, 10, 25, 100)
+    print(f"\n== surviving dichroism vs convergence AND collection ({edge}, "
+          f"{OPTICS.energy_keV:.0f} keV, theta_E = {tE*1e3:.2f} mrad) ==")
+    print("   " + "beta (mrad) ->".ljust(14) + "".join(f"{b:>8}" for b in betas))
+    for a in alphas_mrad:
+        row = f"   alpha {a:>4}    "
+        for b in betas:
+            v = (surviving_anisotropy(b*1e-3, tE) if a == 0
+                 else surviving_anisotropy_convergent(a*1e-3, b*1e-3, tE))
+            row += f"{v:>8.2f}"
+        print(row + ("   <- parallel illumination" if a == 0 else ""))
+    print("   Only the alpha=0 row is the textbook magic-angle picture. A focused probe averages")
+    print("   the momentum transfer on its own, so closing the spectrometer aperture does not")
+    print("   recover the signal: the convergence must also be comparable to theta_E.")
+
 def magic_angle_rad(theta_E: float) -> float:
     """Collection semi-angle where the anisotropic term vanishes (surviving_anisotropy=0)."""
     from scipy.optimize import brentq
@@ -154,10 +206,17 @@ def geometry_report(edge: str) -> None:
         note = "full-ish" if f > 0.7 else ("near magic (washed)" if abs(f) < 0.1
                                            else ("inverted" if f < 0 else "reduced"))
         print(f"  {b:>10.0f} {f:>9.2f} {note:>24}")
-    fconv = surviving_anisotropy(OPTICS.convergence_mrad * 1e-3, tE)
-    print(f"  -> your ptychography {OPTICS.convergence_mrad:.0f} mrad probe: surviving "
-          f"anisotropy {fconv:+.2f} (dichroism is averaged away/inverted -> use a small "
-          f"EELS collection aperture, ideally << {ma*1e3:.1f} mrad).")
+    # NB the sweep above is COLLECTION semi-angle under PARALLEL illumination. The probe's
+    # CONVERGENCE is a separate angle and is not in that model -- see convergence_report.
+    fconv = surviving_anisotropy_convergent(OPTICS.convergence_mrad * 1e-3,
+                                            OPTICS.convergence_mrad * 1e-3, tE)
+    print(f"  -> a focused {OPTICS.convergence_mrad:.0f} mrad probe collected over the same "
+          f"angle: surviving anisotropy {fconv:+.2f}.")
+    print(f"     Closing the spectrometer aperture alone does NOT recover it: at "
+          f"beta = 1 mrad the surviving fraction is "
+          f"{surviving_anisotropy(1e-3, tE):+.2f} for parallel illumination but "
+          f"{surviving_anisotropy_convergent(5e-3, 1e-3, tE):+.2f} at alpha = 5 mrad. "
+          f"The CONVERGENCE must also approach theta_E ({tE*1e3:.1f} mrad).")
 
 
 # ---------------------------------------------------------------- self-test (validates M6)
@@ -406,6 +465,8 @@ def compare_seeds(seed_a: str, seed_b: str, edge: str) -> None:
 def main() -> None:
     ap = argparse.ArgumentParser(description="ELNES dichroism + detectability (M4-M6).")
     ap.add_argument("--selftest", action="store_true", help="validate the geometry model now")
+    ap.add_argument("--convergence", action="store_true",
+                    help="surviving dichroism vs BOTH convergence and collection")
     ap.add_argument("--seed", help="OptaDOS seed, e.g. tet_Pz_Oap")
     ap.add_argument("--edge", default="O_K", choices=list(EDGE_ONSET_eV))
     ap.add_argument("--compare", nargs=2, metavar=("SEED_A", "SEED_B"),
@@ -420,7 +481,9 @@ def main() -> None:
     g.add_argument("--no-swap-q", dest="swap", action="store_false",
                    help="force NO q swap")
     args = ap.parse_args()
-    if args.weighted:
+    if args.convergence:
+        convergence_report(args.edge)
+    elif args.weighted:
         weighted_edge_report(args.weighted, args.edge)
     elif args.compare:
         compare_seeds(args.compare[0], args.compare[1], args.edge)

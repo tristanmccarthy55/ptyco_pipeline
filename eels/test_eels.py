@@ -224,6 +224,26 @@ def test_dichroism_fractions_normalised():
     assert 0.0 < f1["peak"] < 2.0 and 0.0 < f1["integral"] < 2.0, "must read as a fraction"
 
 
+def test_convergent_reduces_to_parallel():
+    """The convergent-beam model must reproduce the analytic parallel-illumination result as
+    alpha -> 0; that limit is what pins its normalisation."""
+    tE = A.characteristic_angle_rad(532.0, 300.0)
+    for b in (1e-3, 2e-3, 5e-3):
+        an = A.surviving_anisotropy(b, tE)
+        mc = A.surviving_anisotropy_convergent(1e-9, b, tE, n=400_000, seed=0)
+        assert abs(an - mc) < 5e-3, f"beta={b}: analytic {an:.4f} vs convergent-limit {mc:.4f}"
+
+
+def test_convergence_destroys_anisotropy():
+    """A focused probe averages the momentum transfer on its own, so closing the collection
+    aperture cannot recover the dichroism. This is the study's central instrumental claim."""
+    tE = A.characteristic_angle_rad(532.0, 300.0)
+    tight = A.surviving_anisotropy(1e-3, tE)                                  # parallel, beta 1 mrad
+    conv = A.surviving_anisotropy_convergent(5e-3, 1e-3, tE, n=400_000)       # alpha 5, beta 1
+    assert tight > 0.5, f"parallel illumination at beta=1 mrad should retain most of it ({tight:.2f})"
+    assert conv < 0.1, f"alpha=5 mrad must wash it out even at beta=1 mrad ({conv:.2f})"
+
+
 # ---------------------------------------------------------------- runner
 def _run():
     tests = sorted(k for k, v in globals().items() if k.startswith("test_") and callable(v))
