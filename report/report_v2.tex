@@ -56,7 +56,9 @@ local polarisation with error bars. The in-plane component is recovered to a med
 $0.007$\,\AA{} and $0.9^\circ$, while the along-beam component is not determined, and that
 conclusion is reached without reference to ground truth. Core-hole DFT indicates the missing
 component remains spectroscopically accessible, the apical-oxygen O~K edge being $78\%$
-dichroic to the polar-axis orientation with a monotonic $19\%$ arising from the displacement itself. Recovering
+dichroic to the polar-axis orientation with a monotonic $19\%$ arising from the displacement
+itself, although weighted over both oxygen sites the full edge retains $39$--$46\%$ of that
+dichroism. Recovering
 it would nonetheless require a collection aperture $\lesssim2$\,mrad rather than the
 $100$\,mrad ptychography optics.
 \end{abstract}
@@ -605,10 +607,18 @@ strongly dichroic, with $\max|\Delta|/\max S = 78\%$ and $\int|\Delta|/\int S=47
 origin is a $\sigma/\pi$ anisotropy: with $\mathbf{q}\perp c$ the edge shows a sharp $\pi^*$ peak
 $\approx8.5$\,eV above onset from O~$2p_{x,y}$, whereas with $\mathbf{q}\parallel c$ it shows
 $\sigma^*$ features at $\approx11$ and $18.5$\,eV from the O~$2p_z$ states directed along the
-Ti--O--Ti chain. The excited site throughout is the apical oxygen, which lies on that chain
-parallel to the polar axis. The O~K edge of the cell as a whole is the multiplicity-weighted sum
-of one apical and two equatorial oxygen, and the equatorial calculation is outstanding, so the
-values quoted here are those of the apical edge rather than of the weighted edge.
+Ti--O--Ti chain. The excited site here is the apical oxygen, which lies on that chain parallel
+to the polar axis. The edge of the cell as a whole is the multiplicity-weighted sum of one
+apical and two equatorial oxygen, and the equatorial site behaves very differently: its own
+chain lies in-plane, and it is only $22\%$ dichroic. Carrying twice the multiplicity, it brings
+the weighted full O~K edge to $39$--$46\%$ rather than $78\%$. That range spans two systematics,
+the chemical shift between the two sites, which these calculations do not fix and to which the
+integral metric is much less sensitive at $30$--$32\%$, and the second equatorial orientation,
+equivalent to the first for $\mathbf{q}\parallel c$ but not for $\mathbf{q}\perp c$, which would
+need a third momentum-transfer direction to settle. The rotational-invariance test passes
+essentially exactly: mapped into the crystal frame the $c\parallel z$ and $c\parallel x$ cells
+agree to $0.02$--$0.03\%$, the floor set by the cubic null test, so the anisotropy is physical
+rather than an artefact of the momentum-transfer machinery.
 
 \begin{figure}[!htb]
   \centering
@@ -682,8 +692,9 @@ because differencing two $0.3$\,\AA{} depth coordinates cannot resolve a $0.07$\
 displacement. The calibrated uncertainty establishes this without ground truth, which is the
 purpose of such machinery. First-principles core-hole DFT indicates that the missing component is
 spectroscopically accessible in principle, the apical-oxygen O~K edge being $78\%$ dichroic to
-the polar-axis orientation, of which a monotonic $19\%$ is the signature of the displacement rather than of the
-tetragonal backbone. The dipole limit nevertheless forbids recovery of the sign, and the magic
+the polar-axis orientation, of which a monotonic $19\%$ is the signature of the displacement
+rather than of the tetragonal backbone. Weighted over both oxygen sites the full edge retains
+$39$--$46\%$ of that dichroism. The dipole limit nevertheless forbids recovery of the sign, and the magic
 angle forbids use of the $100$\,mrad ptychography aperture for the purpose.
 
 This leaves clear openings for further work. The assumption of one kernel for all species is
@@ -692,8 +703,9 @@ response under thermal scattering; in-situ vacancy-difference kernels would supp
 oxygen matched filter. The $5\%$ cage-composition tail of Sec.~\ref{sec:pol} is a detection rather than a
 localisation problem and requires a calibrated cage-completeness criterion, while learned
 denoising before fitting \citep{Wu2026} is a natural route below $10^{6}$\,e\,\AA$^{-2}$. The
-outstanding EELS cross-checks are the rotational-invariance test and the multiplicity-weighted
-full O~K edge; beyond these, a faithful vortex simulation would inject a per-atom $\sigma(E)$
+weighted O~K edge is pinned only to $39$--$46\%$; narrowing it needs one further
+momentum-transfer direction on the equatorial site and a chemical shift from a separate no-hole
+calculation. Beyond that, a faithful vortex simulation would inject a per-atom $\sigma(E)$
 keyed to each oxygen's local polar-axis orientation. The clearest instrumental conclusion is a
 design constraint, in that a combined depth-resolved-imaging and polarisation-spectroscopy
 experiment cannot share one large aperture. The open question is whether the two can be fused into a
