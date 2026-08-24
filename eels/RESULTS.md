@@ -100,6 +100,70 @@ ignores coherence between incident directions and channelling, both of which the
 
 ---
 
+## M6d — the hollow-detector case, and EXACTLY what geometry was computed (2026-08-24)
+
+### What was actually done, precisely
+
+| | what it is | aperture? |
+|---|---|---|
+| CASTEP + OptaDOS (M2–M5, B1–B3) | ELNES of a unit cell for **two lab q directions**, `core_qdir` 001 / 100 / 010 | **none** — a single q per run, no probe, no detector |
+| `analyze_elnes` M6 | kinematic dipole averaging over a **round collection aperture β**, parallel illumination | β only |
+| `analyze_elnes --convergence` (new) | the same, averaged over the **convergence cone α as well** | α and β |
+| `simulate_stem_eels.py` | full multislice STEM-EELS with the real hollow detector | α, β, thickness, channelling — **but core-loss is gated on gpaw and has NOT been run** |
+
+So the numbers below are a **kinematic aperture-averaging model applied to first-principles unit-cell
+spectra**. They are *not* a multislice simulation of the instrument. That remains M6b/M7.
+
+### The uniaxial tensor form — validated, and it removes the need for more DFT
+
+Dipole ELNES of a uniaxial site obeys **S(q) = S∥cos²θ + S⊥sin²θ**, θ the angle between **q** and the
+site's chain axis. Tested against B3: predicting the `real` cell (axis tilted 82°) from the `tet_Pz`
+spectra alone gives **0.0 % residual**, independently recovers the **82°** tilt the cell was built at,
+and predicts 76.2 % against the 76.3 % observed. **B3 therefore validated the tensor form rather
+than adding independent information**, and any orientation can now be synthesised without new DFT —
+including `real_Oeq`, which need not be run.
+
+### The hollow detector: 100 mrad probe, EELS on the central hole of a 200 mrad CBED
+
+Defocus does not enter — it moves the probe in real space, not its angular cone.
+
+| geometry | surviving | contrast, axis ∥beam vs ⊥beam | counts/channel, SNR 3 |
+|---|---|---|---|
+| **as designed, α=100, β=100** | −0.32 | **11.9 %** | **1.3 × 10³** |
+| α=100, β=50 | −0.32 | 12.2 % | 1.2 × 10³ |
+| α=20, β=100 | — | 12.5 % | 1.2 × 10³ |
+| near-parallel α=2, β=2 | +0.25 | 9.6 % | 2.0 × 10³ |
+
+**The anisotropy does not vanish past the magic angle — it inverts and saturates near a third of
+intrinsic.** At α = 100 mrad the surviving fraction is −0.32 to −0.34 for *every* β from 1 to
+100 mrad, i.e. **flat**: the convergence already sets the averaging, so the hole radius is not a
+design variable. Note the near-parallel geometry is *worse* (9.6 %) than the as-designed one,
+because |−0.32| > |+0.25|.
+
+**This is the quantitative justification for a hollow detector.** Give the spectrometer the central
+disc and imaging the outer annulus: nothing is lost that a smaller aperture would recover, and the
+full bright-field disc gives maximum signal.
+
+### The real limit is the specimen, not the detector
+
+The labyrinth's polar axes cluster near in-plane (median 82°, IQR 73–87°), so the *available*
+orientation contrast is far below the 11.9 % between limiting orientations:
+
+| domains compared | contrast | counts/channel |
+|---|---|---|
+| IQR edge to edge (73° vs 87°) | 1.0 % | 1.9 × 10⁵ |
+| median vs fully in-plane (82° vs 90°) | 0.2 % | 3.4 × 10⁶ |
+| a favourable tail (60° vs 90°) | 3.0 % | 2.0 × 10⁴ |
+
+A zone axis presenting a wider spread of polar-axis directions would serve far better. This is the
+same conclusion the M1 geometry finding reached, now quantified through the actual detector.
+
+*Caveats:* kinematic dipole, incoherent average over incident directions, no channelling, no
+thickness dependence, and the intrinsic 37 % still carries the 22–37 % chemical-shift systematic
+which propagates directly into every contrast above.
+
+---
+
 ## M6b — dynamical forward model (abtem multislice EELS) — ⚙️ API validated, EELS backend gated on gpaw
 
 `simulate_eels.py`. Confirmed the exact abtem 1.0.5 core-loss call path works end-to-end

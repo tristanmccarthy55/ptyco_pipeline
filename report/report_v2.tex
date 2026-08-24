@@ -656,13 +656,27 @@ That calculation is nevertheless the textbook one, which assumes parallel illumi
 the only geometry for which a magic angle is defined. A focused probe is not that geometry. The
 momentum transfer is the vector difference of the incident and scattered transverse angles, so a
 convergence semi-angle $\alpha$ spreads $\mathbf{q}$ on its own, irrespective of how small the
-spectrometer aperture is. Averaging the dipole weights over both cones changes the conclusion
-materially. At $\beta=1$\,mrad the surviving fraction falls from $0.62$ under parallel
-illumination to $0.29$ at $\alpha=2$\,mrad and to $-0.04$ at $\alpha=5$\,mrad, and beyond
-$\alpha\approx5$\,mrad no choice of $\beta$ recovers it. Closing the collection aperture is
-therefore not sufficient: the convergence must itself be brought down to the order of
-$\theta_E=1.09$\,mrad. At a $2\%$ fractional anisotropy the measurement needs
-$\approx4.5\times10^{4}$ counts per channel for SNR $3$, which sets the dose target.
+spectrometer aperture is. Averaging the dipole weights over both cones changes the picture. At
+$\beta=1$\,mrad the surviving fraction falls from $0.62$ under parallel illumination to $0.29$ at
+$\alpha=2$\,mrad and to $-0.04$ at $\alpha=5$\,mrad. Closing the collection aperture is therefore
+not by itself a remedy, and recovering the \emph{full} anisotropy would require illumination as
+parallel as $\theta_E=1.09$\,mrad, which is incompatible with a focused probe.
+
+The consequence for a combined instrument is more favourable than that reads, because the
+anisotropy does not vanish beyond the magic angle. It inverts and then saturates, approaching
+about a third of its intrinsic value. At the $\alpha=100$\,mrad convergence that atomic-resolution
+ptychography requires, the surviving fraction is $-0.32$ to $-0.34$ for every collection angle
+between $1$ and $100$\,mrad. It is, in other words, flat: the spectrometer aperture is no longer a
+design variable, because the convergence already sets the averaging. Folding the measured
+weighted edge through this geometry, a domain with its polar axis along the beam differs from one
+with the axis in-plane by $11.9\%$ in the collected O~K edge, which needs $\approx1.3\times10^{3}$
+counts per channel for SNR $3$ rather than the $4.5\times10^{4}$ implied by a $2\%$ anisotropy.
+
+This is the quantitative case for a hollow detector. Placing the spectrometer entrance in the
+centre of the pixelated detector and reserving the outer annulus for imaging costs the
+spectroscopy nothing that a smaller aperture would recover, while collecting the entire
+bright-field disc gives it the maximum available signal. The hole radius may be chosen to suit
+the imaging.
 
 Against this stand limits that no choice of aperture removes. The dipole ELNES is even in
 $\mathbf{q}$, so it measures the magnitude of the along-beam polarisation but not its sign. A
@@ -726,12 +740,16 @@ localisation problem and requires a calibrated cage-completeness criterion, whil
 denoising before fitting \citep{Wu2026} is a natural route below $10^{6}$\,e\,\AA$^{-2}$. The
 weighted O~K edge carries a $22$--$37\%$ systematic from the inter-site chemical shift, which a
 separate no-hole calculation would fix. Beyond that, a faithful vortex simulation would inject a per-atom $\sigma(E)$
-keyed to each oxygen's local polar-axis orientation. The clearest instrumental conclusion is a
-design constraint, and a stronger one than a choice of aperture. Because a convergent probe
-spreads the momentum transfer by itself, the anisotropy survives only for illumination whose
-convergence approaches $\theta_E$, of order a milliradian. Depth-resolved imaging requires the
-opposite, a probe convergent enough to be focused to atomic dimensions, so the two measurements
-are incompatible in illumination mode and not merely in the aperture they collect through. The open question is whether the two can be fused into a
+keyed to each oxygen's local polar-axis orientation. The clearest instrumental conclusion is that a
+hollow detector is the right geometry, for a reason that is not the obvious one. A convergent
+probe spreads the momentum transfer by itself, so beyond the magic angle the anisotropy inverts
+and saturates near a third of its intrinsic value rather than vanishing, and at the convergence
+imaging requires it is independent of the collection angle to within a few percent. Nothing is
+therefore lost by giving the spectrometer the central disc and the imaging the outer annulus. The
+limit on such an experiment in this material is not the detector but the specimen: the polar axes
+of the labyrinth are clustered about the in-plane direction, so the orientation contrast between
+neighbouring domains is of order $1\%$ rather than the $12\%$ available between the limiting
+orientations, and a zone axis presenting a wider spread of axes would serve far better. The open question is whether the two can be fused into a
 single three-dimensional vector polarisation measurement. Energy-filtered ptychography of the
 oxygen sublattice \citep{Dong2024} and momentum-selective EELS of these flux-closure structures
 \citep{Huang2026} both suggest routes.
