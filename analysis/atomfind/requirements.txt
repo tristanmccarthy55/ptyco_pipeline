@@ -4,7 +4,9 @@
 # Lower bounds are the versions the published results were produced with; the pipeline is
 # pure numpy/scipy array work and is not sensitive to minor versions.
 numpy>=1.24
-scipy>=1.10
+scipy>=1.10          # >=1.15 recommended: earlier NNLS emits thousands of spurious
+                     # FP warnings on this problem (results are unaffected). scipy 1.15
+                     # needs Python >= 3.10, so prefer a 3.10+ interpreter.
 h5py>=3.8            # only for reading PtychoShelves Niter*.mat volumes (dose_series.py)
 matplotlib>=3.7      # figures; the numbers in report.json do not depend on it
 ase>=3.22            # writing found_atoms.extxyz, and reading the reference .vasp

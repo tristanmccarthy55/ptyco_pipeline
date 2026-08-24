@@ -12,6 +12,8 @@ stay tiny; a constant-background basis absorbs the vacuum pedestal. Contrast num
 RESULTS.md.
 """
 from __future__ import annotations
+import warnings
+
 import numpy as np
 from scipy.optimize import nnls
 from scipy.ndimage import shift as nd_shift
@@ -50,7 +52,17 @@ def _nnls_gram(A, b, ridge=0.0):
     G = G + (ridge + 1e-9 * (np.trace(G) / n + 1e-12)) * np.eye(n)
     R = np.linalg.cholesky(G).T                     # upper-triangular
     y = np.linalg.solve(R.T, f)
-    x, _ = nnls(R, y, maxiter=10 * n)
+    # scipy's pure-Python NNLS (< 1.15) raises floating-point flags on the near-collinear
+    # designs this problem generates -- ~26k RuntimeWarnings over a full run on scipy 1.13,
+    # none on 1.15. The warnings are spurious: the solution is identical either way (verified
+    # against a scipy-1.15 run, max relative difference 1e-11 across report.json, no
+    # non-finite value in any export). Silence them, then check the result is actually finite
+    # so a REAL failure still surfaces instead of being hidden by the filter.
+    with warnings.catch_warnings(), np.errstate(all="ignore"):
+        warnings.filterwarnings("ignore", category=RuntimeWarning)
+        x, _ = nnls(R, y, maxiter=10 * n)
+    if not np.all(np.isfinite(x)):
+        raise FloatingPointError("NNLS returned a non-finite amplitude vector")
     return x
 
 

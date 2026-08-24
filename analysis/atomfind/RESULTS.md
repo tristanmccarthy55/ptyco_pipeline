@@ -74,28 +74,42 @@ peak-picking with sub-voxel refinement at its **best-effort threshold** (floor s
 
 ## 3. Noise robustness — injected Gaussian noise, everything else fixed
 
-Same geometry, kernel and calibration; only noise varies. Intrinsic vacuum noise floor
-is σ ≈ 0.023; O peak ≈ 0.06.
+Same geometry, kernel and calibration; only noise varies. Regenerated **2026-08-24** under the
+current config with the seeded harness `noise_sweep.py` (there had been no committed harness —
+the earlier table was produced ad hoc and predated the guided-deduplication guard, which is why
+the report carried a caveat on it). Reproduce with:
 
-Re-run with the current (noise-relative floor) config; pre-portability values in italics.
+```bash
+python atomfind/noise_sweep.py --json noise.json      # seed 0, the ladder below
+```
 
-| injected σ | found | precision | Pb | Ti | O | **confusion** |
-|---|---|---|---|---|---|---|
-| 0 | 1878 | 0.95 | 88 % | 89 % | **90 %** *(83)* | **1.1 %** |
-| 0.01 | 1825 | 0.96 | 88 % | 90 % | **87 %** *(83)* | **1.4 %** |
-| 0.02 (≈ noise floor) | 1462 | 0.98 | 87 % | 89 % | 60 % *(67)* | **3.9 %** |
-| 0.04 | 786 | 0.96 | 87 % | 82 % | 5 % *(7)* | **65 %** |
-| 0.08 | 407 | 0.95 | 87 % | 0 % | 0 % | **76 %** |
+Measured intrinsic sub-median phase spread **σ ≈ 0.022** (the handover's estimate was 0.023);
+an O peak is ≈ 0.06. The injected σ is on the same scale.
 
-The noise-relative floor buys a large gain where the signal is real (O 83 → 90 % clean,
-83 → 87 % at σ = 0.01) and changes nothing at the cliff: **the collapse at σ ≳ 0.02 is not
-a thresholding artifact**, it is oxygen falling below the noise, and no floor rule fixes it.
+| injected σ | found | precision | Pb | Ti | O | **O overlapped** | **confusion** |
+|---|---|---|---|---|---|---|---|
+| 0 | 1834 | 0.97 | 88 % | 89 % | **89 %** | **82 %** | **1.1 %** |
+| 0.01 | 1793 | 0.97 | 88 % | 91 % | **86 %** | 74 % | **1.5 %** |
+| 0.02 (≈ noise floor) | 1421 | 0.98 | 87 % | 90 % | 57 % | 37 % | **3.7 %** |
+| 0.04 |  795 | 0.96 | 87 % | 86 % |  5 % | 18 % | **58.7 %** |
+| 0.08 |  408 | 0.95 | 87 % |  0 % |  0 % |  0 % | **74.6 %** |
 
-**Precision is not a safety indicator.** At σ = 0.08 recall for Ti and O is literally zero
-and 4 in 5 species labels are wrong, yet precision still reads 0.95 (the surviving bright Pb
-are correctly placed). **Confusion rate and σ-coverage are the canaries** and should be
-printed on any new dataset. The failure mode is at least conservative: the
-lattice-consistency amplitude gate makes guided-O *abstain* rather than fabricate.
+Recalls are full-depth (not the bulk band). Versus the pre-dedup table the story is unchanged
+and the numbers move only slightly (σ=0: 1878→1834 found, precision 0.95→**0.97**, the
+deduplication guard removing duplicate detections rather than finding fewer atoms).
+
+**The collapse at σ ≳ 0.02 is not a thresholding artifact**, it is oxygen falling below the
+noise, and no floor rule fixes it. The new **O overlapped** column is the sharper statement:
+axially overlapped oxygen (1.95 Å from a Ti along the beam) degrades 82 → 74 → 37 → 18 → 0 %,
+i.e. it is the population that the noise takes first, exactly as it is the population the method
+wins on when the data are clean.
+
+**Precision is not a safety indicator.** At σ = 0.08 recall for Ti and O is literally zero and
+three in four species labels are wrong, yet precision still reads 0.95 (the surviving bright Pb
+are correctly placed). **Confusion rate and σ-coverage are the canaries**; `noise_sweep.py`
+prints `validate.health_warnings` per rung, and they fire from σ = 0.04 upward. The failure mode
+is at least conservative: the lattice-consistency amplitude gate makes guided-O *abstain* rather
+than fabricate.
 
 ---
 

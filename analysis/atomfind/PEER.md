@@ -24,6 +24,11 @@ Unpack the tarball anywhere; point the pipeline at it with `--data-dir`, or drop
 
 ## 2. Install and run
 
+Use **Python 3.10 or newer** if you have it. The pipeline runs correctly on 3.9, but pip then
+resolves scipy to 1.13, whose NNLS raises tens of thousands of spurious floating-point warnings
+on this problem; the results are identical either way (checked: largest relative difference
+across `report.json` is 1e-11, and no non-finite value reaches any export).
+
 ```bash
 python3 -m venv venv && . venv/bin/activate
 pip install -r atomfind/requirements.txt
