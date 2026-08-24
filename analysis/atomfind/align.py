@@ -18,13 +18,55 @@ import numpy as np
 
 
 # ---------------------------------------------------------------- loading
+def load_recon_mat(path):
+    """@brief Read a PtychoShelves reconstruction directly -> complex64 (nL, Ny, Nx).
+
+    `outputs.object_roi` is a MATLAB cell array of per-layer complex arrays written
+    column-major, so each layer is transposed on the way in. `object_roi` is used rather than
+    `object`, which carries an unreliable probe-overlap halo around the reconstructed region.
+    Complex data appears either as a compound ('real','imag') dtype or as a native complex,
+    depending on how the .mat was written; both are handled.
+    """
+    import h5py
+    with h5py.File(path, "r") as f:
+        refs = f["outputs"]["object_roi"][:, 0]
+        layers = []
+        for r in refs:
+            a = f[r][:]
+            if a.dtype.names:                       # compound ('real','imag')
+                a = a["real"] + 1j * a["imag"]
+            layers.append(a.T)                      # column-major -> row-major
+    return np.asarray(layers).astype(np.complex64)
+
+
+def load_object(path):
+    """@brief Load a reconstructed object from whatever the reconstruction actually produced.
+
+    The peer-facing entry point: a PtychoShelves run emits `Niter<N>.mat`, so that is accepted
+    directly rather than requiring a pre-converted array. Accepts
+
+      *.mat  a PtychoShelves reconstruction (outputs.object_roi)
+      *.npy  a complex (nL, Ny, Nx) array already extracted from one
+
+    @return complex array (nL, Ny, Nx).
+    """
+    ext = os.path.splitext(path)[1].lower()
+    if ext == ".mat":
+        return load_recon_mat(path)
+    if ext == ".npy":
+        return np.load(path)
+    raise ValueError(f"unsupported reconstruction format {ext!r} for {path!r}; "
+                     f"expected a PtychoShelves .mat or an extracted .npy")
+
+
 def load_phase(cfg):
     """Load the reconstructed object -> per-layer mean-subtracted phase volume.
 
-    Returns V (nL,Ny,Nx) float, and the effective dx (A/px). dx is derived as
-    scan_window/Nx when cfg.dx is None (matches the validated overlay, generalises).
+    Accepts a PtychoShelves `.mat` or an extracted `.npy` (see load_object). Returns V
+    (nL,Ny,Nx) float, and the effective dx (A/px). dx is derived as scan_window/Nx when
+    cfg.dx is None (matches the validated overlay, generalises).
     """
-    vol = np.load(cfg.recon_vol)
+    vol = load_object(cfg.recon_vol)
     V = np.angle(vol).astype(float)
     V -= np.median(V, axis=(1, 2), keepdims=True)     # remove per-layer offset
     dx = cfg.dx if cfg.dx is not None else cfg.scan_window_A / V.shape[2]

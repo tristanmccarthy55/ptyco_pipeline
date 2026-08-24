@@ -1,11 +1,13 @@
 # Reproducing the nominated result
 
-One page. Two commands. Everything needed is in this repository plus one data tarball.
+**The exercise: given a ptychographic reconstruction, extract the atomic positions — with
+calibrated uncertainty on each one.**
 
-The result offered for independent reproduction is **three-dimensional atom localisation with
-calibrated uncertainty**, and the polarisation map derived from it. The simulation and
-ptychographic reconstruction that produce the input volume need GPU hours, so the volume is
-supplied pre-computed; **everything downstream of it is reproduced from scratch**.
+One page, three commands. Everything needed is in this repository plus one data archive.
+
+The simulation and the ptychographic reconstruction that produce the input need GPU hours, so
+the reconstruction is supplied as computed. **Everything downstream of it is reproduced from
+scratch**: the point of the exercise is the step from a reconstructed volume to a list of atoms.
 
 ---
 
@@ -13,13 +15,25 @@ supplied pre-computed; **everything downstream of it is reproduced from scratch*
 
 | File | What it is | Size |
 |---|---|---|
-| `NL70_new_vol.npy` | the reconstructed phase volume, complex64 `(70, 404, 404)`, dz 0.999 Å, dx 0.0495 Å/px | 91 MB |
-| `psf_Pb_NL70_vol.npy` | the measured single-lead-atom response (the forward-model kernel) | 1.3 MB |
-| `psf_Ti_NL70_vol.npy` | the measured single-titanium response | 1.3 MB |
-| `gt_prepared.npz` | the reference structure, already rotated/orthogonalised into the beam frame | 0.4 MB |
-| `PTO6_STO6_18_18_labyrinthPoscar.vasp` | the same structure, unprepared (only needed to rebuild the cache) | 1.4 MB |
+| `NL70_new_vol.npy` | **the ptychographic reconstruction** — the recovered object, complex `(70, 404, 404)`, dz 0.999 Å, dx 0.0495 Å/px | 91 MB |
+| `psf_Pb_NL70_vol.npy` | the measured single-lead-atom response: the forward model the fit inverts | 1.3 MB |
+| `psf_Ti_NL70_vol.npy` | the measured single-titanium response, used for species discrimination | 1.3 MB |
+| `gt_prepared.npz` | the reference structure, pre-transformed into the beam frame — **for scoring only** | 0.4 MB |
+| `PTO6_STO6_18_18_labyrinthPoscar.vasp` | the same structure, unprepared (only to rebuild the cache) | 1.4 MB |
 
-Unpack the tarball anywhere; point the pipeline at it with `--data-dir`, or drop the files in
+**A PtychoShelves reconstruction can be used directly.** `--recon` accepts either a raw
+`Niter<N>.mat` (read via `outputs.object_roi`) or an extracted `.npy`, so a peer with their own
+reconstruction can point the pipeline straight at it. The volume shipped here is the `.npy` form
+purely because it is 91 MB rather than 1.1 GB.
+
+**What is and is not blind.** The atom finding itself uses no ground truth: it fits the volume as
+a superposition of the measured single-atom response and returns positions, species and
+per-atom intervals from the data alone. The reference structure enters at two points only, both
+after the fact — to place the recovered atoms in the model's coordinate frame for comparison, and
+to score recall, precision and coverage. Deleting it would still yield atomic positions, in the
+reconstruction's own index frame, with their uncertainties.
+
+Unpack the archive anywhere and point at it with `--data-dir`, or drop the files in
 `atomfind/data/`, or set `$ATOMFIND_DATA`. There are **no absolute paths anywhere in the code**.
 
 ## 2. Install and run
@@ -32,14 +46,34 @@ across `report.json` is 1e-11, and no non-finite value reaches any export).
 ```bash
 python3 -m venv venv && . venv/bin/activate
 pip install -r atomfind/requirements.txt
-
 tar xzf atomfind_data_v1.tar.gz -C atomfind/data/
+
+python atomfind/test_atomfind.py                      # ~1 s, no data needed
 
 python atomfind/run_atomfind.py --preset NL70_coherent --out ./out
 python atomfind/polarisation.py --out ./out
 ```
 
 Run from the directory that contains `atomfind/`. A few minutes on one core; no GPU.
+
+**Run the test suite first.** It takes about a second, needs none of the data, and checks the
+things that would otherwise make a disagreement with the numbers below ambiguous: that the data
+resolver works, that the shipped ground-truth cache is intact, that the recon-to-model map
+inverts, that peak detection recovers planted atoms, and that the conformal intervals hit their
+nominal coverage. If those 17 pass and the numbers below still differ, the disagreement is real
+and worth reporting; if they fail, it is an environment problem.
+
+**To run it on your own reconstruction instead**, give it the reconstruction and its depth
+spacing:
+
+```bash
+python atomfind/run_atomfind.py --recon /path/to/Niter200.mat --dz 0.666 --out ./out
+```
+
+`--dz` matters: the depth spacing sets the registration, and Ti and O alternate every 1.95 Å, so
+a wrong value swaps species labels wholesale rather than failing loudly. Scoring against the
+reference structure will be meaningless for a different specimen, but `found_atoms.csv` and the
+uncertainty export are still produced.
 
 ## 3. What you should get
 

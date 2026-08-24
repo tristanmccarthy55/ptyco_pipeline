@@ -48,6 +48,15 @@ machine that has never seen the author's Desktop. `config.data_path()` searches,
 missing file raises with the name it wanted and the full search path. Outputs go to
 `$ATOMFIND_OUT`, else `./atomfind_out` (`--out` overrides).
 
+Validate an install in about a second, without any of the data:
+```bash
+python atomfind/test_atomfind.py          # 14 synthetic tests; -v for tracebacks
+```
+It covers path resolution, the shipped GT cache, the affine recon-to-model map, peak detection
+on planted atoms, Richardson-Lucy positivity, and the conformal coverage guarantee (including
+that a 2x-wrong model sigma is absorbed by the calibration). Run it after any edit, and before
+concluding that a reproduction disagrees.
+
 Rebuild the ground-truth cache after changing the reference structure (needs abtem):
 ```bash
 python -m atomfind.make_gt_cache            # write data/gt_prepared.npz
@@ -76,7 +85,9 @@ the expected numbers with their tolerances.
 | `uncertainty.py` | model σ (joint Cramér–Rao) + split-conformal per-stratum calibration of the error bars. |
 | `run_atomfind.py` | end-to-end driver + figures + `report.json` + printed verdict. |
 | `fig_check.py` | visual sanity checks (cross-sections, single-column overlay, 3-D atoms). |
-| `dose_series.py` | portability harness: NL105 `.mat` loader + per-dose run. |
+| `dose_series.py` | portability harness: NL105 `.mat` loader + per-dose run, plus the deconvolve-then-peak-pick baselines. |
+| `noise_sweep.py` | seeded injected-noise ladder (regenerates the noise table). |
+| `test_atomfind.py` | fast data-free test suite; run it first on a new machine. |
 | `make_gt_cache.py` | precompute `data/gt_prepared.npz` so a reproduction run needs no abtem. |
 
 ## Results (headline)

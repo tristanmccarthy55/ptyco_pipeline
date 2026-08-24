@@ -8,6 +8,7 @@ Runs unchanged across volumes (switch with --preset). Needs numpy/scipy/h5py/mat
     python run_atomfind.py --psf all             # compare data vs synthetic
     python run_atomfind.py --preset reviewer2 --dose 1e8
     python run_atomfind.py --data-dir ./data --out ./out    # explicit, for a fresh machine
+    python run_atomfind.py --recon Niter200.mat --dz 0.666  # a PtychoShelves output directly
 
 Outputs to cfg.out_dir ($ATOMFIND_OUT, else ./atomfind_out): figures + report.json + a printed
 CAN / CAN'T-SHOW verdict. See README.md.
@@ -226,11 +227,24 @@ def main():
     ap.add_argument("--data-dir", default=None,
                     help="directory holding the volume + kernels + reference structure "
                          "(default $ATOMFIND_DATA, then <package>/data, then ~/Desktop)")
+    ap.add_argument("--recon", default=None,
+                    help="the reconstruction to analyse: a PtychoShelves Niter<N>.mat or an "
+                         "extracted .npy. Overrides the preset's volume.")
+    ap.add_argument("--dz", type=float, default=None,
+                    help="depth spacing (A/layer) of that reconstruction; REQUIRED with "
+                         "--recon unless it matches the preset (NL70 0.999, NL105 0.666)")
     ap.add_argument("--n-null", type=int, default=400)
     args = ap.parse_args()
 
     if args.data_dir: config.set_data_dir(args.data_dir)
     cfg = config.preset(args.preset)
+    if args.recon:
+        cfg.recon_vol = args.recon
+        cfg.name = f"{cfg.name}:{os.path.basename(args.recon)}"
+        if args.dz is None:
+            print(f"[atomfind] WARNING --recon given without --dz; assuming the preset's "
+                  f"dz={cfg.dz} A/layer. A wrong dz mis-registers depth and swaps Ti/O labels.")
+    if args.dz: cfg.dz = args.dz
     if args.single_atom_vol: cfg.single_atom_vol = args.single_atom_vol
     if args.dose is not None: cfg.dose_e_per_A2 = args.dose
     if args.out: cfg.out_dir = args.out

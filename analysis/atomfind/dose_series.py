@@ -25,20 +25,9 @@ DOSE_ROOT = os.path.expanduser("~/Desktop/dose_series")
 REV2_KERNEL = "psf_Pb_rev2_d1e10_vol.npy"     # resolved via config.data_path
 
 
-def load_recon_mat(path):
-    """PtychoShelves Niter*.mat -> complex64 (nL, Ny, Nx). object_roi is a cell array of
-    per-layer complex arrays stored column-major, so each layer is transposed."""
-    import h5py
-    with h5py.File(path, "r") as f:
-        g = f["outputs"]
-        refs = g["object_roi"][:, 0]
-        layers = []
-        for r in refs:
-            a = f[r][:]
-            if a.dtype.names:
-                a = a["real"] + 1j * a["imag"]
-            layers.append(a.T)
-        return np.array(layers).astype(np.complex64)
+# The PtychoShelves .mat reader now lives in align (it is the peer-facing entry point);
+# re-exported here so existing callers and docs keep working.
+load_recon_mat = align.load_recon_mat
 
 
 def dose_cfg(dose_tag):
@@ -59,12 +48,9 @@ def dose_cfg(dose_tag):
 
 
 def load_dose_volume(cfg):
-    """Phase volume + dx for a dose-series .mat, mirroring align.load_phase."""
-    vol = load_recon_mat(cfg.recon_vol)
-    V = np.angle(vol).astype(float)
-    V -= np.median(V, axis=(1, 2), keepdims=True)
-    dx = cfg.dx if cfg.dx is not None else cfg.scan_window_A / V.shape[2]
-    return V, dx
+    """Phase volume + dx for a dose-series .mat. align.load_phase now reads .mat directly,
+    so this is a thin alias kept for callers that used it."""
+    return align.load_phase(cfg)
 
 
 def _baselines(V, dx, al, pos, Z, olab, cfg, verbose=True):
