@@ -58,6 +58,48 @@ averaging model is validated before any real spectrum:
 
 ---
 
+## M6c — CONVERGENCE, not just collection — ⚠️ corrects the M6 recommendation (2026-08-24)
+
+`analyze_elnes.py --convergence`. M6 above (`surviving_anisotropy`) is the textbook
+**parallel-illumination** result: one incident direction, collect out to β. That is the only
+geometry for which a magic angle is defined, and it was the whole basis for "use a small EELS
+aperture". A focused STEM probe is not that geometry: **q_t = k(θ_f − θ_i)** is a *vector*
+difference, so the convergence cone spreads **q** on its own however small β is.
+
+Averaging the dipole weights over both cones (`surviving_anisotropy_convergent`, validated
+against the analytic model to <1e-3 as α→0):
+
+| surviving fraction | β=1 | β=2 | β=5 | β=10 | β=25 | β=100 mrad |
+|---|---|---|---|---|---|---|
+| **α = 0 (parallel)** | **0.62** | 0.28 | −0.04 | −0.17 | −0.26 | −0.33 |
+| α = 1 | 0.52 | 0.29 | −0.04 | −0.17 | −0.26 | −0.34 |
+| α = 2 | 0.29 | 0.25 | −0.03 | −0.16 | −0.26 | −0.34 |
+| α = 5 | −0.04 | −0.03 | −0.01 | −0.16 | −0.26 | −0.34 |
+| α = 20 | −0.24 | −0.25 | −0.24 | −0.24 | −0.24 | −0.32 |
+
+**Closing the spectrometer aperture does not recover the signal.** Beyond α ≈ 5 mrad *no* β
+does — the best achievable is −0.01. The convergence must itself come down to the order of
+θ_E = 1.09 mrad, i.e. near-parallel illumination.
+
+**This strengthens the instrumental conclusion.** The incompatibility between depth-resolved
+imaging and polarisation spectroscopy is not a shared-aperture problem that a second aperture
+would solve; it is an *illumination-mode* problem. Atomic-resolution depth sectioning needs a
+strongly convergent probe; the dichroism needs a nearly parallel one.
+
+**What was and was not accounted for before this.** `config.STEMEELS` (the forward simulator)
+always separated α = 20 mrad from β = 100 mrad and says so explicitly. `config.Optics` (the M6
+analysis) carries only `convergence_mrad = 100`, and `geometry_report` fed that number into the
+β-model and reported it as the probe's surviving anisotropy. For the combined instrument the two
+coincide (β = detector_max/2 = 100 mrad), so −0.33 was numerically right for that configuration,
+but right by coincidence rather than because convergence was modelled. Both are now computed
+properly and `geometry_report` states which angle it is using.
+
+*Caveat:* kinematic dipole treatment with an **incoherent** average over incident directions. It
+ignores coherence between incident directions and channelling, both of which the multislice route
+(M6b) carries. Strictly more complete than the α = 0 model it replaces, not a final word.
+
+---
+
 ## M6b — dynamical forward model (abtem multislice EELS) — ⚙️ API validated, EELS backend gated on gpaw
 
 `simulate_eels.py`. Confirmed the exact abtem 1.0.5 core-loss call path works end-to-end
