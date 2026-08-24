@@ -178,6 +178,18 @@ class Config:
     guided_min_corr: float = 0.35     # guided fits: lower quality bar (position prior pays)
     guided_gate_z_A: float = 0.7      # guided fit must stay within this of the predicted slot
     guided_gate_xy_A: float = 0.35    #   ... and this in-plane (from the column lean)
+    guided_dedup_A: float = 1.2       # post-fit occupancy guard: reject a guided atom landing
+    #                                   within this 3-D distance of one already accepted in the
+    #                                   tube (blind or guided). GT-set: NO two real atoms are
+    #                                   closer than 1.70 A (1st pctile 1.72), so any closer pair
+    #                                   is non-physical; 1.2 sits above the duplicate scale
+    #                                   (<=0.8) yet below where two DISTINCT atoms 1.7 A apart can
+    #                                   land once each is localised with ~0.37 A z-scatter. (The
+    #                                   pre-fit slot_empty check + the 0.7 A fit gate otherwise
+    #                                   let an atom land ~0.1 A from an existing one -> O doubles.)
+    #                                   Transfer-checked on the held-out NL105 dose1e10 volume:
+    #                                   confusion 13.7->12.4%, Ti recall held (74% bulk) -- it
+    #                                   helps there too, so it is not an NL70-specific tweak.
     # GT matching tolerances (validation only)
     match_tol_xy_A: float = 0.6
     match_tol_z_A: float = 2.0

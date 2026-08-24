@@ -22,8 +22,9 @@ high-pass filter, and $\varepsilon$ the residual. The
 reconstruction is a nonlinear inverse problem, so Eq.~\eqref{eq:forward} is an empirical
 linearisation rather than a derived identity; we test it directly by fixing
 $\{\mathbf{r}_i\}$ at the known atomic positions of a simulated structure and solving the
-resulting linear least-squares problem for $\{\beta_i\}$, which reproduces measured column
-profiles with a correlation of $0.94$.
+resulting linear least-squares problem for $\{\beta_i\}$, which reproduces the measured
+depth--$x$ column cross-sections at a median correlation of $0.92$
+(Fig.~\ref{fig:af-method}b).
 
 The kernel $K$ is measured rather than parameterised: a single isolated atom is propagated
 through the identical multislice simulation and reconstruction pipeline, and its
@@ -33,24 +34,27 @@ $2$--$3$\,\AA{} along the beam. The anisotropy follows the aperture scaling of a
 single-orientation measurement: for a probe of convergence semi-angle $\alpha$ the lateral
 resolution is of order $\lambda/2\alpha$ but the axial resolution only of order
 $\lambda/\alpha^2$, which for the $300$\,keV, $\alpha=100$\,mrad probe used here are
-$\approx 0.10$\,\AA{} and $\approx 2.0$\,\AA{} respectively --- the limited-aperture, or
-missing-cone, regime of depth recovery from a single projection, here obtained by
-multislice electron ptychography without a tilt series \citep{Chen2021}. Because the axial
+$\approx 0.10$\,\AA{} and $\approx 2.0$\,\AA{} respectively --- the numerical-aperture-limited
+regime of depth recovery from a single orientation, obtained here by multislice electron
+ptychography as optical sectioning through the specimen rather than by a tilt series
+\citep{Chen2021}. Because the axial
 width exceeds the projected interatomic spacing ($1.9$--$3.9$\,\AA{} here), neighbouring
 responses overlap, the design is not separable, and localisation cannot be reduced to
 independent peak fits (Fig.~\ref{fig:af-method}).
 
 \begin{figure}[t]
   \centering
-  \includegraphics[width=\linewidth]{figs/fig_method.pdf}
+  \includegraphics[width=\linewidth]{figs/fig_results.pdf}
   \caption{Model-based localisation. (a) The measured point-spread function $K$ (depth--$x$
-    slice): tight in-plane, elongated along the beam by the missing cone. (b) Direct test of
-    the forward model, Eq.~\eqref{eq:forward}: the axial phase profile down a mixed
-    titanium--oxygen column (points) against a superposition of $K$ placed at the known
-    atomic depths (line), correlation $r=0.94$; triangles mark the ground-truth Ti (grey) and
-    O (red) positions. The apparent $2$--$4$\,\AA{} axial ``blur'' is therefore overlap of a
-    fixed response, not a loss of information. (c) Blind atoms located on a raw cross-section,
-    coloured by assigned species, with calibrated $95\%$ depth and in-plane intervals.}
+    slice): tight in-plane, elongated along the beam by the aperture-limited axial resolution
+    of a single-orientation measurement. (b) Direct test of
+    the forward model, Eq.~\eqref{eq:forward}, in the data's own depth--$x$ space: a measured
+    mixed titanium--oxygen column cross-section (\emph{data}) beside the superposition
+    $\sum_i\beta_i K$ of the measured response at the known atomic depths ($\sum_i\beta_i K$),
+    the two matching at a median correlation of $r=0.92$ across the mixed columns. The apparent
+    $2$--$4$\,\AA{} axial ``blur'' is therefore overlap of a fixed response, not a loss of
+    information. (c) Blind atoms located on a raw cross-section, coloured by assigned species,
+    with calibrated $95\%$ depth and in-plane intervals.}
   \label{fig:af-method}
 \end{figure}
 
@@ -110,7 +114,16 @@ tolerances. This deliberately trades false-negative rate against false-positive 
 the weakest species only, and such detections are flagged in all outputs so that the
 constrained and unconstrained populations can be reported separately.
 
-\paragraph{Uncertainty.}
+\paragraph{Thresholds and transfer.}
+No ground truth enters the localisation itself: the detector reads only the reconstructed
+volume and the measured response. Its few numerical thresholds --- the noise-relative
+detection floor, the shape goodness-of-fit cut, and the occupancy and amplitude tolerances
+of the constrained stage --- were fixed on one ground-truth-validated volume and then applied
+\emph{unchanged} to an independent reconstruction of the same material at a different in-plane
+sampling, slice discretisation, and electron dose, where they transfer without per-volume
+adjustment. Any residual degradation on the harder, dosed data is reported rather than
+removed by re-tuning, and is surfaced by the coverage check of the next section rather than
+hidden.
 We separate a \emph{model} standard error, computed without ground truth, from a
 \emph{calibration} step that converts it into intervals with a stated coverage.
 
@@ -189,12 +202,28 @@ deconvolution of the volume followed by peak detection \citep{Ishizuka2021} --- 
 with the same measured $K$ on the same volume. Both routines sharpen the strongly
 scattering columns but recover at most $59\%$ of the oxygen sublattice at their
 best-effort thresholds, below the $71\%$ obtained by peak-picking the undeconvolved volume
-and well below the $96\%$ (in-bulk) of the model fit (Fig.~\ref{fig:af-compare}).
+and well below the $89\%$ of the model fit over the full field ($95\%$ in the bulk; all
+figures are whole-field recall, Fig.~\ref{fig:af-compare}).
 Deconvolution redistributes dynamic
-range towards the strongly scattering species and cannot restore the missing-cone
-frequencies that separate an oxygen atom from the axial flank of its titanium neighbour;
+range towards the strongly scattering species but cannot restore the axial spatial
+frequencies a single-orientation measurement never records --- the ones that separate an
+oxygen atom from the axial flank of its titanium neighbour;
 the reported advantage of these routines is obtained for sparse, isolated features rather
 than for a dense sublattice.
+
+These figures are for the noiseless, fully coherent reconstruction, which flatters a local
+peak detector: with no shot noise a raw local maximum is already a clean estimator, so the
+gap between peak-picking and the model fit here is a lower bound on the method's advantage.
+The discriminating comparison is at finite electron dose, where a local maximum test
+degrades faster than a fit that integrates the whole point-spread function; that
+dose-robustness head-to-head, and the species-assignment and calibrated-$\sigma$ advantages
+that a peak-picker cannot provide at any dose, are quantified separately.
+%%% -----------------------------------------------------------------------------
+%%% RESERVED: dose-robustness comparison (finite-dose head-to-head vs peak-picking /
+%%% deconvolution). Drop the figure + paragraph here once the dose test is run; add
+%%% \label{sec:af-dose} and forward-reference it from the caveat above. The harness is
+%%% atomfind/dose_series.py (NL105 dose volumes). Leaving the space so it slots in cleanly.
+%%% -----------------------------------------------------------------------------
 
 \begin{figure}[t]
   \centering
@@ -204,7 +233,7 @@ than for a dense sublattice.
     Richardson--Lucy- and maximum-entropy-deconvolved volumes (each at its best-effort
     threshold), a one-dimensional per-column variant, and the three-dimensional model fit of
     this work. Deconvolution before detection does not help the oxygen; the model fit recovers
-    it (bulk recall shown).}
+    it (whole-field recall; the model fit reaches $95\%$ in the bulk).}
   \label{fig:af-compare}
 \end{figure}
 % ---------------------------------------------------------------------------

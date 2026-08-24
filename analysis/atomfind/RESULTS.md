@@ -282,7 +282,39 @@ Ti 0.45 Å²), so under TDS oxygen's true kernel is genuinely broader than lead'
 
 ---
 
-## 8. Files
+## 8. Polarisation from the found atoms (added 2026-08-15)
+
+`polarisation.py` — Ti-O6 off-centring (Eq. delta = r_Ti - centroid(6 nearest O)) computed from
+the BLIND found atoms, uncertainty propagated by Monte Carlo from the exported 95% conformal
+half-widths (no GT). Scored against the model. Run:
+`~/hyperspy-bundle/bin/python atomfind/polarisation.py` (cwd `analysis/`).
+
+NL70, bulk band z 10-56 A: **72%** of bulk Ti get a complete O6 cage from found O alone
+(247 GT Ti in window -> 172 caged -> 171 matched to GT).
+
+| component | median \|err\| | p90 | RMS | GT spread (sd) | r | MC sigma | 95% cov |
+|---|---|---|---|---|---|---|---|
+| delta_x | **0.005 A** | 0.013 | 0.080 | 0.272 | 0.96 | 0.011 | 95% |
+| delta_y | **0.004 A** | 0.014 | 0.060 | 0.078 | 0.80 | 0.009 | 93% |
+| delta_z | 0.122 A | 0.304 | 0.199 | **0.074** | 0.42 | **0.237** | 99% |
+
+- **In-plane is quantitative**: vector error median 0.007 A / p90 0.017 A against a 0.274 A
+  signal; DIRECTION error median 0.9 deg, p90 3.7 deg, 95% within 30 deg. Excluding the tail
+  below, corr(recon,GT) delta_x = 1.000.
+- **Along-beam is NOT measured**: propagated sigma_z (0.237 A) exceeds the entire GT spread of
+  delta_z (0.074 A). This is knowable BLIND (compare propagated sigma to the recovered spread)
+  — the UQ correctly declares the along-beam map uninformative. Motivates the EELS phase.
+  Root cause: delta is a DIFFERENCE of coordinates; z-RMS 0.37 A per atom cannot resolve a
+  0.07 A displacement, while xy-RMS 0.032 A resolves a 0.27 A one easily.
+- **The 5% tail is a DETECTION failure, not a localisation one**: 8/171 Ti have a cage of the
+  wrong composition (missing/misassigned O) -> in-plane error median 0.45 A. The propagated
+  interval covers 99% of the good Ti but only **12%** of the tail — as expected, since the
+  conformal interval is conditional on correct detection (§6). Report cage completeness +
+  precision + confusion alongside any polarisation map; do NOT absorb this into the error bar.
+
+---
+
+## 9. Files
 `METHODS.md` (method, plain-language) · `README.md` (usage) · `paper/atomfind_methods.tex`
 + `paper/atomfind_refs.bib` (manuscript segment, 6 refs, compiles clean) ·
 `docs/history/PSF_SIM_REQUEST.md` / `docs/history/PSF_SIM_RESPONSE.md` (kernel provenance) ·

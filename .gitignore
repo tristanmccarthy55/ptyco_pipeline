@@ -39,3 +39,14 @@ sim/__pycache__/
 # OS / editor cruft
 .DS_Store
 **/.DS_Store
+
+# Report build artifacts + the style-reference PDF (13 MB, not our work product).
+# The .tex/.bbl/.pdf deliverables ARE tracked deliberately.
+report/4th_Year_Physics_Project___Final_Report.pdf
+report/*.aux
+report/*.log
+report/*.out
+report/*.blg
+report/*.fls
+report/*.fdb_latexmk
+report/*.synctex.gz

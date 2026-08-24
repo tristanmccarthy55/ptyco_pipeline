@@ -678,6 +678,15 @@ def find_atoms_v3(V, cfg, dx, kernels):
                 hi = 1.6 if sp == 8 else 2.2
                 if amp_med is not None and not (lo*amp_med <= fit["amp"] <= hi*amp_med):
                     continue
+                # post-fit occupancy guard: the pre-fit slot_empty test is same-species and
+                # BEFORE the fit, which may drag the atom up to guided_gate_z_A toward a
+                # neighbour of any species; reject if it now sits on top of an already-accepted
+                # atom (blind or guided) in this tube -> kills the O double-counts.
+                dd = cfg.guided_dedup_A
+                if any(((fit["l"]-d["l"])*cfg.dz)**2 + ((fit["r"]-d["r"])*dx)**2
+                       + ((fit["c"]-d["c"])*dx)**2 < dd*dd
+                       for d in t["kept"] + t["guided"]):
+                    continue
                 fit["species"] = sp
                 t["guided"].append(fit)
                 same_z.append((fit["l"])*cfg.dz)
