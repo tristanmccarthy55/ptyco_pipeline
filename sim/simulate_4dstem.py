@@ -48,6 +48,7 @@ ENERGY_EV          = 300e3     # beam energy [eV]
 CONVERGENCE_MRAD   = 100.0     # probe convergence semi-angle [mrad]
 OVERFOCUS_A        = 20.0      # overfocus MAGNITUDE [Å] (2 nm). Sign handled below.
 DEFOCUS_A          = None      # [thin-ab] --defocus: use this abTEM defocus directly (else -OVERFOCUS_A)
+NOMINAL_DEFOCUS_A  = None      # [campaign] --probe-defocus: defocus for the NOMINAL start probe only
 
 # --- detector / sampling / binning ---
 DETECTOR_MAX_ANGLE_MRAD = 200.0   # full detector outer angle [mrad]
@@ -399,7 +400,10 @@ def build_initial_probe(n_b: int, box_a: float, aberrated: bool = False):
     probe — the known-probe control.
     """
     extent = box_a / BIN_FACTOR
-    kw = dict(energy=ENERGY_EV, semiangle_cutoff=CONVERGENCE_MRAD, defocus=_defocus(),
+    # the NOMINAL start probe may take its own defocus (NOMINAL_DEFOCUS_A) — e.g. the aberration-
+    # free 4 Å df_perf as a sensible BLIND-fit start — independent of the data/true-probe defocus.
+    df = NOMINAL_DEFOCUS_A if (not aberrated and NOMINAL_DEFOCUS_A is not None) else _defocus()
+    kw = dict(energy=ENERGY_EV, semiangle_cutoff=CONVERGENCE_MRAD, defocus=df,
               gpts=(n_b, n_b), extent=(extent, extent), device="cpu")   # tiny; keep off the GPU
     if aberrated:
         kw["aberrations"] = ABERRATIONS       # known-probe control: hand the recon the truth
@@ -681,7 +685,7 @@ def write_driver_geometry(n_b: int, box_a: float, beam_thickness_a: float,
 # MAIN
 # ======================================================================
 def main(argv=None) -> int:
-    global DEVICE, SLICE_THICKNESS_A, SCAN_STEP_A, DOSE_E, N_PHONONS, PHONON_SIGMA_A, PER_SPECIES_SIGMA, PHONON_SEED, SCAN_WINDOW_A, ABERRATED, PROBE_INITIAL_ABERRATED, BIN_FACTOR, CONVERGENCE_MRAD, DEFOCUS_A, ABERRATIONS
+    global DEVICE, SLICE_THICKNESS_A, SCAN_STEP_A, DOSE_E, N_PHONONS, PHONON_SIGMA_A, PER_SPECIES_SIGMA, PHONON_SEED, SCAN_WINDOW_A, ABERRATED, PROBE_INITIAL_ABERRATED, BIN_FACTOR, CONVERGENCE_MRAD, DEFOCUS_A, NOMINAL_DEFOCUS_A, ABERRATIONS
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--test", action="store_true",
                     help="Tiny 3x3 scan for fast local shape/geometry validation.")
@@ -755,6 +759,10 @@ def main(argv=None) -> int:
                     help="[thin-ab] with --aberrated: ROUND-only C30 (Cs) [Å], replacing the ARM set.")
     ap.add_argument("--c5", type=float, default=None,
                     help="[thin-ab] with --aberrated: ROUND-only C50 (C5) [Å], replacing the ARM set.")
+    ap.add_argument("--probe-defocus", type=float, default=None,
+                    help="[campaign] abTEM defocus [Å] for the NOMINAL probe_initial.mat ONLY (the "
+                         "blind-fit start), independent of --defocus (data/true probe). Use df_perf "
+                         "so the blind fit starts from an aberration-free ~4 Å probe at the data's BIN.")
     ap.add_argument("--aberrations-json", default=None,
                     help="[campaign] full abTEM Cnm/phi dict as JSON (e.g. non-round terms "
                          "'{\"C30\":-4e4,\"C50\":1e7,\"C56\":5e6,\"phi56\":0}'), replacing the "
@@ -777,6 +785,7 @@ def main(argv=None) -> int:
     BIN_FACTOR = args.bin_factor
     CONVERGENCE_MRAD = args.convergence
     DEFOCUS_A = args.defocus                                  # [thin-ab] None -> -OVERFOCUS_A
+    NOMINAL_DEFOCUS_A = args.probe_defocus                    # [campaign] nominal start-probe defocus
     if args.aberrations_json is not None:                     # [campaign] full override (non-round)
         import json as _json
         ABERRATIONS = {k: float(v) for k, v in _json.loads(args.aberrations_json).items()}

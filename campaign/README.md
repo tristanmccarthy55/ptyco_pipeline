@@ -49,10 +49,18 @@ Each prints a pack-job id and the exact `scp -O ...` line for the tarball
 (`$SHARE/<campaign>_results_<timestamp>.tgz`). The pack job is `afterany`, so a partial sweep
 still comes down.
 
-Useful env overrides (defaults = fit-probe HARD): `NITER=200 PSTART=8 BETA=0.1 THIN=3 STEP=0.5
-SLICE=0.9`. `NL` per-row (Nyquist) unless you set `NL=` to force one value on all points. `PMODES=1`
-by default (coherent data ⇒ recover a single aberrated probe; controls stay 1 mode regardless) —
-set `PMODES=2` to give only the blind-fit leg extra incoherent freedom.
+Useful env overrides (defaults tuned for blind-fit convergence): `NITER=200 PSTART=40 BETA=0.05
+THIN=3 STEP=0.5 SLICE=0.9`. `NL` per-row (Nyquist) unless you set `NL=` to force one value. `PMODES=1`
+by default (coherent data ⇒ single aberrated probe; controls stay 1 mode) — `PMODES=2` gives only
+the blind-fit leg extra incoherent freedom.
+
+**Blind-fit machinery (fixed after the first campaign failed to recover any probe).** The fit leg
+now (a) starts from an aberration-free **4 Å nominal** probe (`sim --probe-defocus df_perf`, BIN-matched
+to the data at every α), (b) releases the probe **late** (`PSTART=40`) with a small step (`BETA=0.05`),
+and (c) constrains the probe to the aperture in Fourier space (`PSFFT=1` → recon `PROBE_SUPPORT_FFT`),
+without which the update absorbs high-frequency aliasing into a grid-artifact junk probe. The **perfect**
+leg runs at its own `PERF_BIN=4` (a compact 4 Å probe is under-constrained in the aberrated legs' BIN=1
+window). Set `PSFFT=0` to reproduce the original (failed) unconstrained fit.
 Re-fit without re-simulating: `RECON_ONLY=1 CAMPAIGN=round bash campaign/run_campaign.sh`.
 Re-simulate over an existing sweep: add `OVERWRITE=1`.
 

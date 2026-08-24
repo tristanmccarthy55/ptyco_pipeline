@@ -33,7 +33,12 @@ TSV="${TSV:-campaign/${CAMPAIGN}_sweep.tsv}"
 # so the ground truth resolves the interatomic depth structure at EVERY alpha and only the recon
 # NL (Nyquist per alpha, from the sweep .tsv) decides what's recovered. 2 A merges the planes.
 THIN="${THIN:-3}"; SLICE="${SLICE:-0.9}"; STEP="${STEP:-0.5}"
-NL_OV="${NL:-}"; NITER="${NITER:-200}"; PSTART="${PSTART:-8}"; BETA="${BETA:-0.1}"; PMODES="${PMODES:-1}"
+# fit-probe schedule: release LATE (let the object settle first) with a small LSQ step, and
+# CONSTRAIN the probe to the aperture in Fourier space (PSFFT=1) so the blind update can't absorb
+# high-freq aliasing into a grid-artifact probe — the fix for the failed first campaign.
+NL_OV="${NL:-}"; NITER="${NITER:-200}"; PSTART="${PSTART:-40}"; BETA="${BETA:-0.05}"; PMODES="${PMODES:-1}"
+PSFFT="${PSFFT:-1}"                              # Fourier probe support on the blind-fit leg
+PERF_BIN="${PERF_BIN:-4}"                        # perfect leg is a compact ~4 Å probe -> its own BIN=4
 C5DEF="${C5:-1e7}"; SAVE="${SAVE_EVERY:-25}"
 INPUTS=(data_dp.hdf5 data_position.hdf5 sim_meta.mat)               # probe chosen per-leg
 TS="$(date +%Y%m%d_%H%M)"; PACK="${SHARE:-$REPO_DIR}/${CAMPAIGN}_results_${TS}.tgz"
@@ -44,10 +49,11 @@ grp_for(){   case "$1" in 1) echo 16;;     2) echo 32;;       *) echo "";;      
 rtime_for(){ case "$1" in 1) echo 20:00:00;; 2) echo 08:00:00;; *) echo 04:00:00;; esac; }
 stime_for(){ case "$1" in 1) echo 12:00:00;; 2) echo 04:00:00;; *) echo 02:00:00;; esac; }
 
-sim_job(){   # $1 dir $2 alpha $3 bin $4 defocus $5 mode(perfect|round|json) $6 aberarg  -> jobid
-    local dir="$1" alpha="$2" bin="$3" df="$4" mode="$5" arg="$6"
+sim_job(){   # $1 dir $2 alpha $3 bin $4 defocus $5 mode(perfect|round|json) $6 aberarg $7 nominal_df -> jobid
+    local dir="$1" alpha="$2" bin="$3" df="$4" mode="$5" arg="$6" ndf="${7:-}"
     local exp="ALL,JOB_DIR=${dir},THIN_CELLS=${THIN},SLICE_THICKNESS=${SLICE},SCAN_STEP=${STEP}"
     exp="${exp},CONVERGENCE=${alpha},BIN_FACTOR=${bin},DEFOCUS=${df},OVERWRITE=${OVERWRITE:-0}"
+    [ -n "$ndf" ] && exp="${exp},NOMINAL_DEFOCUS=${ndf}"           # nominal start probe = aberration-free 4 Å
     export ABERRATIONS_JSON=""                                      # cleared unless json mode (avoids stale carry-over)
     case "$mode" in
         perfect) : ;;                                              # aberration-free: defocus only
@@ -64,8 +70,9 @@ recon_job(){ # $1 name $2 datadir $3 probe $4 pstart(""=fixed) $5 bin $6 nl $7 d
     mkdir -p "${rdir}/01"
     local f; for f in "${INPUTS[@]}"; do ln -sf "${datadir}/01/${f}" "${rdir}/01/${f}"; done
     ln -sf "${probe}" "${rdir}/01/probe_initial.mat"               # start probe (may be another leg's)
-    # extra probe modes only help the UPDATING (blind-fit) leg; fixed-probe controls stay 1 mode
-    local pm=1; local psx=""; [ -n "${pstart}" ] && { psx=",PROBE_START=${pstart},BETA_LSQ=${BETA}"; pm="${PMODES}"; }
+    # blind-fit leg only (pstart set): release probe at PSTART, small step, extra modes, AND the
+    # Fourier aperture constraint (PSFFT) that stops the probe absorbing junk. Controls stay fixed/1-mode.
+    local pm=1; local psx=""; [ -n "${pstart}" ] && { psx=",PROBE_START=${pstart},BETA_LSQ=${BETA},PROBE_SUPPORT_FFT=${PSFFT}"; pm="${PMODES}"; }
     local grp; grp="$(grp_for "$bin")"; [ -n "$grp" ] && psx="${psx},GROUPING=${grp}"
     local dep_arg=(); [ -n "${dep}" ] && dep_arg=(--dependency="afterok:${dep}")
     sbatch --parsable --job-name="${CAMPAIGN}_rec_${name}" --time="$(rtime_for "$bin")" --mem="$(mem_for "$bin")" \
@@ -93,13 +100,15 @@ while IFS=$'\t' read -r label alpha c5 c3 c1 dfp bin nl aj _rest; do
             echo "ERROR: ${d}/01/data_dp.hdf5 missing — run sims first (unset RECON_ONLY)." >&2; exit 1; }; done
         SP=""; SA=""; depP=""; depK=""; depF=""
     else
-        SP=$(sim_job "$PDIR" "$alpha" "$bin" "$dfp"  perfect "")        # perfect: aberration-free @ df_perf
-        SA=$(sim_job "$ADIR" "$alpha" "$bin" "$c1"   "$amode" "$aarg")  # aberrated (+probe_initial_true.mat)
-        depP="$SP"; depK="$SA"; depF="${SA}:${SP}"
+        SP=$(sim_job "$PDIR" "$alpha" "$PERF_BIN" "$dfp"  perfect "")           # perfect: 4 Å probe @ its own BIN
+        SA=$(sim_job "$ADIR" "$alpha" "$bin"      "$c1"   "$amode" "$aarg" "$dfp")  # aberrated; nominal start = df_perf
+        depP="$SP"; depK="$SA"; depF="$SA"
     fi
-    R1=$(recon_job "${label}_perfect"  "$PDIR" "${PDIR}/01/probe_initial.mat"      ""         "$bin" "$nl" "$depP")
-    R2=$(recon_job "${label}_known"    "$ADIR" "${ADIR}/01/probe_initial_true.mat" ""         "$bin" "$nl" "$depK")
-    R3=$(recon_job "${label}_fitprobe" "$ADIR" "${PDIR}/01/probe_initial.mat"      "$PSTART"  "$bin" "$nl" "$depF")
+    # fit leg starts from the ABERRATED sim's NOMINAL probe (aberration-free 4 Å @ the data's BIN, so
+    # it matches the DP size at every alpha) and updates it with the Fourier aperture constraint on.
+    R1=$(recon_job "${label}_perfect"  "$PDIR" "${PDIR}/01/probe_initial.mat"      ""         "$PERF_BIN" "$nl" "$depP")
+    R2=$(recon_job "${label}_known"    "$ADIR" "${ADIR}/01/probe_initial_true.mat" ""         "$bin"      "$nl" "$depK")
+    R3=$(recon_job "${label}_fitprobe" "$ADIR" "${ADIR}/01/probe_initial.mat"      "$PSTART"  "$bin"      "$nl" "$depF")
     RIDS+=("$R1" "$R2" "$R3")
     dz=$(awk "BEGIN{printf \"%.2f\", 11.7/${nl}}")
     printf 'row %-9s alpha=%-3s bin=%s NL=%-2s(dz %sA)  sims[P=%s A=%s]  recon[perf=%s known=%s fit=%s]\n' \
