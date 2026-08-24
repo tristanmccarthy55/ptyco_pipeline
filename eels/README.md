@@ -33,7 +33,7 @@ results map onto the real acquisition: "P along beam" ≡ polar axis **c ∥ z**
 | M2a | DFT convergence + ferroelectric double-well | Blythe | E converged <1 meV/atom; tetragonal lower; c/a right | ☐ HPC |
 | M2b | benchmark ELNES vs TiO₂/SrTiO₃ | Blythe | onset+peaks match to ~1–2 eV; locks OTFG + final-state | ☐ HPC |
 | M3 | **cubic null test** | Blythe | q∥z spectrum == q⊥ spectrum (must, by symmetry) | ☐ HPC |
-| M4 | tetragonal dichroism, all edges | Blythe | nonzero symmetry-consistent Δ(E); tet_Pz q⊥ == tet_Px q∥ | ☐ HPC |
+| M4 | tetragonal dichroism, all edges | Blythe | nonzero symmetry-consistent Δ(E); tet_Pz == tet_Px paired in the CRYSTAL frame | ☐ HPC |
 | M5 | calibration: Δ vs \|P\| (scan series) | Blythe+local | monotonic Δ-metric vs δ_Ti | ☐ HPC |
 | M6 | detectability (analytic magic-angle model) | local | surviving-dichroism vs β, SNR, aperture | ✅ **model validated** |
 | M6b | dynamical forward sim (abtem multislice EELS) | local | tet_Pz vs tet_Px map/qEELS vs thickness; thin-limit = M6 | ☐ abtem |

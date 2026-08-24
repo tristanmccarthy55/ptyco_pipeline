@@ -11,11 +11,16 @@ Three jobs:
 
 The geometry model (M6) is validated HERE on synthetic spectra (`--selftest`): the surviving
 anisotropy must cross zero at the textbook magic angle ~3.97*theta_E, so the physics is
-checked before any real spectrum exists. Real OptaDOS spectra drop in as <seed>.qc.*.dat /
-<seed>.qperp.*.dat pulled back from Blythe.
+checked before any real spectrum exists. Real OptaDOS spectra drop in as
+<seed>.qc_core_edge.dat / <seed>.qperp_core_edge.dat, pulled back from Blythe into
+eels/runs/ (per-run subdirectories are searched too).
+
+NB the .odi files set a LAB-frame q, so for a cell whose polar axis is not along the beam
+the two files' crystal-frame meanings are exchanged -- see q_is_swapped().
 
     ~/hyperspy-bundle/bin/python analyze_elnes.py --selftest
     ~/hyperspy-bundle/bin/python analyze_elnes.py --seed tet_Pz_Oap --edge O_K
+    ~/hyperspy-bundle/bin/python analyze_elnes.py --compare tet_Pz_Oap tet_Px_Oap
 """
 from __future__ import annotations
 
@@ -113,8 +118,9 @@ def dichroism(e: np.ndarray, s_par: np.ndarray, s_perp: np.ndarray) -> np.ndarra
 
 
 def dichroism_metric(e: np.ndarray, delta: np.ndarray, window: tuple | None = None) -> float:
-    """Scalar size of the dichroism: integral |Delta| dE over an (optional) energy window,
-    normalised by the integrated edge so it reads as a fractional anisotropy."""
+    """Unnormalised scalar size of the dichroism: integral |Delta| dE over an (optional)
+    energy window. For the FRACTIONAL metrics quoted in RESULTS.md (max|D|/max S and
+    int|D|/int S) use dichroism_fractions(), which divides by the edge itself."""
     m = np.ones_like(e, bool) if window is None else (e >= window[0]) & (e <= window[1])
     return float(_trapz(np.abs(delta[m]), e[m]))
 
@@ -178,19 +184,141 @@ def selftest() -> None:
 
 
 # ---------------------------------------------------------------- real-data driver
-def analyze_seed(seed: str, edge: str) -> None:
-    qc = sorted(glob.glob(os.path.join(C.OUT_DIR, "..", "runs", f"{seed}.qc.*core*.dat")))
-    qp = sorted(glob.glob(os.path.join(C.OUT_DIR, "..", "runs", f"{seed}.qperp.*core*.dat")))
-    if not qc or not qp:
-        print(f"[no OptaDOS output yet for {seed}] pull <seed>.qc.*/<seed>.qperp.* from Blythe "
-              f"into eels/runs/. Running --selftest instead so the pipeline is validated.")
+def _runs_dir() -> str:
+    return os.path.join(os.path.dirname(os.path.abspath(__file__)), "runs")
+
+
+def find_core_dat(seed: str, qtag: str) -> str | None:
+    """@brief Locate an OptaDOS core-loss .dat for (seed, qtag) under eels/runs/.
+
+    run_coreloss.slurm writes `<seed>.qc_core_edge.dat` / `<seed>.qperp_core_edge.dat` INSIDE a
+    per-run subdirectory (runs/tetPz_Oap/...), so both levels are searched. Note the underscore:
+    an earlier pattern of `<seed>.qc.*core*.dat` could never match `<seed>.qc_core_edge.dat`.
+    Also accepts the hand-extracted `.exc.txt` form.
+    """
+    pats = [f"{seed}.{qtag}*core*.dat", f"{seed}.{qtag}*core*.exc.txt"]
+    hits = sorted(h for p in pats
+                  for h in glob.glob(os.path.join(_runs_dir(), p))
+                  + glob.glob(os.path.join(_runs_dir(), "*", p)))
+    return hits[0] if hits else None
+
+
+def _load_edge(path: str) -> tuple[np.ndarray, np.ndarray]:
+    """Excited-atom (:exc) broadened ELNES from either an OptaDOS multi-block `_core_edge.dat`
+    or an already-extracted 3-column `.exc.txt`. Never sums the per-atom blocks."""
+    try:
+        return load_optados_core(path)
+    except (ValueError, IndexError):
+        d = np.loadtxt(path)
+        return d[:, 0], d[:, 2]
+
+
+def cell_of(seed: str):
+    """`tet_Px_Oap` -> the config.CELLS entry for `tet_Px` (excited-site suffix stripped).
+    Returns None for the scan_* ladder, which is not in CELLS and is uniformly c||z."""
+    for suffix in ("_Oap", "_Oeq", "_Ti", "_Pb", "_O"):
+        if seed.endswith(suffix):
+            seed = seed[: -len(suffix)]
+            break
+    return C.CELLS.get(seed)
+
+
+def q_is_swapped(seed: str) -> bool:
+    """@brief Does this cell's crystal frame invert the meaning of the two .odi files?
+
+    The .odi files set a LAB-frame q: `coreloss_qc.odi` is `core_qdir 0 0 1` (along the beam,
+    = C.Q_BEAM) and `coreloss_qperp.odi` is `1 0 0` (= C.Q_PERP). For a cell whose polar axis
+    is c||z -- tet_Pz, cubic, the scan_* ladder -- those coincide with q||c and q-perp-c. For
+    tet_Px, whose c lies along x, THE TWO ROLES ARE EXCHANGED: its `.qc` file is q-perp-c and
+    its `.qperp` file is q||c.
+
+    This matters for the M4 rotational-invariance cross-check, whose correct pairing is
+        tet_Pz .qc    (q||c)      ==  tet_Px .qperp (q||c)
+        tet_Pz .qperp (q-perp-c)  ==  tet_Px .qc    (q-perp-c)
+    Pairing by filename instead compares a sigma* spectrum against a pi* one and reads as a
+    catastrophic failure of a calculation that is in fact correct.
+
+    `real` (polar_axis "off") is deliberately NOT swapped: its polar axis is tilted, so the
+    physically meaningful split is the lab one, along-beam versus in-plane.
+    """
+    spec = cell_of(seed)
+    return bool(spec and spec.polar_axis == "x")
+
+
+def crystal_frame_spectra(seed: str, swap: bool | None = None):
+    """(energy, S_par_to_c, S_perp_to_c) for a seed, with the lab->crystal q mapping applied.
+    `swap=None` derives it from config.CELLS via q_is_swapped()."""
+    p_qc, p_qp = find_core_dat(seed, "qc"), find_core_dat(seed, "qperp")
+    if not p_qc or not p_qp:
+        return None
+    e, s_qc = _load_edge(p_qc)
+    e2, s_qp = _load_edge(p_qp)
+    if len(e2) != len(e) or not np.allclose(e2, e):
+        s_qp = np.interp(e, e2, s_qp)                 # same SCF, but do not assume one grid
+    if q_is_swapped(seed) if swap is None else swap:
+        s_qc, s_qp = s_qp, s_qc
+    return e, s_qc, s_qp
+
+
+def dichroism_fractions(e, s_par, s_perp, window=None) -> dict:
+    """@brief The two fractional metrics quoted for M4: max|Delta|/max S and int|Delta|/int S.
+
+    S is the MEAN of the two orientations, so the fraction does not depend on which spectrum
+    is nominated as parallel. `dichroism_metric` returns the UNnormalised int|Delta| dE.
+    """
+    m = np.ones_like(e, bool) if window is None else (e >= window[0]) & (e <= window[1])
+    d = np.abs(np.asarray(s_par) - np.asarray(s_perp))[m]
+    s = (0.5 * (np.asarray(s_par) + np.asarray(s_perp)))[m]
+    return {"peak": float(d.max() / s.max()),
+            "integral": float(_trapz(d, e[m]) / _trapz(s, e[m]))}
+
+
+def analyze_seed(seed: str, edge: str, swap: bool | None = None) -> None:
+    got = crystal_frame_spectra(seed, swap=swap)
+    if got is None:
+        print(f"[no OptaDOS output yet for {seed}] pull <seed>.qc_core_edge.dat / "
+              f"<seed>.qperp_core_edge.dat from Blythe into eels/runs/. "
+              f"Running --selftest instead so the pipeline is validated.")
         return selftest()
-    e, s_par = load_spectrum(qc[0])
-    _, s_perp = load_spectrum(qp[0])
-    d = dichroism(e, s_par, s_perp)
+    e, s_par, s_perp = got
     win = (EDGE_ONSET_eV[edge] - 2, EDGE_ONSET_eV[edge] + 30)
-    print(f"{seed} ({edge}): intrinsic dichroism metric = {dichroism_metric(e, d, win):.4g}")
+    fr = dichroism_fractions(e, s_par, s_perp, win)
+    sw = q_is_swapped(seed) if swap is None else swap
+    print(f"{seed} ({edge}){'  [q axes swapped: c||x]' if sw else ''}")
+    print(f"  max|D|/max S = {fr['peak']:.1%}   int|D|/int S = {fr['integral']:.1%}")
     geometry_report(edge)
+
+
+def compare_seeds(seed_a: str, seed_b: str, edge: str) -> None:
+    """@brief M4 rotational-invariance cross-check: two cells must agree in the CRYSTAL frame.
+
+    tet_Pz and tet_Px are the same crystal in two orientations, so once each seed's lab q is
+    mapped back onto its own c axis (see q_is_swapped) their q||c spectra must coincide, and
+    likewise their q-perp-c spectra. The residual is quoted on the same scale as the M4
+    dichroism, so it is directly comparable with the M3 cubic null test (0.02%).
+    """
+    ga, gb = crystal_frame_spectra(seed_a), crystal_frame_spectra(seed_b)
+    missing = [s for s, g in ((seed_a, ga), (seed_b, gb)) if g is None]
+    if missing:
+        print(f"[invariance check] no OptaDOS output yet for: {', '.join(missing)}")
+        return
+    e, a_par, a_perp = ga
+    eb, b_par, b_perp = gb
+    if len(eb) != len(e) or not np.allclose(eb, e):
+        b_par, b_perp = np.interp(e, eb, b_par), np.interp(e, eb, b_perp)
+    win = (EDGE_ONSET_eV[edge] - 2, EDGE_ONSET_eV[edge] + 30)
+    print(f"== M4 rotational invariance: {seed_a} vs {seed_b} ({edge}) ==")
+    print(f"   pairing is crystal-frame; swapped: {seed_a}={q_is_swapped(seed_a)}, "
+          f"{seed_b}={q_is_swapped(seed_b)}")
+    worst = 0.0
+    for lab, x, y in (("q||c    ", a_par, b_par), ("q-perp-c", a_perp, b_perp)):
+        fr = dichroism_fractions(e, x, y, win)
+        worst = max(worst, fr["peak"])
+        print(f"   {lab}  residual max|D|/max S = {fr['peak']:.2%}   "
+              f"int|D|/int S = {fr['integral']:.2%}")
+    verdict = "PASS" if worst < 0.02 else ("MARGINAL" if worst < 0.05 else "FAIL")
+    print(f"   -> {verdict} (M3 cubic null test sets the numerical floor at ~0.02%; a residual "
+          f"comparable to the 78% dichroism means the q axes were paired by filename)")
 
 
 def main() -> None:
@@ -198,11 +326,21 @@ def main() -> None:
     ap.add_argument("--selftest", action="store_true", help="validate the geometry model now")
     ap.add_argument("--seed", help="OptaDOS seed, e.g. tet_Pz_Oap")
     ap.add_argument("--edge", default="O_K", choices=list(EDGE_ONSET_eV))
+    ap.add_argument("--compare", nargs=2, metavar=("SEED_A", "SEED_B"),
+                    help="M4 rotational-invariance cross-check, e.g. "
+                         "--compare tet_Pz_Oap tet_Px_Oap")
+    g = ap.add_mutually_exclusive_group()
+    g.add_argument("--swap-q", dest="swap", action="store_true", default=None,
+                   help="force the lab->crystal q swap (default: derived from config.CELLS)")
+    g.add_argument("--no-swap-q", dest="swap", action="store_false",
+                   help="force NO q swap")
     args = ap.parse_args()
-    if args.selftest or not args.seed:
+    if args.compare:
+        compare_seeds(args.compare[0], args.compare[1], args.edge)
+    elif args.selftest or not args.seed:
         selftest()
     else:
-        analyze_seed(args.seed, args.edge)
+        analyze_seed(args.seed, args.edge, swap=args.swap)
 
 
 if __name__ == "__main__":

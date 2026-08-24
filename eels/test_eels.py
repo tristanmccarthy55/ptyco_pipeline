@@ -175,6 +175,55 @@ def test_templates_present():
     assert not missing, f"missing templates: {missing}"
 
 
+def test_q_swap_by_polar_axis():
+    """The .odi files carry a LAB-frame q, so a cell with c||x has the two files' crystal-frame
+    meanings exchanged. Getting this wrong turns the M4 invariance check into a false failure."""
+    assert A.q_is_swapped("tet_Px_Oap"), "tet_Px has c||x -> its .qc file is q-perp-c"
+    assert not A.q_is_swapped("tet_Pz_Oap"), "tet_Pz has c||z -> .qc really is q||c"
+    assert not A.q_is_swapped("tet_Pz_Oeq"), "excited site must not change the q mapping"
+    assert not A.q_is_swapped("cubic_Ti"), "cubic is isotropic; no swap"
+    assert not A.q_is_swapped("scan_0.50_Oap"), "the scan ladder is uniformly c||z"
+    assert not A.q_is_swapped("real_Oap"), "tilted P: the meaningful split stays the lab one"
+    assert A.cell_of("tet_Px_Oeq").name == "tet_Px", "site suffix must be stripped"
+
+
+def test_core_dat_glob_matches_slurm_naming():
+    """run_coreloss.slurm writes `<seed>.qc_core_edge.dat` into a per-run subdirectory. The
+    finder must match that underscore and descend one level (an earlier `<seed>.qc.*core*.dat`
+    pattern could match neither)."""
+    import shutil
+    runs = os.path.join(HERE, "runs")
+    d = os.path.join(runs, "_pytest_tmp")
+    made_runs = not os.path.isdir(runs)
+    os.makedirs(d, exist_ok=True)
+    try:
+        for tag in ("qc", "qperp"):
+            with open(os.path.join(d, f"zz_probe.{tag}_core_edge.dat"), "w") as fh:
+                fh.write("# O 1 K1 O:exc\n530.0 1.0 1.0\n531.0 2.0 2.0\n")
+        assert A.find_core_dat("zz_probe", "qc"), "must find <seed>.qc_core_edge.dat in runs/*/"
+        assert A.find_core_dat("zz_probe", "qperp")
+        assert A.find_core_dat("zz_absent", "qc") is None
+    finally:
+        shutil.rmtree(d, ignore_errors=True)
+        if made_runs:
+            try: os.rmdir(runs)
+            except OSError: pass
+
+
+def test_dichroism_fractions_normalised():
+    """dichroism_fractions returns FRACTIONS (unlike dichroism_metric, which is unnormalised),
+    is symmetric in its two arguments, and reads zero for identical spectra."""
+    e = np.linspace(525.0, 575.0, 400)
+    base = np.exp(-0.5 * ((e - 535.0) / 3.0) ** 2)
+    same = A.dichroism_fractions(e, base, base)
+    assert same["peak"] == 0.0 and same["integral"] == 0.0, "null test must read exactly zero"
+    other = base + 0.5 * np.exp(-0.5 * ((e - 545.0) / 3.0) ** 2)
+    f1 = A.dichroism_fractions(e, base, other)
+    f2 = A.dichroism_fractions(e, other, base)
+    assert abs(f1["peak"] - f2["peak"]) < 1e-12, "must not depend on argument order"
+    assert 0.0 < f1["peak"] < 2.0 and 0.0 < f1["integral"] < 2.0, "must read as a fraction"
+
+
 # ---------------------------------------------------------------- runner
 def _run():
     tests = sorted(k for k, v in globals().items() if k.startswith("test_") and callable(v))

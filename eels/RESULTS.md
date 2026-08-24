@@ -146,7 +146,8 @@ imprints strongly on the O-K edge** — far above any detectability floor.
 σ/π anisotropy**, which the ferroelectric off-centering modulates. **M5** (dichroism/spectrum vs
 displacement `s`) isolates the displacement-specific part (s=0 backbone baseline → s=1 polar);
 also needed for the full O-K: multiplicity-weight 1×apical + 2×equatorial (`tet_Pz_Oeq`), and the
-`tet_Pz` q⊥ = `tet_Px` q∥ rotational-invariance cross-check.
+`tet_Pz` vs `tet_Px` rotational-invariance cross-check (pair in the crystal frame:
+`tet_Px` has c∥x, so its `.qperp` output is the q∥c spectrum).
 
 *Runtime note:* PbTiO₃ core-hole SCF ~40–45 min (32 cores); OptaDOS core-loss ~75–90 min/pass
 (SERIAL) because it recomputes every atom/edge — the M5 bottleneck (see below).
@@ -177,7 +178,8 @@ overlay, fig3 decomposition/scan; SLIDE_NOTES.md.
 
 ## M4 cross-checks + M6 — pending
 
-tet_Px (rotational-invariance q x-check), tet_Pz_Oeq (full O-K = 1×apical + 2×equatorial), then
+tet_Px (rotational-invariance x-check, `analyze_elnes.py --compare`), tet_Pz_Oeq (full O-K =
+1×apical + 2×equatorial), then
 M6: fold the intrinsic dichroism through the 300 keV convergence/collection geometry (magic angle
 ≈ 4·θ_E ≈ 4.3 mrad; the 100 mrad ptychography probe would average it — a small EELS aperture is
 needed) for the measurable detectability number.

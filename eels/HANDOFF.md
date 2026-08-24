@@ -44,8 +44,11 @@ The broadened spectrum is column 3 (col 2 = raw). OptaDOS is **serial and slow**
 `.elnes_bin` when only OptaDOS needs re-running.
 
 ## Left to do (yours to pick up)
-1. **M4 cross-checks** — `tet_Px_Oap` (rotational invariance: `tet_Px` q∥c must equal `tet_Pz`
-   q⊥c) and `tet_Pz_Oeq` (equatorial O → full O-K = 1×apical + 2×equatorial). Submitted with the
+1. **M4 cross-checks** — `tet_Px_Oap` (rotational invariance: pair the spectra in the
+   **crystal** frame, `tet_Pz` q∥c == `tet_Px` q∥c and q⊥c == q⊥c. The `.odi` files set a
+   LAB q, so for `tet_Px` (c∥x) the `.qperp` file IS the q∥c one — pairing by filename
+   compares σ* against π* and reads as a total failure. `analyze_elnes.py --compare
+   tet_Pz_Oap tet_Px_Oap` does the mapping for you) and `tet_Pz_Oeq` (equatorial O → full O-K = 1×apical + 2×equatorial). Submitted with the
    M5 batch — **check status** (`squeue -u $USER`; `ls runs/tetPx_OK runs/tetPz_Oeq`) and resubmit
    if not COMPLETED. Cells already in `structures/corehole/`.
 2. **M6 detectability** — fold the intrinsic dichroism through the 300 keV collection geometry

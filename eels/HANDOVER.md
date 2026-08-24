@@ -148,7 +148,8 @@ For the **anisotropy** (M4) add `core_geom:polarized` + `core_qdir`:
 - `coreloss.odi` — polycrystalline (isotropic) → the M2b benchmark spectrum.
 - `coreloss_qc.odi` — `core_qdir 0 0 1` = q∥c = **P along beam**.
 - `coreloss_qperp.odi` — `core_qdir 1 0 0` = q⊥c. **Dichroism = spectrum(qc) − spectrum(qperp).**
-  (For `tet_Px` the axes swap → use `1 0 0` for ∥, `0 0 1` for ⊥.)
+  (For `tet_Px` the axes swap: c∥x, so `1 0 0` is the ∥ direction and `0 0 1` the ⊥ one.
+  Submit BOTH passes regardless and let `analyze_elnes.q_is_swapped()` do the mapping.)
 
 Absolute edge onset (optional, for comparing to experiment) = the Mizoguchi chemical shift from
 a separate no-hole `singlepoint` + `optados/tools/miz_chemical_shift`. **Not needed** for the
@@ -222,7 +223,13 @@ one CASTEP SCF each, then OptaDOS with qc and qperp:
 ( cd runs/tetPz_Oap && sbatch -p compute --parsable \
   --export=ALL,SEED=tet_Pz_Oap,ODI2=coreloss_qperp.odi ../../run_coreloss.slurm )
 ```
-Cross-check: `tet_Pz` q⊥ spectrum must equal `tet_Px` q∥ spectrum (rotational invariance).
+Cross-check (rotational invariance): the two cells are the same crystal in two orientations,
+so they must agree **in the crystal frame** — `tet_Pz` q∥c == `tet_Px` q∥c, and likewise for
+q⊥c. Because the `.odi` files carry a LAB-frame q and `tet_Px` has c∥x, its `.qperp` output is
+the q∥c spectrum. Pair by axis, never by filename:
+```bash
+$SHARE/phucrh/envs/abtem/bin/python analyze_elnes.py --compare tet_Pz_Oap tet_Px_Oap
+```
 
 **Analysis (pull the `.dat` back to the Mac, or run on Blythe):**
 ```bash
@@ -278,9 +285,10 @@ measured". Dipole limit: ELNES sees the *magnitude* of along-beam P, **not its s
    textbook rutile O-K; this locks the recipe. Repeat for Ti-L / SrTiO₃ if desired.
 2. ~~Capture Pb OTFG~~ ✅ done (Pb wired in → PbTiO₃ core-hole cells turnkey). Sr still TODO
    (only needed for an SrTiO₃ core hole).
-3. **M3 null test** (cubic q∥ = q⊥) — the essential artifact check before trusting M4.
+3. **M3 null test** (cubic q∥ = q⊥) — the essential artifact check before trusting M4; it
+   also sets the numerical floor (0.02%) against which the M4 invariance residual is read.
 4. **M4 dichroism** on `tet_Pz` (O-K primary; Ti-L for anisotropy only; Pb exploratory) + the
-   `tet_Pz` q⊥ = `tet_Px` q∥ rotational-invariance cross-check.
+   `tet_Pz` vs `tet_Px` rotational-invariance cross-check (crystal-frame pairing, see §5).
 5. **M5 calibration** across the `scan_*` ladder; **M6** maps it onto the 300 keV collection
    geometry for the detectability answer.
 6. **M6b (optional, needs gpaw):** dynamical forward model — install gpaw into the abtem env
