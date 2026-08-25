@@ -46,7 +46,7 @@ across `report.json` is 1e-11, and no non-finite value reaches any export).
 ```bash
 python3 -m venv venv && . venv/bin/activate
 pip install -r atomfind/requirements.txt
-tar xzf atomfind_data_v1.tar.gz -C atomfind/data/
+tar xzf atomfind_data_v1.tar.gz --strip-components=1 -C atomfind/data/
 
 python atomfind/test_atomfind.py                      # ~1 s, no data needed
 

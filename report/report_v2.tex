@@ -315,7 +315,8 @@ ELNES dichroism
 \end{equation}
 which by reciprocity is the change in the measured edge when the polarisation rotates from along
 the beam to in-plane. The O~K edge was taken as the primary observable, being an established probe of ferroelectric
-off-centring \citep{Bugnet2016}, while Ti~L$_{2,3}$ was treated for anisotropy
+off-centring in BaTiO$_3$ \citep{Bugnet2016} and in PTO/STO superlattices at the unit-cell
+scale \citep{TorresPardo2011}, while Ti~L$_{2,3}$ was treated for anisotropy
 trends only, its $2p$ multiplet structure not being captured by single-particle DFT
 \citep{Mizoguchi2009}. Calculations ran on the Warwick Blythe cluster, each core-hole SCF
 requiring $40$--$45$\,min on $32$ cores and each OptaDOS pass $75$--$90$\,min.
@@ -358,24 +359,26 @@ which is why a method that models the overlap can outperform one that does not.
 \label{sec:bench}
 
 \begin{table}[t]
-  \centering \small
+  \centering \footnotesize
+  \setlength{\tabcolsep}{4pt}
   \begin{tabular}{@{}lccccc@{}}
     \toprule
     & \multicolumn{3}{c}{recall (\%)} & \multicolumn{2}{c}{oxygen split (\%)} \\
     \cmidrule(lr){2-4}\cmidrule(lr){5-6}
     method & Pb & Ti & O & isolated & overlapped \\
     \midrule
-    3-D peak-pick, raw            & 93 & 88 & 72 & 91 & 26 \\
-    RL deconv.\ $+$ peak-pick     & 93 & 87 & 58 & 79 & \phantom{0}9 \\
-    MEM deconv.\ $+$ peak-pick    & 93 & 89 & 59 & 79 & 13 \\
+    3-D peaks, raw                & 93 & 88 & 72 & 91 & 26 \\
+    RL deconv.\ $+$ peaks        & 93 & 87 & 58 & 79 & \phantom{0}9 \\
+    MEM deconv.\ $+$ peaks       & 93 & 89 & 59 & 79 & 13 \\
     1-D per-column deconv.        & 91 & 65 & 49 & 62 & 20 \\
     3-D model fit                 & 88 & 89 & 89 & 92 & 82 \\
     \quad unconstrained only      & 88 & 89 & 86 & 92 & 71 \\
-    \quad bulk, $z=10$--$56$\,\AA & 95.6 & 96.4 & 95.5 & --- & --- \\
+    \quad bulk band            & 95.6 & 96.4 & 95.5 & --- & --- \\
     \bottomrule
   \end{tabular}
   \caption{Recovery of each sublattice, whole field unless stated, on the same reconstruction
-    with the same measured kernel. Isolated oxygen occupies its own column; overlapped oxygen
+    with the same measured kernel. The bulk band is $z=10$--$56$\,\AA. Isolated oxygen
+    occupies its own column; overlapped oxygen
     shares a column with titanium $1.95$\,\AA{} away. Precision is $0.97$ for the model fit
     ($0.98$ unconstrained) against $0.84$--$0.99$ for the baselines. Only the model fit returns
     species labels and per-atom uncertainties.}
@@ -429,11 +432,10 @@ calibrated error bar.
 \end{figure*}
 
 Figure~\ref{fig:uq}(a) quantifies why a per-peak bound is inadequate here. The variance
-inflation factor of the joint fit is $1.04$ at the $3.9$\,\AA{} heavy-atom spacing, where atoms
-are effectively independent, but $2.02$ in depth and $2.28$ in amplitude at the $1.95$\,\AA{}
-Ti--O spacing, so that a per-peak bound understates $\sigma_z$ by $\approx1.4\times$ for every
-apical oxygen. Since $85\%$ of atoms have a neighbour within $2.5$\,\AA, the per-peak form is
-optimistic almost everywhere, and inverting the full Fisher matrix restores the inflation per
+inflation of the joint fit is negligible at the $3.9$\,\AA{} heavy-atom spacing but reaches
+$2.02$ in depth at the $1.95$\,\AA{} Ti--O separation, so a per-peak bound understates
+$\sigma_z$ by $\approx1.4\times$ for every apical oxygen, and most atoms in the field have such a
+neighbour (Appendix~\ref{app:uq}). Inverting the full Fisher matrix restores the inflation per
 atom without a tuned constant.
 
 The raw model $\sigma$ treated as Gaussian is nonetheless badly miscalibrated on near-noiseless
@@ -611,20 +613,15 @@ strongly dichroic, at $\max|\Delta|/\max S = 78.2\%$ and $\int|\Delta|/\int S = 
 origin is a $\sigma/\pi$ anisotropy: with $\mathbf{q}\perp c$ the edge shows a sharp $\pi^*$ peak
 $\approx8.5$\,eV above onset from O~$2p_{x,y}$, whereas with $\mathbf{q}\parallel c$ it shows
 $\sigma^*$ features at $\approx11$ and $18.5$\,eV from the O~$2p_z$ states directed along the
-Ti--O--Ti chain. The excited site here is the apical oxygen, which lies on that chain parallel
-to the polar axis. The edge of the cell as a whole is the multiplicity-weighted sum of one
-apical and two equatorial oxygen, and the equatorial site behaves very differently: its own
+Ti--O--Ti chain. The excited site here is the apical oxygen, which lies on that chain
+parallel to the polar axis. The edge of the cell as a whole is the multiplicity-weighted sum of
+one apical and two equatorial oxygen, and the equatorial site behaves very differently: its own
 chain lies in-plane, and it is only $22\%$ dichroic. Carrying twice the multiplicity, it brings
-the weighted full O~K edge to $35.8\%$ rather than $78\%$. The two equatorial atoms are equivalent
-for $\mathbf{q}\parallel c$ but not for $\mathbf{q}\perp c$, so the second orientation was computed
-explicitly as a third momentum-transfer direction rather than estimated. Combining two sites also
-requires the core-level shift between them, which the spectra themselves do not carry; because
-both core-hole calculations share a supercell and a ground state, the difference of their
-total energies supplies it directly as $0.171$\,eV, leaving the weighted edge with no free
-parameter. The rotational-invariance test passes
-essentially exactly: mapped into the crystal frame the $c\parallel z$ and $c\parallel x$ cells
-agree to $0.02$--$0.03\%$, the floor set by the cubic null test, so the anisotropy is physical
-rather than an artefact of the momentum-transfer machinery.
+the weighted full O~K edge to $35.8\%$ rather than $78\%$, with no free parameter left in the
+combination (Appendix~\ref{app:geom}). The rotational-invariance test passes essentially
+exactly: mapped into the crystal frame the $c\parallel z$ and $c\parallel x$ cells agree to
+$0.02$--$0.03\%$, the floor set by the cubic null test, so the anisotropy is physical rather
+than an artefact of the momentum-transfer machinery.
 
 \begin{figure}[!htb]
   \centering
@@ -658,31 +655,19 @@ naively this appears to condemn a large collection angle, and so to condemn the 
 experiment, in which one pixelated detector carries a central hole and the spectrometer therefore
 collects out to $\beta\approx100$\,mrad.
 
-That calculation is nevertheless the textbook one, which assumes parallel illumination, and it is
-the only geometry for which a magic angle is defined. A focused probe is not that geometry. The
-momentum transfer is the vector difference of the incident and scattered transverse angles, so a
-convergence semi-angle $\alpha$ spreads $\mathbf{q}$ on its own, irrespective of how small the
-spectrometer aperture is. Averaging the dipole weights over both cones changes the picture. At
-$\beta=1$\,mrad the surviving fraction falls from $0.62$ under parallel illumination to $0.29$ at
-$\alpha=2$\,mrad and to $-0.04$ at $\alpha=5$\,mrad. Closing the collection aperture is therefore
-not by itself a remedy, and recovering the \emph{full} anisotropy would require illumination as
-parallel as $\theta_E=1.09$\,mrad, which is incompatible with a focused probe.
-
-The consequence for a combined instrument is more favourable than that reads, because the
-anisotropy does not vanish beyond the magic angle. It inverts and then saturates, approaching
-about a third of its intrinsic value. At the $\alpha=100$\,mrad convergence that atomic-resolution
-ptychography requires, the surviving fraction is $-0.32$ to $-0.34$ for every collection angle
-between $1$ and $100$\,mrad. It is, in other words, flat: the spectrometer aperture is no longer a
-design variable, because the convergence already sets the averaging. Folding the measured
+That calculation is nevertheless the textbook one, which assumes parallel illumination and is
+the only geometry for which a magic angle is defined. A focused probe is not that geometry: the
+momentum transfer is a vector difference, so the convergence semi-angle spreads $\mathbf{q}$
+however small the spectrometer aperture is. Averaging over both cones
+(Appendix~\ref{app:geom}) shows that closing the collection aperture is not by itself a remedy,
+but also that the anisotropy does not vanish beyond the magic angle: it inverts and saturates
+near a third of its intrinsic value, and at $\alpha=100$\,mrad the surviving fraction is flat at
+$-0.32$ to $-0.34$ for every collection angle from $1$ to $100$\,mrad. Folding the measured
 weighted edge through this geometry, a domain with its polar axis along the beam differs from one
-with the axis in-plane by $12.1\%$ in the collected O~K edge, which needs $\approx1.2\times10^{3}$
-counts per channel for SNR $3$ rather than the $4.5\times10^{4}$ implied by a $2\%$ anisotropy.
-
-This is the quantitative case for a hollow detector. Placing the spectrometer entrance in the
-centre of the pixelated detector and reserving the outer annulus for imaging costs the
-spectroscopy nothing that a smaller aperture would recover, while collecting the entire
-bright-field disc gives it the maximum available signal. The hole radius may be chosen to suit
-the imaging.
+with the axis in-plane by $12.1\%$ in the collected O~K edge, needing
+$\approx1.2\times10^{3}$ counts per channel for SNR $3$. The spectrometer aperture is therefore
+not a design variable, and a hollow detector that gives the spectrometer the whole bright-field
+disc costs the spectroscopy nothing a smaller aperture would recover.
 
 Against this stand limits that no choice of aperture removes. The dipole ELNES is even in
 $\mathbf{q}$, so it measures the magnitude of the along-beam polarisation but not its sign. A
@@ -745,7 +730,8 @@ weakest where it matters most, since the larger Debye--Waller factor of oxygen b
 response under thermal scattering; in-situ vacancy-difference kernels would supply an in-crystal
 oxygen matched filter. The $5\%$ cage-composition tail of Sec.~\ref{sec:pol} is a detection rather than a
 localisation problem and requires a calibrated cage-completeness criterion, while learned
-denoising of the volume before fitting is a natural route below $10^{6}$\,e\,\AA$^{-2}$. The
+denoising of the volume before fitting \citep{Wu2026} is a natural route below
+$10^{6}$\,e\,\AA$^{-2}$. The
 weighted O~K edge is now free of adjustable parameters, so the remaining uncertainty in it is
 that of the underlying functional rather than of the analysis. Beyond that, a faithful vortex simulation would inject a per-atom $\sigma(E)$
 keyed to each oxygen's local polar-axis orientation. The clearest instrumental conclusion is that a
@@ -797,7 +783,10 @@ refinement, accelerates convergence of the non-convex objective.
            & supercell & $70.0\times70.0\times47.9$\,\AA \\
     \addlinespace
     Probe  & energy / $\alpha$ & $300$\,keV / $100$\,mrad \\
-           & defocus & $-20$\,\AA{} ($20$\,\AA{} overfocus) \\
+           & defocus $C_{10}$ & $-20$\,\AA{} ($20$\,\AA{} overfocus) \\
+           & higher aberrations & none ($C_{30}=C_{12}=0$) \\
+           & coherence & fully coherent; no source size or \\
+           &            & energy spread imposed \\
     \addlinespace
     Scan   & window / step & $20$\,\AA{} / $0.10$--$0.15$\,\AA \\
     \addlinespace
@@ -811,12 +800,26 @@ refinement, accelerates convergence of the non-convex objective.
            & regularisation & inter-layer off; $\beta_{\mathrm{LSQ}}=0.1$ \\
     \addlinespace
     DFT    & code / functional & CASTEP \citep{Clark2005} / PBE \\
+           & plane-wave cutoff & $800$\,eV (swept $600$--$900$) \\
+           & $k$-grid & $4\times4\times4$ Monkhorst--Pack, SCF \\
+           &          & and spectral \\
+           & empty bands & \texttt{nextra\_bands} $=100$ \\
            & core hole & full ($1s^1$/$2p^5$), charge $+1$ \\
            & supercell & $2\times2\times2$ (40 atoms) \\
-           & spectra & OptaDOS \citep{Morris2014}, $\hat{\mathbf{q}}$-resolved \\
+    \addlinespace
+    ELNES  & code / task & OptaDOS \citep{Morris2014}, core-loss \\
+           & $\hat{\mathbf{q}}$ directions & $\langle001\rangle$, $\langle100\rangle$, $\langle010\rangle$ \\
+           & DOS spacing & $0.01$\,eV, adaptive smearing $0.2$ \\
+           & broadening & Gaussian $1.0$\,eV (instrument), \\
+           &            & Lorentzian $0.5$\,eV (lifetime) \\
     \bottomrule
   \end{tabular}
-  \caption{Simulation, reconstruction and first-principles parameters.}
+  \caption{Simulation, reconstruction and first-principles parameters. The probe carries only
+    defocus: the simulated instrument is an ideal aberration-corrected one, and the illumination
+    is fully coherent, so the only incoherence in the data is thermal diffuse scattering from the
+    frozen-phonon average and Poisson counting noise. The mixed-state probe used in the dosed
+    reconstructions therefore absorbs thermal scattering rather than a modelled source
+    incoherence.}
   \label{tab:params}
 \end{table}
 
@@ -1034,8 +1037,11 @@ DFT staircase (\texttt{eels/build\_cells.py}, \texttt{run\_coreloss.slurm},
 \subsection{The nominated result}
 
 The result offered for independent reproduction is the localisation-with-uncertainty output of
-Sec.~\ref{sec:pol}. It is packaged as a standalone repository containing the localisation code
-alone, together with a checksummed archive of four inputs: the reconstructed phase volume as a
+Sec.~\ref{sec:pol}. The localisation code and its protocol are self-contained within the
+project repository,\footnote{\url{https://github.com/tristanmccarthy55/ptyco_pipeline}; the localisation
+package and its protocol are under \texttt{analysis/atomfind/}, with step-by-step instructions
+in \texttt{PEER.md}. The input archive is distributed alongside it, being too large to version
+with the code.} together with a checksummed archive of four inputs: the reconstructed phase volume as a
 $70\times404\times404$ complex array, the measured lead and titanium kernels, and the reference
 structure used for scoring, supplied both as deposited and pre-transformed into the beam frame.
 The simulation and reconstruction that generate the volume require GPU resources well beyond a
@@ -1044,7 +1050,8 @@ from scratch. The whole procedure is
 {\footnotesize\begin{verbatim}
 python3 -m venv venv && . venv/bin/activate
 pip install -r atomfind/requirements.txt
-tar xzf atomfind_data_v1.tar.gz -C atomfind/data/
+tar xzf atomfind_data_v1.tar.gz \
+    --strip-components=1 -C atomfind/data/
 python atomfind/run_atomfind.py \
        --preset NL70_coherent --out ./out
 python atomfind/polarisation.py --out ./out
@@ -1096,6 +1103,58 @@ $5\%$ have a cage of the wrong composition, for which the in-plane error rises t
 $0.45$\,\AA{} while the positional interval covers only $12\%$ of them. This second mode is a
 detection failure rather than a localisation failure, and is visible in the exported cage
 completeness and species confidence rather than in the coordinate error bars.
+
+% ===========================================================================
+\section{The weighted edge and the detection geometry}
+\label{app:geom}
+
+\subsection{Combining the two oxygen sites}
+
+The O~K edge of the cell is the multiplicity-weighted sum of one apical and two equatorial
+oxygen. The two equatorial atoms are related by the four-fold axis and are equivalent for
+$\mathbf{q}\parallel c$, but not for $\mathbf{q}\perp c$, so the second in-plane orientation was
+computed explicitly as a third momentum-transfer direction rather than proxied by a similar one.
+That distinction matters: proxying it by the $\mathbf{q}\parallel c$ spectrum gives $39.1\%$ and
+counting the first equatorial atom twice gives $46.4\%$, whereas the measured value is $37.1\%$,
+below both. Combining sites also requires the core-level shift between them, which the spectra
+do not carry, since OptaDOS writes each on a Fermi-referenced axis. Both core-hole calculations
+share a supercell and hence a ground state, so the difference of their total energies is the
+final-state shift directly, $0.171$\,eV, and displacing the equatorial edge by it moves the
+weighted result from $37.1\%$ to $35.8\%$. This is well inside the $\pm1$\,eV sensitivity sweep
+that previously stood as the systematic, so the weighted edge carries no free parameter.
+
+\subsection{Aperture averaging}
+% ===========================================================================
+
+That calculation is nevertheless the textbook one, which assumes parallel illumination, and it is
+the only geometry for which a magic angle is defined. A focused probe is not that geometry. The
+momentum transfer is the vector difference of the incident and scattered transverse angles, so a
+convergence semi-angle $\alpha$ spreads $\mathbf{q}$ on its own, irrespective of how small the
+spectrometer aperture is. Averaging the dipole weights over both cones changes the picture. At
+$\beta=1$\,mrad the surviving fraction falls from $0.62$ under parallel illumination to $0.29$ at
+$\alpha=2$\,mrad and to $-0.04$ at $\alpha=5$\,mrad. Closing the collection aperture is therefore
+not by itself a remedy, and recovering the \emph{full} anisotropy would require illumination as
+parallel as $\theta_E=1.09$\,mrad, which is incompatible with a focused probe.
+
+The consequence for a combined instrument is more favourable than that reads, because the
+anisotropy does not vanish beyond the magic angle. It inverts and then saturates, approaching
+about a third of its intrinsic value. At the $\alpha=100$\,mrad convergence that atomic-resolution
+ptychography requires, the surviving fraction is $-0.32$ to $-0.34$ for every collection angle
+between $1$ and $100$\,mrad. It is, in other words, flat: the spectrometer aperture is no longer a
+design variable, because the convergence already sets the averaging. Folding the measured
+weighted edge through this geometry, a domain with its polar axis along the beam differs from one
+with the axis in-plane by $12.1\%$ in the collected O~K edge, which needs $\approx1.2\times10^{3}$
+counts per channel for SNR $3$ rather than the $4.5\times10^{4}$ implied by a $2\%$ anisotropy.
+
+This is the quantitative case for a hollow detector. Placing the spectrometer entrance in the
+centre of the pixelated detector and reserving the outer annulus for imaging costs the
+spectroscopy nothing that a smaller aperture would recover, while collecting the entire
+bright-field disc gives it the maximum available signal. The hole radius may be chosen to suit
+the imaging.
+
+*The treatment here is kinematic and dipole-limited, and averages incoherently over incident
+directions. It carries neither channelling nor thickness dependence, both of which belong to a
+multislice core-loss simulation of the instrument and are left as further work.
 
 \begin{acknowledgments}
 The relaxed PbTiO$_3$/SrTiO$_3$ supercell was provided by collaborators and is used with their
