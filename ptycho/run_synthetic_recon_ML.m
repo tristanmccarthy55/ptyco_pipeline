@@ -92,15 +92,16 @@ else
 end
 fprintf('probe_change_start (per engine) = [%g %g]\n', Nst_probe(1), Nst_probe(2));
 
-% Fourier probe support: constrain the recovered probe to the aperture in reciprocal space.
-% OFF by default (a FIXED true probe needs no constraint). ESSENTIAL for BLIND retrieval
-% (PROBE_START set) — without it the probe update absorbs high-frequency aliasing and comes
-% out as a grid-artifact junk probe. PROBE_SUPPORT_FFT=1 enables it; PROBE_SUPPORT_RADIUS=
-% <frac 0-1> optionally adds a real-space support (fraction of the probe-window radius).
-psf_env = getenv('PROBE_SUPPORT_FFT'); probe_support_fft = ~isempty(psf_env) && str2double(psf_env)==1;
+% TEM aperture constraint (Zhen Chen): constrain the recovered probe to the aperture in Fourier
+% space, where the mask = abs(fft2(probe_initial)) thresholded (load_from_p). OFF by default (a
+% FIXED true probe needs no constraint). ESSENTIAL for BLIND retrieval (PROBE_START set) — without
+% it the probe update absorbs high-frequency aliasing into a junk probe. PROBE_SUPPORT_FFT=1 turns
+% it on. NOTE: this drives p.probe_support_tem — do NOT set eng.probe_support_fft to a scalar (it is
+% a MASK array; a scalar makes the engine crop_pad it to a single centre pixel and zero the probe).
+psf_env = getenv('PROBE_SUPPORT_FFT'); probe_support_tem = ~isempty(psf_env) && str2double(psf_env)==1;
 psr_env = getenv('PROBE_SUPPORT_RADIUS');
 if ~isempty(psr_env) && str2double(psr_env)>0; probe_support_radius = str2double(psr_env); else; probe_support_radius = []; end
-fprintf('probe_support_fft = %d ; probe_support_radius = %s\n', probe_support_fft, mat2str(probe_support_radius));
+fprintf('probe_support_tem = %d ; probe_support_radius = %s\n', probe_support_tem, mat2str(probe_support_radius));
 Npos_st                   = [inf, inf];     % positions are EXACT (from sim) -> fixed
 
 % --- released / variable probe for noisy, partially-coherent data (TDS + dose) ---
@@ -234,6 +235,10 @@ else
     p.   initial_iterate_object_file{1} = '';
 end
 p.   model_probe   = false;
+% TEM aperture constraint is a TOP-LEVEL p option: the solver checks par.p.probe_support_tem and
+% load_from_p builds the mask from abs(fft2(probe_initial)). eng.* is nested in p.engines{} and
+% would NOT be seen here, so set it on p directly (see the PROBE_SUPPORT_FFT env block above).
+p.   probe_support_tem = probe_support_tem;
 p.   model.probe_is_focused            = true;
 p.   model.probe_central_stop          = true;
 p.   model.probe_diameter              = 170e-6;
@@ -292,8 +297,8 @@ for ieng = 1:length(Niter)
     eng. apply_multimodal_update      = multimodal;
     eng. probe_backpropagate          = 0;
     eng. probe_support_radius         = probe_support_radius;
-    eng. probe_support_fft            = probe_support_fft;
-    eng. probe_support_tem            = false;
+    eng. probe_support_fft            = [];                   % MASK (built by the engine), never a scalar
+    eng. probe_support_tem            = probe_support_tem;    % TEM aperture constraint (mask from probe_initial)
 
     eng. beta_object = 1;
     eng. beta_probe  = 1;
