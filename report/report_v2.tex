@@ -55,11 +55,12 @@ an independent reconstruction. Propagated through the Ti--O$_6$ off-centring, th
 local polarisation with error bars. The in-plane component is recovered to a median
 $0.007$\,\AA{} and $0.9^\circ$, while the along-beam component is not determined, and that
 conclusion is reached without reference to ground truth. Core-hole DFT indicates the missing
-component remains spectroscopically accessible, the apical-oxygen O~K edge being $78\%$
-dichroic to the polar-axis orientation with a monotonic $19\%$ arising from the displacement
-itself, although weighted over both oxygen sites the full edge retains $36\%$ of that dichroism. Recovering
-it would nonetheless require a collection aperture $\lesssim2$\,mrad rather than the
-$100$\,mrad ptychography optics.
+component remains spectroscopically accessible. The apical-oxygen O~K edge is $78\%$ dichroic to
+the polar-axis orientation, and the multiplicity-weighted edge of the whole cell $35.8\%$, of
+which a monotonic $19\%$ change in the along-beam-probed spectrum belongs to the off-centring
+rather than to the tetragonal backbone. What limits the measurement is the probe convergence
+rather than the collection aperture, so a hollow detector loses nothing that a smaller aperture
+would recover.
 \end{abstract}
 
 \maketitle
@@ -67,9 +68,11 @@ $100$\,mrad ptychography optics.
 \section{Introduction}
 % ===========================================================================
 
-Ferroelectric oxide superlattices host polar textures such as vortices, skyrmions and
-labyrinths that have no counterpart in bulk ferroelectrics \citep{Yadav2016,Tang2015,Das2019,
-Junquera2023}. In PbTiO$_3$/SrTiO$_3$ (PTO/STO), competition between elastic, electrostatic and
+Ferroelectric oxide superlattices host polar textures with no counterpart in the bulk. Ordered
+arrays of vortex--antivortex pairs were first resolved in PbTiO$_3$/SrTiO$_3$ (PTO/STO)
+superlattices \citep{Yadav2016}, and room-temperature polar skyrmions were subsequently found in
+the same system \citep{Das2019}; the resulting family of topological polar phases is reviewed by
+\citet{Junquera2023}. In these superlattices, competition between elastic, electrostatic and
 gradient energies drives the local dipoles into rotational arrangements whose topology, rather
 than magnitude alone, is the property of interest. Establishing that topology requires the
 measurement of a vector field at atomic resolution. The standard tool is atomic-resolution STEM,
@@ -83,15 +86,17 @@ Different depths within one column then carry different, sometimes opposing, dip
 the image reports the average. The structure defining the texture is consequently the structure
 the measurement removes.
 
-Multislice electron ptychography (MEP) provides an alternative, reconstructing the specimen as a
-stack of slices and thereby achieving optical sectioning from a single orientation
-\citep{Gao2017,Chen2021,MaidenHumphryRodenburg2012}. Its lateral resolution is set by the
-illumination angle rather than by the lens \citep{Nellist1995,Jiang2018,Nguyen2024}, and it has
-been applied to dopant depths in bulk crystals \citep{Chen2021}, oxygen vacancy sites in
-nickelates \citep{Dong2024} and, with a few coupled small-angle projections, to sub-nanometre
-depth resolution \citep{Dong2025}. Atomic electron tomography offers quantified
-three-dimensional coordinates \citep{Yang2017,Yang2021,Xu2015} but requires a large tilt series,
-which is prohibitive for a beam-sensitive oxide.
+Multislice electron ptychography (MEP) provides an alternative. Replacing the single
+multiplicative projection with a stack of transmission slices \citep{MaidenHumphryRodenburg2012}
+allows the specimen to be sectioned optically from one orientation, as first demonstrated for
+electrons by \citet{Gao2017}. Because its lateral resolution is set by the illumination angle
+rather than by the lens \citep{Nellist1995}, the method has reached deep sub-\aa{}ngstr\"om
+resolution \citep{Jiang2018} and works even on uncorrected instruments \citep{Nguyen2024}. It
+has since been applied to dopant depths in bulk crystals \citep{Chen2021}, to oxygen vacancy
+sites in nickelates \citep{Dong2024}, and, by coupling a few small-angle projections, to
+sub-nanometre depth resolution \citep{Dong2025}. Atomic electron tomography offers quantified
+three-dimensional coordinates \citep{Yang2017} but requires a large tilt series, which is
+prohibitive for a beam-sensitive oxide.
 
 The difficulty lies in what follows the reconstruction. A single-orientation measurement is
 aperture-limited in depth, the lateral and axial resolutions scaling as $\lambda/2\alpha$ and
@@ -171,7 +176,7 @@ $\langle100\rangle$ direction, giving a $\approx70$\,\AA{} path.
 The simulation implements the forward operator $\mathcal{S}$ mapping the structure to the data a
 microscope would record. A convergent probe of semi-angle $\alpha=100$\,mrad at $300$\,keV
 ($\lambda=1.969$\,pm) was focused $20$\,\AA{} above the entrance surface. It was then propagated
-through the specimen by the multislice recursion \citep{CowleyMoodie1957,Kirkland2010}
+through the specimen by the multislice recursion \citep{CowleyMoodie1957}
 \begin{equation}
   \psi_{n+1} = \mathcal{P}_{\Delta z}\!\otimes\!\big[\,t_n(\mathbf{r})\,\psi_n(\mathbf{r})\,\big],
   \qquad t_n = \exp\!\big[\,i\,\sigma\, v_n(\mathbf{r})\,\big],
@@ -191,7 +196,7 @@ $n \sim \mathrm{Poisson}(N_e\tilde I)$, over $D=10^{4}$--$10^{10}$\,e\,\AA$^{-2}
 \subsection{Multislice ptychographic reconstruction}
 
 Reconstruction inverts $\mathcal{S}$ by iterative ptychography
-\citep{RodenburgFaulkner2004,Wakonig2020}, the single multiplicative projection being replaced
+\citep{RodenburgFaulkner2004}, the single multiplicative projection being replaced
 by a stack of $N_L$ transmission slices \citep{MaidenHumphryRodenburg2012}. Slices and probe
 were recovered jointly by minimising the negative log-likelihood of the shot-noise model,
 implemented as the variance-stabilised amplitude metric \citep{ThibaultGuizar2012} in the LSQ-ML
@@ -229,7 +234,7 @@ since an isolated oxygen or titanium does not reconstruct above the noise floor;
 shape belongs to the imaging system whereas the amplitude $\beta$ carries $Z$.
 
 Estimation proceeds in two stages. The support is selected by matching pursuit on the dictionary
-$\{K(\cdot-\mathbf{r})\}$ \citep{MallatZhang1993,Hogbom1974}, iteration being stopped at a
+$\{K(\cdot-\mathbf{r})\}$ \citep{MallatZhang1993}, iteration being stopped at a
 detection floor set relative to the local matched-filter noise rather than to an absolute phase
 value, so that the threshold transfers between reconstructions of differing amplitude. The
 support is then refined by block-coordinate descent, each atom being updated by Gauss--Newton
@@ -239,7 +244,7 @@ shape-based goodness-of-fit criterion rather than on amplitude, which preserves 
 well-formed responses. The procedure extends model-based fitting of a peak superposition
 \citep{DeBacker2016} to three dimensions with a measured kernel, applying to every atom of a
 dense lattice a depth-from-axial-response estimate established for isolated dopants
-\citep{Chen2021,Ishikawa2014}. Columns are then typed from their own fitted-amplitude
+\citep{Chen2021}. Columns are then typed from their own fitted-amplitude
 statistics, and sites predicted by a column's own periodicity but left empty by selection are
 re-examined at a reduced threshold, such lattice-constrained detections being flagged so that
 the constrained and unconstrained populations are reported separately. Thresholds, gates and
@@ -255,14 +260,13 @@ The model error has two terms, $\sigma^2=\sigma^2_{\mathrm{stat}}+\sigma^2_{\mat
 statistical term is the Cram\'er--Rao bound of the \emph{joint} estimation problem, obtained by
 assembling the Jacobian over all atoms in a subvolume and inverting the Fisher matrix once,
 rather than the per-peak bound used to predict single-dopant precision
-\citep{DeBacker2016,Chen2021}. On a dense sublattice the per-peak form is the bound obtained
+\citep{Chen2021}. On a dense sublattice the per-peak form is the bound obtained
 with all neighbours known exactly, and is therefore optimistic by the variance inflation factor
 of the overlapping templates. The systematic term $\sigma_{\mathrm{sys}}$ is the position spread
 induced by kernel mismatch, which requires no ground truth and so transfers to experimental
 data. Intervals were then obtained by split-conformal calibration
-\citep{Vovk2005,AngelopoulosBates2023} in the Mondrian (label-conditional) variant
-\citep{Vovk2003}, stratified by species, detection mode and depth band, so that coverage holds
-per stratum rather than only on average. The $95\%$ interval is the default in released
+\citep{Vovk2005} in its Mondrian, label-conditional variant, stratified by species, detection
+mode and depth band, so that coverage holds per stratum rather than only on average. The $95\%$ interval is the default in released
 coordinates, and the calibration table and per-stratum coverage are exported so that a dataset
 on which the calibration fails to transfer is identified rather than trusted silently. The
 derivation, the measured inflation factors and the coverage tables are given in
@@ -302,7 +306,7 @@ Equation~\eqref{eq:dipole} was evaluated with CASTEP \citep{Clark2005} using the
 method \citep{Gao2008}, in which the ionised atom carries an on-the-fly-generated
 pseudopotential with one fewer core electron and a neutralising background, within a
 $2\times2\times2$ supercell that dilutes the hole from its periodic images. The
-core-to-conduction matrix elements were contracted by OptaDOS \citep{Morris2014,Nicholls2012}
+core-to-conduction matrix elements were contracted by OptaDOS \citep{Morris2014}
 into the core-loss spectrum with $\hat{\mathbf{q}}$ set explicitly. The central quantity is the
 ELNES dichroism
 \begin{equation}
@@ -311,7 +315,7 @@ ELNES dichroism
 \end{equation}
 which by reciprocity is the change in the measured edge when the polarisation rotates from along
 the beam to in-plane. The O~K edge was taken as the primary observable, being an established probe of ferroelectric
-off-centring \citep{TorresPardo2011,Bugnet2016}, while Ti~L$_{2,3}$ was treated for anisotropy
+off-centring \citep{Bugnet2016}, while Ti~L$_{2,3}$ was treated for anisotropy
 trends only, its $2p$ multiplet structure not being captured by single-particle DFT
 \citep{Mizoguchi2009}. Calculations ran on the Warwick Blythe cluster, each core-hole SCF
 requiring $40$--$45$\,min on $32$ cores and each OptaDOS pass $75$--$90$\,min.
@@ -602,7 +606,8 @@ physical rather than numerical.
 \end{figure*}
 
 For the tetragonal cell with its polar axis along the beam, the apical-oxygen O~K edge is
-strongly dichroic, with $\max|\Delta|/\max S = 78\%$ and $\int|\Delta|/\int S=47\%$ (Fig.~\ref{fig:eels}). The
+strongly dichroic, at $\max|\Delta|/\max S = 78.2\%$ and $\int|\Delta|/\int S = 62.8\%$
+(Fig.~\ref{fig:eels}). The
 origin is a $\sigma/\pi$ anisotropy: with $\mathbf{q}\perp c$ the edge shows a sharp $\pi^*$ peak
 $\approx8.5$\,eV above onset from O~$2p_{x,y}$, whereas with $\mathbf{q}\parallel c$ it shows
 $\sigma^*$ features at $\approx11$ and $18.5$\,eV from the O~$2p_z$ states directed along the
@@ -727,18 +732,20 @@ against a $0.27$\,\AA{} signal. The along-beam component, by contrast, is not me
 because differencing two $0.3$\,\AA{} depth coordinates cannot resolve a $0.07$\,\AA{}
 displacement. The calibrated uncertainty establishes this without ground truth, which is the
 purpose of such machinery. First-principles core-hole DFT indicates that the missing component is
-spectroscopically accessible in principle, the apical-oxygen O~K edge being $78\%$ dichroic to
-the polar-axis orientation, of which a monotonic $19\%$ is the signature of the displacement
-rather than of the tetragonal backbone. Weighted over both oxygen sites the full edge retains
-$36\%$ of that dichroism. The dipole limit nevertheless forbids recovery of the sign, and the magic
-angle forbids use of the $100$\,mrad ptychography aperture for the purpose.
+spectroscopically accessible in principle. The apical-oxygen O~K edge is $78\%$ dichroic to the
+polar-axis orientation, and the multiplicity-weighted edge of the whole cell $35.8\%$, of which a
+monotonic $19\%$ change in the along-beam-probed spectrum is the signature of the displacement
+rather than of the tetragonal backbone. Two limits remain. The dipole term is even in
+$\mathbf{q}$ and so forbids recovery of the sign, and the anisotropy is averaged by the probe
+convergence rather than by the collection aperture, which cannot be undone by closing the
+spectrometer entrance and places the full effect out of reach of a strongly convergent probe.
 
 This leaves clear openings for further work. The assumption of one kernel for all species is
 weakest where it matters most, since the larger Debye--Waller factor of oxygen broadens its
 response under thermal scattering; in-situ vacancy-difference kernels would supply an in-crystal
 oxygen matched filter. The $5\%$ cage-composition tail of Sec.~\ref{sec:pol} is a detection rather than a
 localisation problem and requires a calibrated cage-completeness criterion, while learned
-denoising before fitting \citep{Wu2026} is a natural route below $10^{6}$\,e\,\AA$^{-2}$. The
+denoising of the volume before fitting is a natural route below $10^{6}$\,e\,\AA$^{-2}$. The
 weighted O~K edge is now free of adjustable parameters, so the remaining uncertainty in it is
 that of the underlying functional rather than of the analysis. Beyond that, a faithful vortex simulation would inject a per-atom $\sigma(E)$
 keyed to each oxygen's local polar-axis orientation. The clearest instrumental conclusion is that a
@@ -751,9 +758,8 @@ limit on such an experiment in this material is not the detector but the specime
 of the labyrinth are clustered about the in-plane direction, so the orientation contrast between
 neighbouring domains is of order $1\%$ rather than the $12\%$ available between the limiting
 orientations, and a zone axis presenting a wider spread of axes would serve far better. The open question is whether the two can be fused into a
-single three-dimensional vector polarisation measurement. Energy-filtered ptychography of the
-oxygen sublattice \citep{Dong2024} and momentum-selective EELS of these flux-closure structures
-\citep{Huang2026} both suggest routes.
+single three-dimensional vector polarisation measurement remains open; energy-filtered
+ptychography of the oxygen sublattice \citep{Dong2024} suggests one route.
 
 
 \clearpage
@@ -888,8 +894,8 @@ inverse of the diagonal block $\mathbf{F}_{ii}$. The two coincide only for an or
 in general $[\mathbf{F}^{-1}]_{ii}\ge[\mathbf{F}_{ii}]^{-1}$, and the ratio is the variance
 inflation factor (VIF) of the overlapping templates. Evaluating $[\mathbf{F}_{ii}]^{-1}$, in
 which each atom is fitted with its neighbours held fixed, is the per-peak bound used to predict
-single-column and single-dopant precision \citep{DeBacker2016,Chen2021}; on a dense sublattice
-it is the bound obtained with all neighbours known exactly. Table~\ref{tab:vif} gives the
+single-column precision \citep{DeBacker2016} and single-dopant depth \citep{Chen2021}; on a
+dense sublattice it is the bound obtained with all neighbours known exactly. Table~\ref{tab:vif} gives the
 inflation measured for our kernel. Since $85\%$ of atoms in the field have a neighbour within
 $2.5$\,\AA, the per-peak form is optimistic almost everywhere. We therefore assemble
 $\mathbf{J}$ over all atoms in a subvolume and invert $\mathbf{F}$ once, a $4N\times4N$ system
