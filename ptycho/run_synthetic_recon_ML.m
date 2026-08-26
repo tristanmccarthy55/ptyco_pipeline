@@ -84,9 +84,15 @@ if ~isempty(ni_env); Niter = [round(str2double(ni_env)), round(str2double(ni_env
 % (The earlier 41-layer noise was under-constraint, not the probe.) Default: fixed.
 % For REAL data (unknown probe) re-enable refinement via PROBE_START (e.g. 20, or 60
 % to delay so the object settles first on deep runs).
-ps_env = getenv('PROBE_START');
+% BLIND-FIT STABILITY: the full-resolution (2nd) engine's probe update diverges to NaNs on the
+% thin weak-phase slab, while the coarse PRESOLVE (1st) engine updates the probe stably. So we
+% release the probe in the presolve only and FIX it (inf) for the full engine — the recovered
+% (presolve) probe is carried into the full-res object refinement. PROBE_START2 overrides the
+% 2nd-engine start if you ever want to refine there too.
+ps_env = getenv('PROBE_START'); ps2_env = getenv('PROBE_START2');
 if ~isempty(ps_env)
-    Nst_probe = [str2double(ps_env), str2double(ps_env)];
+    ps2 = inf; if ~isempty(ps2_env); ps2 = str2double(ps2_env); end
+    Nst_probe = [str2double(ps_env), ps2];      % release in presolve; FIX in full engine (NaN-safe)
 else
     Nst_probe = [inf, inf];                     % synthetic: known/true probe -> fixed
 end
