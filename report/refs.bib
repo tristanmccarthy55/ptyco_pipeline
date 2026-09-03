@@ -63,9 +63,10 @@
   doi       = {10.1007/b106715}
 }
 % Cited for BOTH split (inductive) conformal prediction and the Mondrian /
-% label-conditional variant; the book covers each. Papadopoulos2002 below is the primary
-% for the split construction specifically, so the two are cited together for it.
+% label-conditional variant; the book covers each, which is why it carries both alone.
 
+% Uncited (reference-count trim): split/inductive conformal is carried by Vovk2005, which
+% covers both it and the Mondrian variant. This is the primary for the split construction.
 @inproceedings{Papadopoulos2002,
   author    = {Papadopoulos, Harris and Proedrou, Kostas and Vovk, Volodya and
                Gammerman, Alex},
@@ -232,6 +233,8 @@
   doi     = {10.1038/nature11806}
 }
 
+% Uncited (reference-count trim): mixed-state probe is carried by ThibaultMenzel2013, the
+% canonical reference. Reinstate if orthogonal probe relaxation is discussed specifically.
 @article{Odstrcil2016,
   author  = {Odstr{\v{c}}il, Michal and Baksh, Peng and Boden, S. A. and Card,
              Richard and Chad, J. E. and Frey, Jeremy G. and Brocklesby, W. S.},
@@ -244,6 +247,9 @@
   doi     = {10.1364/OE.24.008360}
 }
 
+% Uncited (reference-count trim): the 'highest lateral resolution' claim rests on Chen2021,
+% which is the later and higher-resolution result. Reinstate as a joint cite if the
+% 2D-materials demonstration is wanted alongside it.
 @article{Jiang2018,
   author  = {Jiang, Yi and Chen, Zhen and Han, Yimo and Deb, Pratiti and Gao,
              Hui and Xie, Saien and Purohit, Prafull and Tate, Mark W. and Park,
@@ -271,6 +277,8 @@
   doi       = {10.1007/978-1-4419-9583-4}
 }
 
+% Uncited (reference-count trim): the dipole/momentum-transfer selection is carried by
+% Egerton2011. Reinstate if the orientation-sensitive ELNES theory is discussed directly.
 @article{Nelhiebel1999,
   author  = {Nelhiebel, M. and Louf, P.-H. and Schattschneider, P. and Blaha, P. and
              Schwarz, K. and Jouffrey, B.},
@@ -341,6 +349,8 @@
 % and O K in ZnO, reproduced with an excited pseudopotential). It is cited alongside Gao2008
 % for the method. It does NOT document the Ti L2,3 multiplet failure -- Zn is d10, so no
 % multiplet arises there -- so the deGroot refs below carry that claim instead.
+% Uncited (reference-count trim): the core-hole method is carried by Gao2008, whose subject
+% (1s edges of first-row elements) is exactly the O K edge used here.
 @article{Mizoguchi2009,
   author  = {Mizoguchi, T. and Tanaka, I. and Gao, S.-P. and Pickard, C. J.},
   title   = {First-principles calculation of spectral features, chemical shift and absolute
@@ -364,6 +374,8 @@
   doi     = {10.1103/PhysRevB.42.5459}
 }
 
+% Uncited (reference-count trim): the Ti L2,3 multiplet claim is carried by deGroot1990,
+% which treats 2p XAS of 3d transition-metal compounds specifically.
 @article{deGroot2005,
   author  = {de Groot, Frank},
   title   = {Multiplet effects in {X}-ray spectroscopy},
@@ -448,6 +460,9 @@
   doi     = {10.1038/nature21042}
 }
 
+% Uncited (reference-count trim): the precision-beats-resolution point is carried by
+% DeBacker2016, which makes it for model-based fitting in STEM rather than by analogy
+% with single-molecule localisation.
 @article{Thompson2002,
   author  = {Thompson, Russell E. and Larson, Daniel R. and Webb, Watt W.},
   title   = {Precise nanometer localization analysis for individual fluorescent probes},
@@ -481,11 +496,16 @@
   doi     = {10.1016/j.ultramic.2026.114374}
 }
 
+% Accepted in Phys. Rev. Appl.; volume and article number are assigned with the version of
+% record, so the eprint carries the locator until then. Fill in volume/pages on publication.
 @article{LeiWang2026,
-  author    = {Lei, Yu and Wang, Peng},
-  title     = {Multislice hollow ptychography for simultaneous atomic-layer-resolved
-               three-dimensional structural imaging and spectroscopy},
-  journal   = {Phys. Rev. Appl.},
-  year      = {2026},
-  doi       = {10.1103/by27-b9mc}
+  author        = {Lei, Yu and Wang, Peng},
+  title         = {Multislice hollow ptychography for simultaneous atomic-layer-resolved
+                   three-dimensional structural imaging and spectroscopy},
+  journal       = {Phys. Rev. Appl.},
+  year          = {2026},
+  doi           = {10.1103/by27-b9mc},
+  eprint        = {2506.22352},
+  archivePrefix = {arXiv},
+  primaryClass  = {cond-mat.mtrl-sci}
 }

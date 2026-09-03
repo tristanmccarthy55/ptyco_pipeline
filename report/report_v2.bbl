@@ -6,7 +6,7 @@
 %Control: page (0) single
 %Control: year (1) truncated
 %Control: production of eprint (0) enabled
-\begin{thebibliography}{40}%
+\begin{thebibliography}{33}%
 \makeatletter
 \providecommand \@ifxundefined [1]{%
  \@ifx{#1\undefined}
@@ -162,26 +162,6 @@
   {Rodenburg}},\ }\href {https://doi.org/10.1038/374630a0} {\bibfield
   {journal} {\bibinfo  {journal} {Nature}\ }\textbf {\bibinfo {volume} {374}},\
   \bibinfo {pages} {630} (\bibinfo {year} {1995})}\BibitemShut {NoStop}%
-\bibitem [{\citenamefont {Jiang}\ \emph {et~al.}(2018)\citenamefont {Jiang},
-  \citenamefont {Chen}, \citenamefont {Han}, \citenamefont {Deb}, \citenamefont
-  {Gao}, \citenamefont {Xie}, \citenamefont {Purohit}, \citenamefont {Tate},
-  \citenamefont {Park}, \citenamefont {Gruner}, \citenamefont {Elser},\ and\
-  \citenamefont {Muller}}]{Jiang2018}%
-  \BibitemOpen
-  \bibfield  {author} {\bibinfo {author} {\bibfnamefont {Y.}~\bibnamefont
-  {Jiang}}, \bibinfo {author} {\bibfnamefont {Z.}~\bibnamefont {Chen}},
-  \bibinfo {author} {\bibfnamefont {Y.}~\bibnamefont {Han}}, \bibinfo {author}
-  {\bibfnamefont {P.}~\bibnamefont {Deb}}, \bibinfo {author} {\bibfnamefont
-  {H.}~\bibnamefont {Gao}}, \bibinfo {author} {\bibfnamefont {S.}~\bibnamefont
-  {Xie}}, \bibinfo {author} {\bibfnamefont {P.}~\bibnamefont {Purohit}},
-  \bibinfo {author} {\bibfnamefont {M.~W.}\ \bibnamefont {Tate}}, \bibinfo
-  {author} {\bibfnamefont {J.}~\bibnamefont {Park}}, \bibinfo {author}
-  {\bibfnamefont {S.~M.}\ \bibnamefont {Gruner}}, \bibinfo {author}
-  {\bibfnamefont {V.}~\bibnamefont {Elser}},\ and\ \bibinfo {author}
-  {\bibfnamefont {D.~A.}\ \bibnamefont {Muller}},\ }\href
-  {https://doi.org/10.1038/s41586-018-0298-5} {\bibfield  {journal} {\bibinfo
-  {journal} {Nature}\ }\textbf {\bibinfo {volume} {559}},\ \bibinfo {pages}
-  {343} (\bibinfo {year} {2018})}\BibitemShut {NoStop}%
 \bibitem [{\citenamefont {Chen}\ \emph {et~al.}(2021)\citenamefont {Chen},
   \citenamefont {Jiang}, \citenamefont {Shao}, \citenamefont {Holtz},
   \citenamefont {Odstr{\v{c}}il}, \citenamefont {Guizar-Sicairos},
@@ -386,7 +366,8 @@
   {Lei}}\ and\ \bibinfo {author} {\bibfnamefont {P.}~\bibnamefont {Wang}},\
   }\bibfield  {journal} {\bibinfo  {journal} {Phys. Rev. Appl.}\ }\href
   {https://doi.org/10.1103/by27-b9mc} {10.1103/by27-b9mc} (\bibinfo {year}
-  {2026})\BibitemShut {NoStop}%
+  {2026}),\ \Eprint {https://arxiv.org/abs/2506.22352} {arXiv:2506.22352
+  [cond-mat.mtrl-sci]} \BibitemShut {NoStop}%
 \bibitem [{\citenamefont {Thibault}\ and\ \citenamefont
   {Guizar-Sicairos}(2012)}]{ThibaultGuizar2012}%
   \BibitemOpen
@@ -404,21 +385,6 @@
   {Menzel}},\ }\href {https://doi.org/10.1038/nature11806} {\bibfield
   {journal} {\bibinfo  {journal} {Nature}\ }\textbf {\bibinfo {volume} {494}},\
   \bibinfo {pages} {68} (\bibinfo {year} {2013})}\BibitemShut {NoStop}%
-\bibitem [{\citenamefont {Odstr{\v{c}}il}\ \emph {et~al.}(2016)\citenamefont
-  {Odstr{\v{c}}il}, \citenamefont {Baksh}, \citenamefont {Boden}, \citenamefont
-  {Card}, \citenamefont {Chad}, \citenamefont {Frey},\ and\ \citenamefont
-  {Brocklesby}}]{Odstrcil2016}%
-  \BibitemOpen
-  \bibfield  {author} {\bibinfo {author} {\bibfnamefont {M.}~\bibnamefont
-  {Odstr{\v{c}}il}}, \bibinfo {author} {\bibfnamefont {P.}~\bibnamefont
-  {Baksh}}, \bibinfo {author} {\bibfnamefont {S.~A.}\ \bibnamefont {Boden}},
-  \bibinfo {author} {\bibfnamefont {R.}~\bibnamefont {Card}}, \bibinfo {author}
-  {\bibfnamefont {J.~E.}\ \bibnamefont {Chad}}, \bibinfo {author}
-  {\bibfnamefont {J.~G.}\ \bibnamefont {Frey}},\ and\ \bibinfo {author}
-  {\bibfnamefont {W.~S.}\ \bibnamefont {Brocklesby}},\ }\href
-  {https://doi.org/10.1364/OE.24.008360} {\bibfield  {journal} {\bibinfo
-  {journal} {Opt. Express}\ }\textbf {\bibinfo {volume} {24}},\ \bibinfo
-  {pages} {8360} (\bibinfo {year} {2016})}\BibitemShut {NoStop}%
 \bibitem [{\citenamefont {Mallat}\ and\ \citenamefont
   {Zhang}(1993)}]{MallatZhang1993}%
   \BibitemOpen
@@ -427,19 +393,6 @@
   }\href {https://doi.org/10.1109/78.258082} {\bibfield  {journal} {\bibinfo
   {journal} {IEEE Trans. Signal Process.}\ }\textbf {\bibinfo {volume} {41}},\
   \bibinfo {pages} {3397} (\bibinfo {year} {1993})}\BibitemShut {NoStop}%
-\bibitem [{\citenamefont {Papadopoulos}\ \emph {et~al.}(2002)\citenamefont
-  {Papadopoulos}, \citenamefont {Proedrou}, \citenamefont {Vovk},\ and\
-  \citenamefont {Gammerman}}]{Papadopoulos2002}%
-  \BibitemOpen
-  \bibfield  {author} {\bibinfo {author} {\bibfnamefont {H.}~\bibnamefont
-  {Papadopoulos}}, \bibinfo {author} {\bibfnamefont {K.}~\bibnamefont
-  {Proedrou}}, \bibinfo {author} {\bibfnamefont {V.}~\bibnamefont {Vovk}},\
-  and\ \bibinfo {author} {\bibfnamefont {A.}~\bibnamefont {Gammerman}},\ }in\
-  \href {https://doi.org/10.1007/3-540-36755-1_29} {\emph {\bibinfo {booktitle}
-  {Machine Learning: ECML 2002}}},\ \bibinfo {series} {Lecture Notes in
-  Computer Science}, Vol.\ \bibinfo {volume} {2430}\ (\bibinfo  {publisher}
-  {Springer},\ \bibinfo {address} {Berlin, Heidelberg},\ \bibinfo {year}
-  {2002})\ pp.\ \bibinfo {pages} {345--356}\BibitemShut {NoStop}%
 \bibitem [{\citenamefont {Vovk}\ \emph {et~al.}(2005)\citenamefont {Vovk},
   \citenamefont {Gammerman},\ and\ \citenamefont {Shafer}}]{Vovk2005}%
   \BibitemOpen
@@ -457,20 +410,6 @@
   Microscope}}},\ \bibinfo {edition} {3rd}\ ed.\ (\bibinfo  {publisher}
   {Springer},\ \bibinfo {address} {New York},\ \bibinfo {year}
   {2011})\BibitemShut {NoStop}%
-\bibitem [{\citenamefont {Nelhiebel}\ \emph {et~al.}(1999)\citenamefont
-  {Nelhiebel}, \citenamefont {Louf}, \citenamefont {Schattschneider},
-  \citenamefont {Blaha}, \citenamefont {Schwarz},\ and\ \citenamefont
-  {Jouffrey}}]{Nelhiebel1999}%
-  \BibitemOpen
-  \bibfield  {author} {\bibinfo {author} {\bibfnamefont {M.}~\bibnamefont
-  {Nelhiebel}}, \bibinfo {author} {\bibfnamefont {P.-H.}\ \bibnamefont {Louf}},
-  \bibinfo {author} {\bibfnamefont {P.}~\bibnamefont {Schattschneider}},
-  \bibinfo {author} {\bibfnamefont {P.}~\bibnamefont {Blaha}}, \bibinfo
-  {author} {\bibfnamefont {K.}~\bibnamefont {Schwarz}},\ and\ \bibinfo {author}
-  {\bibfnamefont {B.}~\bibnamefont {Jouffrey}},\ }\href
-  {https://doi.org/10.1103/PhysRevB.59.12807} {\bibfield  {journal} {\bibinfo
-  {journal} {Phys. Rev. B}\ }\textbf {\bibinfo {volume} {59}},\ \bibinfo
-  {pages} {12807} (\bibinfo {year} {1999})}\BibitemShut {NoStop}%
 \bibitem [{\citenamefont {Jouffrey}\ \emph {et~al.}(2004)\citenamefont
   {Jouffrey}, \citenamefont {Schattschneider},\ and\ \citenamefont
   {H{\'e}bert}}]{Jouffrey2004}%
@@ -510,18 +449,6 @@
   {https://doi.org/10.1103/PhysRevB.77.115122} {\bibfield  {journal} {\bibinfo
   {journal} {Phys. Rev. B}\ }\textbf {\bibinfo {volume} {77}},\ \bibinfo
   {pages} {115122} (\bibinfo {year} {2008})}\BibitemShut {NoStop}%
-\bibitem [{\citenamefont {Mizoguchi}\ \emph {et~al.}(2009)\citenamefont
-  {Mizoguchi}, \citenamefont {Tanaka}, \citenamefont {Gao},\ and\ \citenamefont
-  {Pickard}}]{Mizoguchi2009}%
-  \BibitemOpen
-  \bibfield  {author} {\bibinfo {author} {\bibfnamefont {T.}~\bibnamefont
-  {Mizoguchi}}, \bibinfo {author} {\bibfnamefont {I.}~\bibnamefont {Tanaka}},
-  \bibinfo {author} {\bibfnamefont {S.-P.}\ \bibnamefont {Gao}},\ and\ \bibinfo
-  {author} {\bibfnamefont {C.~J.}\ \bibnamefont {Pickard}},\ }\href
-  {https://doi.org/10.1088/0953-8984/21/10/104204} {\bibfield  {journal}
-  {\bibinfo  {journal} {J. Phys.: Condens. Matter}\ }\textbf {\bibinfo {volume}
-  {21}},\ \bibinfo {pages} {104204} (\bibinfo {year} {2009})}\BibitemShut
-  {NoStop}%
 \bibitem [{\citenamefont {Morris}\ \emph {et~al.}(2014)\citenamefont {Morris},
   \citenamefont {Nicholls}, \citenamefont {Pickard},\ and\ \citenamefont
   {Yates}}]{Morris2014}%
@@ -563,24 +490,6 @@
   {\bibfield  {journal} {\bibinfo  {journal} {Phys. Rev. B}\ }\textbf {\bibinfo
   {volume} {42}},\ \bibinfo {pages} {5459} (\bibinfo {year}
   {1990})}\BibitemShut {NoStop}%
-\bibitem [{\citenamefont {de~Groot}(2005)}]{deGroot2005}%
-  \BibitemOpen
-  \bibfield  {author} {\bibinfo {author} {\bibfnamefont {F.}~\bibnamefont
-  {de~Groot}},\ }\href {https://doi.org/10.1016/j.ccr.2004.03.018} {\bibfield
-  {journal} {\bibinfo  {journal} {Coord. Chem. Rev.}\ }\textbf {\bibinfo
-  {volume} {249}},\ \bibinfo {pages} {31} (\bibinfo {year} {2005})}\BibitemShut
-  {NoStop}%
-\bibitem [{\citenamefont {Thompson}\ \emph {et~al.}(2002)\citenamefont
-  {Thompson}, \citenamefont {Larson},\ and\ \citenamefont
-  {Webb}}]{Thompson2002}%
-  \BibitemOpen
-  \bibfield  {author} {\bibinfo {author} {\bibfnamefont {R.~E.}\ \bibnamefont
-  {Thompson}}, \bibinfo {author} {\bibfnamefont {D.~R.}\ \bibnamefont
-  {Larson}},\ and\ \bibinfo {author} {\bibfnamefont {W.~W.}\ \bibnamefont
-  {Webb}},\ }\href {https://doi.org/10.1016/S0006-3495(02)75618-X} {\bibfield
-  {journal} {\bibinfo  {journal} {Biophys. J.}\ }\textbf {\bibinfo {volume}
-  {82}},\ \bibinfo {pages} {2775} (\bibinfo {year} {2002})}\BibitemShut
-  {NoStop}%
 \bibitem [{\citenamefont {Bugnet}\ \emph {et~al.}(2016)\citenamefont {Bugnet},
   \citenamefont {Radtke}, \citenamefont {Woo}, \citenamefont {Zhu},\ and\
   \citenamefont {Botton}}]{Bugnet2016}%
