@@ -132,6 +132,10 @@
   doi     = {10.1107/S0108767391000375}
 }
 
+% Peng1996 is deliberately uncited: it supported the per-species Debye-Waller claim, but
+% the analysed simulations used one scalar sigma = 0.08 A for every species
+% (tag ph16s0.08; PER_SPECIES_SIGMA is False in simulate_4dstem.py). Re-cite only if
+% sim_meta.mat's phonon_per_species flag says otherwise.
 @article{Peng1996,
   author  = {Peng, L.-M. and Ren, G. and Dudarev, S. L. and Whelan, M. J.},
   title   = {Debye--{W}aller factors and absorptive scattering factors of
@@ -167,16 +171,6 @@
   doi     = {10.1107/S1600576720001776}
 }
 
-@article{MaidenHumphryRodenburg2012,
-  author  = {Maiden, Andrew M. and Humphry, Martin J. and Rodenburg, John M.},
-  title   = {Ptychographic transmission microscopy in three dimensions using a
-             multi-slice approach},
-  journal = {Journal of the Optical Society of America A},
-  volume  = {29},
-  pages   = {1606--1614},
-  year    = {2012},
-  doi     = {10.1364/JOSAA.29.001606}
-}
 
 @article{Gao2017,
   author  = {Gao, Si and Wang, Peng and Zhang, Fucai and Martinez, Gerardo T.
