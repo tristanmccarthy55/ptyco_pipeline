@@ -380,6 +380,13 @@
   {https://doi.org/10.1107/S1600576720001776} {\bibfield  {journal} {\bibinfo
   {journal} {J. Appl. Crystallogr.}\ }\textbf {\bibinfo {volume} {53}},\
   \bibinfo {pages} {574} (\bibinfo {year} {2020})}\BibitemShut {NoStop}%
+\bibitem [{\citenamefont {Lei}\ and\ \citenamefont {Wang}(2026)}]{LeiWang2026}%
+  \BibitemOpen
+  \bibfield  {author} {\bibinfo {author} {\bibfnamefont {Y.}~\bibnamefont
+  {Lei}}\ and\ \bibinfo {author} {\bibfnamefont {P.}~\bibnamefont {Wang}},\
+  }\bibfield  {journal} {\bibinfo  {journal} {Phys. Rev. Appl.}\ }\href
+  {https://doi.org/10.1103/by27-b9mc} {10.1103/by27-b9mc} (\bibinfo {year}
+  {2026})\BibitemShut {NoStop}%
 \bibitem [{\citenamefont {Thibault}\ and\ \citenamefont
   {Guizar-Sicairos}(2012)}]{ThibaultGuizar2012}%
   \BibitemOpen
@@ -586,13 +593,6 @@
   {https://doi.org/10.1103/PhysRevB.93.020102} {\bibfield  {journal} {\bibinfo
   {journal} {Phys. Rev. B}\ }\textbf {\bibinfo {volume} {93}},\ \bibinfo
   {pages} {020102(R)} (\bibinfo {year} {2016})}\BibitemShut {NoStop}%
-\bibitem [{\citenamefont {Lei}\ and\ \citenamefont {Wang}(2026)}]{LeiWang2026}%
-  \BibitemOpen
-  \bibfield  {author} {\bibinfo {author} {\bibfnamefont {Y.}~\bibnamefont
-  {Lei}}\ and\ \bibinfo {author} {\bibfnamefont {P.}~\bibnamefont {Wang}},\
-  }\bibfield  {journal} {\bibinfo  {journal} {Phys. Rev. Appl.}\ }\href
-  {https://doi.org/10.1103/by27-b9mc} {10.1103/by27-b9mc} (\bibinfo {year}
-  {2026})\BibitemShut {NoStop}%
 \bibitem [{\citenamefont {Wu}\ \emph {et~al.}(2026)\citenamefont {Wu},
   \citenamefont {Huang}, \citenamefont {Chen}, \citenamefont {He},
   \citenamefont {Qi}, \citenamefont {Zheng}, \citenamefont {Zhao},
