@@ -1037,26 +1037,30 @@ DFT staircase (\texttt{eels/build\_cells.py}, \texttt{run\_coreloss.slurm},
 \subsection{The nominated result}
 
 The result offered for independent reproduction is the localisation-with-uncertainty output of
-Sec.~\ref{sec:pol}. The localisation code and its protocol are self-contained within the
-project repository,\footnote{\url{https://github.com/tristanmccarthy55/ptyco_pipeline}; the localisation
-package and its protocol are under \texttt{analysis/atomfind/}, with step-by-step instructions
-in \texttt{PEER.md}. The input archive is distributed alongside it, being too large to version
-with the code.} together with a checksummed archive of four inputs: the reconstructed phase volume as a
-$70\times404\times404$ complex array, the measured lead and titanium kernels, and the reference
-structure used for scoring, supplied both as deposited and pre-transformed into the beam frame.
+Sec.~\ref{sec:pol}. The localisation code, its inputs and its protocol are together in a single
+self-contained repository,\footnote{\url{https://github.com/tristanmccarthy55/atomfind};
+\texttt{INSTALL.md} is the step-by-step guide and \texttt{PEER.md} the protocol, with expected
+values and tolerances.} which carries four inputs: the reconstructed phase volume as a
+$70\times404\times404$ array, the measured lead and titanium kernels, and the reference
+structure pre-transformed into the beam frame. Storing the reconstruction as its phase rather
+than as the complex object is exact, since the modulus is unused downstream and the phase of a
+single-precision complex array is itself single-precision, and it halves the size, which is what
+allows the data to be versioned with the code rather than distributed separately.
 The simulation and reconstruction that generate the volume require GPU resources well beyond a
 few hours and are therefore supplied pre-computed; everything downstream of them is reproduced
 from scratch. The whole procedure is
 {\footnotesize\begin{verbatim}
+git clone <repository> && cd atomfind
 python3 -m venv venv && . venv/bin/activate
-pip install -r atomfind/requirements.txt
-tar xzf atomfind_data_v1.tar.gz \
-    --strip-components=1 -C atomfind/data/
+pip install -r requirements.txt
+python atomfind/test_atomfind.py
 python atomfind/run_atomfind.py \
        --preset NL70_coherent --out ./out
 python atomfind/polarisation.py --out ./out
 \end{verbatim}}
-executed from the directory containing \texttt{atomfind/}. The run requires a few minutes on a
+executed from the repository root. The third command is a suite of seventeen tests that run on
+synthetic data in about a second and require none of the inputs, so that a disagreement with the
+values below can be told apart from a broken environment before the full run is attempted. The run requires a few minutes on a
 single core and no GPU, and depends only on NumPy, SciPy, h5py, Matplotlib and ASE. No path is
 hard-coded: the data files are located by name, through an environment variable, a directory
 adjacent to the package, or the \texttt{-{}-data-dir} option.
