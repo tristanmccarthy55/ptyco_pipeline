@@ -6,7 +6,7 @@
 %Control: page (0) single
 %Control: year (1) truncated
 %Control: production of eprint (0) enabled
-\begin{thebibliography}{33}%
+\begin{thebibliography}{35}%
 \makeatletter
 \providecommand \@ifxundefined [1]{%
  \@ifx{#1\undefined}
@@ -50,108 +50,38 @@
 \providecommand \BibitemShut  [1]{\csname bibitem#1\endcsname}%
 \let\auto@bib@innerbib\@empty
 %</preamble>
-\bibitem [{\citenamefont {Yadav}\ \emph {et~al.}(2016)\citenamefont {Yadav},
-  \citenamefont {Nelson}, \citenamefont {Hsu}, \citenamefont {Hong},
-  \citenamefont {Clarkson}, \citenamefont {Schlep{\"u}tz}, \citenamefont
-  {Damodaran}, \citenamefont {Shafer}, \citenamefont {Arenholz}, \citenamefont
-  {Dedon}, \citenamefont {Chen}, \citenamefont {Vishwanath}, \citenamefont
-  {Minor}, \citenamefont {Chen}, \citenamefont {Scott}, \citenamefont
-  {Martin},\ and\ \citenamefont {Ramesh}}]{Yadav2016}%
+\bibitem [{\citenamefont {Yadav}\ \emph {et~al.}(2016)\citenamefont {Yadav}
+  \emph {et~al.}}]{Yadav2016}%
   \BibitemOpen
   \bibfield  {author} {\bibinfo {author} {\bibfnamefont {A.~K.}\ \bibnamefont
-  {Yadav}}, \bibinfo {author} {\bibfnamefont {C.~T.}\ \bibnamefont {Nelson}},
-  \bibinfo {author} {\bibfnamefont {S.~L.}\ \bibnamefont {Hsu}}, \bibinfo
-  {author} {\bibfnamefont {Z.}~\bibnamefont {Hong}}, \bibinfo {author}
-  {\bibfnamefont {J.~D.}\ \bibnamefont {Clarkson}}, \bibinfo {author}
-  {\bibfnamefont {C.~M.}\ \bibnamefont {Schlep{\"u}tz}}, \bibinfo {author}
-  {\bibfnamefont {A.~R.}\ \bibnamefont {Damodaran}}, \bibinfo {author}
-  {\bibfnamefont {P.}~\bibnamefont {Shafer}}, \bibinfo {author} {\bibfnamefont
-  {E.}~\bibnamefont {Arenholz}}, \bibinfo {author} {\bibfnamefont {L.~R.}\
-  \bibnamefont {Dedon}}, \bibinfo {author} {\bibfnamefont {D.}~\bibnamefont
-  {Chen}}, \bibinfo {author} {\bibfnamefont {A.}~\bibnamefont {Vishwanath}},
-  \bibinfo {author} {\bibfnamefont {A.~M.}\ \bibnamefont {Minor}}, \bibinfo
-  {author} {\bibfnamefont {L.~Q.}\ \bibnamefont {Chen}}, \bibinfo {author}
-  {\bibfnamefont {J.~F.}\ \bibnamefont {Scott}}, \bibinfo {author}
-  {\bibfnamefont {L.~W.}\ \bibnamefont {Martin}},\ and\ \bibinfo {author}
-  {\bibfnamefont {R.}~\bibnamefont {Ramesh}},\ }\href
-  {https://doi.org/10.1038/nature16463} {\bibfield  {journal} {\bibinfo
-  {journal} {Nature}\ }\textbf {\bibinfo {volume} {530}},\ \bibinfo {pages}
-  {198} (\bibinfo {year} {2016})}\BibitemShut {NoStop}%
-\bibitem [{\citenamefont {Das}\ \emph {et~al.}(2019)\citenamefont {Das},
-  \citenamefont {Tang}, \citenamefont {Hong}, \citenamefont {Gon{\c c}alves},
-  \citenamefont {McCarter}, \citenamefont {Klewe}, \citenamefont {Nguyen},
-  \citenamefont {G{\'o}mez-Ortiz}, \citenamefont {Shafer}, \citenamefont
-  {Arenholz}, \citenamefont {Stoica}, \citenamefont {Hsu}, \citenamefont
-  {Wang}, \citenamefont {Ophus}, \citenamefont {Liu}, \citenamefont {Nelson},
-  \citenamefont {Saremi}, \citenamefont {Prasad}, \citenamefont {Mei},
-  \citenamefont {Schlom}, \citenamefont {{\'I}{\~n}iguez}, \citenamefont
-  {Garc{\'\i}a-Fern{\'a}ndez}, \citenamefont {Muller}, \citenamefont {Chen},
-  \citenamefont {Junquera}, \citenamefont {Martin},\ and\ \citenamefont
-  {Ramesh}}]{Das2019}%
+  {Yadav}} \emph {et~al.},\ }\href {https://doi.org/10.1038/nature16463}
+  {\bibfield  {journal} {\bibinfo  {journal} {Nature}\ }\textbf {\bibinfo
+  {volume} {530}},\ \bibinfo {pages} {198} (\bibinfo {year}
+  {2016})}\BibitemShut {NoStop}%
+\bibitem [{\citenamefont {Das}\ \emph {et~al.}(2019)\citenamefont {Das} \emph
+  {et~al.}}]{Das2019}%
   \BibitemOpen
   \bibfield  {author} {\bibinfo {author} {\bibfnamefont {S.}~\bibnamefont
-  {Das}}, \bibinfo {author} {\bibfnamefont {Y.~L.}\ \bibnamefont {Tang}},
-  \bibinfo {author} {\bibfnamefont {Z.}~\bibnamefont {Hong}}, \bibinfo {author}
-  {\bibfnamefont {M.~A.~P.}\ \bibnamefont {Gon{\c c}alves}}, \bibinfo {author}
-  {\bibfnamefont {M.~R.}\ \bibnamefont {McCarter}}, \bibinfo {author}
-  {\bibfnamefont {C.}~\bibnamefont {Klewe}}, \bibinfo {author} {\bibfnamefont
-  {K.~X.}\ \bibnamefont {Nguyen}}, \bibinfo {author} {\bibfnamefont
-  {F.}~\bibnamefont {G{\'o}mez-Ortiz}}, \bibinfo {author} {\bibfnamefont
-  {P.}~\bibnamefont {Shafer}}, \bibinfo {author} {\bibfnamefont
-  {E.}~\bibnamefont {Arenholz}}, \bibinfo {author} {\bibfnamefont {V.~A.}\
-  \bibnamefont {Stoica}}, \bibinfo {author} {\bibfnamefont {S.-L.}\
-  \bibnamefont {Hsu}}, \bibinfo {author} {\bibfnamefont {B.}~\bibnamefont
-  {Wang}}, \bibinfo {author} {\bibfnamefont {C.}~\bibnamefont {Ophus}},
-  \bibinfo {author} {\bibfnamefont {J.~F.}\ \bibnamefont {Liu}}, \bibinfo
-  {author} {\bibfnamefont {C.~T.}\ \bibnamefont {Nelson}}, \bibinfo {author}
-  {\bibfnamefont {S.}~\bibnamefont {Saremi}}, \bibinfo {author} {\bibfnamefont
-  {B.}~\bibnamefont {Prasad}}, \bibinfo {author} {\bibfnamefont {A.~B.}\
-  \bibnamefont {Mei}}, \bibinfo {author} {\bibfnamefont {D.~G.}\ \bibnamefont
-  {Schlom}}, \bibinfo {author} {\bibfnamefont {J.}~\bibnamefont
-  {{\'I}{\~n}iguez}}, \bibinfo {author} {\bibfnamefont {P.}~\bibnamefont
-  {Garc{\'\i}a-Fern{\'a}ndez}}, \bibinfo {author} {\bibfnamefont {D.~A.}\
-  \bibnamefont {Muller}}, \bibinfo {author} {\bibfnamefont {L.~Q.}\
-  \bibnamefont {Chen}}, \bibinfo {author} {\bibfnamefont {J.}~\bibnamefont
-  {Junquera}}, \bibinfo {author} {\bibfnamefont {L.~W.}\ \bibnamefont
-  {Martin}},\ and\ \bibinfo {author} {\bibfnamefont {R.}~\bibnamefont
-  {Ramesh}},\ }\href {https://doi.org/10.1038/s41586-019-1092-8} {\bibfield
-  {journal} {\bibinfo  {journal} {Nature}\ }\textbf {\bibinfo {volume} {568}},\
-  \bibinfo {pages} {368} (\bibinfo {year} {2019})}\BibitemShut {NoStop}%
+  {Das}} \emph {et~al.},\ }\href {https://doi.org/10.1038/s41586-019-1092-8}
+  {\bibfield  {journal} {\bibinfo  {journal} {Nature}\ }\textbf {\bibinfo
+  {volume} {568}},\ \bibinfo {pages} {368} (\bibinfo {year}
+  {2019})}\BibitemShut {NoStop}%
 \bibitem [{\citenamefont {Junquera}\ \emph {et~al.}(2023)\citenamefont
-  {Junquera}, \citenamefont {Nahas}, \citenamefont {Prokhorenko}, \citenamefont
-  {Bellaiche}, \citenamefont {{\'I}{\~n}iguez}, \citenamefont {Schlom},
-  \citenamefont {Chen}, \citenamefont {Salahuddin}, \citenamefont {Muller},
-  \citenamefont {Martin},\ and\ \citenamefont {Ramesh}}]{Junquera2023}%
+  {Junquera} \emph {et~al.}}]{Junquera2023}%
   \BibitemOpen
   \bibfield  {author} {\bibinfo {author} {\bibfnamefont {J.}~\bibnamefont
-  {Junquera}}, \bibinfo {author} {\bibfnamefont {Y.}~\bibnamefont {Nahas}},
-  \bibinfo {author} {\bibfnamefont {S.}~\bibnamefont {Prokhorenko}}, \bibinfo
-  {author} {\bibfnamefont {L.}~\bibnamefont {Bellaiche}}, \bibinfo {author}
-  {\bibfnamefont {J.}~\bibnamefont {{\'I}{\~n}iguez}}, \bibinfo {author}
-  {\bibfnamefont {D.~G.}\ \bibnamefont {Schlom}}, \bibinfo {author}
-  {\bibfnamefont {L.-Q.}\ \bibnamefont {Chen}}, \bibinfo {author}
-  {\bibfnamefont {S.}~\bibnamefont {Salahuddin}}, \bibinfo {author}
-  {\bibfnamefont {D.~A.}\ \bibnamefont {Muller}}, \bibinfo {author}
-  {\bibfnamefont {L.~W.}\ \bibnamefont {Martin}},\ and\ \bibinfo {author}
-  {\bibfnamefont {R.}~\bibnamefont {Ramesh}},\ }\href
+  {Junquera}} \emph {et~al.},\ }\href
   {https://doi.org/10.1103/RevModPhys.95.025001} {\bibfield  {journal}
   {\bibinfo  {journal} {Rev. Mod. Phys.}\ }\textbf {\bibinfo {volume} {95}},\
   \bibinfo {pages} {025001} (\bibinfo {year} {2023})}\BibitemShut {NoStop}%
-\bibitem [{\citenamefont {Gao}\ \emph {et~al.}(2017)\citenamefont {Gao},
-  \citenamefont {Wang}, \citenamefont {Zhang}, \citenamefont {Martinez},
-  \citenamefont {Nellist}, \citenamefont {Pan},\ and\ \citenamefont
-  {Kirkland}}]{Gao2017}%
+\bibitem [{\citenamefont {Gao}\ \emph {et~al.}(2017)\citenamefont {Gao} \emph
+  {et~al.}}]{Gao2017}%
   \BibitemOpen
   \bibfield  {author} {\bibinfo {author} {\bibfnamefont {S.}~\bibnamefont
-  {Gao}}, \bibinfo {author} {\bibfnamefont {P.}~\bibnamefont {Wang}}, \bibinfo
-  {author} {\bibfnamefont {F.}~\bibnamefont {Zhang}}, \bibinfo {author}
-  {\bibfnamefont {G.~T.}\ \bibnamefont {Martinez}}, \bibinfo {author}
-  {\bibfnamefont {P.~D.}\ \bibnamefont {Nellist}}, \bibinfo {author}
-  {\bibfnamefont {X.}~\bibnamefont {Pan}},\ and\ \bibinfo {author}
-  {\bibfnamefont {A.~I.}\ \bibnamefont {Kirkland}},\ }\href
-  {https://doi.org/10.1038/s41467-017-00150-1} {\bibfield  {journal} {\bibinfo
-  {journal} {Nat. Commun.}\ }\textbf {\bibinfo {volume} {8}},\ \bibinfo {pages}
-  {163} (\bibinfo {year} {2017})}\BibitemShut {NoStop}%
+  {Gao}} \emph {et~al.},\ }\href {https://doi.org/10.1038/s41467-017-00150-1}
+  {\bibfield  {journal} {\bibinfo  {journal} {Nat. Commun.}\ }\textbf {\bibinfo
+  {volume} {8}},\ \bibinfo {pages} {163} (\bibinfo {year} {2017})}\BibitemShut
+  {NoStop}%
 \bibitem [{\citenamefont {Nellist}\ \emph {et~al.}(1995)\citenamefont
   {Nellist}, \citenamefont {McCallum},\ and\ \citenamefont
   {Rodenburg}}]{Nellist1995}%
@@ -162,127 +92,59 @@
   {Rodenburg}},\ }\href {https://doi.org/10.1038/374630a0} {\bibfield
   {journal} {\bibinfo  {journal} {Nature}\ }\textbf {\bibinfo {volume} {374}},\
   \bibinfo {pages} {630} (\bibinfo {year} {1995})}\BibitemShut {NoStop}%
-\bibitem [{\citenamefont {Chen}\ \emph {et~al.}(2021)\citenamefont {Chen},
-  \citenamefont {Jiang}, \citenamefont {Shao}, \citenamefont {Holtz},
-  \citenamefont {Odstr{\v{c}}il}, \citenamefont {Guizar-Sicairos},
-  \citenamefont {Hanke}, \citenamefont {Ganschow}, \citenamefont {Schlom},\
-  and\ \citenamefont {Muller}}]{Chen2021}%
+\bibitem [{\citenamefont {Chen}\ \emph {et~al.}(2021)\citenamefont {Chen} \emph
+  {et~al.}}]{Chen2021}%
   \BibitemOpen
   \bibfield  {author} {\bibinfo {author} {\bibfnamefont {Z.}~\bibnamefont
-  {Chen}}, \bibinfo {author} {\bibfnamefont {Y.}~\bibnamefont {Jiang}},
-  \bibinfo {author} {\bibfnamefont {Y.-T.}\ \bibnamefont {Shao}}, \bibinfo
-  {author} {\bibfnamefont {M.~E.}\ \bibnamefont {Holtz}}, \bibinfo {author}
-  {\bibfnamefont {M.}~\bibnamefont {Odstr{\v{c}}il}}, \bibinfo {author}
-  {\bibfnamefont {M.}~\bibnamefont {Guizar-Sicairos}}, \bibinfo {author}
-  {\bibfnamefont {I.}~\bibnamefont {Hanke}}, \bibinfo {author} {\bibfnamefont
-  {S.}~\bibnamefont {Ganschow}}, \bibinfo {author} {\bibfnamefont {D.~G.}\
-  \bibnamefont {Schlom}},\ and\ \bibinfo {author} {\bibfnamefont {D.~A.}\
-  \bibnamefont {Muller}},\ }\href {https://doi.org/10.1126/science.abg2533}
+  {Chen}} \emph {et~al.},\ }\href {https://doi.org/10.1126/science.abg2533}
   {\bibfield  {journal} {\bibinfo  {journal} {Science}\ }\textbf {\bibinfo
   {volume} {372}},\ \bibinfo {pages} {826} (\bibinfo {year}
   {2021})}\BibitemShut {NoStop}%
-\bibitem [{\citenamefont {Nguyen}\ \emph {et~al.}(2024)\citenamefont {Nguyen},
-  \citenamefont {Jiang}, \citenamefont {Lee}, \citenamefont {Kharel},
-  \citenamefont {Zhang}, \citenamefont {van~der Zande},\ and\ \citenamefont
-  {Huang}}]{Nguyen2024}%
+\bibitem [{\citenamefont {Nguyen}\ \emph {et~al.}(2024)\citenamefont {Nguyen}
+  \emph {et~al.}}]{Nguyen2024}%
   \BibitemOpen
   \bibfield  {author} {\bibinfo {author} {\bibfnamefont {K.~X.}\ \bibnamefont
-  {Nguyen}}, \bibinfo {author} {\bibfnamefont {Y.}~\bibnamefont {Jiang}},
-  \bibinfo {author} {\bibfnamefont {C.-H.}\ \bibnamefont {Lee}}, \bibinfo
-  {author} {\bibfnamefont {P.}~\bibnamefont {Kharel}}, \bibinfo {author}
-  {\bibfnamefont {Y.}~\bibnamefont {Zhang}}, \bibinfo {author} {\bibfnamefont
-  {A.~M.}\ \bibnamefont {van~der Zande}},\ and\ \bibinfo {author}
-  {\bibfnamefont {P.~Y.}\ \bibnamefont {Huang}},\ }\href
-  {https://doi.org/10.1126/science.adl2029} {\bibfield  {journal} {\bibinfo
-  {journal} {Science}\ }\textbf {\bibinfo {volume} {383}},\ \bibinfo {pages}
-  {865} (\bibinfo {year} {2024})}\BibitemShut {NoStop}%
-\bibitem [{\citenamefont {Dong}\ \emph {et~al.}(2024)\citenamefont {Dong},
-  \citenamefont {Huo}, \citenamefont {Li}, \citenamefont {Li}, \citenamefont
-  {Li}, \citenamefont {Sun}, \citenamefont {Gu}, \citenamefont {Lu},
-  \citenamefont {Wang}, \citenamefont {Wang},\ and\ \citenamefont
-  {Chen}}]{Dong2024}%
+  {Nguyen}} \emph {et~al.},\ }\href {https://doi.org/10.1126/science.adl2029}
+  {\bibfield  {journal} {\bibinfo  {journal} {Science}\ }\textbf {\bibinfo
+  {volume} {383}},\ \bibinfo {pages} {865} (\bibinfo {year}
+  {2024})}\BibitemShut {NoStop}%
+\bibitem [{\citenamefont {Dong}\ \emph {et~al.}(2024)\citenamefont {Dong} \emph
+  {et~al.}}]{Dong2024}%
   \BibitemOpen
   \bibfield  {author} {\bibinfo {author} {\bibfnamefont {Z.}~\bibnamefont
-  {Dong}}, \bibinfo {author} {\bibfnamefont {M.}~\bibnamefont {Huo}}, \bibinfo
-  {author} {\bibfnamefont {J.}~\bibnamefont {Li}}, \bibinfo {author}
-  {\bibfnamefont {J.}~\bibnamefont {Li}}, \bibinfo {author} {\bibfnamefont
-  {P.}~\bibnamefont {Li}}, \bibinfo {author} {\bibfnamefont {H.}~\bibnamefont
-  {Sun}}, \bibinfo {author} {\bibfnamefont {L.}~\bibnamefont {Gu}}, \bibinfo
-  {author} {\bibfnamefont {Y.}~\bibnamefont {Lu}}, \bibinfo {author}
-  {\bibfnamefont {M.}~\bibnamefont {Wang}}, \bibinfo {author} {\bibfnamefont
-  {Y.}~\bibnamefont {Wang}},\ and\ \bibinfo {author} {\bibfnamefont
-  {Z.}~\bibnamefont {Chen}},\ }\href
-  {https://doi.org/10.1038/s41586-024-07482-1} {\bibfield  {journal} {\bibinfo
-  {journal} {Nature}\ }\textbf {\bibinfo {volume} {630}},\ \bibinfo {pages}
-  {847} (\bibinfo {year} {2024})}\BibitemShut {NoStop}%
-\bibitem [{\citenamefont {Dong}\ \emph {et~al.}(2025)\citenamefont {Dong},
-  \citenamefont {Zhang}, \citenamefont {Chiu}, \citenamefont {Lu},
-  \citenamefont {Zhang}, \citenamefont {Liu}, \citenamefont {Liu},
-  \citenamefont {Yang}, \citenamefont {Yu}, \citenamefont {Wang},\ and\
-  \citenamefont {Chen}}]{Dong2025}%
+  {Dong}} \emph {et~al.},\ }\href {https://doi.org/10.1038/s41586-024-07482-1}
+  {\bibfield  {journal} {\bibinfo  {journal} {Nature}\ }\textbf {\bibinfo
+  {volume} {630}},\ \bibinfo {pages} {847} (\bibinfo {year}
+  {2024})}\BibitemShut {NoStop}%
+\bibitem [{\citenamefont {Dong}\ \emph {et~al.}(2025)\citenamefont {Dong} \emph
+  {et~al.}}]{Dong2025}%
   \BibitemOpen
   \bibfield  {author} {\bibinfo {author} {\bibfnamefont {Z.}~\bibnamefont
-  {Dong}}, \bibinfo {author} {\bibfnamefont {Y.}~\bibnamefont {Zhang}},
-  \bibinfo {author} {\bibfnamefont {C.-C.}\ \bibnamefont {Chiu}}, \bibinfo
-  {author} {\bibfnamefont {S.}~\bibnamefont {Lu}}, \bibinfo {author}
-  {\bibfnamefont {J.}~\bibnamefont {Zhang}}, \bibinfo {author} {\bibfnamefont
-  {Y.-C.}\ \bibnamefont {Liu}}, \bibinfo {author} {\bibfnamefont
-  {S.}~\bibnamefont {Liu}}, \bibinfo {author} {\bibfnamefont {J.-C.}\
-  \bibnamefont {Yang}}, \bibinfo {author} {\bibfnamefont {P.}~\bibnamefont
-  {Yu}}, \bibinfo {author} {\bibfnamefont {Y.}~\bibnamefont {Wang}},\ and\
-  \bibinfo {author} {\bibfnamefont {Z.}~\bibnamefont {Chen}},\ }\href
-  {https://doi.org/10.1038/s41467-025-56499-1} {\bibfield  {journal} {\bibinfo
-  {journal} {Nat. Commun.}\ }\textbf {\bibinfo {volume} {16}},\ \bibinfo
-  {pages} {1219} (\bibinfo {year} {2025})}\BibitemShut {NoStop}%
-\bibitem [{\citenamefont {Yang}\ \emph {et~al.}(2017)\citenamefont {Yang},
-  \citenamefont {Chen}, \citenamefont {Scott}, \citenamefont {Ophus},
-  \citenamefont {Xu}, \citenamefont {Pryor}, \citenamefont {Wu}, \citenamefont
-  {Sun}, \citenamefont {Theis}, \citenamefont {Zhou}, \citenamefont
-  {Eisenbach}, \citenamefont {Kent}, \citenamefont {Sabirianov}, \citenamefont
-  {Zeng}, \citenamefont {Ercius},\ and\ \citenamefont {Miao}}]{Yang2017}%
+  {Dong}} \emph {et~al.},\ }\href {https://doi.org/10.1038/s41467-025-56499-1}
+  {\bibfield  {journal} {\bibinfo  {journal} {Nat. Commun.}\ }\textbf {\bibinfo
+  {volume} {16}},\ \bibinfo {pages} {1219} (\bibinfo {year}
+  {2025})}\BibitemShut {NoStop}%
+\bibitem [{\citenamefont {Yang}\ \emph {et~al.}(2017)\citenamefont {Yang} \emph
+  {et~al.}}]{Yang2017}%
   \BibitemOpen
   \bibfield  {author} {\bibinfo {author} {\bibfnamefont {Y.}~\bibnamefont
-  {Yang}}, \bibinfo {author} {\bibfnamefont {C.-C.}\ \bibnamefont {Chen}},
-  \bibinfo {author} {\bibfnamefont {M.~C.}\ \bibnamefont {Scott}}, \bibinfo
-  {author} {\bibfnamefont {C.}~\bibnamefont {Ophus}}, \bibinfo {author}
-  {\bibfnamefont {R.}~\bibnamefont {Xu}}, \bibinfo {author} {\bibfnamefont
-  {A.}~\bibnamefont {Pryor}}, \bibinfo {author} {\bibfnamefont
-  {L.}~\bibnamefont {Wu}}, \bibinfo {author} {\bibfnamefont {F.}~\bibnamefont
-  {Sun}}, \bibinfo {author} {\bibfnamefont {W.}~\bibnamefont {Theis}}, \bibinfo
-  {author} {\bibfnamefont {J.}~\bibnamefont {Zhou}}, \bibinfo {author}
-  {\bibfnamefont {M.}~\bibnamefont {Eisenbach}}, \bibinfo {author}
-  {\bibfnamefont {P.~R.~C.}\ \bibnamefont {Kent}}, \bibinfo {author}
-  {\bibfnamefont {R.~F.}\ \bibnamefont {Sabirianov}}, \bibinfo {author}
-  {\bibfnamefont {H.}~\bibnamefont {Zeng}}, \bibinfo {author} {\bibfnamefont
-  {P.}~\bibnamefont {Ercius}},\ and\ \bibinfo {author} {\bibfnamefont
-  {J.}~\bibnamefont {Miao}},\ }\href {https://doi.org/10.1038/nature21042}
+  {Yang}} \emph {et~al.},\ }\href {https://doi.org/10.1038/nature21042}
   {\bibfield  {journal} {\bibinfo  {journal} {Nature}\ }\textbf {\bibinfo
   {volume} {542}},\ \bibinfo {pages} {75} (\bibinfo {year} {2017})}\BibitemShut
   {NoStop}%
 \bibitem [{\citenamefont {Ishizuka}\ \emph {et~al.}(2021)\citenamefont
-  {Ishizuka}, \citenamefont {Ishizuka}, \citenamefont {Ishikawa}, \citenamefont
-  {Shibata}, \citenamefont {Ikuhara}, \citenamefont {Hashiguchi},\ and\
-  \citenamefont {Sagawa}}]{Ishizuka2021}%
+  {Ishizuka} \emph {et~al.}}]{Ishizuka2021}%
   \BibitemOpen
   \bibfield  {author} {\bibinfo {author} {\bibfnamefont {A.}~\bibnamefont
-  {Ishizuka}}, \bibinfo {author} {\bibfnamefont {K.}~\bibnamefont {Ishizuka}},
-  \bibinfo {author} {\bibfnamefont {R.}~\bibnamefont {Ishikawa}}, \bibinfo
-  {author} {\bibfnamefont {N.}~\bibnamefont {Shibata}}, \bibinfo {author}
-  {\bibfnamefont {Y.}~\bibnamefont {Ikuhara}}, \bibinfo {author} {\bibfnamefont
-  {H.}~\bibnamefont {Hashiguchi}},\ and\ \bibinfo {author} {\bibfnamefont
-  {R.}~\bibnamefont {Sagawa}},\ }\href {https://doi.org/10.1093/jmicro/dfaa056}
+  {Ishizuka}} \emph {et~al.},\ }\href {https://doi.org/10.1093/jmicro/dfaa056}
   {\bibfield  {journal} {\bibinfo  {journal} {Microscopy}\ }\textbf {\bibinfo
   {volume} {70}},\ \bibinfo {pages} {241} (\bibinfo {year} {2021})}\BibitemShut
   {NoStop}%
 \bibitem [{\citenamefont {De~Backer}\ \emph {et~al.}(2016)\citenamefont
-  {De~Backer}, \citenamefont {van~den Bos}, \citenamefont {Van~den Broek},
-  \citenamefont {Sijbers},\ and\ \citenamefont {Van~Aert}}]{DeBacker2016}%
+  {De~Backer} \emph {et~al.}}]{DeBacker2016}%
   \BibitemOpen
   \bibfield  {author} {\bibinfo {author} {\bibfnamefont {A.}~\bibnamefont
-  {De~Backer}}, \bibinfo {author} {\bibfnamefont {K.~H.~W.}\ \bibnamefont
-  {van~den Bos}}, \bibinfo {author} {\bibfnamefont {W.}~\bibnamefont {Van~den
-  Broek}}, \bibinfo {author} {\bibfnamefont {J.}~\bibnamefont {Sijbers}},\ and\
-  \bibinfo {author} {\bibfnamefont {S.}~\bibnamefont {Van~Aert}},\ }\href
+  {De~Backer}} \emph {et~al.},\ }\href
   {https://doi.org/10.1016/j.ultramic.2016.08.018} {\bibfield  {journal}
   {\bibinfo  {journal} {Ultramicroscopy}\ }\textbf {\bibinfo {volume} {171}},\
   \bibinfo {pages} {104} (\bibinfo {year} {2016})}\BibitemShut {NoStop}%
@@ -341,22 +203,11 @@
    {journal} {\bibinfo  {journal} {Opt. Express}\ }\textbf {\bibinfo {volume}
   {26}},\ \bibinfo {pages} {3108} (\bibinfo {year} {2018})}\BibitemShut
   {NoStop}%
-\bibitem [{\citenamefont {Wakonig}\ \emph {et~al.}(2020)\citenamefont
-  {Wakonig}, \citenamefont {Stadler}, \citenamefont {Odstr{\v{c}}il},
-  \citenamefont {Tsai}, \citenamefont {Diaz}, \citenamefont {Holler},
-  \citenamefont {Usov}, \citenamefont {Raabe}, \citenamefont {Menzel},\ and\
-  \citenamefont {Guizar-Sicairos}}]{Wakonig2020}%
+\bibitem [{\citenamefont {Wakonig}\ \emph {et~al.}(2020)\citenamefont {Wakonig}
+  \emph {et~al.}}]{Wakonig2020}%
   \BibitemOpen
   \bibfield  {author} {\bibinfo {author} {\bibfnamefont {K.}~\bibnamefont
-  {Wakonig}}, \bibinfo {author} {\bibfnamefont {H.-C.}\ \bibnamefont
-  {Stadler}}, \bibinfo {author} {\bibfnamefont {M.}~\bibnamefont
-  {Odstr{\v{c}}il}}, \bibinfo {author} {\bibfnamefont {E.~H.~R.}\ \bibnamefont
-  {Tsai}}, \bibinfo {author} {\bibfnamefont {A.}~\bibnamefont {Diaz}}, \bibinfo
-  {author} {\bibfnamefont {M.}~\bibnamefont {Holler}}, \bibinfo {author}
-  {\bibfnamefont {I.}~\bibnamefont {Usov}}, \bibinfo {author} {\bibfnamefont
-  {J.}~\bibnamefont {Raabe}}, \bibinfo {author} {\bibfnamefont
-  {A.}~\bibnamefont {Menzel}},\ and\ \bibinfo {author} {\bibfnamefont
-  {M.}~\bibnamefont {Guizar-Sicairos}},\ }\href
+  {Wakonig}} \emph {et~al.},\ }\href
   {https://doi.org/10.1107/S1600576720001776} {\bibfield  {journal} {\bibinfo
   {journal} {J. Appl. Crystallogr.}\ }\textbf {\bibinfo {volume} {53}},\
   \bibinfo {pages} {574} (\bibinfo {year} {2020})}\BibitemShut {NoStop}%
@@ -393,6 +244,19 @@
   }\href {https://doi.org/10.1109/78.258082} {\bibfield  {journal} {\bibinfo
   {journal} {IEEE Trans. Signal Process.}\ }\textbf {\bibinfo {volume} {41}},\
   \bibinfo {pages} {3397} (\bibinfo {year} {1993})}\BibitemShut {NoStop}%
+\bibitem [{\citenamefont {Papadopoulos}\ \emph {et~al.}(2002)\citenamefont
+  {Papadopoulos}, \citenamefont {Proedrou}, \citenamefont {Vovk},\ and\
+  \citenamefont {Gammerman}}]{Papadopoulos2002}%
+  \BibitemOpen
+  \bibfield  {author} {\bibinfo {author} {\bibfnamefont {H.}~\bibnamefont
+  {Papadopoulos}}, \bibinfo {author} {\bibfnamefont {K.}~\bibnamefont
+  {Proedrou}}, \bibinfo {author} {\bibfnamefont {V.}~\bibnamefont {Vovk}},\
+  and\ \bibinfo {author} {\bibfnamefont {A.}~\bibnamefont {Gammerman}},\ }in\
+  \href {https://doi.org/10.1007/3-540-36755-1_29} {\emph {\bibinfo {booktitle}
+  {Machine Learning: ECML 2002}}},\ \bibinfo {series} {Lecture Notes in
+  Computer Science}, Vol.\ \bibinfo {volume} {2430}\ (\bibinfo  {publisher}
+  {Springer},\ \bibinfo {address} {Berlin, Heidelberg},\ \bibinfo {year}
+  {2002})\ pp.\ \bibinfo {pages} {345--356}\BibitemShut {NoStop}%
 \bibitem [{\citenamefont {Vovk}\ \emph {et~al.}(2005)\citenamefont {Vovk},
   \citenamefont {Gammerman},\ and\ \citenamefont {Shafer}}]{Vovk2005}%
   \BibitemOpen
@@ -410,6 +274,14 @@
   Microscope}}},\ \bibinfo {edition} {3rd}\ ed.\ (\bibinfo  {publisher}
   {Springer},\ \bibinfo {address} {New York},\ \bibinfo {year}
   {2011})\BibitemShut {NoStop}%
+\bibitem [{\citenamefont {Nelhiebel}\ \emph {et~al.}(1999)\citenamefont
+  {Nelhiebel} \emph {et~al.}}]{Nelhiebel1999}%
+  \BibitemOpen
+  \bibfield  {author} {\bibinfo {author} {\bibfnamefont {M.}~\bibnamefont
+  {Nelhiebel}} \emph {et~al.},\ }\href
+  {https://doi.org/10.1103/PhysRevB.59.12807} {\bibfield  {journal} {\bibinfo
+  {journal} {Phys. Rev. B}\ }\textbf {\bibinfo {volume} {59}},\ \bibinfo
+  {pages} {12807} (\bibinfo {year} {1999})}\BibitemShut {NoStop}%
 \bibitem [{\citenamefont {Jouffrey}\ \emph {et~al.}(2004)\citenamefont
   {Jouffrey}, \citenamefont {Schattschneider},\ and\ \citenamefont
   {H{\'e}bert}}]{Jouffrey2004}%
@@ -421,34 +293,23 @@
   {\bibfield  {journal} {\bibinfo  {journal} {Ultramicroscopy}\ }\textbf
   {\bibinfo {volume} {102}},\ \bibinfo {pages} {61} (\bibinfo {year}
   {2004})}\BibitemShut {NoStop}%
-\bibitem [{\citenamefont {Clark}\ \emph {et~al.}(2005)\citenamefont {Clark},
-  \citenamefont {Segall}, \citenamefont {Pickard}, \citenamefont {Hasnip},
-  \citenamefont {Probert}, \citenamefont {Refson},\ and\ \citenamefont
-  {Payne}}]{Clark2005}%
+\bibitem [{\citenamefont {Clark}\ \emph {et~al.}(2005)\citenamefont {Clark}
+  \emph {et~al.}}]{Clark2005}%
   \BibitemOpen
   \bibfield  {author} {\bibinfo {author} {\bibfnamefont {S.~J.}\ \bibnamefont
-  {Clark}}, \bibinfo {author} {\bibfnamefont {M.~D.}\ \bibnamefont {Segall}},
-  \bibinfo {author} {\bibfnamefont {C.~J.}\ \bibnamefont {Pickard}}, \bibinfo
-  {author} {\bibfnamefont {P.~J.}\ \bibnamefont {Hasnip}}, \bibinfo {author}
-  {\bibfnamefont {M.~I.~J.}\ \bibnamefont {Probert}}, \bibinfo {author}
-  {\bibfnamefont {K.}~\bibnamefont {Refson}},\ and\ \bibinfo {author}
-  {\bibfnamefont {M.~C.}\ \bibnamefont {Payne}},\ }\href
+  {Clark}} \emph {et~al.},\ }\href
   {https://doi.org/10.1524/zkri.220.5.567.65075} {\bibfield  {journal}
   {\bibinfo  {journal} {Z. Kristallogr. - Cryst. Mater.}\ }\textbf {\bibinfo
   {volume} {220}},\ \bibinfo {pages} {567} (\bibinfo {year}
   {2005})}\BibitemShut {NoStop}%
-\bibitem [{\citenamefont {Gao}\ \emph {et~al.}(2008)\citenamefont {Gao},
-  \citenamefont {Pickard}, \citenamefont {Payne}, \citenamefont {Zhu},\ and\
-  \citenamefont {Yuan}}]{Gao2008}%
+\bibitem [{\citenamefont {Gao}\ \emph {et~al.}(2008)\citenamefont {Gao} \emph
+  {et~al.}}]{Gao2008}%
   \BibitemOpen
   \bibfield  {author} {\bibinfo {author} {\bibfnamefont {S.-P.}\ \bibnamefont
-  {Gao}}, \bibinfo {author} {\bibfnamefont {C.~J.}\ \bibnamefont {Pickard}},
-  \bibinfo {author} {\bibfnamefont {M.~C.}\ \bibnamefont {Payne}}, \bibinfo
-  {author} {\bibfnamefont {J.}~\bibnamefont {Zhu}},\ and\ \bibinfo {author}
-  {\bibfnamefont {J.}~\bibnamefont {Yuan}},\ }\href
-  {https://doi.org/10.1103/PhysRevB.77.115122} {\bibfield  {journal} {\bibinfo
-  {journal} {Phys. Rev. B}\ }\textbf {\bibinfo {volume} {77}},\ \bibinfo
-  {pages} {115122} (\bibinfo {year} {2008})}\BibitemShut {NoStop}%
+  {Gao}} \emph {et~al.},\ }\href {https://doi.org/10.1103/PhysRevB.77.115122}
+  {\bibfield  {journal} {\bibinfo  {journal} {Phys. Rev. B}\ }\textbf {\bibinfo
+  {volume} {77}},\ \bibinfo {pages} {115122} (\bibinfo {year}
+  {2008})}\BibitemShut {NoStop}%
 \bibitem [{\citenamefont {Morris}\ \emph {et~al.}(2014)\citenamefont {Morris},
   \citenamefont {Nicholls}, \citenamefont {Pickard},\ and\ \citenamefont
   {Yates}}]{Morris2014}%
@@ -462,19 +323,10 @@
   {volume} {185}},\ \bibinfo {pages} {1477} (\bibinfo {year}
   {2014})}\BibitemShut {NoStop}%
 \bibitem [{\citenamefont {Torres-Pardo}\ \emph {et~al.}(2011)\citenamefont
-  {Torres-Pardo}, \citenamefont {Gloter}, \citenamefont {Zubko}, \citenamefont
-  {Jecklin}, \citenamefont {Lichtensteiger}, \citenamefont {Colliex},
-  \citenamefont {Triscone},\ and\ \citenamefont
-  {St{\'e}phan}}]{TorresPardo2011}%
+  {Torres-Pardo} \emph {et~al.}}]{TorresPardo2011}%
   \BibitemOpen
   \bibfield  {author} {\bibinfo {author} {\bibfnamefont {A.}~\bibnamefont
-  {Torres-Pardo}}, \bibinfo {author} {\bibfnamefont {A.}~\bibnamefont
-  {Gloter}}, \bibinfo {author} {\bibfnamefont {P.}~\bibnamefont {Zubko}},
-  \bibinfo {author} {\bibfnamefont {N.}~\bibnamefont {Jecklin}}, \bibinfo
-  {author} {\bibfnamefont {C.}~\bibnamefont {Lichtensteiger}}, \bibinfo
-  {author} {\bibfnamefont {C.}~\bibnamefont {Colliex}}, \bibinfo {author}
-  {\bibfnamefont {J.-M.}\ \bibnamefont {Triscone}},\ and\ \bibinfo {author}
-  {\bibfnamefont {O.}~\bibnamefont {St{\'e}phan}},\ }\href
+  {Torres-Pardo}} \emph {et~al.},\ }\href
   {https://doi.org/10.1103/PhysRevB.84.220102} {\bibfield  {journal} {\bibinfo
   {journal} {Phys. Rev. B}\ }\textbf {\bibinfo {volume} {84}},\ \bibinfo
   {pages} {220102(R)} (\bibinfo {year} {2011})}\BibitemShut {NoStop}%
@@ -490,32 +342,20 @@
   {\bibfield  {journal} {\bibinfo  {journal} {Phys. Rev. B}\ }\textbf {\bibinfo
   {volume} {42}},\ \bibinfo {pages} {5459} (\bibinfo {year}
   {1990})}\BibitemShut {NoStop}%
-\bibitem [{\citenamefont {Bugnet}\ \emph {et~al.}(2016)\citenamefont {Bugnet},
-  \citenamefont {Radtke}, \citenamefont {Woo}, \citenamefont {Zhu},\ and\
-  \citenamefont {Botton}}]{Bugnet2016}%
+\bibitem [{\citenamefont {Bugnet}\ \emph {et~al.}(2016)\citenamefont {Bugnet}
+  \emph {et~al.}}]{Bugnet2016}%
   \BibitemOpen
   \bibfield  {author} {\bibinfo {author} {\bibfnamefont {M.}~\bibnamefont
-  {Bugnet}}, \bibinfo {author} {\bibfnamefont {G.}~\bibnamefont {Radtke}},
-  \bibinfo {author} {\bibfnamefont {S.~Y.}\ \bibnamefont {Woo}}, \bibinfo
-  {author} {\bibfnamefont {G.-Z.}\ \bibnamefont {Zhu}},\ and\ \bibinfo {author}
-  {\bibfnamefont {G.~A.}\ \bibnamefont {Botton}},\ }\href
+  {Bugnet}} \emph {et~al.},\ }\href
   {https://doi.org/10.1103/PhysRevB.93.020102} {\bibfield  {journal} {\bibinfo
   {journal} {Phys. Rev. B}\ }\textbf {\bibinfo {volume} {93}},\ \bibinfo
   {pages} {020102(R)} (\bibinfo {year} {2016})}\BibitemShut {NoStop}%
-\bibitem [{\citenamefont {Wu}\ \emph {et~al.}(2026)\citenamefont {Wu},
-  \citenamefont {Huang}, \citenamefont {Chen}, \citenamefont {He},
-  \citenamefont {Qi}, \citenamefont {Zheng}, \citenamefont {Zhao},
-  \citenamefont {Jia},\ and\ \citenamefont {Wang}}]{Wu2026}%
+\bibitem [{\citenamefont {Wu}\ \emph {et~al.}(2026)\citenamefont {Wu} \emph
+  {et~al.}}]{Wu2026}%
   \BibitemOpen
-  \bibfield  {author} {\bibinfo {author} {\bibfnamefont {Y.}~\bibnamefont
-  {Wu}}, \bibinfo {author} {\bibfnamefont {Z.}~\bibnamefont {Huang}}, \bibinfo
-  {author} {\bibfnamefont {H.}~\bibnamefont {Chen}}, \bibinfo {author}
-  {\bibfnamefont {B.}~\bibnamefont {He}}, \bibinfo {author} {\bibfnamefont
-  {M.}~\bibnamefont {Qi}}, \bibinfo {author} {\bibfnamefont {H.}~\bibnamefont
-  {Zheng}}, \bibinfo {author} {\bibfnamefont {P.}~\bibnamefont {Zhao}},
-  \bibinfo {author} {\bibfnamefont {S.}~\bibnamefont {Jia}},\ and\ \bibinfo
-  {author} {\bibfnamefont {J.}~\bibnamefont {Wang}},\ }\href
-  {https://doi.org/10.1016/j.ultramic.2026.114374} {\bibfield  {journal}
-  {\bibinfo  {journal} {Ultramicroscopy}\ }\textbf {\bibinfo {volume} {284}},\
-  \bibinfo {pages} {114374} (\bibinfo {year} {2026})}\BibitemShut {NoStop}%
+  \bibfield  {author} {\bibinfo {author} {\bibfnamefont {Y.}~\bibnamefont {Wu}}
+  \emph {et~al.},\ }\href {https://doi.org/10.1016/j.ultramic.2026.114374}
+  {\bibfield  {journal} {\bibinfo  {journal} {Ultramicroscopy}\ }\textbf
+  {\bibinfo {volume} {284}},\ \bibinfo {pages} {114374} (\bibinfo {year}
+  {2026})}\BibitemShut {NoStop}%
 \end{thebibliography}%
