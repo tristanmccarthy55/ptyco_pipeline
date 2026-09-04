@@ -82,16 +82,14 @@
   {\bibfield  {journal} {\bibinfo  {journal} {Nat. Commun.}\ }\textbf {\bibinfo
   {volume} {8}},\ \bibinfo {pages} {163} (\bibinfo {year} {2017})}\BibitemShut
   {NoStop}%
-\bibitem [{\citenamefont {Nellist}\ \emph {et~al.}(1995)\citenamefont
-  {Nellist}, \citenamefont {McCallum},\ and\ \citenamefont
-  {Rodenburg}}]{Nellist1995}%
+\bibitem [{\citenamefont {Nellist}\ \emph {et~al.}(1995)\citenamefont {Nellist}
+  \emph {et~al.}}]{Nellist1995}%
   \BibitemOpen
   \bibfield  {author} {\bibinfo {author} {\bibfnamefont {P.~D.}\ \bibnamefont
-  {Nellist}}, \bibinfo {author} {\bibfnamefont {B.~C.}\ \bibnamefont
-  {McCallum}},\ and\ \bibinfo {author} {\bibfnamefont {J.~M.}\ \bibnamefont
-  {Rodenburg}},\ }\href {https://doi.org/10.1038/374630a0} {\bibfield
-  {journal} {\bibinfo  {journal} {Nature}\ }\textbf {\bibinfo {volume} {374}},\
-  \bibinfo {pages} {630} (\bibinfo {year} {1995})}\BibitemShut {NoStop}%
+  {Nellist}} \emph {et~al.},\ }\href {https://doi.org/10.1038/374630a0}
+  {\bibfield  {journal} {\bibinfo  {journal} {Nature}\ }\textbf {\bibinfo
+  {volume} {374}},\ \bibinfo {pages} {630} (\bibinfo {year}
+  {1995})}\BibitemShut {NoStop}%
 \bibitem [{\citenamefont {Chen}\ \emph {et~al.}(2021)\citenamefont {Chen} \emph
   {et~al.}}]{Chen2021}%
   \BibitemOpen
@@ -174,15 +172,14 @@
   {journal} {\bibinfo  {journal} {Acta Crystallogr. A}\ }\textbf {\bibinfo
   {volume} {70}},\ \bibinfo {pages} {636} (\bibinfo {year} {2014})}\BibitemShut
   {NoStop}%
-\bibitem [{\citenamefont {Loane}\ \emph {et~al.}(1991)\citenamefont {Loane},
-  \citenamefont {Xu},\ and\ \citenamefont {Silcox}}]{LoaneXuSilcox1991}%
+\bibitem [{\citenamefont {Loane}\ \emph {et~al.}(1991)\citenamefont {Loane}
+  \emph {et~al.}}]{LoaneXuSilcox1991}%
   \BibitemOpen
   \bibfield  {author} {\bibinfo {author} {\bibfnamefont {R.~F.}\ \bibnamefont
-  {Loane}}, \bibinfo {author} {\bibfnamefont {P.}~\bibnamefont {Xu}},\ and\
-  \bibinfo {author} {\bibfnamefont {J.}~\bibnamefont {Silcox}},\ }\href
-  {https://doi.org/10.1107/S0108767391000375} {\bibfield  {journal} {\bibinfo
-  {journal} {Acta Crystallogr. A}\ }\textbf {\bibinfo {volume} {47}},\ \bibinfo
-  {pages} {267} (\bibinfo {year} {1991})}\BibitemShut {NoStop}%
+  {Loane}} \emph {et~al.},\ }\href {https://doi.org/10.1107/S0108767391000375}
+  {\bibfield  {journal} {\bibinfo  {journal} {Acta Crystallogr. A}\ }\textbf
+  {\bibinfo {volume} {47}},\ \bibinfo {pages} {267} (\bibinfo {year}
+  {1991})}\BibitemShut {NoStop}%
 \bibitem [{\citenamefont {Rodenburg}\ and\ \citenamefont
   {Faulkner}(2004)}]{RodenburgFaulkner2004}%
   \BibitemOpen
@@ -193,16 +190,13 @@
   {volume} {85}},\ \bibinfo {pages} {4795} (\bibinfo {year}
   {2004})}\BibitemShut {NoStop}%
 \bibitem [{\citenamefont {Odstr{\v{c}}il}\ \emph {et~al.}(2018)\citenamefont
-  {Odstr{\v{c}}il}, \citenamefont {Menzel},\ and\ \citenamefont
-  {Guizar-Sicairos}}]{Odstrcil2018}%
+  {Odstr{\v{c}}il} \emph {et~al.}}]{Odstrcil2018}%
   \BibitemOpen
   \bibfield  {author} {\bibinfo {author} {\bibfnamefont {M.}~\bibnamefont
-  {Odstr{\v{c}}il}}, \bibinfo {author} {\bibfnamefont {A.}~\bibnamefont
-  {Menzel}},\ and\ \bibinfo {author} {\bibfnamefont {M.}~\bibnamefont
-  {Guizar-Sicairos}},\ }\href {https://doi.org/10.1364/OE.26.003108} {\bibfield
-   {journal} {\bibinfo  {journal} {Opt. Express}\ }\textbf {\bibinfo {volume}
-  {26}},\ \bibinfo {pages} {3108} (\bibinfo {year} {2018})}\BibitemShut
-  {NoStop}%
+  {Odstr{\v{c}}il}} \emph {et~al.},\ }\href
+  {https://doi.org/10.1364/OE.26.003108} {\bibfield  {journal} {\bibinfo
+  {journal} {Opt. Express}\ }\textbf {\bibinfo {volume} {26}},\ \bibinfo
+  {pages} {3108} (\bibinfo {year} {2018})}\BibitemShut {NoStop}%
 \bibitem [{\citenamefont {Wakonig}\ \emph {et~al.}(2020)\citenamefont {Wakonig}
   \emph {et~al.}}]{Wakonig2020}%
   \BibitemOpen
@@ -245,27 +239,23 @@
   {journal} {IEEE Trans. Signal Process.}\ }\textbf {\bibinfo {volume} {41}},\
   \bibinfo {pages} {3397} (\bibinfo {year} {1993})}\BibitemShut {NoStop}%
 \bibitem [{\citenamefont {Papadopoulos}\ \emph {et~al.}(2002)\citenamefont
-  {Papadopoulos}, \citenamefont {Proedrou}, \citenamefont {Vovk},\ and\
-  \citenamefont {Gammerman}}]{Papadopoulos2002}%
+  {Papadopoulos} \emph {et~al.}}]{Papadopoulos2002}%
   \BibitemOpen
   \bibfield  {author} {\bibinfo {author} {\bibfnamefont {H.}~\bibnamefont
-  {Papadopoulos}}, \bibinfo {author} {\bibfnamefont {K.}~\bibnamefont
-  {Proedrou}}, \bibinfo {author} {\bibfnamefont {V.}~\bibnamefont {Vovk}},\
-  and\ \bibinfo {author} {\bibfnamefont {A.}~\bibnamefont {Gammerman}},\ }in\
-  \href {https://doi.org/10.1007/3-540-36755-1_29} {\emph {\bibinfo {booktitle}
+  {Papadopoulos}} \emph {et~al.},\ }in\ \href
+  {https://doi.org/10.1007/3-540-36755-1_29} {\emph {\bibinfo {booktitle}
   {Machine Learning: ECML 2002}}},\ \bibinfo {series} {Lecture Notes in
   Computer Science}, Vol.\ \bibinfo {volume} {2430}\ (\bibinfo  {publisher}
   {Springer},\ \bibinfo {address} {Berlin, Heidelberg},\ \bibinfo {year}
   {2002})\ pp.\ \bibinfo {pages} {345--356}\BibitemShut {NoStop}%
-\bibitem [{\citenamefont {Vovk}\ \emph {et~al.}(2005)\citenamefont {Vovk},
-  \citenamefont {Gammerman},\ and\ \citenamefont {Shafer}}]{Vovk2005}%
+\bibitem [{\citenamefont {Vovk}\ \emph {et~al.}(2005)\citenamefont {Vovk} \emph
+  {et~al.}}]{Vovk2005}%
   \BibitemOpen
   \bibfield  {author} {\bibinfo {author} {\bibfnamefont {V.}~\bibnamefont
-  {Vovk}}, \bibinfo {author} {\bibfnamefont {A.}~\bibnamefont {Gammerman}},\
-  and\ \bibinfo {author} {\bibfnamefont {G.}~\bibnamefont {Shafer}},\ }\href
-  {https://doi.org/10.1007/b106715} {\emph {\bibinfo {title} {Algorithmic
-  Learning in a Random World}}}\ (\bibinfo  {publisher} {Springer},\ \bibinfo
-  {address} {New York},\ \bibinfo {year} {2005})\BibitemShut {NoStop}%
+  {Vovk}} \emph {et~al.},\ }\href {https://doi.org/10.1007/b106715} {\emph
+  {\bibinfo {title} {Algorithmic Learning in a Random World}}}\ (\bibinfo
+  {publisher} {Springer},\ \bibinfo {address} {New York},\ \bibinfo {year}
+  {2005})\BibitemShut {NoStop}%
 \bibitem [{\citenamefont {Egerton}(2011)}]{Egerton2011}%
   \BibitemOpen
   \bibfield  {author} {\bibinfo {author} {\bibfnamefont {R.~F.}\ \bibnamefont
@@ -283,16 +273,13 @@
   {journal} {Phys. Rev. B}\ }\textbf {\bibinfo {volume} {59}},\ \bibinfo
   {pages} {12807} (\bibinfo {year} {1999})}\BibitemShut {NoStop}%
 \bibitem [{\citenamefont {Jouffrey}\ \emph {et~al.}(2004)\citenamefont
-  {Jouffrey}, \citenamefont {Schattschneider},\ and\ \citenamefont
-  {H{\'e}bert}}]{Jouffrey2004}%
+  {Jouffrey} \emph {et~al.}}]{Jouffrey2004}%
   \BibitemOpen
   \bibfield  {author} {\bibinfo {author} {\bibfnamefont {B.}~\bibnamefont
-  {Jouffrey}}, \bibinfo {author} {\bibfnamefont {P.}~\bibnamefont
-  {Schattschneider}},\ and\ \bibinfo {author} {\bibfnamefont {C.}~\bibnamefont
-  {H{\'e}bert}},\ }\href {https://doi.org/10.1016/j.ultramic.2004.08.006}
-  {\bibfield  {journal} {\bibinfo  {journal} {Ultramicroscopy}\ }\textbf
-  {\bibinfo {volume} {102}},\ \bibinfo {pages} {61} (\bibinfo {year}
-  {2004})}\BibitemShut {NoStop}%
+  {Jouffrey}} \emph {et~al.},\ }\href
+  {https://doi.org/10.1016/j.ultramic.2004.08.006} {\bibfield  {journal}
+  {\bibinfo  {journal} {Ultramicroscopy}\ }\textbf {\bibinfo {volume} {102}},\
+  \bibinfo {pages} {61} (\bibinfo {year} {2004})}\BibitemShut {NoStop}%
 \bibitem [{\citenamefont {Clark}\ \emph {et~al.}(2005)\citenamefont {Clark}
   \emph {et~al.}}]{Clark2005}%
   \BibitemOpen
@@ -310,17 +297,13 @@
   {\bibfield  {journal} {\bibinfo  {journal} {Phys. Rev. B}\ }\textbf {\bibinfo
   {volume} {77}},\ \bibinfo {pages} {115122} (\bibinfo {year}
   {2008})}\BibitemShut {NoStop}%
-\bibitem [{\citenamefont {Morris}\ \emph {et~al.}(2014)\citenamefont {Morris},
-  \citenamefont {Nicholls}, \citenamefont {Pickard},\ and\ \citenamefont
-  {Yates}}]{Morris2014}%
+\bibitem [{\citenamefont {Morris}\ \emph {et~al.}(2014)\citenamefont {Morris}
+  \emph {et~al.}}]{Morris2014}%
   \BibitemOpen
   \bibfield  {author} {\bibinfo {author} {\bibfnamefont {A.~J.}\ \bibnamefont
-  {Morris}}, \bibinfo {author} {\bibfnamefont {R.~J.}\ \bibnamefont
-  {Nicholls}}, \bibinfo {author} {\bibfnamefont {C.~J.}\ \bibnamefont
-  {Pickard}},\ and\ \bibinfo {author} {\bibfnamefont {J.~R.}\ \bibnamefont
-  {Yates}},\ }\href {https://doi.org/10.1016/j.cpc.2014.02.013} {\bibfield
-  {journal} {\bibinfo  {journal} {Comput. Phys. Commun.}\ }\textbf {\bibinfo
-  {volume} {185}},\ \bibinfo {pages} {1477} (\bibinfo {year}
+  {Morris}} \emph {et~al.},\ }\href {https://doi.org/10.1016/j.cpc.2014.02.013}
+  {\bibfield  {journal} {\bibinfo  {journal} {Comput. Phys. Commun.}\ }\textbf
+  {\bibinfo {volume} {185}},\ \bibinfo {pages} {1477} (\bibinfo {year}
   {2014})}\BibitemShut {NoStop}%
 \bibitem [{\citenamefont {Torres-Pardo}\ \emph {et~al.}(2011)\citenamefont
   {Torres-Pardo} \emph {et~al.}}]{TorresPardo2011}%
@@ -331,17 +314,13 @@
   {journal} {Phys. Rev. B}\ }\textbf {\bibinfo {volume} {84}},\ \bibinfo
   {pages} {220102(R)} (\bibinfo {year} {2011})}\BibitemShut {NoStop}%
 \bibitem [{\citenamefont {de~Groot}\ \emph {et~al.}(1990)\citenamefont
-  {de~Groot}, \citenamefont {Fuggle}, \citenamefont {Thole},\ and\
-  \citenamefont {Sawatzky}}]{deGroot1990}%
+  {de~Groot} \emph {et~al.}}]{deGroot1990}%
   \BibitemOpen
   \bibfield  {author} {\bibinfo {author} {\bibfnamefont {F.~M.~F.}\
-  \bibnamefont {de~Groot}}, \bibinfo {author} {\bibfnamefont {J.~C.}\
-  \bibnamefont {Fuggle}}, \bibinfo {author} {\bibfnamefont {B.~T.}\
-  \bibnamefont {Thole}},\ and\ \bibinfo {author} {\bibfnamefont {G.~A.}\
-  \bibnamefont {Sawatzky}},\ }\href {https://doi.org/10.1103/PhysRevB.42.5459}
-  {\bibfield  {journal} {\bibinfo  {journal} {Phys. Rev. B}\ }\textbf {\bibinfo
-  {volume} {42}},\ \bibinfo {pages} {5459} (\bibinfo {year}
-  {1990})}\BibitemShut {NoStop}%
+  \bibnamefont {de~Groot}} \emph {et~al.},\ }\href
+  {https://doi.org/10.1103/PhysRevB.42.5459} {\bibfield  {journal} {\bibinfo
+  {journal} {Phys. Rev. B}\ }\textbf {\bibinfo {volume} {42}},\ \bibinfo
+  {pages} {5459} (\bibinfo {year} {1990})}\BibitemShut {NoStop}%
 \bibitem [{\citenamefont {Bugnet}\ \emph {et~al.}(2016)\citenamefont {Bugnet}
   \emph {et~al.}}]{Bugnet2016}%
   \BibitemOpen
