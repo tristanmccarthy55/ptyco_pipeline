@@ -157,6 +157,13 @@ def species_kernels(cfg, dx):
         out[82] = empirical_psf(cfg, dx)
     if cfg.ti_kernel_vol and os.path.exists(os.path.expanduser(cfg.ti_kernel_vol)):
         out[22] = empirical_psf(cfg, dx, vol_path=cfg.ti_kernel_vol)
+    # Fallback when no MEASURED kernel is provided (e.g. the thin preset before a matched
+    # single-atom PSF is simulated): use the cfg-derived synthetic kernel, and let light atoms
+    # share the Pb shape (first-pass; a measured per-species kernel sharpens classification).
+    if 82 not in out:
+        out[82] = synthetic_psf(cfg, dx)
+    if 22 not in out:
+        out[22] = out[82]
     return out
 
 

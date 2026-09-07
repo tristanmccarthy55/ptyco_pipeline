@@ -335,6 +335,18 @@ def preset(name: str) -> Config:
                             dz=0.666, dose_e_per_A2=1e8,
                             single_atom_vol="psf_Pb_rev2_d1e8_vol.npy",
                             single_atom_species=82),
+        # THIN aberration-campaign slab (~11.7 A beam path, override recon_vol+dz per alpha via
+        # --recon/--dz). Geometry already matches (centre 40,20 / window 20). Depth knobs scaled
+        # 70 A -> ~11.7 A; synthetic PSF by default (no thin kernel measured yet). NOTE: until the
+        # sim reconstructs the FULL box (incl z-vacuum), the entrance/exit surface artifacts sit ON
+        # the edge atomic planes -> trim_z_A drops them; that is the interface issue to fix in the sim.
+        "thin": Config(name="thin",
+                       recon_vol="a100_known.npy", dz=0.976, dose_e_per_A2=None,
+                       dx=0.0492,                     # explicit: object is the FULL field, not the 20 A scan
+                       convergence_mrad=100.0,
+                       zmax_show_A=11.5, trim_z_A=(1.0, 11.0),
+                       exit_band_z_A=9.0, clean_max_atoms=8,
+                       single_atom_vol=None, single_atom_species=82),
     }
     if name not in presets:
         raise KeyError(f"unknown preset {name!r}; have {list(presets)}")
