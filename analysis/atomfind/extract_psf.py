@@ -22,7 +22,17 @@ from scipy.ndimage import maximum_filter
 def load_vol(recon_dir):
     mats = glob.glob(os.path.join(recon_dir, "**", "Niter*.mat"), recursive=True)
     if not mats:
-        raise SystemExit(f"no Niter*.mat under {recon_dir}")
+        # newer PtychoShelves writes *_recons.h5 (reconstruction/object) instead of Niter*.mat
+        rec = glob.glob(os.path.join(recon_dir, "**", "*_recons.h5"), recursive=True)
+        if not rec:
+            raise SystemExit(f"no Niter*.mat or *_recons.h5 under {recon_dir}")
+        m = sorted(rec, key=os.path.getmtime)[-1]
+        with h5py.File(m, "r") as f:
+            obj = f["reconstruction"]["object"][:]           # (NL,1,Ny,Nx) or (NL,Ny,Nx) complex
+        obj = np.asarray(obj).squeeze()
+        if obj.ndim == 2:
+            obj = obj[None]
+        return obj.astype(np.complex64), m
     m = sorted(mats, key=lambda p: int("".join(filter(str.isdigit, os.path.basename(p)))))[-1]
     with h5py.File(m, "r") as f:
         L = []

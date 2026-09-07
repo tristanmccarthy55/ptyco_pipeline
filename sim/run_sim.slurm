@@ -121,6 +121,8 @@ PS_ARG=(); [ "${PER_SPECIES_SIGMA:-0}" = "1" ] && PS_ARG=(--per-species-sigma)
 TH_ARG=(); [ -n "${THIN_CELLS:-}" ] && TH_ARG=(--thin-cells="${THIN_CELLS}")
 DEF_ARG=(); [ -n "${DEFOCUS:-}" ] && DEF_ARG=(--defocus="${DEFOCUS}")
 [ -n "${NOMINAL_DEFOCUS:-}" ] && DEF_ARG+=(--probe-defocus="${NOMINAL_DEFOCUS}")
+[ "${RECON_FULL_BOX:-0}" = "1" ] && DEF_ARG+=(--recon-full-box)   # [atomfind] recon incl z-vacuum
+[ -n "${Z_VACUUM:-}" ] && DEF_ARG+=(--z-vacuum="${Z_VACUUM}")
 CS_ARG=(); [ -n "${CS:-}" ] && CS_ARG=(--cs="${CS}")
 [ -n "${C5:-}" ] && CS_ARG+=(--c5="${C5}")
 # [campaign] full aberration dict as JSON (non-round terms); overrides CS/C5, implies --aberrated
