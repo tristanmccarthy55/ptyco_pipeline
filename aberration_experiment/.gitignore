@@ -1,0 +1,11 @@
+# Big raw data never goes in git — it lives on Blythe ($SHARE) and scratch. Only figs + small
+# analysis products (json/csv/small npy summaries, extracted PSF kernels) are tracked.
+*.tgz
+*.hdf5
+*.h5
+*.mat
+# extracted volumes / recon dumps (regenerable, large)
+*_vol.npy
+deconvolved_vol.npy
+**/recon_*/
+**/sim_out_*/
