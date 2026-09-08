@@ -98,6 +98,7 @@ echo "slice=${SLICE_THICKNESS} Å  step=${SCAN_STEP} Å  phonons=${PHONONS} (sig
 SA_ARG=()
 [ -n "${SINGLE_ATOM:-}" ] && SA_ARG=(--single-atom "${SINGLE_ATOM}" --atom-z "${ATOM_Z:-37}" \
     --scan-window "${SCAN_WINDOW:-10}" --grid-spacing "${GRID_SPACING:-0}")
+[ -n "${GRID_BOX_Z:-}" ] && SA_ARG+=(--grid-box-z="${GRID_BOX_Z}")   # [atomfind] matched thin PSF box
 
 # in-situ vacancy mode (analysis/atomfind REQUEST 2): full labyrinth MINUS one atom.
 # VACANCY=O [VACANCY_COLUMN=BO|pure|any] [VACANCY_Z=35]

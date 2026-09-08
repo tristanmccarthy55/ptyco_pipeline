@@ -128,6 +128,7 @@ PROBE_INITIAL_ABERRATED = False
 ROTATE_DEG_Y = -90.0     # rotation about y to set the beam (z) axis
 Z_VACUUM_A   = 2.0       # center(axis=2, vacuum=...) padding each side along beam (--z-vacuum overrides)
 RECON_FULL_BOX = False   # [atomfind] --recon-full-box: recon covers the FULL box incl z-vacuum
+GRID_BOX_Z   = 74.0      # [atomfind] single-atom/grid PSF box thickness [Å] (--grid-box-z; thin=match slab)
 
 
 def wavelength_a() -> float:
@@ -183,7 +184,7 @@ def build_single_atom(element="Pb", z=37.0):
     production, so Ndpx / d_alpha / dx and the axial propagation all match. Pair with a
     small --scan-window for a fast, cheap PSF (the kernel is local, window-invariant)."""
     from ase import Atoms
-    side, box_z = 70.008, 74.0
+    side, box_z = 70.008, GRID_BOX_Z
     atoms = Atoms(element, positions=[(SCAN_CENTER_X_A, SCAN_CENTER_Y_A, z)],
                   cell=[side, side, box_z], pbc=True)
     print(f"[atoms] SINGLE {element} (Z={atoms.get_atomic_numbers()[0]}) at "
@@ -199,7 +200,7 @@ def build_atom_grid(element="Pb", spacing=4.0, z=37.0):
     isolated (one plane) -> extract/average the central blobs for the PSF (its axial tail
     is neighbour-free, unlike a data-derived blob from the stacked labyrinth columns)."""
     from ase import Atoms
-    side, box_z = 70.008, 74.0
+    side, box_z = 70.008, GRID_BOX_Z
     half = SCAN_WINDOW_A / 2.0 - 1.0                 # 1 Å margin inside the scanned window
     xs = np.arange(SCAN_CENTER_X_A - half, SCAN_CENTER_X_A + half + 1e-6, spacing)
     ys = np.arange(SCAN_CENTER_Y_A - half, SCAN_CENTER_Y_A + half + 1e-6, spacing)
@@ -686,7 +687,7 @@ def write_driver_geometry(n_b: int, box_a: float, beam_thickness_a: float,
 # MAIN
 # ======================================================================
 def main(argv=None) -> int:
-    global DEVICE, SLICE_THICKNESS_A, SCAN_STEP_A, DOSE_E, N_PHONONS, PHONON_SIGMA_A, PER_SPECIES_SIGMA, PHONON_SEED, SCAN_WINDOW_A, ABERRATED, PROBE_INITIAL_ABERRATED, BIN_FACTOR, CONVERGENCE_MRAD, DEFOCUS_A, NOMINAL_DEFOCUS_A, ABERRATIONS, RECON_FULL_BOX, Z_VACUUM_A
+    global DEVICE, SLICE_THICKNESS_A, SCAN_STEP_A, DOSE_E, N_PHONONS, PHONON_SIGMA_A, PER_SPECIES_SIGMA, PHONON_SEED, SCAN_WINDOW_A, ABERRATED, PROBE_INITIAL_ABERRATED, BIN_FACTOR, CONVERGENCE_MRAD, DEFOCUS_A, NOMINAL_DEFOCUS_A, ABERRATIONS, RECON_FULL_BOX, Z_VACUUM_A, GRID_BOX_Z
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--test", action="store_true",
                     help="Tiny 3x3 scan for fast local shape/geometry validation.")
@@ -763,6 +764,9 @@ def main(argv=None) -> int:
     ap.add_argument("--recon-full-box", action="store_true",
                     help="[atomfind] reconstruct the FULL box incl z-vacuum (beam_thickness_a=box_z) so "
                          "entrance/exit surface artifacts dump into vacuum layers, keeping atomic planes clean.")
+    ap.add_argument("--grid-box-z", type=float, default=None,
+                    help="[atomfind] single-atom/grid PSF box thickness [Å] (default 74); set to the\n"
+                         "thin slab box (e.g. 5 cells+2*vac) for a MATCHED thin PSF. Pair --atom-z=box_z/2.")
     ap.add_argument("--z-vacuum", type=float, default=None,
                     help="[atomfind] z-vacuum padding each side [Å] (default 2.0); bump to ~4 with more cells.")
     ap.add_argument("--probe-defocus", type=float, default=None,
@@ -794,6 +798,7 @@ def main(argv=None) -> int:
     NOMINAL_DEFOCUS_A = args.probe_defocus                    # [campaign] nominal start-probe defocus
     RECON_FULL_BOX = args.recon_full_box                      # [atomfind] recon covers full box incl vacuum
     if args.z_vacuum is not None: Z_VACUUM_A = args.z_vacuum  # [atomfind] wider vacuum for artifact dumping
+    if args.grid_box_z is not None: GRID_BOX_Z = args.grid_box_z  # [atomfind] matched thin PSF box
     if args.aberrations_json is not None:                     # [campaign] full override (non-round)
         import json as _json
         ABERRATIONS = {k: float(v) for k, v in _json.loads(args.aberrations_json).items()}
