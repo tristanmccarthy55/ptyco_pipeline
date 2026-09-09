@@ -12,8 +12,13 @@ C3*alpha^4 can no longer balance C5*alpha^6, ~>90 mrad).
 
     ~/hyperspy-bundle/bin/python analysis/make_ronchigram_fig.py   # -> ronchigram_evolution.png
 """
-import numpy as np, abtem, matplotlib
+import os, datetime, numpy as np, abtem, matplotlib
 matplotlib.use("Agg"); import matplotlib.pyplot as plt
+
+def week_dir(sub="figs"):
+    repo = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+    d = os.path.join(repo, "aberration_experiment", sub, datetime.date.today().strftime("%G-W%V"))
+    os.makedirs(d, exist_ok=True); return d
 
 LAM = 0.0196877; C5 = 1e7                       # 300 keV wavelength [Å]; fixed 5th-order residual (1 mm)
 # (alpha_mrad, C3_A, C1_A) balanced probes — from campaign/round_sweep.tsv (a30 = its commented row)
@@ -68,7 +73,8 @@ def main():
     axm.set_xlabel("α opened to (mrad)"); axm.legend(fontsize=8)
     axm.set_title("flat aperture collapses & probe grows as α opens (C5=1mm)",fontsize=10)
     fig.suptitle("Cs-corrected@30mrad scope opened up: evolving Ronchigram (χ), balanced probe, and where it breaks",fontsize=13)
-    fig.savefig("ronchigram_evolution.png",dpi=140); print("wrote ronchigram_evolution.png")
+    p = os.path.join(week_dir("figs"), "ronchigram_evolution.png")
+    fig.savefig(p, dpi=140); print("wrote", p)
 
 if __name__ == "__main__":
     main()
