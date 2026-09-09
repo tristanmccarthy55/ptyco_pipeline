@@ -36,7 +36,7 @@ sim_job(){   # $1 dir $2 alpha $3 bin $4 c3 $5 c1 $6 mode(lab|Pb|Ti) -> jobid
     local dir="$1" alpha="$2" bin="$3" c3="$4" c1="$5" mode="$6"
     local exp="ALL,JOB_DIR=${dir},SLICE_THICKNESS=${SLICE},SCAN_STEP=${STEP},CONVERGENCE=${alpha}"
     exp="${exp},BIN_FACTOR=${bin},RECON_FULL_BOX=1,Z_VACUUM=${ZVAC},ABERRATED=1,PROBE_INITIAL=true"
-    exp="${exp},CS=${c3},C5=${C5},DEFOCUS=${c1}"
+    exp="${exp},CS=${c3},C5=${C5},DEFOCUS=${c1},OVERWRITE=${OVERWRITE:-0}"   # OVERWRITE=1 to re-sim over existing
     case "$mode" in
         lab) exp="${exp},THIN_CELLS=${THIN}";;
         *)   exp="${exp},SINGLE_ATOM=${mode},ATOM_Z=${ATOMZ},GRID_SPACING=${GRIDSP},SCAN_WINDOW=${WIN},GRID_BOX_Z=${BOXZ}";;
@@ -50,8 +50,9 @@ recon_job(){ # $1 name $2 datadir $3 bin $4 nl $5 dep -> jobid  (true probe fixe
     local f; for f in "${INPUTS[@]}"; do ln -sf "${datadir}/01/${f}" "${rdir}/01/${f}"; done
     ln -sf "${datadir}/01/probe_initial_true.mat" "${rdir}/01/probe_initial.mat"     # known aberrated probe
     local grp; grp="$(grp_for "$bin")"; local gx=""; [ -n "$grp" ] && gx=",GROUPING=${grp}"
+    local dep_arg=(); [ -n "$dep" ] && dep_arg=(--dependency="afterok:${dep}")   # empty dep (RECON_ONLY) -> run now
     sbatch --parsable --job-name="af_rec_${name}" --time="$(rtime_for "$bin")" --mem="$(mem_for "$bin")" \
-        --dependency="afterok:${dep}" --output="${rdir}/slurm_%j.out" --error="${rdir}/slurm_%j.err" \
+        ${dep_arg[@]+"${dep_arg[@]}"} --output="${rdir}/slurm_%j.out" --error="${rdir}/slurm_%j.err" \
         --export=ALL,NLAYERS="${nl}",SIM_BASE="${rdir}/",REGLAYER=0,PROBE_MODES=1,NITER="${NITER}",SAVE_EVERY="${SAVE}"${gx} \
         run_recon_synthetic_ML.slurm
 }
@@ -62,9 +63,14 @@ for a in $ALPHAS; do
     [ -n "${bin:-}" ] || { echo "  a${a}: not in $TSV, skipping" >&2; continue; }
     nl=$(nl_full "$a")
     LD="${REPO_DIR}/sim_out_af_a${a}_lab"; PD="${REPO_DIR}/sim_out_af_a${a}_Pb"; TD="${REPO_DIR}/sim_out_af_a${a}_Ti"
-    SL=$(sim_job "$LD" "$a" "$bin" "$c3" "$c1" lab)
-    SP=$(sim_job "$PD" "$a" "$bin" "$c3" "$c1" Pb)
-    ST=$(sim_job "$TD" "$a" "$bin" "$c3" "$c1" Ti)
+    if [ "${RECON_ONLY:-0}" = "1" ]; then     # reuse existing sims (no re-sim); recons run immediately
+        for d in "$LD" "$PD" "$TD"; do [ -e "${d}/01/data_dp.hdf5" ] || { echo "  a${a}: ${d}/01 missing, skip" >&2; continue 2; }; done
+        SL=""; SP=""; ST=""
+    else
+        SL=$(sim_job "$LD" "$a" "$bin" "$c3" "$c1" lab)
+        SP=$(sim_job "$PD" "$a" "$bin" "$c3" "$c1" Pb)
+        ST=$(sim_job "$TD" "$a" "$bin" "$c3" "$c1" Ti)
+    fi
     R1=$(recon_job "a${a}_lab" "$LD" "$bin" "$nl" "$SL")
     R2=$(recon_job "a${a}_Pb"  "$PD" "$bin" "$nl" "$SP")
     R3=$(recon_job "a${a}_Ti"  "$TD" "$bin" "$nl" "$ST")
