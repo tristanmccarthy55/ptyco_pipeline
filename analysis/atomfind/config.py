@@ -335,17 +335,20 @@ def preset(name: str) -> Config:
                             dz=0.666, dose_e_per_A2=1e8,
                             single_atom_vol="psf_Pb_rev2_d1e8_vol.npy",
                             single_atom_species=82),
-        # THIN aberration-campaign slab (~11.7 A beam path, override recon_vol+dz per alpha via
-        # --recon/--dz). Geometry already matches (centre 40,20 / window 20). Depth knobs scaled
-        # 70 A -> ~11.7 A; synthetic PSF by default (no thin kernel measured yet). NOTE: until the
-        # sim reconstructs the FULL box (incl z-vacuum), the entrance/exit surface artifacts sit ON
-        # the edge atomic planes -> trim_z_A drops them; that is the interface issue to fix in the sim.
+        # THIN aberration-campaign slab. run_thin_atomfind.sh reconstructs the FULL padded box
+        # (27.525 A = 5x3.905 A cells + 2x4 A z-vacuum) so the entrance/exit surface artifacts
+        # dump into the vacuum bands and the atomic planes stay clean (the interface fix, now in
+        # the sim). Per alpha, override recon_vol + dz via --recon/--dz (dz = 27.525/NL, i.e.
+        # 3.93/1.97/1.20/0.98 A at a50/70/90/100) and pass the MATCHED empirical PSFs from
+        # extract_psf.py via --single-atom-vol / ti_kernel_vol. trim_z_A (in recon-z A, alpha-
+        # independent) keeps the ~19.5 A atomic slab and drops the 4 A vacuum band at each end;
+        # clean_max_atoms covers ~10 atoms/tube (19.5 A / 1.95 A + margin).
         "thin": Config(name="thin",
-                       recon_vol="a100_known.npy", dz=0.976, dose_e_per_A2=None,
+                       recon_vol="a100_known.npy", dz=0.983, dose_e_per_A2=None,
                        dx=0.0492,                     # explicit: object is the FULL field, not the 20 A scan
                        convergence_mrad=100.0,
-                       zmax_show_A=11.5, trim_z_A=(1.0, 11.0),
-                       exit_band_z_A=9.0, clean_max_atoms=8,
+                       zmax_show_A=27.525, trim_z_A=(4.0, 23.5),
+                       exit_band_z_A=23.0, clean_max_atoms=12,
                        single_atom_vol=None, single_atom_species=82),
     }
     if name not in presets:
