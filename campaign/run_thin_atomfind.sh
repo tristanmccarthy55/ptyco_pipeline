@@ -18,7 +18,11 @@ REPO_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"; cd "${REPO_DIR}"; m
 TSV="${TSV:-campaign/round_sweep.tsv}"; [ -f "$TSV" ] || { echo "no $TSV" >&2; exit 1; }
 ALPHAS="${ALPHAS:-50 70 90 100}"
 THIN="${THIN:-5}"; ZVAC="${ZVAC:-4}"; C5="${C5:-1e7}"; STEP="${STEP:-0.5}"; SLICE="${SLICE:-0.9}"
-GRIDSP="${GRIDSP:-4}"; WIN="${WIN:-14}"; NITER="${NITER:-200}"; SAVE="${SAVE_EVERY:-25}"
+# WIN defaults to 20 = the sim's own SCAN_WINDOW_A, i.e. the window the lab legs use. The PSF
+# kernel is only the matched system response if it comes out of the SAME pipeline as the data;
+# the old 14 was a gratuitous difference that also cost the sparse grid its positional diversity.
+GRIDSP="${GRIDSP:-4}"; WIN="${WIN:-20}"; NITER="${NITER:-200}"; SAVE="${SAVE_EVERY:-25}"
+MODES="${MODES:-lab Pb Ti}"          # e.g. MODES="Pb Ti" to rebuild only the PSF kernels
 CELL_Z=3.905; LAM=0.0196877
 BOXZ=$(awk "BEGIN{printf \"%.3f\", ${THIN}*${CELL_Z}+2*${ZVAC}}")      # full box thickness [Å]
 ATOMZ=$(awk "BEGIN{printf \"%.3f\", ${BOXZ}/2}")                        # PSF atom at box centre
@@ -56,6 +60,10 @@ recon_job(){ # $1 name $2 datadir $3 bin $4 nl $5 dep -> jobid  (true probe fixe
     local f; for f in "${INPUTS[@]}"; do ln -sf "${datadir}/01/${f}" "${rdir}/01/${f}"; done
     ln -sf "${datadir}/01/probe_initial_true.mat" "${rdir}/01/probe_initial.mat"     # known aberrated probe
     local grp; grp="$(grp_for "$bin")"; local gx=""; [ -n "$grp" ] && gx=",GROUPING=${grp}"
+    # BETA_LSQ only (damping, for legs that diverge to NaN). REGLAYER stays 0 for EVERY leg:
+    # it symmetrizes information between layers, i.e. low-passes the depth axis -- and depth is
+    # both the measurement and the whole content of a PSF kernel. See aberration_experiment/PSF_KERNELS.md.
+    [ -n "${BETA_LSQ:-}" ] && gx="${gx},BETA_LSQ=${BETA_LSQ}"
     local dep_arg=(); [ -n "$dep" ] && dep_arg=(--dependency="afterok:${dep}")   # empty dep (RECON_ONLY) -> run now
     sbatch --parsable --job-name="af_rec_${name}" --time="$(rtime_for "$bin")" --mem="$(mem_for "$bin")" \
         ${dep_arg[@]+"${dep_arg[@]}"} --output="${rdir}/slurm_%j.out" --error="${rdir}/slurm_%j.err" \
@@ -68,21 +76,21 @@ for a in $ALPHAS; do
     read -r c3 c1 bin < <(awk -F'\t' -v A="$a" '$1!~/^#/ && $2==A {print $4"\t"$5"\t"$7}' "$TSV")
     [ -n "${bin:-}" ] || { echo "  a${a}: not in $TSV, skipping" >&2; continue; }
     nl=$(nl_full "$a")
-    LD="${REPO_DIR}/sim_out_af_a${a}_lab"; PD="${REPO_DIR}/sim_out_af_a${a}_Pb"; TD="${REPO_DIR}/sim_out_af_a${a}_Ti"
-    if [ "${RECON_ONLY:-0}" = "1" ]; then     # reuse existing sims (no re-sim); recons run immediately
-        for d in "$LD" "$PD" "$TD"; do [ -e "${d}/01/data_dp.hdf5" ] || { echo "  a${a}: ${d}/01 missing, skip" >&2; continue 2; }; done
-        SL=""; SP=""; ST=""
-    else
-        SL=$(sim_job "$LD" "$a" "$bin" "$c3" "$c1" lab)
-        SP=$(sim_job "$PD" "$a" "$bin" "$c3" "$c1" Pb)
-        ST=$(sim_job "$TD" "$a" "$bin" "$c3" "$c1" Ti)
-    fi
-    R1=$(recon_job "a${a}_lab" "$LD" "$bin" "$nl" "$SL")
-    R2=$(recon_job "a${a}_Pb"  "$PD" "$bin" "$nl" "$SP")
-    R3=$(recon_job "a${a}_Ti"  "$TD" "$bin" "$nl" "$ST")
-    RIDS+=("$R1" "$R2" "$R3")
-    printf 'a%-3s bin=%s NL=%-2s  lab=%s Pb=%s Ti=%s\n' "$a" "$bin" "$nl" "$R1" "$R2" "$R3"
+    line="$(printf 'a%-3s bin=%s NL=%-2s ' "$a" "$bin" "$nl")"
+    for m in $MODES; do                       # MODES="Pb Ti" re-does only the PSF kernels
+        D="${REPO_DIR}/sim_out_af_a${a}_${m}"
+        if [ "${RECON_ONLY:-0}" = "1" ]; then  # reuse existing sims; recons run immediately
+            [ -e "${D}/01/data_dp.hdf5" ] || { echo "  a${a} ${m}: ${D}/01 missing, skip" >&2; continue; }
+            S=""
+        else
+            S=$(sim_job "$D" "$a" "$bin" "$c3" "$c1" "$m")
+        fi
+        R=$(recon_job "a${a}_${m}" "$D" "$bin" "$nl" "$S")
+        RIDS+=("$R"); line+=" ${m}=${R}"
+    done
+    echo "$line"
 done
+[ ${#RIDS[@]} -gt 0 ] || { echo "nothing submitted" >&2; exit 1; }
 DEP=$(IFS=:; echo "${RIDS[*]}")
 PJ=$(sbatch --parsable --job-name="af_pack" --time=00:20:00 --mem=8G --dependency="afterany:${DEP}" \
     --output="logs/af_pack_%j.out" --error="logs/af_pack_%j.err" \
