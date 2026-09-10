@@ -50,21 +50,32 @@ def scan_positions(a: float, n: int, origin: float) -> np.ndarray:
     return np.stack([X.ravel(), Y.ravel()], axis=1)
 
 
-def patterns(delta, n_lat: int, n_z: int, pos, convergence_mrad: float, bin_factor: int,
-             slice_thickness_A: float, device: str):
-    """@brief Flux-normalised diffraction patterns of one uniform membrane at the given positions."""
+def patterns_from_atoms(atoms, pos, convergence_mrad: float, bin_factor: int,
+                        slice_thickness_A: float, device: str):
+    """@brief Flux-normalised diffraction patterns of ANY structure at the given probe positions.
+
+    The scattering is sim/simulate_4dstem.py exactly as the production pipeline uses it; only the
+    structure and the positions change. Flux normalisation makes two structures directly
+    comparable pattern by pattern.
+    """
     import abtem
     s4 = SF._import_sim4d()
     s4.DEVICE = device
     s4.BIN_FACTOR = bin_factor
     s4.SLICE_THICKNESS_A = slice_thickness_A
     s4.CONVERGENCE_MRAD = convergence_mrad
-    atoms, truth = T.build(n_lat, n_z, domains=T.uniform_domains(delta))
     pot = s4.build_potential(atoms)
     probe = s4.build_probe(pot)
-    arr = s4.run_scan_binned(probe, atoms, abtem.CustomScan(pos))
-    arr = np.asarray(arr, dtype=np.float64)
-    return arr / arr.reshape(len(arr), -1).sum(1)[:, None, None], truth
+    arr = np.asarray(s4.run_scan_binned(probe, atoms, abtem.CustomScan(pos)), dtype=np.float64)
+    return arr / arr.reshape(len(arr), -1).sum(1)[:, None, None]
+
+
+def patterns(delta, n_lat: int, n_z: int, pos, convergence_mrad: float, bin_factor: int,
+             slice_thickness_A: float, device: str):
+    """@brief Flux-normalised diffraction patterns of one uniform membrane at the given positions."""
+    atoms, truth = T.build(n_lat, n_z, domains=T.uniform_domains(delta))
+    return patterns_from_atoms(atoms, pos, convergence_mrad, bin_factor,
+                               slice_thickness_A, device), truth
 
 
 def discriminability(p_up, p_dn, theta_mrad, hsa_mrad, eps: float = 1e-14):
