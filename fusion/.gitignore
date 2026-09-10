@@ -1,0 +1,6 @@
+# Simulation outputs and reconstructions: large, regenerable, and machine-specific.
+# The SPECIMEN (sample/) is tracked -- it is the definition of the experiment, and the
+# cached ELNES ladder (1.5 MB) makes the EELS channel reproducible without the 4.7 GB
+# of raw OptaDOS _core_edge.dat files.
+runs/
+*.log
