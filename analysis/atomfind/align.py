@@ -39,13 +39,31 @@ def load_recon_mat(path):
     return np.asarray(layers).astype(np.complex64)
 
 
+def load_recon_h5(path):
+    """@brief Read a newer PtychoShelves `*_recons.h5` -> complex64 (nL, Ny, Nx).
+
+    The current engine writes `reconstruction/object` (NL,1,Ny,Nx) complex instead of the old
+    `outputs.object_roi` cell array; there is no separate ROI dataset, so the full object is
+    returned (extract_psf.py reads the same field). Kept identical to that reader so the empirical
+    PSFs and the labyrinth object come off the same code path.
+    """
+    import h5py
+    with h5py.File(path, "r") as f:
+        obj = f["reconstruction"]["object"][:]          # (NL,1,Ny,Nx) or (NL,Ny,Nx) complex
+    obj = np.asarray(obj).squeeze()
+    if obj.ndim == 2:
+        obj = obj[None]
+    return obj.astype(np.complex64)
+
+
 def load_object(path):
     """@brief Load a reconstructed object from whatever the reconstruction actually produced.
 
     The peer-facing entry point: a PtychoShelves run emits `Niter<N>.mat`, so that is accepted
     directly rather than requiring a pre-converted array. Accepts
 
-      *.mat  a PtychoShelves reconstruction (outputs.object_roi)
+      *.mat  an older PtychoShelves reconstruction (outputs.object_roi)
+      *.h5   a newer PtychoShelves `*_recons.h5` (reconstruction/object)
       *.npy  a complex (nL, Ny, Nx) array already extracted from one
 
     @return complex array (nL, Ny, Nx).
@@ -53,10 +71,12 @@ def load_object(path):
     ext = os.path.splitext(path)[1].lower()
     if ext == ".mat":
         return load_recon_mat(path)
+    if ext == ".h5":
+        return load_recon_h5(path)
     if ext == ".npy":
         return np.load(path)
     raise ValueError(f"unsupported reconstruction format {ext!r} for {path!r}; "
-                     f"expected a PtychoShelves .mat or an extracted .npy")
+                     f"expected a PtychoShelves .mat / *_recons.h5 or an extracted .npy")
 
 
 def load_phase(cfg):

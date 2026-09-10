@@ -35,7 +35,13 @@ stime_for(){ case "$1" in 1) echo 12:00:00;; 2) echo 05:00:00;; *) echo 03:00:00
 sim_job(){   # $1 dir $2 alpha $3 bin $4 c3 $5 c1 $6 mode(lab|Pb|Ti) -> jobid
     local dir="$1" alpha="$2" bin="$3" c3="$4" c1="$5" mode="$6"
     local exp="ALL,JOB_DIR=${dir},SLICE_THICKNESS=${SLICE},SCAN_STEP=${STEP},CONVERGENCE=${alpha}"
-    exp="${exp},BIN_FACTOR=${bin},RECON_FULL_BOX=1,Z_VACUUM=${ZVAC},ABERRATED=1,PROBE_INITIAL=true"
+    # PROBE_INITIAL=nominal so the sim emits BOTH probe_initial.mat (nominal) AND
+    # probe_initial_true.mat (the true aberrated probe). recon_job symlinks the recon's
+    # probe_initial.mat -> probe_initial_true.mat = a KNOWN-probe recon. (PROBE_INITIAL=true
+    # writes the true probe AS probe_initial.mat and SKIPS probe_initial_true.mat, so the
+    # symlink dangles and every recon dies on "File corrupt: probe_initial.mat" -- the
+    # 2026-09-09 batch failure. Matches run_campaign.sh's ab_known leg.)
+    exp="${exp},BIN_FACTOR=${bin},RECON_FULL_BOX=1,Z_VACUUM=${ZVAC},ABERRATED=1,PROBE_INITIAL=nominal"
     exp="${exp},CS=${c3},C5=${C5},DEFOCUS=${c1},OVERWRITE=${OVERWRITE:-0}"   # OVERWRITE=1 to re-sim over existing
     case "$mode" in
         lab) exp="${exp},THIN_CELLS=${THIN}";;
