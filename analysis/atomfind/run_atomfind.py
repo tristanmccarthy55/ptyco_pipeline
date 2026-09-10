@@ -260,6 +260,7 @@ def main():
     print(f"[atomfind]   kernels {cfg.single_atom_vol} | {cfg.ti_kernel_vol}")
     print(f"[atomfind]   output  {cfg.out_dir}")
     V, dx = align.load_phase(cfg)
+    V = align.crop_to_fov(V, dx, cfg)     # analyse the scan field, not the probe halo
     pos, Z = align.load_gt(cfg)
     al = align.register(V, dx, pos, Z, cfg)
     print("[align] " + align.summarize(al))

@@ -242,6 +242,37 @@ def resolve_origin(V, dx, cfg):
     return cfg
 
 
+def crop_to_fov(V, dx, cfg):
+    """@brief Crop the analysis to the illuminated scan region (cfg.fov_A). Returns the new V.
+
+    A full-field reconstruction is much larger than the scan: the object extends by the probe
+    halo (a 20 A scan lands on a 37-55 A object here). Only the scanned area is constrained by
+    data -- the halo is reconstructed from partial illumination and is full of junk, so running
+    the finder over it costs precision (measured: 11-31%) for detections that were never
+    measurable. Standard practice is to analyse the scan field only.
+
+    Crops a cfg.fov_A box centred on cfg.scan_center_xy and shifts X0/Y0 to the new corner, so
+    the recon<->GT map still refers to the same physical frame. None => no crop.
+    """
+    resolve_origin(V, dx, cfg)
+    if not cfg.fov_A:
+        return V
+    cx, cy = cfg.scan_center_xy
+    half = 0.5 * cfg.fov_A
+    c0 = int(round((cx - half - cfg.X0) / dx)); c1 = int(round((cx + half - cfg.X0) / dx))
+    r0 = int(round((cy - half - cfg.Y0) / dx)); r1 = int(round((cy + half - cfg.Y0) / dx))
+    c0, r0 = max(c0, 0), max(r0, 0)
+    c1, r1 = min(c1, V.shape[2]), min(r1, V.shape[1])
+    if c1 - c0 < 8 or r1 - r0 < 8:
+        raise RuntimeError(f"fov_A={cfg.fov_A} leaves no usable region in a "
+                           f"{V.shape[1]}x{V.shape[2]} object at dx={dx}")
+    cfg.X0 += c0 * dx
+    cfg.Y0 += r0 * dx
+    print(f"[fov] cropped to {cfg.fov_A} A scan field: rows {r0}:{r1}, cols {c0}:{c1} "
+          f"({V.shape[1]}x{V.shape[2]} -> {r1-r0}x{c1-c0} px)")
+    return V[:, r0:r1, c0:c1]
+
+
 def register(V, dx, pos, Z, cfg, n_ref=6):
     """Fit (SGN, OFF, CAL_X, CAL_Y) from the brightest GT Pb columns. Returns Alignment."""
     resolve_origin(V, dx, cfg)

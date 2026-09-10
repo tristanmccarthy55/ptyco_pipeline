@@ -273,6 +273,10 @@ class Config:
     trim_z_A: tuple = (2.0, 66.0)     # interior kept for deconv/detection (entrance/exit
     #                                   dumping-ground layers behave like noise under RL)
     reference_columns: tuple = ()     # (row,col) seeds; empty => auto from GT Pb columns
+    # Crop the analysis to this field of view (A) centred on scan_center_xy before finding.
+    # None => whole object. Set it whenever the object is bigger than the scan (full-field
+    # recons): the probe-halo margin is not constrained by data and only costs precision.
+    fov_A: float | None = None
 
     # ---- output ---------------------------------------------------------
     out_dir: str = field(default_factory=default_out_dir)
@@ -351,6 +355,7 @@ def preset(name: str) -> Config:
                        dx=0.0492,                     # explicit: object is the FULL field, not the 20 A scan
                        X0=None, Y0=None,              # ...and so the ORIGIN must be derived too (per-alpha
                                                       # object size: 753 px @BIN4, 1109 px @BIN2)
+                       fov_A=20.0,                    # analyse the 20 A SCAN field, not the probe halo
                        convergence_mrad=100.0,
                        zmax_show_A=27.525, trim_z_A=(4.0, 23.5),
                        exit_band_z_A=23.0, clean_max_atoms=12,
