@@ -78,6 +78,21 @@ def default_domains(d_ti: float) -> list[dict]:
     ]
 
 
+def uniform_domains(delta) -> list[dict]:
+    """@brief One polarisation everywhere -- a controlled specimen for the sign-encoding test.
+
+    The four-domain membrane is the demonstration; this is the measurement. Two uniform membranes
+    that differ ONLY in sign(delta_z) can be scanned at IDENTICAL probe positions, which removes
+    the intra-cell sampling variance that makes a domain-to-domain comparison meaningless.
+    """
+    delta = np.asarray(delta, float)
+    th = np.degrees(np.arccos(abs(delta[2]) / np.linalg.norm(delta)))
+    az = np.degrees(np.arctan2(delta[1], delta[0]))
+    return [dict(name="U", quad=q, theta_deg=th, azimuth_deg=az,
+                 sign=int(np.sign(delta[2])), delta=delta)
+            for q in ((0, 0), (1, 0), (0, 1), (1, 1))]
+
+
 # ---------------------------------------------------------------- builder
 def build(n_lat: int = 12, n_z: int = 5, vacuum_A: float = 2.0, domains=None, cap: bool = True):
     """@brief Tile the domains into one periodic membrane.
