@@ -39,6 +39,20 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 DEFAULT_HSA = (0.0, 0.50, 0.75, 0.95)      # hollow semi-angle as a fraction of the convergence
 
 
+def require_gpu_job(device: str) -> None:
+    """@brief Refuse to start a GPU run outside SLURM: the login node has no CUDA driver.
+
+    abtem on the login node fails deep inside cupy with cudaErrorInsufficientDriver, several
+    frames from anything recognisable, after the potential has already been built. Fail here
+    instead, with the command to use.
+    """
+    if device == "gpu" and not os.environ.get("SLURM_JOB_ID"):
+        raise SystemExit(
+            "refusing to run a GPU job outside SLURM -- the Blythe login node has no CUDA "
+            "driver.\n  submit it:   bash fusion/run_sign_encoding.sh"
+            "   (or fusion/run_fusion_sim.slurm)\n  or force CPU: --device cpu   (small tests only)")
+
+
 def _import_sim4d():
     """@brief Import sim/simulate_4dstem.py so ALL the scattering is the validated code."""
     sim_dir = os.path.abspath(os.path.join(HERE, "..", "sim"))
@@ -97,6 +111,7 @@ def run(out_dir: str, vasp: str, truth_npz: str, scan_window_A: float, scan_step
         phonons: int = 0, test: bool = False, recon_full_box: bool = True) -> str:
     """@brief Simulate the toy membrane and emit everything the two channels need."""
     import ase.io
+    require_gpu_job(device)
     s4 = _import_sim4d()
 
     atoms = ase.io.read(vasp)

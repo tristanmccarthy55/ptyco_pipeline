@@ -32,8 +32,8 @@ detrending, even at HSA = 0. So the sign readout had nothing to work with and sc
 read off a reconstruction.
 
 **It is not a dose problem and not an information problem.** The data were noiseless throughout.
-`sign_encoding.py` compares two uniform membranes differing only in sign(δ_z) at identical probe
-positions: at 5 cells, **4.9 % of the diffraction pattern differs**, 2.3 % of it outside the hole
+`sign_encoding.py` (GPU, via `bash fusion/run_sign_encoding.sh`) compares two uniform membranes
+differing only in sign(δ_z) at identical probe positions: at 5 cells, **4.9 % of the diffraction pattern differs**, 2.3 % of it outside the hole
 (65 % of the Poisson information). The null control — δ purely in-plane, so the flip is a no-op —
 gives exactly 0.000e+00. The sign is abundantly present in the data; reconstructing 24 free depth
 layers from a 21 Å slab is simply a lossy way to get at it.

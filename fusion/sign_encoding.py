@@ -23,7 +23,10 @@ N = 9/(M D). D is also split by scattering angle, which answers the question the
 raises: if the sign lives at low angles it goes down the hole to the spectrometer and hollow
 ptychography is blind to it however good the reconstruction.
 
-    <blythe abtem env>/python sign_encoding.py --thickness 5 10 20 40
+GPU only, and only through SLURM -- the login node has no CUDA driver:
+
+    bash fusion/run_sign_encoding.sh
+    THICKNESS="5 10 20 40 60" N_SCAN=12 bash fusion/run_sign_encoding.sh
 """
 from __future__ import annotations
 
@@ -87,6 +90,7 @@ def run(thicknesses, n_lat: int = 4, n_scan: int = 8, convergence_mrad: float = 
         hsa_frac: float = 0.75, bin_factor: int = 4, slice_thickness_A: float = 1.0,
         theta_deg: float = 20.0, device: str = "gpu", out: str | None = None) -> dict:
     """@brief Sweep thickness and report the dose the sign costs, in total and outside the hole."""
+    SF.require_gpu_job(device)
     s4 = SF._import_sim4d()
     w, d_ti = T.polar_mode()
     t = np.radians(theta_deg)
