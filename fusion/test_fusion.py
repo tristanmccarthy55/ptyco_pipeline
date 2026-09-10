@@ -203,7 +203,7 @@ def test_sign_readout_survives_noise():
     """The per-domain decision must hold at 100% profile noise, which is far past a real recon."""
     _, truth = T.build(12, 5)
     budget = {"scan_window_A": 24.0, "scan_center_A": [float(truth["box_A"]) / 2] * 2,
-              "beam_thickness_A": float(truth["box_z_A"])}
+              "beam_thickness_A": float(truth["box_z_A"]), "dx_object_A": 0.1}
     cell, dom = AF._score(truth, budget, 2.0, 1.0, 0)
     assert dom == 1.0, f"only {dom*100:.0f}% of domains correct at 100% noise"
 
