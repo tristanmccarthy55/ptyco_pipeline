@@ -19,9 +19,17 @@ import numpy as np
 from . import align, config
 
 
-def build():
-    """(pos, Z) from the .vasp via the abtem path -- the definition the cache must match."""
-    return align._prepare_gt(config.data_path(config.VASP_NAME, required=True))
+def build(thin_cells: int = 0, z_vacuum: float = 4.0):
+    """(pos, Z) from the .vasp via the abtem path -- the definition the cache must match.
+
+    thin_cells > 0 builds the THIN aberration-campaign slab instead of the full 18-cell box
+    (see align._prepare_gt_thin); the two are different structures, so a thin cache must be
+    kept out of the package data dir and pointed at with --data-dir.
+    """
+    vasp = config.data_path(config.VASP_NAME, required=True)
+    if thin_cells > 0:
+        return align._prepare_gt_thin(vasp, thin_cells, z_vacuum)
+    return align._prepare_gt(vasp)
 
 
 def main():
@@ -30,9 +38,15 @@ def main():
                                                   "data", align.GT_CACHE))
     ap.add_argument("--check", action="store_true",
                     help="rebuild from the .vasp and verify the existing cache matches")
+    ap.add_argument("--thin-cells", type=int, default=0,
+                    help="[thin-ab] build the THIN slab GT of this many unit cells instead of "
+                         "the full box (the aberration campaign uses 5); write it OUTSIDE the "
+                         "package data dir and pass that dir to atomfind via --data-dir")
+    ap.add_argument("--z-vacuum", type=float, default=4.0,
+                    help="[thin-ab] vacuum padding each side along the beam (sim Z_VACUUM)")
     a = ap.parse_args()
 
-    pos, Z = build()
+    pos, Z = build(a.thin_cells, a.z_vacuum)
     if a.check:
         d = np.load(config.data_path(align.GT_CACHE, required=True))
         assert d["pos"].shape == pos.shape, f"shape {d['pos'].shape} != {pos.shape}"

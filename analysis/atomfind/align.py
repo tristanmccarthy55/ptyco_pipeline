@@ -113,6 +113,33 @@ def _prepare_gt(vasp_path):
     return a.get_positions(), a.get_atomic_numbers()
 
 
+def _prepare_gt_thin(vasp_path, n_cells, z_vacuum=4.0, cell_z=3.905):
+    """[thin-ab] Ground truth for the THIN aberration-campaign slab.
+
+    Mirrors sim/simulate_4dstem.py::build_thin_sample(): same rotate/orthogonalize/square-pad
+    as _prepare_gt, then crop the beam (z) axis to a central slab n_cells cells thick and
+    re-centre with z_vacuum padding each side. This MUST track build_thin_sample exactly --
+    the full-box GT (18 cells, 70 A) does not describe a 5-cell 27.5 A sim, and validating
+    against the wrong slab silently produces meaningless recall / z-RMS.
+    """
+    import ase.io, abtem
+    a = ase.io.read(vasp_path)
+    a.rotate(-90, "y", rotate_cell=True)
+    a = abtem.orthogonalize_cell(a)
+    Lx, Ly, _ = a.cell.lengths()
+    s = max(Lx, Ly)
+    a.cell[0, 0] = s
+    a.cell[1, 1] = s
+    a.center(axis=0)
+    a.center(axis=1)
+    thick = n_cells * cell_z
+    z = a.get_positions()[:, 2]
+    zc = 0.5 * (z.min() + z.max())
+    a = a[np.abs(z - zc) <= thick / 2.0]
+    a.center(axis=2, vacuum=z_vacuum)
+    return a.get_positions(), a.get_atomic_numbers()
+
+
 def load_gt(cfg):
     """@brief Ground-truth atoms in the RECON physical frame (identical prep to the sim).
 
@@ -196,8 +223,28 @@ def _pb_columns(pos, Z, cfg):
     return [(kx, ky, np.sort(np.array(zs))) for (kx, ky), zs in cols.items()]
 
 
+def resolve_origin(V, dx, cfg):
+    """@brief Fill in cfg.X0/cfg.Y0 when they are None: the object is CENTRED on the scan centre.
+
+    X0/Y0 place the object's (0,0) pixel in GT coordinates. The historical constants (30, 10)
+    are the scan-window corner, which is only the object origin when the object exactly covers
+    the scan (dx = scan_window/Nx). A full-field reconstruction is larger than the scan by the
+    probe halo -- e.g. a 20 A scan reconstructed onto a 37 A (753 px) or 54.6 A (1109 px) object
+    -- so the corner is wrong by (N*dx - scan_window)/2, which is NOT a lattice vector and maps
+    every atom onto the wrong site. Deriving it from the object size fixes that for any box.
+    Verified against p/illum_sum (the illumination centroid sits at the object centre).
+    """
+    cx, cy = cfg.scan_center_xy
+    if cfg.X0 is None:
+        cfg.X0 = cx - 0.5 * V.shape[2] * dx
+    if cfg.Y0 is None:
+        cfg.Y0 = cy - 0.5 * V.shape[1] * dx
+    return cfg
+
+
 def register(V, dx, pos, Z, cfg, n_ref=6):
     """Fit (SGN, OFF, CAL_X, CAL_Y) from the brightest GT Pb columns. Returns Alignment."""
+    resolve_origin(V, dx, cfg)
     nL = V.shape[0]
     zrec = (np.arange(nL) + 0.5) * cfg.dz
     dm = V.mean(0)                                    # depth-summed phase (bright at columns)

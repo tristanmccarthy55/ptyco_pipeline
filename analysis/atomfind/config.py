@@ -110,8 +110,11 @@ class Config:
 
     # ---- recon <-> ground-truth map (VALIDATED, section 3.5 / 11.4) -----
     # recon (row r, col c) -> GT physical  X = X0 + c*dx,  Y = Y0 + r*dx
-    X0: float = 30.0
-    Y0: float = 10.0
+    # None => derive from the object size at load time (align.resolve_origin): the object is
+    # centred on the scan centre, so the corner is scan_centre - N*dx/2. The 30/10 constants are
+    # the scan-window corner, valid ONLY when the object exactly covers the scan window.
+    X0: float | None = 30.0
+    Y0: float | None = 10.0
     # depth registration search: (sign, off_lo, off_hi) branches, fitted data-drivenly
     depth_branches: tuple = ((+1, -8.0, 4.0), (-1, 66.0, 78.0))
 
@@ -346,6 +349,8 @@ def preset(name: str) -> Config:
         "thin": Config(name="thin",
                        recon_vol="a100_known.npy", dz=0.983, dose_e_per_A2=None,
                        dx=0.0492,                     # explicit: object is the FULL field, not the 20 A scan
+                       X0=None, Y0=None,              # ...and so the ORIGIN must be derived too (per-alpha
+                                                      # object size: 753 px @BIN4, 1109 px @BIN2)
                        convergence_mrad=100.0,
                        zmax_show_A=27.525, trim_z_A=(4.0, 23.5),
                        exit_band_z_A=23.0, clean_max_atoms=12,

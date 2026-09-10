@@ -221,6 +221,9 @@ def main():
     ap.add_argument("--psf", default="auto",
                     choices=["auto", "data", "synthetic", "empirical", "all"])
     ap.add_argument("--single-atom-vol", default=None)
+    ap.add_argument("--ti-kernel-vol", default=None,
+                    help="Ti (light-atom) kernel volume; O reuses the Ti shape. Needed per alpha "
+                         "in the aberration sweep, where each alpha has its OWN matched kernel.")
     ap.add_argument("--dose", type=float, default=None)
     ap.add_argument("--out", default=None,
                     help="output directory (default $ATOMFIND_OUT, else ./atomfind_out)")
@@ -246,6 +249,7 @@ def main():
                   f"dz={cfg.dz} A/layer. A wrong dz mis-registers depth and swaps Ti/O labels.")
     if args.dz: cfg.dz = args.dz
     if args.single_atom_vol: cfg.single_atom_vol = args.single_atom_vol
+    if args.ti_kernel_vol: cfg.ti_kernel_vol = args.ti_kernel_vol
     if args.dose is not None: cfg.dose_e_per_A2 = args.dose
     if args.out: cfg.out_dir = args.out
     cfg = cfg.resolve()          # data names -> absolute paths, or a named failure
