@@ -9,6 +9,13 @@
 #
 # Env passed through to ptycho/run_fusion_hollow.m: NLAYERS NITER GROUPING REGLAYER
 # PROBE_MODES BETA_LSQ PROBE_START WALLTIME.
+#
+# Defaults that matter here and differ from the parent driver:
+#   REGLAYER    0    the depth regulariser is a low-pass in kz and would blur the very
+#                    thing being measured. Only raise it (<=0.05) to rescue a divergent run.
+#   PROBE_MODES 1    the simulated probe is fully coherent; extra modes just add background.
+#   BETA_LSQ    0.1  Yu's value for a 30-layer hollow recon. Drop to 0.05 then 0.02 if a
+#                    deep run NaNs -- slower, but the depth solve is what is at risk.
 set -euo pipefail
 
 REPO_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -41,6 +48,7 @@ for HSA in "$@"; do
     done
 
     TIME_ARG=(); [ -n "${WALLTIME:-}" ] && TIME_ARG=(--time="${WALLTIME}")
+    echo "  reg=${REGLAYER:-0 (driver default: depth regulariser OFF)}  probes=${PROBE_MODES:-1}  beta_LSQ=${BETA_LSQ:-0.1}"
     JID=$(sbatch --parsable \
         --job-name="fus_${TAG}" \
         --output="${JOB_DIR}/slurm_%j.out" \

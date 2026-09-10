@@ -155,14 +155,19 @@ if ~isempty(mm_env); multimodal = logical(str2double(mm_env)); else; multimodal 
 vp_env = getenv('VARIABLE_PROBE');
 if ~isempty(vp_env); n_varprobe = max(0, round(str2double(vp_env))); else; n_varprobe = 0; end
 fprintf('apply_multimodal_update = %d ; variable_probe_modes = %d\n', multimodal, n_varprobe);
-% Depth (multilayer) regularizer: regulation_multilayers.m is a missing-cone low-pass
-% in kz (W = 1-atan((R*|kz|/k_xy)^2)/(pi/2)) -> it BLURS depth. For depth resolution
-% we want it OFF (REGLAYER=0); it was only stabilising the under-constrained deep
-% solve, a job the fixed probe + high overlap should now do. Default keeps Yu's
-% [1,0.5] for safety; set REGLAYER=0 (or small, e.g. 0.05 if depth diverges).
+% Depth (multilayer) regularizer: regulation_multilayers.m is a missing-cone low-pass in
+% kz (W = 1-atan((R*|kz|/k_xy)^2)/(pi/2)) -> it BLURS DEPTH. Here the depth profile IS the
+% measurement -- the sign of P_z is read from the stacking order of the Pb / Ti-O / O columns
+% along the beam -- so unlike the parent driver this one defaults it OFF. The stabilising job
+% it used to do is covered by the fixed (true) probe and the very high scan overlap.
+% REGLAYER=0.05 is the fallback if a deep run diverges; anything larger destroys the signal.
 rl_env = getenv('REGLAYER');
-if ~isempty(rl_env); reglayer = [str2double(rl_env), str2double(rl_env)]; else; reglayer = [1, 0.5]; end
+if ~isempty(rl_env); reglayer = [str2double(rl_env), str2double(rl_env)]; else; reglayer = [0, 0]; end
 fprintf('regularize_layers (per engine) = [%g %g]\n', reglayer(1), reglayer(2));
+if any(reglayer > 0.1)
+    warning(['REGLAYER = %g will low-pass the depth axis, which is the quantity this ' ...
+             'experiment measures. Use 0 (or <=0.05 only to stabilise a divergent run).'], reglayer(1));
+end
 Np_presolve               = [2*floor(Ndpx/4), Ndpx]; % half-Ndp, forced EVEN (the GPU engine
 %   uses even FFT sizes; Ndpx=1426 -> round(/2)=713 is ODD -> 713/712 size clash). 356->178.
 Niter_save_results        = [50,  50];
@@ -209,6 +214,17 @@ if do_restart
 else
     fprintf('FRESH run (coarse presolve + full)\n');
 end
+
+% ---- the settings this experiment lives or dies on, echoed together ------------
+fprintf(['\n== fusion recon preflight ==\n' ...
+         '   hollow semi-angle    = %.2f alpha\n' ...
+         '   Nlayers x delta_z    = %d x %.3f A  (over %.2f A)\n' ...
+         '   regularize_layers    = [%g %g]   <- MUST be 0: depth is the measurement\n' ...
+         '   probe_modes          = %d        <- 1 for a coherent synthetic probe\n' ...
+         '   beta_LSQ             = %.3g\n' ...
+         '   custom_data_flip     = [0 0 1]   (transpose; set at the engine below)\n' ...
+         '   probe / positions    = FIXED (known from the simulation)\n\n'], ...
+        hsa, Nlayers, delta_z, thick, reglayer(1), reglayer(end), Nprobe, beta_LSQ_val);
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%% p struct %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 clear p

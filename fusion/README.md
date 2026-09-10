@@ -156,6 +156,13 @@ bash fusion/run_fusion_recon.sh 0.75              # the operating point
 bash fusion/run_fusion_recon.sh 0 0.50 0.75 0.95  # the whole sweep, one sim
 ```
 
+The driver defaults **`regularize_layers = [0 0]`**, unlike its parent. `regulation_multilayers.m`
+is a missing-cone low-pass in k_z: it blurs the depth axis, which is precisely where the sign of
+P_z lives. Only raise it (≤ 0.05) to rescue a divergent run. `probe_modes = 1` (the simulated probe
+is coherent) and the probe and positions are held fixed at their known values. If a deep run NaNs,
+drop `BETA_LSQ` 0.1 → 0.05 → 0.02 before touching `REGLAYER`. Each job prints a preflight block
+with all of these so the log is self-documenting.
+
 ### 6. Read it out and make the figure
 
 ```bash
