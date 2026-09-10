@@ -71,9 +71,16 @@ def discriminability(p_up, p_dn, theta_mrad, hsa_mrad, eps: float = 1e-14):
     """
     d2 = (p_up - p_dn) ** 2 / np.maximum(0.5 * (p_up + p_dn), eps)
     out = theta_mrad >= hsa_mrad
+    ad = np.abs(p_up - p_dn)
+    tot = 0.5 * (p_up.sum(axis=(1, 2)) + p_dn.sum(axis=(1, 2)))
     return {"D_total": float(d2.sum(axis=(1, 2)).mean()),
             "D_outside": float(d2[:, out].sum(axis=1).mean()),
-            "D_inside": float(d2[:, ~out].sum(axis=1).mean())}
+            "D_inside": float(d2[:, ~out].sum(axis=1).mean()),
+            # NOISELESS separability: the fraction of the pattern that differs at all. This is the
+            # quantity that matters before dose enters -- a reconstruction has to be sensitive to
+            # THIS, whatever the electron count.
+            "frac_total": float((ad.sum(axis=(1, 2)) / tot).mean()),
+            "frac_outside": float((ad[:, out].sum(axis=1) / tot).mean())}
 
 
 def run(thicknesses, n_lat: int = 4, n_scan: int = 8, convergence_mrad: float = 100.0,
@@ -90,7 +97,9 @@ def run(thicknesses, n_lat: int = 4, n_scan: int = 8, convergence_mrad: float = 
     print(f"sign encoding: |delta| {abs(d_ti):.3f} A at {theta_deg:.0f} deg from the beam "
           f"(delta_z = {delta[2]:+.3f} A)")
     print(f"alpha {convergence_mrad:.0f} mrad, hollow semi-angle {hsa:.0f} mrad, "
-          f"{n_scan}x{n_scan} positions over one {a:.3f} A cell\n")
+          f"{n_scan}x{n_scan} positions over one {a:.3f} A cell")
+    print("NOISELESS throughout: exact patterns are compared, no shot noise anywhere. The dose "
+          "line is\na derived aside, not part of the measurement.\n")
     for n_z in thicknesses:
         pos = scan_positions(a, n_scan, 0.0)
         flip = np.array([1.0, 1.0, -1.0])          # flip delta_z ONLY: same in-plane, same |delta|
@@ -110,9 +119,11 @@ def run(thicknesses, n_lat: int = 4, n_scan: int = 8, convergence_mrad: float = 
             N = 9.0 / (M * D[key]) if D[key] > 0 else np.inf     # electrons/pattern for SNR 3
             row[f"dose_{tag}_e_per_A2"] = N / (a / n_scan) ** 2
         rows.append(row)
-        print(f"  {n_z:>3} cells ({thick_A:5.1f} A): D_total {D['D_total']:.3e}  "
-              f"outside-hole {D['D_outside']:.3e} ({100*D['D_outside']/max(D['D_total'],1e-30):4.1f}%)  "
-              f"-> SNR-3 dose {row['dose_outside_e_per_A2']:.2e} e/A^2 for ptychography")
+        print(f"  {n_z:>3} cells ({thick_A:5.1f} A):  NOISELESS pattern difference "
+              f"{100*D['frac_total']:6.3f}%  (outside the hole {100*D['frac_outside']:6.3f}%, "
+              f"{100*D['D_outside']/max(D['D_total'],1e-30):4.1f}% of the information)")
+        print(f"                        [if shot noise were added: SNR 3 at "
+              f"{row['dose_outside_e_per_A2']:.1e} e/A^2]")
     # NULL CONTROL: with delta purely in-plane, flipping delta_z changes nothing, so the two
     # structures are literally identical and D must come out at the numerical floor. Anything
     # else would mean the measured D is an artefact of the build/centring, not the polarisation.

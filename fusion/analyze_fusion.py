@@ -209,31 +209,109 @@ def load_volume(path: str):
     return V - np.median(V, axis=(1, 2), keepdims=True)
 
 
-def column_maps(V, budget, truth, radius_A: float = 0.6):
-    """@brief Depth profiles of the Pb and TiO columns on the lattice covered by the scan.
+def object_pixel_A(budget) -> float:
+    """@brief Reconstructed object pixel [A], from the simulation rather than from the ROI size.
 
-    @return (prof_Pb, prof_TiO, cols_xy, z_axis) with prof_* of shape (n_col, nL); cols_xy are the
-            column centres in the SAMPLE frame so they can be tagged with the ground-truth domain.
+    The PtychoShelves ROI is NOT exactly the scan window (it is the illuminated region, trimmed),
+    so deriving dx as window/Nx is wrong by ~1% -- which drifts by ~0.3 A across the field, the
+    same size as the displacement being measured. dx is fixed by the detector: dx = 1/(N_b dk_b)
+    with dk_b = bin/box, i.e. dx = box/(N_b * bin).
+    """
+    if "dx_object_A" in budget:
+        return float(budget["dx_object_A"])
+    if not {"d_alpha_mrad", "box_A", "Ndpx"} <= set(budget):
+        raise SystemExit("cannot determine the object pixel size: the budget needs either "
+                         "dx_object_A or (d_alpha_mrad, box_A, Ndpx)")
+    lam = 12.2639 / np.sqrt(300e3 * (1 + 0.97845e-6 * 300e3))         # A, 300 keV
+    n_bin = round(float(budget["d_alpha_mrad"]) * float(budget["box_A"]) / (lam * 1e3))
+    return float(budget["box_A"]) / (float(budget["Ndpx"]) * n_bin)
+
+
+def register_lattice(V, dx: float, a: float, trim_A: float = 1.2):
+    """@brief Find the Pb sublattice IN THE RECONSTRUCTION, rather than assuming where it landed.
+
+    A reconstruction cannot be assumed to sit on the coordinates the simulation used: the ROI is
+    cropped by the engine and the object can carry a global shift. Everything downstream depends on
+    telling a Pb column from a Ti-O column, so the lattice is measured here: high-pass the projected
+    phase, find the atomic peaks, and take the circular mean of their positions modulo a. The
+    BRIGHTEST quartile is the Pb sublattice (Z = 82 against Ti = 22), which fixes the origin; the
+    returned coherence |R| says how well a single lattice describes them (>0.9 is a clean fit).
+
+    @return (ox, oy, coherence, ratio) -- sublattice origin in the trimmed frame, and the measured
+            Pb:TiO peak-amplitude ratio, which must exceed 1 or the identification is unsafe.
+    """
+    from scipy.ndimage import gaussian_filter, maximum_filter
+    proj = V.sum(0)
+    N = proj.shape[0]
+    t = int(round(trim_A / dx))                              # drop the recon boundary rim
+    d = proj[t:N - t, t:N - t]
+    d = d - gaussian_filter(d, trim_A / dx)                  # high-pass: keep the atomic columns
+    sm = gaussian_filter(d, 0.30 / dx)
+    mx = maximum_filter(sm, size=int(round(0.4 * a / dx)))
+    pk = np.argwhere((sm == mx) & (sm > sm.mean() + 0.5 * sm.std()))
+    if len(pk) < 8:
+        raise SystemExit("lattice registration failed: too few atomic peaks in the reconstruction")
+    amp = sm[pk[:, 0], pk[:, 1]]
+    order = np.argsort(amp)[::-1]
+    pk, amp = pk[order], amp[order]
+    top = pk[:max(8, len(pk) // 4)]                          # the brightest quartile = Pb
+    zx = np.exp(2j * np.pi * (top[:, 1] * dx) / a).mean()
+    zy = np.exp(2j * np.pi * (top[:, 0] * dx) / a).mean()
+    ox, oy = np.angle(zx) / (2 * np.pi) * a % a, np.angle(zy) / (2 * np.pi) * a % a
+    fx = ((pk[:, 1] * dx) - ox) % a / a
+    fy = ((pk[:, 0] * dx) - oy) % a / a
+    near = lambda u: min(abs(u), abs(u - 1)) < 0.25
+    lab = np.array(["Pb" if (near(u) and near(v)) else ("TiO" if not (near(u) or near(v)) else "Oeq")
+                    for u, v in zip(fx, fy)])
+    ratio = (amp[lab == "Pb"].mean() / amp[lab == "TiO"].mean()
+             if (lab == "Pb").any() and (lab == "TiO").any() else np.nan)
+    return float(ox), float(oy), float(min(abs(zx), abs(zy))), float(ratio), float(t * dx)
+
+
+def column_maps(V, budget, truth, radius_A: float = 0.6, register: bool = True):
+    """@brief Depth profile of each of the three column types, for every complete cell in the ROI.
+
+    The ROI centre is taken to be the scan centre (the engine crops symmetrically about the scanned
+    region), which fixes the absolute position to within half a cell; `register_lattice` then pins
+    the sublattice down within the cell. Together they say which column is Pb and which is Ti-O,
+    which is the whole basis of the sign readout.
+
+    @return (cells, xy, z_axis) -- cells is a list of {kind: profile}, xy the cell origins in the
+            SAMPLE frame so each can be tagged with a domain.
     """
     nL, Ny, Nx = V.shape
     a = float(truth["a"])
-    win = float(budget["scan_window_A"])
     cx, cy = budget["scan_center_A"]
-    dx = win / Nx                                            # the recon ROI spans the scan window
+    dx = object_pixel_A(budget)
     z_axis = (np.arange(nL) + 0.5) * float(budget["beam_thickness_A"]) / nL
-    x0, y0 = cx - win / 2.0, cy - win / 2.0                  # sample coords of ROI pixel (0,0)
+    x0, y0 = cx - Nx * dx / 2.0, cy - Ny * dx / 2.0           # ROI is centred on the scan
+
+    ox = oy = 0.0
+    if register:
+        rx, ry, coh, ratio, trim = register_lattice(V, dx, a)
+        # the registration is measured in the TRIMMED frame; refer it back to the ROI, then take
+        # the residual against where the simulation put the lattice (nearest cell, so |shift| < a/2)
+        gx, gy = (x0 + trim + rx), (y0 + trim + ry)
+        ox = ((gx + a / 2) % a) - a / 2
+        oy = ((gy + a / 2) % a) - a / 2
+        print(f"[register] Pb sublattice found: residual shift ({ox:+.3f}, {oy:+.3f}) A, "
+              f"lattice coherence {coh:.3f}, Pb:TiO amplitude {ratio:.2f}")
+        if coh < 0.8 or not (ratio > 1.0):
+            raise SystemExit(f"lattice registration is unsafe (coherence {coh:.2f}, "
+                             f"Pb:TiO {ratio:.2f}) -- cannot tell Pb from Ti, so the sign readout "
+                             f"would be meaningless")
 
     rad = max(1, int(round(radius_A / dx)))
     offs = {"Pb": (0.0, 0.0), "TiO": (0.5 * a, 0.5 * a), "Oeq": (0.5 * a, 0.0)}
     cells, xy = [], []
-    i0 = int(np.ceil(x0 / a))
-    j0 = int(np.ceil(y0 / a))
-    for i in range(i0, i0 + int(win / a) + 2):
-        for j in range(j0, j0 + int(win / a) + 2):
+    i0, j0 = int(np.floor(x0 / a)), int(np.floor(y0 / a))
+    span = int(Nx * dx / a) + 2
+    for i in range(i0, i0 + span):
+        for j in range(j0, j0 + span):
             prof, okc = {}, True
             for kind, off in offs.items():
-                px = (i * a + off[0] - x0) / dx
-                py = (j * a + off[1] - y0) / dx
+                px = (i * a + off[0] + ox - x0) / dx
+                py = (j * a + off[1] + oy - y0) / dx
                 if not (rad < px < Nx - rad - 1 and rad < py < Ny - rad - 1):
                     okc = False
                     break
@@ -360,7 +438,7 @@ def selftest(n_lat=12, n_z=5, nL=24, noise=0.0, verbose=True, seed=0) -> bool:
     """@brief End-to-end check of the readout on a synthetic reconstruction of the toy."""
     atoms, truth = T.build(n_lat, n_z)
     budget = {"scan_window_A": 24.0, "scan_center_A": [float(truth["box_A"]) / 2] * 2,
-              "beam_thickness_A": float(truth["box_z_A"])}
+              "beam_thickness_A": float(truth["box_z_A"]), "dx_object_A": 0.1}
     V = synth_volume(truth, budget, nL, noise=noise, seed=seed)
     xy, obs, dom, z0 = read_sign(V, budget, truth)
     ok = True
@@ -427,7 +505,7 @@ def robustness(truth=None, n_seed: int = 5, verbose: bool = True):
     if truth is None:
         _, truth = T.build(12, 5)
     budget = {"scan_window_A": 24.0, "scan_center_A": [float(truth["box_A"]) / 2] * 2,
-              "beam_thickness_A": float(truth["box_z_A"])}
+              "beam_thickness_A": float(truth["box_z_A"]), "dx_object_A": 0.1}
     out = {"noise": [], "fwhm": []}
     if verbose:
         print(f"\n== robustness (a): profile noise, depth resolution as assumed (2.0 A) ==")

@@ -15,6 +15,38 @@ mask, so sweeping the hollow semi-angle costs reconstructions, not simulations.
 
 ---
 
+## Status (2026-09-10) — the EELS channel works, the depth readout does not yet
+
+First full run on Blythe: one simulation (6400 positions, noiseless at 1e10 e/pattern) and four
+hollow reconstructions at HSA = 0, 0.50, 0.75, 0.95, all completed in ~36 min each.
+
+**What worked.** Everything up to the reconstruction. The measured dose split at 0.75α is
+55.5 % / 44.5 %; the simultaneous HAADF carries 1.0 % of the beam and, as it must, cannot separate
+the domains at all (0.99 % spread). The reconstructions resolve the lattice beautifully in
+projection — Pb, Ti–O and even the weak O columns, lattice coherence 0.98, Pb:Ti amplitude 1.85.
+
+**What did not.** The reconstructions carry **no depth structure whatsoever**: power at the 4.152 Å
+lattice period along the beam is 0.5–0.9× the mean band power, i.e. no atomic planes, even after
+detrending, even at HSA = 0. So the sign readout had nothing to work with and scored at chance
+(29–56 %). `check_recon.py` reports this in one command and should be run before any physics is
+read off a reconstruction.
+
+**It is not a dose problem and not an information problem.** The data were noiseless throughout.
+`sign_encoding.py` compares two uniform membranes differing only in sign(δ_z) at identical probe
+positions: at 5 cells, **4.9 % of the diffraction pattern differs**, 2.3 % of it outside the hole
+(65 % of the Poisson information). The null control — δ purely in-plane, so the flip is a no-op —
+gives exactly 0.000e+00. The sign is abundantly present in the data; reconstructing 24 free depth
+layers from a 21 Å slab is simply a lossy way to get at it.
+
+**Open.** Whether a better-conditioned reconstruction (fewer layers, more iterations, a known-object
+start) recovers the depth, or whether the sign should be read directly from the diffraction data as
+a two-hypothesis test — EELS supplies |δ_z| and projection δ_xy, leaving exactly two candidates.
+Note also that the engine's `fourier_error_out` scores every detector pixel while the hollow mask is
+applied only inside `modulus_constraint.m`, so it is **not** a valid convergence monitor for a
+hollow run.
+
+---
+
 ## The physics, in three facts
 
 **1. Projected ptychography is exactly degenerate in the sign of P_z.** An up cell and a down cell
@@ -183,6 +215,8 @@ with all of these so the log is self-documenting.
 | `simulate_fusion.py` | one abTEM 4D-STEM scan → PtychoShelves inputs, hollow masks, measured dose split, virtual HAADF/BF |
 | `../ptycho/run_fusion_hollow.m` | the MHP driver: identical to `run_synthetic_recon_ML.m` but with `mask1` = the hole |
 | `analyze_fusion.py` | the matched-filter sign readout, the EELS magnitude inversion, and the fusion |
+| `check_recon.py` | did a reconstruction recover DEPTH? run this before reading physics off one |
+| `sign_encoding.py` | is the sign in the data at all, and how does it grow with thickness (noiseless) |
 | `make_figure.py` | the headline figure |
 | `run_fusion_sim.slurm`, `run_fusion_recon.sh` | Blythe launchers |
 
