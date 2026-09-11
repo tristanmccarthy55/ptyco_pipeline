@@ -26,7 +26,7 @@ LSQ-ML. This folder is the experiment's **home for outputs**; the code lives wit
 - **Blind probe retrieval is hard** on this thin weak-phase slab (grid-junk → noise → NaN across
   fixes; presolve-only fit under test). Real fix is likely a vacuum/edge scan.
 - **Where it breaks** (`figs/2026-W37/ronchigram_evolution.png`): C5 = 1 mm is a fixed corrector
-  residual; retuning Cs(C3)+C1 holds the probe ~4 Å to **70 mrad**, then it grows (6.5/11/21/26 Å at
+  residual; retuning Cs(C3)+C1 holds the probe ~4 Å to **70 mrad**, then it grows (6.6/11/24.5/~60 Å at
   90/100/110/120). Probe compactness — not a flat Scherzer χ — is the C3-selection criterion (ptycho
   recovers the phase).
 - **atomfind**: interface fix (full-box recon) + matched aberrated PSFs built; sweep pending →

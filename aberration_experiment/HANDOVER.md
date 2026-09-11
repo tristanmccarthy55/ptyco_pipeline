@@ -25,9 +25,20 @@ C1(defocus) — the `campaign/round_sweep.tsv` balance — to keep the probe com
 ## What WORKS (banked)
 - **Known/calibrated probe**: `ab_known ≈ perfect` across α. Depth sharpens with α →
   `figs/2026-W37/round_depth.png`. Sweep tool: `analysis/analyze_thin_campaign.py <dir>`.
-- **Ronchigram/probe evolution**: `figs/2026-W37/ronchigram_evolution.png`. Probe d90 holds 4 Å to
-  70 mrad, then grows (6.5/11/21/26 Å at 90/100/110/120) — probe compactness (not a flat Scherzer χ)
-  is the C3-selection criterion.
+- **Ronchigram/probe evolution**: `figs/2026-W37/ronchigram_evolution.png` (rebuilt 2026-09-11:
+  simulated Ronchigrams, wrapped χ, probe, phase-ramp profiles Δx = ∂W/∂θ, probe size vs α). Probe
+  d90 held at the 4 Å TARGET to 70 mrad, then 6.6 / 11.0 / 24.5 / ~60 Å at 90/100/110/120 (converged
+  140 Å box — the old figure's 21/26 Å at 110/120 came from a 30 Å box). Aperture area whose rays
+  land within ±2 Å: 99/100/95% → 45/25/15/11%. **30–70 mrad probes are deliberately ENLARGED** to
+  4 Å (smallest reachable 1.2/0.8/2.2 Å; `plan_probe.py` targets 4 Å with the least defocus, so
+  C1 ≈ 0 and Cs does it at 50/70 — hence their flat Ronchigram centres). ≥90 mrad needs balancing
+  defocus C1 = −160…−268 Å (the bullseye rings). **a120 is not simulable**: d99 ≈ 105 Å > the 70 Å
+  BIN=1 window; a110 (d99 51 Å) is tight but valid.
+- **`round_depth.png` rows a110/a120 are a RECONSTRUCTION failure, not the aberration break** — do not
+  cite them. Their "diamonds" have a depth period of exactly 2 slices (1.67 Å at NL14, the layer
+  grid's Nyquist; the physical AO/BO₂ period 1.95 Å is a different Fourier bin): the odd/even-layer
+  ambiguity of unregularised multislice, drawn bilinearly. The aberration-FREE "perfect" leg also
+  fails there, which a C5 break cannot explain. Watch for the same mode in the new a110.
 - **atomfind runs end-to-end on the thin recons** and the depth trend is real (see Results).
 
 ## What's DEAD
@@ -72,6 +83,15 @@ C1(defocus) — the `campaign/round_sweep.tsv` balance — to keep the probe com
    stdout before MATLAB. This also stops the endless "File corrupt ... Retrying" loop of bug 1 from
    ever burning walltime again. **Prefer the driver** (`run_thin_atomfind.sh`, which always passes
    absolute paths) over hand-written sbatch lines.
+7. **Depth registration aliased by one unit cell** (a90/a100 OFF −3.86/−3.92 Å = −c). atomfind's comb
+   registration groups GT Pb atoms into columns by rounding (x, y) to a 0.5 Å grid; the labyrinth's
+   wandering columns (polar displacements) fragment into ONE-atom "columns", so each comb has a
+   single tooth and fits any atom along the column. Diagnosed by mapping the found atoms with the
+   fitted map: 11% landed OUTSIDE the physical slab (0% at OFF = 0). Fix: `depth_register="atoms"`
+   (thin preset only) scores every GT Pb atom at its own (x, y, z+OFF) inside the atomic band — no
+   column grouping; OFF now +0.19/+0.12/+0.01 Å. Default stays "comb" so the published presets are
+   bit-identical. ⚠ **The PX915 report's NL70 numbers come from the comb method on the same
+   labyrinth structure** — whether they alias too is UNCHECKED (see Next steps).
 
 ## PSF kernels — the rule (`PSF_KERNELS.md`, `35c6acb`)
 A kernel is the matched system PSF only if the grid leg and the lab leg agree on **everything except
@@ -92,39 +112,43 @@ spacing ≳4·δz). Thinning the box is rejected: it changes NL.
 extractor, all 8 kernels average 25 atoms, argmax at the crop centre, peak/bg 44–1694. S2/S3 not
 needed. Kernels live at `~/Desktop/thin_ab_af2/psf/psf_{Pb,Ti}_a<A>_vol.npy`.
 
-## Results — matched byte-identical kernels (2026-09-11)
-Bulk recall (interior band, the honest metric), all fixes in, S1 kernels,
-`~/Desktop/thin_ab_af2/out/atomfind_a*`:
+## Results — matched kernels + corrected depth registration (2026-09-11)
+All fixes in (bugs 1–7), S1 kernels, `~/Desktop/thin_ab_af2/out/atomfind_a*`
+(the pre-bug-7 runs are kept in `out_comb_aliased/` for comparison):
 
-| α | dz (Å) | prec | Pb | Ti | O | z-RMS | species confusion |
-|---|---|---|---|---|---|---|---|
-| 50 | 3.93 | 0.75 | 58% | 78% | 57% | 0.97 Å | 10.9% ⚠ unreliable |
-| 70 | 1.97 | — | — | — | — | — | lab recon pending (see In flight) |
-| 90 | 1.20 | 0.76 | **98%** | **98%** | **95%** | **0.41 Å** | 0.5% |
-| 100 | 0.98 | 0.79 | **100%** | **98%** | 86% | **0.46 Å** | 2.9% |
+| α | dz (Å) | prec | recall bulk Pb / Ti / O | xy-RMS | z-RMS | species confusion |
+|---|---|---|---|---|---|---|
+| 50 | 3.93 | 0.90 | 57 / 40 / 58% | 0.12 Å | 1.17 Å | 16.6% ⚠ unreliable |
+| 70 | 1.97 | — | — | — | — | lab recon pending (see In flight) |
+| 90 | 1.20 | **0.94** | **95 / 94 / 95%** | **0.03 Å** | **0.37 Å** | 0.0% |
+| 100 | 0.98 | **0.99** | **96 / 94 / 88%** | **0.03 Å** | **0.45 Å** | 3.1% |
 
-Figure: `figs/2026-W37/atomfind_depth_vs_alpha.png` (log depth axis; hollow markers = species
-labels unreliable); CSV in `results/2026-W37/`; collator `analysis/collate_atomfind_depth.py`.
+Whole-slab recall now matches bulk (a90 94/94/95%), i.e. no surface plane is lost. Figure:
+`figs/2026-W37/atomfind_depth_vs_alpha.png` (log depth axis; hollow = species labels unreliable);
+CSV in `results/2026-W37/`; collator `analysis/collate_atomfind_depth.py`.
 
 **How to frame it.**
-- **Depth error falls with α**: z-RMS 0.97 → 0.41–0.46 Å, always well below δz = λ/α² (7.9 → 2.0 Å)
-  because atomfind fits atom centres. ⚠ CORRECTION: the 2026-09-10 version of this file said z-RMS
-  was flat (0.6–1.0 Å) and the α dependence showed only in recall. That was an artefact of the
-  data-derived stand-in PSF; with matched kernels the depth error halves. Don't reuse the old framing.
-- **The phase volumes resolve depth-dependent in-plane displacements** (`mep_volumes.png`): at
-  a90/a100 each column breaks into one blob per atom and zig-zags ~0.5 Å laterally with depth. That
-  is REAL labyrinth structure, not an artefact — in the GT, atoms within one column wander in-plane
-  by a median 0.24 Å (Pb) / 0.18 Å (Ti), up to 0.7–0.8 Å — and atomfind's per-atom xy-RMS
-  (0.15–0.16 Å) is well below that wander, so the polar displacements are tracked, not averaged.
-  At a50 the same columns are unbroken streaks. Ties to the px915 found-atom polarisation result.
-- **Matched kernels are worth ~2× in depth error** at a90/a100 (0.72→0.41, 0.84→0.46 Å vs the
-  data-derived PSF) — the byte-identity rule is not pedantry.
-- **a50: atoms are found in-plane** (precision 0.75, xy-RMS 0.15 Å) **but species are not
+- **Depth error falls with α**: z-RMS 1.17 → 0.37–0.45 Å, always well below δz = λ/α² (7.9 → 2.0 Å)
+  because atomfind fits atom centres. ⚠ Two earlier framings are WRONG and must not be reused:
+  (a) 2026-09-10: "z-RMS flat, α shows only in recall" — an artefact of the data-derived PSF;
+  (b) 2026-09-11 morning: precision 0.76/0.79, xy-RMS 0.15 Å, whole-slab recall ~75% — all
+  artefacts of the one-cell depth-registration alias (bug 7).
+- **The phase volumes resolve depth-dependent polar displacements** (`mep_volumes.png`): at a90/a100
+  each column breaks into one blob per atom and zig-zags ~0.5 Å laterally with depth. That is REAL
+  labyrinth structure — in the GT, atoms within one column wander in-plane by a median 0.24 Å (Pb) /
+  0.18 Å (Ti), up to 0.7–0.8 Å — and each found atom sits **0.03 Å** (under a pixel) from its own GT
+  atom. So the displacements are tracked essentially exactly. At a50 the columns are unbroken
+  streaks. Ties to the px915 found-atom polarisation result.
+- **Matched kernels are worth ~2× in depth error** vs the data-derived PSF (like-for-like, both under
+  the old registration: 0.72→0.41, 0.84→0.46 Å) — the byte-identity rule is not pedantry.
+- **a50: atoms are found in-plane** (precision 0.90, xy-RMS 0.12 Å) **but species are not
   resolvable in depth**: at 3.93 Å slices the AO/BO₂ planes (1.95 Å apart) merge, so labels swap
-  (confusion 10.9% > atomfind's 5% health threshold). Its per-species split (Ti > Pb) is label
-  swapping, not physics. This is the expected "mediocre at low α" end.
-- **a100 slightly behind a90** on O recall (86 vs 95%) and z-RMS (0.46 vs 0.41 Å), as the probe grows
-  (d90 6.6 → 11 Å). Possibly the start of the break — ONE point, don't claim it; a110 tests it.
+  (confusion 16.6% > atomfind's 5% health threshold). The per-species split is label swapping,
+  not physics. This is the expected "mediocre at low α" end.
+- **a100 behind a90** on O (88 vs 95% bulk) and z-RMS (0.45 vs 0.37 Å), and it SURVIVES the
+  registration fix, so it is not an alias artefact. It matches the probe physics: the aperture
+  area whose rays land within ±2 Å halves from 45% to 25% between 90 and 100 mrad
+  (`ronchigram_evolution.png`). Still one point — a110 tests the trend.
 - **Not yet strictly byte-identical at a50/a90/a100**: kernels at `BETA_LSQ=0.05`, those lab recons
   at the default 0.1. A step size, not a penalty (far milder than REGLAYER), but it can move a
   200-iteration result. The driver now pins one BETA_LSQ (0.05) for all legs; close the gap with
@@ -139,6 +163,10 @@ labels unreliable); CSV in `results/2026-W37/`; collator `analysis/collate_atomf
   The a70 S1 kernels are already extracted and clean.
 
 ## Next steps
+0. **Check the PX915 report's NL70 registration for the bug-7 alias** (same labyrinth, comb method):
+   run the NL70 preset with `depth_register="comb"` vs `"atoms"` and compare OFF, plus the fraction
+   of found atoms mapped outside the slab. If OFF differs by ~c (3.9 Å) the report's recall/xy-RMS
+   numbers need re-deriving. Not done yet — flagged to the user 2026-09-11.
 1. a70: pull the lab h5 → `run_atomfind.py --preset thin --recon <h5> --dz 1.966 --data-dir
    ~/Desktop/thin_ab_af/gtdata --single-atom-vol .../psf_Pb_a70_vol.npy --ti-kernel-vol
    .../psf_Ti_a70_vol.npy --out ~/Desktop/thin_ab_af2/out/atomfind_a70`, then re-collate all four.

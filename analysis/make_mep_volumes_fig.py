@@ -159,9 +159,13 @@ def main():
             axx.axhspan(-0.5 * dz, ZVAC, color="0.6", alpha=0.25, lw=0)
             axx.axhspan(BOXZ - ZVAC, (nL - 0.5) * dz, color="0.6", alpha=0.25, lw=0)
             if al is not None:
-                for sp, ls, col in ((82, ":", "#00e5ff"), (22, ":", "#7CFC00")):
+                # ground-truth plane depths as ticks OUTSIDE the right edge: a reference that does not
+                # sit on the data (full-width lines every 1.95 A read as texture, not information)
+                x1 = nx * dx
+                for sp, col in ((82, "#00b8cc"), (22, "#3a9d23")):
                     for zg in planes(pos, Z, sp):
-                        axx.axhline(al["SGN"] * zg + al["OFF"], color=col, ls=ls, lw=0.8, alpha=0.8)
+                        axx.plot([x1, x1 + 0.9], [al["SGN"] * zg + al["OFF"]] * 2, color=col,
+                                 lw=1.6, clip_on=False, solid_capstyle="butt")
             if found is not None:
                 m = np.abs(found["row"] - row) <= 2 * half_px
                 for sp, (nm, col, mk) in SP.items():
@@ -179,7 +183,7 @@ def main():
 
     fig.suptitle("Multislice ptychography phase volumes vs aperture — Cs-corrected@30 mrad opened up "
                  "(known probe, full box)\n"
-                 "dotted: ground-truth AO (cyan) / BO₂ (green) planes via atomfind's depth map  ·  "
+                 "ticks at the right edge: ground-truth AO (cyan) / BO₂ (green) planes via atomfind's depth map  ·  "
                  "grey: 4 Å z-vacuum  ·  markers: atomfind blind atoms\n"
                  "x–z slabs ±0.25 Å at equal aspect  ·  in-plane phase-ramp gauge removed for display",
                  fontsize=11)

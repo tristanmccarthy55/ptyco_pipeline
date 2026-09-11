@@ -117,6 +117,12 @@ class Config:
     Y0: float | None = 10.0
     # depth registration search: (sign, off_lo, off_hi) branches, fitted data-drivenly
     depth_branches: tuple = ((+1, -8.0, 4.0), (-1, 66.0, 78.0))
+    # Depth-registration method. "comb" (default, the published presets): correlate reference
+    # columns' depth profiles with GT combs. "atoms": score every GT Pb atom at its own (x,y,z+OFF)
+    # inside the atomic band -- needed when columns wander in-plane (the thin labyrinth), where the
+    # comb's column grouping fragments and OFF aliases by a lattice period. See
+    # align._register_depth_atoms. Default kept so earlier presets reproduce bit-for-bit.
+    depth_register: str = "comb"
 
     # ---- physics (for the synthetic PSF + sanity), section 3.1 / 11.6 ---
     energy_keV: float = 300.0
@@ -356,6 +362,7 @@ def preset(name: str) -> Config:
                        X0=None, Y0=None,              # ...and so the ORIGIN must be derived too (per-alpha
                                                       # object size: 753 px @BIN4, 1109 px @BIN2)
                        fov_A=20.0,                    # analyse the 20 A SCAN field, not the probe halo
+                       depth_register="atoms",        # wandering columns: comb aliases by c (align.py)
                        convergence_mrad=100.0,
                        zmax_show_A=27.525, trim_z_A=(4.0, 23.5),
                        exit_band_z_A=23.0, clean_max_atoms=12,

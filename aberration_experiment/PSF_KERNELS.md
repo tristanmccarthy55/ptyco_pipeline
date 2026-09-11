@@ -183,6 +183,11 @@ Matched kernels vs the data-derived stand-in on the same lab recons:
 
 The kernel is worth a factor of ~2 in depth error. S2 and the multi-plane fallback were not needed.
 
+*The table above is a like-for-like kernel comparison, but both columns predate the depth-
+registration fix (HANDOVER bug 7: the comb registration aliased by one unit cell at a90/a100). With
+the matched kernels and the corrected registration, a90 is 95/94/95% bulk recall, z-RMS 0.37 Å,
+xy-RMS 0.03 Å, precision 0.94; a100 96/94/88%, 0.45 Å, 0.03 Å, 0.99. Quote those.*
+
 **One open deviation from the rule — `beta_LSQ`.** The S1 kernels ran at `BETA_LSQ=0.05`; the
 a50/a90/a100 lab recons ran at the `.m` default 0.1. `beta_LSQ` is a step size, not a penalty, so
 unlike REGLAYER it does not change what is minimised — but with a fixed 200 iterations it can still

@@ -273,6 +273,48 @@ def crop_to_fov(V, dx, cfg):
     return V[:, r0:r1, c0:c1]
 
 
+def _register_depth_atoms(V, dx, pos, Z, cfg, zrec, search_px=6):
+    """@brief Depth offset that puts the most GT Pb atoms on reconstructed phase maxima.
+
+    The comb registration correlates a column's depth profile with a comb of its GT depths, which
+    fixes OFF only modulo the lattice period c -- and on the thin labyrinth it degenerates
+    completely: _pb_columns' 0.5 A rounding splits columns whose atoms wander in-plane (polar
+    displacements, median 0.24 A) into ONE-atom fragments, so each comb has one tooth and fits
+    equally well on any atom along the column (a90/a100 registered at OFF = -c, with 11% of the
+    found atoms then mapped outside the physical slab).
+
+    Here every in-field GT Pb atom is scored at its OWN (x, y, z+OFF): the per-layer maximum of
+    the phase within +-search_px of its nominal pixel (tolerant of the pre-refinement in-plane
+    offset), linearly interpolated in depth. Atoms mapped outside the atomic band (trim_z_A) score
+    zero, so the vacuum-band surface artefacts cannot vote, and a one-cell shift that pushes a
+    whole end plane out of the slab loses ~1/N_planes of the score. No column grouping at all.
+    @return (OFF, SGN, mean score)
+    """
+    from scipy.ndimage import maximum_filter
+    nL, ny, nx = V.shape
+    P = pos[in_window(pos, cfg) & (Z == 82)]
+    c = np.round((P[:, 0] - cfg.X0) / dx).astype(int)
+    r = np.round((P[:, 1] - cfg.Y0) / dx).astype(int)
+    ok = (r >= search_px) & (r < ny - search_px) & (c >= search_px) & (c < nx - search_px)
+    P, r, c = P[ok], r[ok], c[ok]
+    if len(P) == 0:
+        raise RuntimeError("no in-field Pb atoms for depth registration")
+    prof = maximum_filter(V, size=(1, 2 * search_px + 1, 2 * search_px + 1))[:, r, c].T   # (n, nL)
+    lo_b, hi_b = cfg.trim_z_A
+    best = None
+    for sgn, lo, hi in cfg.depth_branches:
+        for off in np.linspace(lo, hi, 481):
+            zm = sgn * P[:, 2] + off                                  # recon-frame depth
+            k = np.interp(zm, zrec, np.arange(nL))                    # fractional layer
+            k0 = np.clip(np.floor(k).astype(int), 0, nL - 2); w = k - k0
+            val = (1 - w) * prof[np.arange(len(P)), k0] + w * prof[np.arange(len(P)), k0 + 1]
+            val[(zm < lo_b) | (zm > hi_b)] = 0.0
+            score = float(val.mean())
+            if best is None or score > best[0]:
+                best = (score, off, sgn)
+    return best[1], best[2], best[0]
+
+
 def register(V, dx, pos, Z, cfg, n_ref=6):
     """Fit (SGN, OFF, CAL_X, CAL_Y) from the brightest GT Pb columns. Returns Alignment."""
     resolve_origin(V, dx, cfg)
@@ -293,29 +335,33 @@ def register(V, dx, pos, Z, cfg, n_ref=6):
     if not ref:
         raise RuntimeError("no in-field Pb reference columns found for registration")
 
-    # ---- depth registration: joint comb correlation over the reference columns
-    def profile(r, c):
-        p = V[:, r-1:r+2, c-1:c+2].mean((1, 2))
-        return p - p.mean()
+    # ---- depth registration
+    if getattr(cfg, "depth_register", "comb") == "atoms":
+        OFF, SGN, corr = _register_depth_atoms(V, dx, pos, Z, cfg, zrec)
+    else:
+        # joint comb correlation over the reference columns
+        def profile(r, c):
+            p = V[:, r-1:r+2, c-1:c+2].mean((1, 2))
+            return p - p.mean()
 
-    def comb(zatoms, off, sgn):
-        g = np.zeros(nL)
-        for za in zatoms:
-            g += np.exp(-0.5 * ((zrec - (sgn * za + off)) / 0.7) ** 2)
-        return g - g.mean()
+        def comb(zatoms, off, sgn):
+            g = np.zeros(nL)
+            for za in zatoms:
+                g += np.exp(-0.5 * ((zrec - (sgn * za + off)) / 0.7) ** 2)
+            return g - g.mean()
 
-    profs = [(profile(r, c), zs) for (_, X, Y, r, c, zs) in ref]
-    best = None
-    for sgn, lo, hi in cfg.depth_branches:
-        for off in np.linspace(lo, hi, 400):
-            score = 0.0
-            for p, zs in profs:
-                g = comb(zs, off, sgn)
-                score += float(np.dot(p, g) / (np.linalg.norm(p) * np.linalg.norm(g) + 1e-9))
-            if best is None or score > best[0]:
-                best = (score, off, sgn)
-    corr, OFF, SGN = best
-    corr /= len(profs)
+        profs = [(profile(r, c), zs) for (_, X, Y, r, c, zs) in ref]
+        best = None
+        for sgn, lo, hi in cfg.depth_branches:
+            for off in np.linspace(lo, hi, 400):
+                score = 0.0
+                for p, zs in profs:
+                    g = comb(zs, off, sgn)
+                    score += float(np.dot(p, g) / (np.linalg.norm(p) * np.linalg.norm(g) + 1e-9))
+                if best is None or score > best[0]:
+                    best = (score, off, sgn)
+        corr, OFF, SGN = best
+        corr /= len(profs)
 
     # ---- in-plane AFFINE calibration from parabolic PEAK offsets across MANY Pb columns.
     # Peak refinement is bias-free (a wide windowed centroid regresses toward zero offset);

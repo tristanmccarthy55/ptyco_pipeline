@@ -119,11 +119,13 @@ def test_load_object_accepts_npy_unchanged():
 
 
 def test_load_object_rejects_unknown_format_clearly():
-    """A peer pointing this at the wrong file should be told what it wants, by name."""
+    """A peer pointing this at the wrong file should be told what it wants, by name.
+    (.h5 is a supported format since 2026-09-10 -- PtychoShelves' *_recons.h5 -- so the
+    unknown extension here is a .tif.)"""
     try:
-        align.load_object("something.h5")
+        align.load_object("something.tif")
     except ValueError as e:
-        assert ".mat" in str(e) and ".npy" in str(e), f"unhelpful message: {e}"
+        assert all(x in str(e) for x in (".mat", ".h5", ".npy")), f"unhelpful message: {e}"
     else:
         raise AssertionError("an unknown extension must raise")
 
