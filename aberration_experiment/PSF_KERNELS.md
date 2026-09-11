@@ -35,8 +35,10 @@ Per α:
 
 `campaign/run_thin_atomfind.sh` runs, per α, a **Pb** and a **Ti** grid leg: `build_atom_grid()`
 puts one element on a 2-D grid at a **single depth plane**, through the same aberrated probe and
-box as the lab recon. `analysis/atomfind/extract_psf.py` crops one clean interior blob →
+box as the lab recon. `analysis/atomfind/extract_psf.py` removes the phase-ramp gauge, finds
+the grid atoms in the interior of the scan field and **averages** them →
 `psf_<el>_a<α>_vol.npy`, loaded by atomfind via `--single-atom-vol` / `--ti-kernel-vol`.
+(Before 2026-09-11 it cropped one blob; `--single` still does, for reproducing old kernels.)
 
 ## What went wrong
 
@@ -111,31 +113,72 @@ Ordered by how little they disturb byte-identity.
 **Not recommended:** thinning the PSF box (`--grid-box-z`) to cut the layer count. It changes `NL`,
 which is one of the things that must match, so it buys conditioning at the cost of the rule.
 
+## Extraction: the second half of the fix
+
+S1 made the reconstructions clean — every grid is a 7×7 array of isolated atoms and every axial
+profile peaks on the true atom depth (13.3–14.7 Å vs 13.76 Å) with flat vacuum bands. But the
+original one-blob extractor still mis-picked three of eight kernels (Ti_a50 off the crop centre
+with a spurious conjugation; both a70 at the exit edge), because it searched the whole object
+including the junk scan edge, took a single blob, and never removed the phase-ramp gauge (0.6 rad
+across the field at a50). A clean recon is necessary but not sufficient.
+
+The extractor now:
+
+1. **removes the ramp** with the `analyze_thin_campaign` model — one plane fitted to the
+   depth-summed phase, spread evenly over the layers — masking atom pixels out of the fit;
+2. **locates** the grid atoms in the inner 13 Å (clear of the scan edge) on a *background-removed*
+   band, because a plane leaves a bowl in weak kernels that hid 22 of Ti_a50's 25 atoms;
+3. **averages** them, with the kernel *values* taken from the deplaned phase, not the
+   background-removed band — high-passing the kernel would reshape it, the same class of
+   distortion as REGLAYER. Averaging N measurements of one response does not change the operator,
+   so byte-identity holds; it is what the grid is for.
+
 ## How to tell a kernel is good
 
 `extract_psf.py` prints what you need:
 
-- `|phase|>0.5` fraction of a few % at most;
-- argmax at the **centre** of the crop in z (the grid atom sits at box centre), not at a z edge;
+- number of atoms averaged (25 for `GRIDSP=3`, `WIN=20`) and the fraction that peak in the same
+  layer — the grid is one plane, so they should agree;
+- argmax at the **crop centre** (y = x = `--half-xy`), and in z on the atom plane, not a z edge;
+- peak/background of tens at least; `|phase|>0.5` fraction a few % at most;
 - in-plane FWHM sub-Å; axial FWHM comparable to δz = λ/α² for that α;
-- **`--zdrop` must be the vacuum band in LAYERS**, `round(4.0/dz)` → 1/2/3/4 at a50/70/90/100. The
-  default of 12 silently erases a NL=7 volume (`z0=12, z1=-5`) and reports "no blobs found".
+- **`--zdrop` must be the vacuum band in LAYERS**, `round(4.0/dz)` → 1/2/3/4 at a50/70/90/100. It is
+  now required: the old default of 12 silently erased a NL=7 volume and reported "no blobs found".
 
 ## Running it
 
 ```bash
-# rebuild ONLY the PSF kernels (lab legs untouched), S1 settings
-ALPHAS="90 100" MODES="Pb Ti" GRIDSP=3 WIN=20 OVERWRITE=1 BETA_LSQ=0.05 \
+# rebuild ONLY the PSF kernels (lab legs untouched), S1 settings, all four alphas for uniformity
+ALPHAS="50 70 90 100" MODES="Pb Ti" GRIDSP=3 WIN=20 OVERWRITE=1 BETA_LSQ=0.05 \
   bash campaign/run_thin_atomfind.sh
+# then per alpha and element (R = round(4/dz))
+python analysis/atomfind/extract_psf.py recon_af_a<A>_<El>_NL<NL> <El>_a<A> --zdrop R --out psf
 ```
 
-## Current status — FLAG
+## Current status (2026-09-11) — S1 kernels are good, no fallback needed
 
-- **a50, a70**: matched grid kernels used (a70's Ti marginal at 10.4%).
-- **a90, a100**: grid kernels unusable, so the reported numbers use the **data-derived PSF**
-  (`psf.data_psf()` — real Pb columns averaged from the same lab recon). Matched by construction
-  and performing well, but measured from the stacked labyrinth, so its axial tail carries
-  neighbouring-column contributions a true isolated-atom kernel would not. **Any a90/a100
-  kernel-dependent number stays labelled data-derived until S1/S2/S3 lands.**
-- **a70 lab recon is separately degenerate** (`|obj|` collapses to 8e-4 in patches → inf/NaN in the
-  spike baseline); re-running damped at `BETA_LSQ=0.05`.
+`atomfind_results_20260910_2109`, all eight kernels:
+
+| kernel | atoms | argmax (y,x) | peak/bg | same-layer | in-plane FWHM |
+|---|---|---|---|---|---|
+| Pb_a50 | 25 | (30,30) | 178 | 100% | 0.15 Å |
+| Ti_a50 | 25 | (30,30) | 44 | 92% | 0.25 Å |
+| Pb_a70 | 25 | (30,30) | 379 | 100% | 0.10 Å |
+| Ti_a70 | 25 | (30,30) | 61 | 100% | 0.20 Å |
+| Pb_a90 | 25 | (30,30) | 1694 | 100% | 0.15 Å |
+| Ti_a90 | 25 | (30,30) | 513 | 100% | 0.10 Å |
+| Pb_a100 | 25 | (30,30) | 270 | 76%* | 0.15 Å |
+| Ti_a100 | 25 | (30,30) | 70 | 100% | 0.15 Å |
+
+\* The a100 grid atom sits at z = 13.762 Å and 14 × 0.983 = 13.76 Å — exactly on a layer boundary,
+so its peak splits between two layers. Physical, not a fault.
+
+The **data-derived flag is lifted**: every kernel now comes out of the byte-identical pipeline.
+Matched kernels vs the data-derived stand-in on the same lab recons:
+
+| α | bulk recall Pb / Ti / O | z-RMS | species confusion |
+|---|---|---|---|
+| 90 | 92/90/88% → **98/98/95%** | 0.72 → **0.41 Å** | → 0.5% |
+| 100 | 96/88/84% → **100/98/86%** | 0.84 → **0.46 Å** | → 2.9% |
+
+The kernel is worth a factor of ~2 in depth error. S2 and the multi-plane fallback were not needed.

@@ -21,6 +21,7 @@ import argparse, csv, datetime, glob, json, os, re
 LAMBDA_A = 0.0196877          # 300 keV electron wavelength [Å]
 SPECIES = ("Pb", "Ti", "O")   # A-site / B-site cation / oxygen
 SP_COLOR = {"Pb": "#1f77b4", "Ti": "#d62728", "O": "#2ca02c"}
+CONF_MAX = 0.05               # atomfind's own health threshold on species confusion
 
 
 def week_dir(sub):
@@ -46,10 +47,14 @@ def load_run(d):
     with open(p) as f:
         r = json.load(f)
     frep = r.get("finder", {}).get("v3", {})
+    cf = frep.get("confusion") or {}
+    off = sum(cf.get(f"{a}->{b}", 0) for a in (82, 22, 8) for b in (82, 22, 8) if a != b)
+    diag = sum(cf.get(f"{a}->{a}", 0) for a in (82, 22, 8))
     row = dict(alpha=find_alpha(r, p), dz=r.get("dz"),
                precision=frep.get("precision"),
                xy_rms=frep.get("xy_rms_A"), z_rms=frep.get("z_rms_A"),
-               n_found=frep.get("n_found"))
+               n_found=frep.get("n_found"),
+               confusion=off / (off + diag) if off + diag else None)
     for k in SPECIES:
         sp = frep.get(k, {})
         row[f"{k}_recall"] = sp.get("recall")
@@ -61,7 +66,7 @@ def load_run(d):
 
 
 def write_csv(rows, path):
-    cols = ["alpha", "dz", "precision", "xy_rms", "z_rms", "n_found"]
+    cols = ["alpha", "dz", "precision", "xy_rms", "z_rms", "n_found", "confusion"]
     cols += [f"{k}_{m}" for k in SPECIES for m in ("recall", "recall_bulk", "zrms")]
     with open(path, "w", newline="") as f:
         w = csv.DictWriter(f, fieldnames=cols)
@@ -83,18 +88,31 @@ def make_fig(rows, path):
     import matplotlib
     matplotlib.use("Agg")
     import matplotlib.pyplot as plt
+    import matplotlib.ticker
 
     fig, (axR, axZ) = plt.subplots(1, 2, figsize=(12.5, 5.2), constrained_layout=True)
     alphas = [r["alpha"] for r in rows]
 
     # --- recall vs alpha (bulk = interior planes, the honest metric; total dashed) ----
+    # A per-species split is only meaningful when the species labels are: atomfind flags species
+    # confusion above 5% as unreliable, and at coarse depth sampling the AO/BO2 planes (1.95 A
+    # apart) merge so labels swap. Those points are drawn hollow rather than dropped.
+    bad = {r["alpha"] for r in rows if r.get("confusion") is not None and r["confusion"] > CONF_MAX}
     for k in SPECIES:
         x, y = _xy(rows, "alpha", f"{k}_recall_bulk")
         if x:
-            axR.plot(x, [v * 100 for v in y], "-o", color=SP_COLOR[k], label=f"{k} (bulk)")
+            yy = [v * 100 for v in y]
+            axR.plot(x, yy, "-o", color=SP_COLOR[k], label=f"{k} (bulk)")
+            for xi, yi in zip(x, yy):
+                if xi in bad:
+                    axR.plot(xi, yi, "o", color=SP_COLOR[k], mfc="white", mew=1.5, zorder=3)
         xt, yt = _xy(rows, "alpha", f"{k}_recall")
         if xt:
             axR.plot(xt, [v * 100 for v in yt], "--", color=SP_COLOR[k], alpha=0.45, lw=1)
+    if bad:
+        axR.text(0.02, 0.03, f"hollow: species labels unreliable (confusion > {CONF_MAX:.0%}) —\n"
+                 "depth too coarse to separate the AO / BO$_2$ planes",
+                 transform=axR.transAxes, fontsize=8, va="bottom", color="0.3")
     axR.set_xlabel("convergence semi-angle α (mrad)")
     axR.set_ylabel("depth recall (%)")
     axR.set_ylim(-3, 103)
@@ -114,8 +132,13 @@ def make_fig(rows, path):
         aa = sorted(alphas)
         dz_res = [LAMBDA_A / (a * 1e-3) ** 2 for a in aa]
         axZ.plot(aa, dz_res, ":", color="0.5", label="δz = λ/α² (depth res.)")
+    # log axis: the diffraction limit runs 2-8 A, the fitted depth error 0.4-1 A; linear squashes
+    # the localisation curve flat against zero
+    axZ.set_yscale("log")
+    axZ.set_yticks([0.2, 0.3, 0.5, 1, 2, 3, 5, 8])
+    axZ.get_yaxis().set_major_formatter(matplotlib.ticker.FormatStrFormatter("%g"))
     axZ.set_xlabel("convergence semi-angle α (mrad)")
-    axZ.set_ylabel("depth error / resolution (Å)")
+    axZ.set_ylabel("depth error / resolution (Å, log)")
     axZ.set_title("depth localisation vs α")
     axZ.grid(alpha=0.3)
     axZ.legend(loc="upper right", fontsize=9)
