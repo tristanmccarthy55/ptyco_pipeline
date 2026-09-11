@@ -90,8 +90,8 @@ C1(defocus) — the `campaign/round_sweep.tsv` balance — to keep the probe com
    fitted map: 11% landed OUTSIDE the physical slab (0% at OFF = 0). Fix: `depth_register="atoms"`
    (thin preset only) scores every GT Pb atom at its own (x, y, z+OFF) inside the atomic band — no
    column grouping; OFF now +0.19/+0.12/+0.01 Å. Default stays "comb" so the published presets are
-   bit-identical. ⚠ **The PX915 report's NL70 numbers come from the comb method on the same
-   labyrinth structure** — whether they alias too is UNCHECKED (see Next steps).
+   bit-identical. The PX915 report's NL70 numbers use the comb method on the same labyrinth and
+   were CHECKED: not aliased (comb +0.36 vs per-atom +0.22 Å; see Next steps 0).
 
 ## PSF kernels — the rule (`PSF_KERNELS.md`, `35c6acb`)
 A kernel is the matched system PSF only if the grid leg and the lab leg agree on **everything except
@@ -163,10 +163,11 @@ CSV in `results/2026-W37/`; collator `analysis/collate_atomfind_depth.py`.
   The a70 S1 kernels are already extracted and clean.
 
 ## Next steps
-0. **Check the PX915 report's NL70 registration for the bug-7 alias** (same labyrinth, comb method):
-   run the NL70 preset with `depth_register="comb"` vs `"atoms"` and compare OFF, plus the fraction
-   of found atoms mapped outside the slab. If OFF differs by ~c (3.9 Å) the report's recall/xy-RMS
-   numbers need re-deriving. Not done yet — flagged to the user 2026-09-11.
+0. ~~Check the PX915 report's NL70 registration for the bug-7 alias~~ CHECKED 2026-09-11: NOT
+   affected. On `NL70_coherent` (`atomfind/paper/inputs/NL70_new_vol.npy`) comb OFF = +0.36 Å vs
+   per-atom OFF = +0.22 Å — agree to 0.14 Å, no one-cell alias. The 18-cell columns keep several
+   teeth per fragment and that recon has no in-volume vacuum band; the alias is specific to the
+   thin 5-cell full-box geometry.
 1. a70: pull the lab h5 → `run_atomfind.py --preset thin --recon <h5> --dz 1.966 --data-dir
    ~/Desktop/thin_ab_af/gtdata --single-atom-vol .../psf_Pb_a70_vol.npy --ti-kernel-vol
    .../psf_Ti_a70_vol.npy --out ~/Desktop/thin_ab_af2/out/atomfind_a70`, then re-collate all four.
