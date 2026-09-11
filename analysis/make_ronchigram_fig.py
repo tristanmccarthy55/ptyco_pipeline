@@ -9,12 +9,12 @@ aperture edge at 50 mrad, ~1600 rad at 120); the operator retunes Cs (C3) + defo
 (C3, C1) of campaign/round_sweep.tsv -- to keep the PROBE compact (the criterion ptycho needs; it
 recovers the phase itself, so a flat Scherzer chi is not required).
 
-Probe plan (campaign/plan_probe.py): every alpha is balanced to d90 = 4 A, choosing the LEAST
-defocus that achieves it. So at 30 mrad C1 = -50 A enlarges the probe; at 50/70 mrad C1 ~ 0 and
-Cs = -4 um enlarges it (the smallest reachable probe is far smaller, see the bottom-right panel)
--- chi then starts as theta^4, which is why those Ronchigrams have large flat centres. From 90 mrad
-4 A is unreachable: the probe is the smallest possible and needs C1 = -160..-268 A to balance C3
-against C5 -- a theta^2 term that winds phase from the very centre (the bullseye rings).
+Probe plan (campaign/plan_probe.py, read from round_sweep.tsv): d90 = 4 A first, the flattest
+Ronchigram second. Where 4 A is reachable (30-70 mrad) that is the traditional recipe: Cs flat --
+the realistic +1 um corrector residual at 30, retuned to the flattest step against C5 at 50/70 --
+and DEFOCUS spreads the probe to 4 A (the smallest reachable probe is far smaller; bottom right).
+From 90 mrad 4 A is unreachable: the probe is the smallest possible and needs C1 = -160..-268 A to
+balance C3 against C5 -- a theta^2 term that winds phase from the very centre (the bullseye rings).
 
 Rows, one column per alpha:
   1. simulated Ronchigram -- probe x thin amorphous film, far-field intensity (what the operator
@@ -26,8 +26,9 @@ Bottom:
            the ray through aperture angle theta lands. The probe is compact only where rays land
            within ~+-2 A (the 4 A target band).
   right -- probe d90 and d99 vs alpha (converged 140 A box), the 4 A target, the smallest probe
-           reachable at 30-70 mrad, the 70 A BIN=1 probe window, and the fraction of the aperture
-           whose rays land inside +-2 A.
+           reachable at 30-70 mrad, the 70 A BIN=1 probe window, and Ronchigram flatness: the
+           NON-defocus aberration P-V across the aperture (plan_probe.nondefocus_pv), flat <= lambda/4.
+  Each chi panel carries its non-defocus P-V (green = flat).
 
 History: the pre-2026-09-11 version built probes in a 30 A box (d90 20.7/26.1 A at 110/120 mrad,
 really 24.5 / >47 A) and plotted a "flat-to-pi/4 aperture" measured against a running minimum,
@@ -41,9 +42,34 @@ from matplotlib.patches import Circle
 from scipy.ndimage import gaussian_filter
 
 LAM = 0.0196877; C5 = 1e7                       # 300 keV wavelength [A]; fixed 5th-order residual (1 mm)
-# (alpha_mrad, C3_A, C1_A) balanced probes -- from campaign/round_sweep.tsv (a30 = its commented row)
-PTS = [(30, 1e4, -50), (50, -4e4, 0), (70, -4e4, 2), (90, -9e4, -160), (100, -11e4, -238),
-       (110, -12e4, -240), (120, -13e4, -268)]
+TSV = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "campaign", "round_sweep.tsv")
+
+
+def load_plan(path=TSV):
+    """(alpha_mrad, C3_A, C1_A) per planned probe, read from the planner's tsv -- including its
+    commented-out rows (a30), which are skipped by the campaigns but belong on this figure.
+    Read rather than hard-coded so the figure can never drift from the probes actually simulated."""
+    import re
+    pts = []
+    for line in open(path):
+        if re.match(r"#?a\d{3}\t", line):
+            f = line.lstrip("#").rstrip("\n").split("\t")
+            pts.append((int(f[1]), float(f[3]), float(f[4])))
+    return sorted(pts)
+
+
+PTS = load_plan()
+
+
+def _planner():
+    """campaign/plan_probe.py, for its flatness metric -- shared so figure and plan cannot disagree."""
+    import importlib.util
+    p = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "campaign", "plan_probe.py")
+    s = importlib.util.spec_from_file_location("plan_probe", p); m = importlib.util.module_from_spec(s)
+    s.loader.exec_module(m); return m
+
+
+PLAN = _planner()
 L_BOX, N_BOX = 140.0, 2048                      # converged probe box: holds a110's d99 (51 A) with margin
 WINDOW_BIN1 = 1426 * 0.0492                     # BIN=1 recon probe window (Ndp x dx) ~ 70 A
 BAND = 2.0                                      # +-A: rays landing inside make a ~4 A probe
@@ -97,11 +123,6 @@ def ronchigram(P, L, a, rng):
     return np.sqrt(R[c - h:c + h, c - h:c + h]), h * px
 
 
-def aperture_fraction(a, C3, C1):
-    th = np.linspace(0, a / 1000, 4000); m = np.abs(ray_dx(C3, C1, th)) <= BAND
-    return (th * m).sum() / th.sum()                      # area-weighted (annulus ~ theta dtheta)
-
-
 def main():
     try: abtem.config.set({"local_diagnostics.progress_bar": False})
     except Exception: pass
@@ -127,6 +148,9 @@ def main():
         ax = fig.add_subplot(gs[1, j])
         ax.imshow(np.angle(np.exp(1j * ch)), cmap="twilight", vmin=-np.pi, vmax=np.pi, extent=[-a, a, -a, a])
         ax.set_xticks([]); ax.set_yticks([])
+        pv = PLAN.nondefocus_pv(a, C3, C5)
+        ax.set_xlabel(f"non-defocus P-V {pv:.1f} rad", fontsize=9,
+                      color="tab:green" if pv <= PLAN.FLAT_TOL else "0.2")
         if j == 0: ax.set_ylabel("aperture phase χ\n(wrapped)", fontsize=10)
 
         ax = fig.add_subplot(gs[2, j]); h = int(round(30 / (L_BOX / N_BOX))); c = np.unravel_index(np.abs(P).argmax(), P.shape)
@@ -148,7 +172,7 @@ def main():
     axr.set_xlabel("aperture angle θ along a diameter (mrad)")
     axr.set_ylabel("ray lands at Δx = ∂W/∂θ  (Å)")
     axr.set_title("phase-ramp line profile: where each part of the aperture throws its rays "
-                  f"(green = ±{BAND:.0f} Å, a 4 Å probe)", fontsize=10)
+                  f"(green = ±{BAND:.0f} Å, a 4 Å footprint; defocus = a straight line)", fontsize=10)
     axr.legend(title="α (mrad)", fontsize=8, ncol=2, loc="upper center")
     axr.text(118, 29, "120 mrad reaches\n±56 Å at the edge", ha="right", va="top", fontsize=8, color=cols[-1])
 
@@ -162,28 +186,33 @@ def main():
                  label="smallest d90 reachable (30–70 mrad)")
     axs.axhline(4.0, color="0.3", ls=":", lw=1); axs.text(122, 4.3, "4 Å target", ha="right", fontsize=8)
     axs.axhline(WINDOW_BIN1, color="k", ls="-.", lw=0.9)
-    axs.text(122, WINDOW_BIN1 * 1.08, f"BIN=1 probe window {WINDOW_BIN1:.0f} Å", ha="right", fontsize=8)
+    axs.text(84, WINDOW_BIN1 * 1.08, f"BIN=1 probe window {WINDOW_BIN1:.0f} Å", ha="left", fontsize=8)
     axs.set_ylim(0.5, 150); axs.set_xlim(25, 125)
     axs.set_xlabel("α opened to (mrad)"); axs.set_ylabel("probe diameter (Å, log)")
+    # Ronchigram flatness = the NON-defocus aberration (defocus only changes the shadow magnification
+    # uniformly), the quantity the planner optimises. (An "aperture within +-2 A" measure would
+    # penalise the intended defocus spreading itself.)
     ax2 = axs.twinx()
-    ax2.plot(al, [100 * aperture_fraction(*p) for p in PTS], "o-", color="tab:green",
-             label=f"aperture area with |Δx| ≤ {BAND:.0f} Å")
-    ax2.set_ylim(0, 105); ax2.set_ylabel(f"aperture area with |Δx| ≤ {BAND:.0f} Å (%)", color="tab:green")
+    ax2.semilogy(al, [PLAN.nondefocus_pv(*p[:2], C5) for p in PTS], "o-", color="tab:green",
+                 label="non-defocus aberration P-V (Ronchigram flatness)")
+    ax2.axhline(PLAN.FLAT_TOL, color="tab:green", ls=":", lw=1)
+    ax2.text(27, PLAN.FLAT_TOL * 0.62, "flat: λ/4", color="tab:green", fontsize=8)
+    ax2.set_ylim(0.1, 400); ax2.set_ylabel("non-defocus P-V across the aperture (rad, log)", color="tab:green")
     h1, l1 = axs.get_legend_handles_labels(); h2, l2 = ax2.get_legend_handles_labels()
     axs.legend(h1 + h2, l1 + l2, fontsize=8, loc="upper left", bbox_to_anchor=(0.01, 0.85), framealpha=0.85)
     axs.set_title("probe grows once C3 can no longer hold C5 (C5 = 1 mm)", fontsize=10)
     for a in small:
         print(f"a{a}: smallest reachable d90 {small[a][0]:.2f} A at C3 {small[a][1]/1e4:+.0f} um, C1 {small[a][2]:+d} A")
     for (a, C3, C1), d90, d99 in zip(PTS, d90s, d99s):
-        print(f"a{a}: d90 {d90:.1f} A, d99 {d99:.1f} A, aperture within +-{BAND:.0f} A: {100*aperture_fraction(a, C3, C1):.0f}%")
+        print(f"a{a}: d90 {d90:.1f} A, d99 {d99:.1f} A, non-defocus P-V {PLAN.nondefocus_pv(a, C3, C5):.2f} rad")
 
     fig.suptitle("Cs-corrected@30 mrad scope opened up — Ronchigram, aperture phase, probe, "
                  "and where it breaks", fontsize=14)
     fig.text(0.5, -0.005,
-             "Probes planned to d90 = 4 Å with the least defocus that reaches it (plan_probe.py). 30–70 mrad: "
-             "deliberately ENLARGED to 4 Å (C1 = −50 Å at 30; Cs = −4 µm with C1 ≈ 0 at 50/70, hence the flat "
-             "centres). ≥ 90 mrad: 4 Å is unreachable, the probe is the smallest possible, and the balancing "
-             "defocus (C1 = −160 … −268 Å) winds rings from the centre.",
+             "Probe plan (plan_probe.py): d90 = 4 Å first, flattest Ronchigram second. 30–70 mrad: Cs flat "
+             "(realistic +1 µm residual at 30; retuned against C5 at 50/70) and DEFOCUS enlarges the probe to 4 Å — "
+             "the traditional recipe. ≥ 90 mrad: 4 Å is unreachable, the probe is the smallest possible, and C3 "
+             "and C1 must both fight C5 (C1 = −160 … −268 Å winds rings from the centre).",
              ha="center", va="top", fontsize=9.5, wrap=True)
     p = os.path.join(week_dir("figs"), "ronchigram_evolution.png")
     fig.savefig(p, dpi=130, bbox_inches="tight"); print("wrote", p)

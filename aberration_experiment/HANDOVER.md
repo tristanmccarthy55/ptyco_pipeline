@@ -28,12 +28,26 @@ C1(defocus) — the `campaign/round_sweep.tsv` balance — to keep the probe com
 - **Ronchigram/probe evolution**: `figs/2026-W37/ronchigram_evolution.png` (rebuilt 2026-09-11:
   simulated Ronchigrams, wrapped χ, probe, phase-ramp profiles Δx = ∂W/∂θ, probe size vs α). Probe
   d90 held at the 4 Å TARGET to 70 mrad, then 6.6 / 11.0 / 24.5 / ~60 Å at 90/100/110/120 (converged
-  140 Å box — the old figure's 21/26 Å at 110/120 came from a 30 Å box). Aperture area whose rays
-  land within ±2 Å: 99/100/95% → 45/25/15/11%. **30–70 mrad probes are deliberately ENLARGED** to
-  4 Å (smallest reachable 1.2/0.8/2.2 Å; `plan_probe.py` targets 4 Å with the least defocus, so
-  C1 ≈ 0 and Cs does it at 50/70 — hence their flat Ronchigram centres). ≥90 mrad needs balancing
-  defocus C1 = −160…−268 Å (the bullseye rings). **a120 is not simulable**: d99 ≈ 105 Å > the 70 Å
-  BIN=1 window; a110 (d99 51 Å) is tight but valid.
+  140 Å box — the old figure's 21/26 Å at 110/120 came from a 30 Å box). **a120 is not simulable**:
+  d99 ≈ 105 Å > the 70 Å BIN=1 window; a110 (d99 51 Å) is tight but valid. The figure reads its probes
+  from `round_sweep.tsv` and its flatness metric from `plan_probe.py`, so it cannot drift from the plan.
+- **Probe plan REVISED 2026-09-11 (user): the traditional recipe at low α.** Objective: d90 = 4 Å
+  first, flattest Ronchigram second. Flatness = P-V of the NON-defocus aberration (C3θ⁴ + C5θ⁶ minus
+  its best-fit θ²) across the aperture; flat ≤ λ/4 (π/2 rad). Where 4 Å is reachable (30–70 mrad,
+  the "free" regime; smallest reachable 1.2/0.8/2.2 Å) the probe is deliberately ENLARGED by
+  **defocus**, with Cs kept flat: the realistic +1 µm corrector residual if already flat, else the
+  flattest 1 µm step against C5. Where it is not (≥90, "floor"), C3 and C1 both fight C5 as before.
+
+  | α | old (Cs, C1) | new (Cs, C1) | non-defocus P-V |
+  |---|---|---|---|
+  | 30 | +1 µm, −50 Å | +1 µm, −50 Å (unchanged — already traditional) | 0.33 rad, flat |
+  | 50 | −4 µm, 0 Å (Cs enlarged it) | **−2 µm, +38 Å** | 2.34 → **1.14 rad, flat** |
+  | 70 | −4 µm, +2 Å | **−5 µm, −60 Å** | 8.23 → 6.23 rad (flattest possible; C5 dominates) |
+  | ≥90 | unchanged | unchanged (floor) | 30 / 55 / 94 / 163 rad |
+
+  a50/a70 therefore need re-simulating (all three legs); a90–a120 rows are byte-identical, so the
+  running a110 stays valid. The old plan's tie-break ("least defocus, then least Cs") is what had
+  made Cs do the enlarging.
 - **`round_depth.png` rows a110/a120 are a RECONSTRUCTION failure, not the aberration break** — do not
   cite them. Their "diamonds" have a depth period of exactly 2 slices (1.67 Å at NL14, the layer
   grid's Nyquist; the physical AO/BO₂ period 1.95 Å is a different Fourier bin): the odd/even-layer
@@ -118,7 +132,7 @@ All fixes in (bugs 1–7), S1 kernels, `~/Desktop/thin_ab_af2/out/atomfind_a*`
 
 | α | dz (Å) | prec | recall bulk Pb / Ti / O | xy-RMS | z-RMS | species confusion |
 |---|---|---|---|---|---|---|
-| 50 | 3.93 | 0.90 | 57 / 40 / 58% | 0.12 Å | 1.17 Å | 16.6% ⚠ unreliable |
+| 50 | 3.93 | 0.90 | 57 / 40 / 58% | 0.12 Å | 1.17 Å | 16.6% ⚠ — OLD Cs-enlarged probe; re-sim pending |
 | 70 | 1.97 | — | — | — | — | lab recon pending (see In flight) |
 | 90 | 1.20 | **0.94** | **95 / 94 / 95%** | **0.03 Å** | **0.37 Å** | 0.0% |
 | 100 | 0.98 | **0.99** | **96 / 94 / 88%** | **0.03 Å** | **0.45 Å** | 3.1% |
@@ -155,12 +169,12 @@ CSV in `results/2026-W37/`; collator `analysis/collate_atomfind_depth.py`.
   `ALPHAS="50 90 100" MODES=lab RECON_ONLY=1 bash campaign/run_thin_atomfind.sh`. a70/a110 are clean.
 
 ## IN FLIGHT / TO RUN
-- **a70 lab recon** — the only missing point. Degenerate original (`|obj|` collapses to 8e-4 in
-  patches → inf/NaN in the v1-spike baseline); the damped re-run 1272524 died on bug 6. Re-run via
-  the driver (absolute paths, reuses the existing sim):
-  `ALPHAS=70 MODES=lab RECON_ONLY=1 BETA_LSQ=0.05 bash campaign/run_thin_atomfind.sh`
-  then pull just its h5 (`recon_af_a70_lab_NL14/analysis/S00000-00999/S00001/*_recons.h5`).
-  The a70 S1 kernels are already extracted and clean.
+- **a110** (1273379–1273385): lab + kernels + pack, BIN=1, plan unchanged by the revision.
+- **a50 + a70 — re-simulate with the revised probes** (all legs; supersedes the old a70 lab re-run
+  1273358, which must be cancelled first if still running — `OVERWRITE=1` rewrites the sim it reads):
+  `ALPHAS="50 70" OVERWRITE=1 bash campaign/run_thin_atomfind.sh` (driver defaults = S1 grid,
+  BETA_LSQ 0.05 on every leg, so a50/a70 come out strictly byte-identical). Then re-extract their
+  kernels (`--zdrop 1` / `2`) and re-run atomfind.
 
 ## Next steps
 0. ~~Check the PX915 report's NL70 registration for the bug-7 alias~~ CHECKED 2026-09-11: NOT
@@ -168,9 +182,11 @@ CSV in `results/2026-W37/`; collator `analysis/collate_atomfind_depth.py`.
    per-atom OFF = +0.22 Å — agree to 0.14 Å, no one-cell alias. The 18-cell columns keep several
    teeth per fragment and that recon has no in-volume vacuum band; the alias is specific to the
    thin 5-cell full-box geometry.
-1. a70: pull the lab h5 → `run_atomfind.py --preset thin --recon <h5> --dz 1.966 --data-dir
-   ~/Desktop/thin_ab_af/gtdata --single-atom-vol .../psf_Pb_a70_vol.npy --ti-kernel-vol
-   .../psf_Ti_a70_vol.npy --out ~/Desktop/thin_ab_af2/out/atomfind_a70`, then re-collate all four.
+1. a50/a70 (revised probes): pull the tarball, extract kernels (`extract_psf.py ... --zdrop 1` at
+   a50, `2` at a70), run `run_atomfind.py --preset thin --recon <lab h5> --dz 3.932|1.966 --data-dir
+   ~/Desktop/thin_ab_af/gtdata --single-atom-vol .../psf_Pb_a<A>_vol.npy --ti-kernel-vol
+   .../psf_Ti_a<A>_vol.npy --out ~/Desktop/thin_ab_af2/out/atomfind_a<A>`, then re-collate and
+   re-render (`collate_atomfind_depth.py`, `make_mep_volumes_fig.py`).
 2. **a110** (BIN=1, NL=34; heavy — 175G, GROUPING=16, 24 h): tests the break the a100 dip hints at.
    `ALPHAS=110 bash campaign/run_thin_atomfind.sh` (lab + kernels in one go; the driver now defaults
    to the validated S1 grid, `WIN=20 GRIDSP=3`). **a120 is probably not simulable**: the planner put
