@@ -111,6 +111,12 @@ labels unreliable); CSV in `results/2026-W37/`; collator `analysis/collate_atomf
   because atomfind fits atom centres. ⚠ CORRECTION: the 2026-09-10 version of this file said z-RMS
   was flat (0.6–1.0 Å) and the α dependence showed only in recall. That was an artefact of the
   data-derived stand-in PSF; with matched kernels the depth error halves. Don't reuse the old framing.
+- **The phase volumes resolve depth-dependent in-plane displacements** (`mep_volumes.png`): at
+  a90/a100 each column breaks into one blob per atom and zig-zags ~0.5 Å laterally with depth. That
+  is REAL labyrinth structure, not an artefact — in the GT, atoms within one column wander in-plane
+  by a median 0.24 Å (Pb) / 0.18 Å (Ti), up to 0.7–0.8 Å — and atomfind's per-atom xy-RMS
+  (0.15–0.16 Å) is well below that wander, so the polar displacements are tracked, not averaged.
+  At a50 the same columns are unbroken streaks. Ties to the px915 found-atom polarisation result.
 - **Matched kernels are worth ~2× in depth error** at a90/a100 (0.72→0.41, 0.84→0.46 Å vs the
   data-derived PSF) — the byte-identity rule is not pedantry.
 - **a50: atoms are found in-plane** (precision 0.75, xy-RMS 0.15 Å) **but species are not
@@ -141,7 +147,10 @@ labels unreliable); CSV in `results/2026-W37/`; collator `analysis/collate_atomf
    to the validated S1 grid, `WIN=20 GRIDSP=3`). **a120 is probably not simulable**: the planner put
    its probe at d90 ≈ 47 Å, and the campaign memory records it exceeding even the 70 Å BIN=1 box.
    Only try it after checking the sim's `[geom]` halo margins on a110.
-3. MEP phase-volume figure for the report (x–z + in-plane per α, from the lab h5s).
+3. ~~MEP phase-volume figure~~ DONE: `figs/2026-W37/mep_volumes.png` via
+   `analysis/make_mep_volumes_fig.py --recons <dir> --atomfind <dir>/out --gt <gtdata>` (in-plane +
+   A-site-row and B-site-row x–z per α, equal aspect, GT planes + atomfind atoms). Re-run it when
+   a70/a110 land — α are auto-discovered from `recon_af_a*_lab_NL*`.
 4. Then: non-round aberrations (`nonround_sweep.tsv`, 70 mrad + C56), then a C5-corrected comparison
    ("Grand ARM 3") — and the blind-from-a-guess probe goal.
 
