@@ -78,6 +78,20 @@ def patterns(delta, n_lat: int, n_z: int, pos, convergence_mrad: float, bin_fact
                                slice_thickness_A, device), truth
 
 
+def assert_distinct(p_a, p_b, what: str) -> None:
+    """@brief Two DIFFERENT structures must not produce bit-identical patterns.
+
+    One GPU sweep returned exactly 0.0 for the 3-cell up/down pair while the CPU gives ~3% at the
+    identical settings and the two potentials differ by ~96%. Physics cannot produce an exact zero,
+    so an identical pair means the computation, not the specimen, and it must stop the run rather
+    than enter the results as "no signal".
+    """
+    if np.array_equal(p_a, p_b):
+        raise SystemExit(f"{what}: the two structures gave BIT-IDENTICAL patterns although they "
+                         f"differ -- a computation defect, not a physical null. Re-run this "
+                         f"thickness, or cross-check with --device cpu.")
+
+
 def discriminability(p_up, p_dn, theta_mrad, hsa_mrad, eps: float = 1e-14):
     """@brief Poisson discriminability per electron, total and split by the hollow hole.
 
@@ -122,6 +136,7 @@ def run(thicknesses, n_lat: int = 4, n_scan: int = 8, convergence_mrad: float = 
                                slice_thickness_A, device)
         p_dn, _ = patterns(delta * flip, n_lat, n_z, pos, convergence_mrad, bin_factor,
                            slice_thickness_A, device)
+        assert_distinct(p_up, p_dn, f"sign encoding at {n_z} cells")
         n_b = p_up.shape[-1]
         lam = s4.wavelength_a()
         box = float(T.REF.a_tet) * n_lat

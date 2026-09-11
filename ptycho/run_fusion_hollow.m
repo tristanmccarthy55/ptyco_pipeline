@@ -197,9 +197,23 @@ se_env = getenv('SAVE_EVERY');
 if ~isempty(se_env); save_every = round(str2double(se_env)); else; save_every = 50; end
 Niter_save_results = [save_every, save_every];
 restart_dir = getenv('RESTART_DIR');
-do_restart  = ~isempty(restart_dir);
+% KNOWN_OBJECT: start from the TRUE object (fusion/known_object.py writes it). Diagnoses whether
+% a failure to recover depth is the optimiser (the truth is a far better fit that a random start
+% never finds) or the forward model (the engine cannot reproduce the data even from the truth).
+% It reuses the restart path: collapse to the full-resolution engine, load the object from file.
+known_obj   = getenv('KNOWN_OBJECT');
+if ~isempty(restart_dir) && ~isempty(known_obj)
+    error('set RESTART_DIR or KNOWN_OBJECT, not both');
+end
+do_restart  = ~isempty(restart_dir) || ~isempty(known_obj);
 restart_obj = '';
-if do_restart
+if ~isempty(known_obj)
+    if ~exist(known_obj, 'file')
+        error('KNOWN_OBJECT not found: %s', known_obj);
+    end
+    restart_obj = known_obj;
+    fprintf('KNOWN OBJECT: starting from the TRUE object %s (full-res engine only)\n', known_obj);
+elseif do_restart
     dd = dir(fullfile(restart_dir, '**', '*_recons.h5'));   % PtychoShelves native recon file
     if isempty(dd)
         error('RESTART_DIR has no *_recons.h5 (did the previous segment complete?): %s', restart_dir);
@@ -207,6 +221,8 @@ if do_restart
     [~, imax] = max([dd.datenum]);                          % most recently written
     restart_obj = fullfile(dd(imax).folder, dd(imax).name);
     fprintf('RESTART: continuing from %s (full-res engine only)\n', restart_obj);
+end
+if do_restart
     % collapse the two-engine schedule to the full-resolution (2nd) engine
     Niter = Niter(end); grouping = grouping(end); Nst_probe = Nst_probe(end);
     Npos_st = Npos_st(end); reglayer = reglayer(end); Np_presolve = Np_presolve(end);
@@ -214,6 +230,12 @@ if do_restart
 else
     fprintf('FRESH run (coarse presolve + full)\n');
 end
+
+os_env = getenv('OBJECT_START');
+if ~isempty(os_env); obj_start = str2double(os_env); else; obj_start = 1; end
+if isempty(known_obj); obj_src = 'random'; else; obj_src = 'TRUE (known object)'; end
+fprintf('initial object = %s ; object_change_start = %g%s\n', obj_src, obj_start, ...
+        repmat(' (FROZEN: evaluating the object, not updating it)', 1, double(isinf(obj_start))));
 
 % ---- the settings this experiment lives or dies on, echoed together ------------
 fprintf(['\n== fusion recon preflight ==\n' ...
@@ -344,7 +366,7 @@ for ieng = 1:length(Niter)
     eng. opt_errmetric       = 'L1';
     eng. grouping            = grouping(ieng);
     eng. probe_modes         = p.probe_modes;
-    eng. object_change_start = 1;
+    eng. object_change_start = obj_start;   % OBJECT_START env; inf = frozen (evaluate only)
     eng. probe_change_start  = Nst_probe(ieng);
 
     eng. reg_mu                       = 0;

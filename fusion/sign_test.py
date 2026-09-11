@@ -143,6 +143,7 @@ def run(data_dir: str, truth_npz: str, n_pos: int = 200, margin_A: float = 6.0,
                                domains=T.uniform_domains([d[0], d[1], dz]))
             cand[tag] = SE.patterns_from_atoms(atoms, pos[idx], alpha, bin_factor,
                                                slice_thickness_A, device)
+        SE.assert_distinct(cand["up"], cand["down"], f"sign test, domain {name}")
         llr = log_likelihood_ratio(p_meas, cand["up"], cand["down"], keep)
         want = "up" if d[2] > 0 else "down"
         got = "up" if llr.sum() > 0 else "down"

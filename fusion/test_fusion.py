@@ -222,6 +222,25 @@ def test_fusion_is_exact_on_ground_truth():
             f"domain {n}: fused {np.round(r['delta'],4)} vs truth {np.round(r['truth'],4)}"
 
 
+@test
+def test_known_object_frame_round_trip():
+    """known_object.register must recover the exact frame cut() produced, in both orientations.
+
+    If the two disagree on an offset, the true object is written misaligned even though the
+    registration reports success -- and the known-object diagnosis would be void.
+    """
+    import known_object as K
+    dx = 0.049211
+    Tr, box, _ = K.true_transmission(os.path.join(HERE, "sample", "toy_membrane.vasp"), 4, dx)
+    n_full = 864; roi = int(round(0.55 * n_full)); o = (n_full - roi) // 2
+    anchor = int(round((box / 2) / dx)) - n_full // 2 + o
+    for orient in ("identity", "transpose"):
+        s = anchor + 7
+        fake = K.cut(Tr, orient, s, s + 3, n_full, roi)
+        got = K.register(Tr, fake, roi, dx, anchor, T.REF.a_tet)
+        assert got[:3] == (orient, s % Tr.shape[1], (s + 3) % Tr.shape[1]), f"{orient}: {got}"
+
+
 # ---------------------------------------------------------------- the working constraint
 @test
 def test_labyrinth_code_untouched():

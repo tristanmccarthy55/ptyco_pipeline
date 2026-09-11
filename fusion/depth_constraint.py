@@ -25,7 +25,7 @@ read side by side against the 4.9 % sign signal.
 
 GPU only, and only through SLURM (the login node has no CUDA driver):
 
-    bash fusion/run_depth_constraint.sh
+    bash fusion/run_gpu.sh depth_constraint --thickness 3 5 10 20
 """
 from __future__ import annotations
 
@@ -104,6 +104,7 @@ def run(thicknesses, n_lat: int = 4, n_scan: int = 8, convergence_mrad: float = 
                                         slice_thickness_A, device)
         p_smear = SE.patterns_from_atoms(sm, pos, convergence_mrad, bin_factor,
                                          slice_thickness_A, device)
+        SE.assert_distinct(p_true, p_smear, f"depth constraint at {n_z} cells")
         n_b = p_true.shape[-1]
         box = a * n_lat
         theta = SF.detector_axes(n_b, (bin_factor / box) * s4.wavelength_a() * 1e3)

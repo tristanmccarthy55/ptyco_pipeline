@@ -33,8 +33,19 @@ done
 BT=$(python3 -c "import json;print(json.load(open('fusion/runs/fusion/hollow_budget.json'))['beam_thickness_A'])" 2>/dev/null || echo 25.4)
 NLAYERS="${NLAYERS:-$(python3 -c "print(max(1,round(${BT}/1.05)))")}"
 
+# KNOWN_OBJECT: start from the true object (fusion/known_object.py). The job cd's into ptycho/, so
+# the path must be absolute. OBJECT_START=inf freezes it: the run then only EVALUATES the truth
+# under the engine's own forward model. Both get their own folder so nothing is overwritten.
+SUFFIX=""
+if [ -n "${KNOWN_OBJECT:-}" ]; then
+    [ -f "${KNOWN_OBJECT}" ] || { echo "ERROR: KNOWN_OBJECT not found: ${KNOWN_OBJECT}" >&2; exit 1; }
+    KNOWN_OBJECT="$(cd "$(dirname "${KNOWN_OBJECT}")" && pwd)/$(basename "${KNOWN_OBJECT}")"
+    SUFFIX="_known"
+    case "${OBJECT_START:-1}" in inf|Inf|INF) SUFFIX="${SUFFIX}_frozen" ;; esac
+fi
+
 for HSA in "$@"; do
-    TAG="hsa${HSA}_NL${NLAYERS}"
+    TAG="hsa${HSA}_NL${NLAYERS}${SUFFIX}"
     JOB_DIR="${REPO_DIR}/fusion/runs/recon_${TAG}"
     DST="${JOB_DIR}/01"
     mkdir -p "${DST}"
@@ -43,12 +54,13 @@ for HSA in "$@"; do
     for m in "${SRC}"/mask_hsa*.mat; do [ -e "$m" ] && ln -sf "$m" "${DST}/$(basename "$m")"; done
 
     PARAMS="SIM_BASE=${JOB_DIR}/,HSA=${HSA},NLAYERS=${NLAYERS}"
-    for v in NITER GROUPING REGLAYER PROBE_MODES BETA_LSQ PROBE_START; do
+    for v in NITER GROUPING REGLAYER PROBE_MODES BETA_LSQ PROBE_START KNOWN_OBJECT OBJECT_START; do
         [ -n "${!v:-}" ] && PARAMS="${PARAMS},${v}=${!v}"
     done
 
     TIME_ARG=(); [ -n "${WALLTIME:-}" ] && TIME_ARG=(--time="${WALLTIME}")
     echo "  reg=${REGLAYER:-0 (driver default: depth regulariser OFF)}  probes=${PROBE_MODES:-1}  beta_LSQ=${BETA_LSQ:-0.1}"
+    [ -n "${KNOWN_OBJECT:-}" ] && echo "  start = TRUE object ${KNOWN_OBJECT}  object_change_start=${OBJECT_START:-1}"
     JID=$(sbatch --parsable \
         --job-name="fus_${TAG}" \
         --output="${JOB_DIR}/slurm_%j.out" \
@@ -62,5 +74,5 @@ done
 echo
 echo "when they finish:"
 echo "  ~/hyperspy-bundle/bin/python fusion/make_figure.py \\"
-echo "      --recon fusion/runs/recon_hsa0.75_NL${NLAYERS}/01/<...>/Niter*.mat \\"
+echo "      --recon fusion/runs/recon_<TAG above>/01/*step02*/Niter*.mat \\"
 echo "      --budget fusion/runs/fusion/hollow_budget.json --out fusion/fusion_headline.png"
