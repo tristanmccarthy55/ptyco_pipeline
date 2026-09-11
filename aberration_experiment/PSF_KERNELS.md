@@ -182,3 +182,11 @@ Matched kernels vs the data-derived stand-in on the same lab recons:
 | 100 | 96/88/84% → **100/98/86%** | 0.84 → **0.46 Å** | → 2.9% |
 
 The kernel is worth a factor of ~2 in depth error. S2 and the multi-plane fallback were not needed.
+
+**One open deviation from the rule — `beta_LSQ`.** The S1 kernels ran at `BETA_LSQ=0.05`; the
+a50/a90/a100 lab recons ran at the `.m` default 0.1. `beta_LSQ` is a step size, not a penalty, so
+unlike REGLAYER it does not change what is minimised — but with a fixed 200 iterations it can still
+change where the solve lands, so the numbers above are not *strictly* byte-identical. The driver now
+pins one `BETA_LSQ` (default 0.05) for every leg, and a70 / a110 run with it throughout. To close the
+gap for the other three:
+`ALPHAS="50 90 100" MODES=lab RECON_ONLY=1 bash campaign/run_thin_atomfind.sh`.

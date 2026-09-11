@@ -25,6 +25,7 @@ THIN="${THIN:-5}"; ZVAC="${ZVAC:-4}"; C5="${C5:-1e7}"; STEP="${STEP:-0.5}"; SLIC
 # validated S1 settings (2026-09-11, all 8 kernels clean) -- keep every alpha on them for uniformity.
 GRIDSP="${GRIDSP:-3}"; WIN="${WIN:-20}"; NITER="${NITER:-200}"; SAVE="${SAVE_EVERY:-25}"
 MODES="${MODES:-lab Pb Ti}"          # e.g. MODES="Pb Ti" to rebuild only the PSF kernels
+BETA_LSQ="${BETA_LSQ:-0.05}"         # one LSQ step for every leg (lab and kernels must match)
 CELL_Z=3.905; LAM=0.0196877
 BOXZ=$(awk "BEGIN{printf \"%.3f\", ${THIN}*${CELL_Z}+2*${ZVAC}}")      # full box thickness [Å]
 ATOMZ=$(awk "BEGIN{printf \"%.3f\", ${BOXZ}/2}")                        # PSF atom at box centre
@@ -59,13 +60,20 @@ sim_job(){   # $1 dir $2 alpha $3 bin $4 c3 $5 c1 $6 mode(lab|Pb|Ti) -> jobid
 recon_job(){ # $1 name $2 datadir $3 bin $4 nl $5 dep -> jobid  (true probe fixed)
     local name="$1" datadir="$2" bin="$3" nl="$4" dep="$5"
     local rdir="${REPO_DIR}/recon_af_${name}_NL${nl}"; mkdir -p "${rdir}/01"
+    # A previous run's output must not survive into this one: if the new run fails, the OLD
+    # *_recons.h5 would be packed and analysed as if new. Moved aside, not deleted; pack_results.sh
+    # only matches */analysis/*, so an analysis.prev_* dir is never shipped.
+    if [ -d "${rdir}/analysis" ]; then mv "${rdir}/analysis" "${rdir}/analysis.prev_$(date +%Y%m%d_%H%M%S)"; fi
     local f; for f in "${INPUTS[@]}"; do ln -sf "${datadir}/01/${f}" "${rdir}/01/${f}"; done
     ln -sf "${datadir}/01/probe_initial_true.mat" "${rdir}/01/probe_initial.mat"     # known aberrated probe
     local grp; grp="$(grp_for "$bin")"; local gx=""; [ -n "$grp" ] && gx=",GROUPING=${grp}"
-    # BETA_LSQ only (damping, for legs that diverge to NaN). REGLAYER stays 0 for EVERY leg:
-    # it symmetrizes information between layers, i.e. low-passes the depth axis -- and depth is
-    # both the measurement and the whole content of a PSF kernel. See aberration_experiment/PSF_KERNELS.md.
-    [ -n "${BETA_LSQ:-}" ] && gx="${gx},BETA_LSQ=${BETA_LSQ}"
+    # BETA_LSQ is ALWAYS forwarded, one value for every leg: it is an engine setting, so a lab leg
+    # and its kernel must share it. (It is a step size, not a penalty, so a mismatch is far milder
+    # than REGLAYER's -- but with a fixed NITER it still moves the result, and on 2026-09-11 the
+    # kernels ran at 0.05 against labs at the .m default 0.1. Pinned here so that cannot recur.)
+    # 0.05 because a100_Ti diverged to NaN at 0.1. REGLAYER stays 0 for EVERY leg: it symmetrizes
+    # information between layers, i.e. low-passes the depth axis. See aberration_experiment/PSF_KERNELS.md.
+    gx="${gx},BETA_LSQ=${BETA_LSQ}"
     local dep_arg=(); [ -n "$dep" ] && dep_arg=(--dependency="afterok:${dep}")   # empty dep (RECON_ONLY) -> run now
     sbatch --parsable --job-name="af_rec_${name}" --time="$(rtime_for "$bin")" --mem="$(mem_for "$bin")" \
         ${dep_arg[@]+"${dep_arg[@]}"} --output="${rdir}/slurm_%j.out" --error="${rdir}/slurm_%j.err" \

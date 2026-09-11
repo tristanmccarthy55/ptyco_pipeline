@@ -118,7 +118,11 @@ labels unreliable); CSV in `results/2026-W37/`; collator `analysis/collate_atomf
   (confusion 10.9% > atomfind's 5% health threshold). Its per-species split (Ti > Pb) is label
   swapping, not physics. This is the expected "mediocre at low α" end.
 - **a100 slightly behind a90** on O recall (86 vs 95%) and z-RMS (0.46 vs 0.41 Å), as the probe grows
-  (d90 6.6 → 11 Å). Possibly the start of the break — ONE point, don't claim it; a110/a120 test it.
+  (d90 6.6 → 11 Å). Possibly the start of the break — ONE point, don't claim it; a110 tests it.
+- **Not yet strictly byte-identical at a50/a90/a100**: kernels at `BETA_LSQ=0.05`, those lab recons
+  at the default 0.1. A step size, not a penalty (far milder than REGLAYER), but it can move a
+  200-iteration result. The driver now pins one BETA_LSQ (0.05) for all legs; close the gap with
+  `ALPHAS="50 90 100" MODES=lab RECON_ONLY=1 bash campaign/run_thin_atomfind.sh`. a70/a110 are clean.
 
 ## IN FLIGHT / TO RUN
 - **a70 lab recon** — the only missing point. Degenerate original (`|obj|` collapses to 8e-4 in
