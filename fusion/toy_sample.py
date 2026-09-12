@@ -94,7 +94,8 @@ def uniform_domains(delta) -> list[dict]:
 
 
 # ---------------------------------------------------------------- builder
-def build(n_lat: int = 12, n_z: int = 5, vacuum_A: float = 2.0, domains=None, cap: bool = True):
+def build(n_lat: int = 12, n_z: int = 5, vacuum_A: float = 2.0, domains=None, cap: bool = True,
+          marker_z=()):
     """@brief Tile the domains into one periodic membrane.
 
     @param n_lat  in-plane cells per side (must be even: the quadrants split it in half)
@@ -137,7 +138,10 @@ def build(n_lat: int = 12, n_z: int = 5, vacuum_A: float = 2.0, domains=None, ca
             for iz in range(n_z):
                 origin = np.array([ix * a, iy * a, iz * c])
                 pos.append(base_cart + shift + origin)
-                sym.extend(species)
+                sp = list(species)
+                if iz in marker_z:
+                    sp[0] = "Sr"                       # A-site marker: Z contrast, delta unchanged
+                sym.extend(sp)
                 cell_id.extend([(ix, iy, iz)] * 5)
                 site_id.extend(range(5))
                 chain_id.extend(chain)
@@ -159,6 +163,7 @@ def build(n_lat: int = 12, n_z: int = 5, vacuum_A: float = 2.0, domains=None, ca
     zp = atoms.get_positions()[:, 2]
     truth = dict(
         n_lat=n_lat, n_z=n_z, a=a, c=c, vacuum_A=vacuum_A, cap=int(cap),
+        marker_z=np.array(sorted(marker_z), dtype=int),
         box_A=float(atoms.cell.lengths()[0]),
         box_z_A=float(atoms.cell.lengths()[2]),
         slab_thickness_A=float(zp.max() - zp.min()),
@@ -211,6 +216,11 @@ def validate(atoms, truth, verbose: bool = True) -> bool:
 
     n_expect = n_lat * n_lat * (n_z * 5 + 2 * int(truth["cap"]))
     ok &= _gate(len(atoms) == n_expect, f"atom count {len(atoms)} == {n_expect}", verbose)
+    mk = list(truth["marker_z"]) if "marker_z" in truth else []
+    if len(mk):
+        n_sr = int((atoms.get_atomic_numbers() == 38).sum())
+        ok &= _gate(n_sr == n_lat * n_lat * len(mk),
+                    f"{n_sr} Sr markers in cell layers {mk} (delta and EELS unchanged)", verbose)
 
     Z, zp = atoms.get_atomic_numbers(), atoms.get_positions()[:, 2]
     bot = set(np.unique(Z[zp < zp.min() + 1.0]))
@@ -344,11 +354,14 @@ def main(argv=None) -> int:
     ap.add_argument("--n-lat", type=int, default=12, help="in-plane cells per side (even)")
     ap.add_argument("--n-z", type=int, default=5, help="cells along the beam (column-homogeneous)")
     ap.add_argument("--vacuum", type=float, default=2.0, help="vacuum each side along the beam [A]")
+    ap.add_argument("--marker-z", type=int, nargs="*", default=[],
+                    help="cell indices along the beam whose Pb becomes Sr -- breaks the z-periodic "
+                         "depth null space without touching delta (so EELS is unchanged)")
     ap.add_argument("--out-dir", default=os.path.join(here, "sample"))
     ap.add_argument("--preview", action="store_true", help="also write the ground-truth figure")
     args = ap.parse_args(argv)
 
-    atoms, truth = build(args.n_lat, args.n_z, args.vacuum)
+    atoms, truth = build(args.n_lat, args.n_z, args.vacuum, marker_z=tuple(args.marker_z))
     print(f"[toy] {len(atoms)} atoms | {args.n_lat}x{args.n_lat}x{args.n_z} cells | "
           f"box {np.round(atoms.cell.lengths(), 3)} A | slab {truth['slab_thickness_A']:.2f} A")
     summary(truth)

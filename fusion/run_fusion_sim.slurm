@@ -43,6 +43,9 @@ TOY_VACUUM="${TOY_VACUUM:-2}"     # campaign uses 4: vacuum layers are where sur
 # place would silently invalidate the ground truth that the already-validated runs are scored
 # against -- give a variant its own TOY_DIR and the existing sample stays untouched.
 TOY_DIR="${TOY_DIR:-${REPO_DIR}/fusion/sample}"
+MARKER_Z="${MARKER_Z:-}"          # e.g. "1 3": Pb->Sr in those cell layers, breaking the z-periodic
+                                  # depth null space without touching delta (EELS unchanged)
+MARKER_ARG=""; [ -n "${MARKER_Z}" ] && MARKER_ARG="--marker-z ${MARKER_Z}"
 # Probe shaping, to match the aberration campaign's depth-capable legs (campaign/round_sweep.tsv).
 # a100 there is C3 -110000 A, C5 1e7 A, C1 -238 A -> d90 = 11 A at bin 2.
 PROBE_ARGS=""
@@ -58,12 +61,13 @@ echo "  scan    : ${SCAN_WINDOW} A window, ${SCAN_STEP} A step"
 echo "  optics  : alpha ${CONVERGENCE} mrad, slice ${SLICE_THICKNESS} A, bin ${BIN_FACTOR}, phonons ${PHONONS}"
 echo "  probe   : ${PROBE_ARGS:-default (aberration-free, -20 A overfocus)}"
 echo "  vacuum  : ${TOY_VACUUM} A each side   (specimen in ${TOY_DIR})"
+echo "  marker  : ${MARKER_Z:-none (z-periodic)}"
 echo "  HSA     : ${HSA}"
 "${PY}" --version
 
 # the specimen is cheap and deterministic -- rebuild it so the sim and the ground truth
 # can never drift apart
-"${PY}" fusion/toy_sample.py --out-dir "${TOY_DIR}" --vacuum "${TOY_VACUUM}" || {
+"${PY}" fusion/toy_sample.py --out-dir "${TOY_DIR}" --vacuum "${TOY_VACUUM}" ${MARKER_ARG} || {
     echo "[$(date)] TOY BUILD FAILED"; exit 1; }
 
 "${PY}" fusion/simulate_fusion.py \
