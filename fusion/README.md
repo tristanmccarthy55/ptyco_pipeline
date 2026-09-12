@@ -15,35 +15,46 @@ mask, so sweeping the hollow semi-angle costs reconstructions, not simulations.
 
 ---
 
-## Status (2026-09-10) — the EELS channel works, the depth readout does not yet
+## Status (2026-09-12) — the proof of concept works; the depth reconstruction is initialisation-limited
 
-First full run on Blythe: one simulation (6400 positions, noiseless at 1e10 e/pattern) and four
-hollow reconstructions at HSA = 0, 0.50, 0.75, 0.95, all completed in ~36 min each.
+**The headline.** `sign_test.py` recovers sign(P_z) in **4 of 4 domains**, with **100 % of individual
+patterns** favouring the right hypothesis, using only the electrons **outside** the 0.75α hole and
+**no depth reconstruction at all**. Log-likelihood ratios scale with the signal as they should:
+±0.997 for A/B (|δz| = 0.311 Å) against ±0.071 for C/D (|δz| = 0.166 Å). Fusion is what makes this
+a two-hypothesis problem in the first place: EELS fixes |δz|, projection fixes δxy, and only the
+stacking order is left to decide.
 
-**What worked.** Everything up to the reconstruction. The measured dose split at 0.75α is
-55.5 % / 44.5 %; the simultaneous HAADF carries 1.0 % of the beam and, as it must, cannot separate
-the domains at all (0.99 % spread). The reconstructions resolve the lattice beautifully in
-projection — Pb, Ti–O and even the weak O columns, lattice coherence 0.98, Pb:Ti amplitude 1.85.
+**Why the depth reconstruction failed, settled.** Three candidate explanations, all now tested:
 
-**What did not.** The reconstructions carry **no depth structure whatsoever**: power at the 4.152 Å
-lattice period along the beam is 0.5–0.9× the mean band power, i.e. no atomic planes, even after
-detrending, even at HSA = 0. So the sign readout had nothing to work with and scored at chance
-(29–56 %). `check_recon.py` reports this in one command and should be run before any physics is
-read off a reconstruction.
+| candidate | test | verdict |
+|---|---|---|
+| the data don't carry it | `depth_constraint.py`: true vs smeared stacking, identical projection | **ruled out** - 3.3–6.4 % of the pattern differs (3 to 20 cells) |
+| too few/many layers, too few iterations | NL16 and NL20 at 600 iterations | **ruled out** - still no comb (0.4–0.7) |
+| the engine cannot model these data | `known_object.py`: hand it the truth, frozen | **ruled out** - the truth scores **73.1** against the blind run's converged **158.8** |
 
-**It is not a dose problem and not an information problem.** The data were noiseless throughout.
-`sign_encoding.py` (GPU, via `bash fusion/run_sign_encoding.sh`) compares two uniform membranes
-differing only in sign(δ_z) at identical probe positions: at 5 cells, **4.9 % of the diffraction pattern differs**, 2.3 % of it outside the hole
-(65 % of the Poisson information). The null control — δ purely in-plane, so the flip is a no-op —
-gives exactly 0.000e+00. The sign is abundantly present in the data; reconstructing 24 free depth
-layers from a 21 Å slab is simply a lossy way to get at it.
+So the engine's forward model agrees with abTEM's, and the true object fits **more than twice as
+well** as the answer a blind reconstruction converges to. Released from the true start it improves
+further (62.3 → **35.2**, a quarter of the blind residual) and **keeps** the depth structure
+(comb 3.2–5.3, against 0.4–0.7 blind). The depth-sectioning readout then recovers **100 % of cells
+in all four domains**, so the readout was never the problem either.
 
-**Open.** Whether a better-conditioned reconstruction (fewer layers, more iterations, a known-object
-start) recovers the depth, or whether the sign should be read directly from the diffraction data as
-a two-hypothesis test — EELS supplies |δ_z| and projection δ_xy, leaving exactly two candidates.
-Note also that the engine's `fourier_error_out` scores every detector pixel while the hollow mask is
-applied only inside `modulus_constraint.m`, so it is **not** a valid convergence monitor for a
-hollow run.
+**The reconstruction is therefore initialisation-limited, not information-limited.** A random start
+falls into a smooth, depth-free minimum more than twice as bad as the truth and never leaves it.
+That is a characterisation result about multislice hollow ptychography on thin specimens, and it
+says the fix is the initial guess, not thickness, dose, optics, layer count or iterations.
+
+**Caveat to keep straight.** The known-object runs are *diagnostics*, not measurements: started from
+the truth, their signs are not an independent result. The blind result is the sign test.
+
+**Also measured.** Dose split at 0.75α is 55.5 / 44.5 %; the simultaneous HAADF takes 1.0 % of the
+beam and cannot separate the domains at all (0.99 % spread), as it must not. The sign signal grows
+with thickness (2.8 % at 5 cells to 5.2 % at 40) with 65–77 % of it outside the hole.
+
+**One defect to know about.** A GPU sweep returned exactly 0.0 for the 3-cell up/down pair, where
+CPU at identical settings gives 2.96 % and the two potentials differ by 96 %. `assert_distinct()`
+now aborts any run in which two different structures give bit-identical patterns. Note also that
+`fourier_error_out` scores every detector pixel while the hollow mask is applied only inside
+`modulus_constraint.m`, so it is **not** a valid convergence monitor for a hollow run.
 
 ---
 

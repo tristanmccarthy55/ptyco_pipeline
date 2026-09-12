@@ -6,15 +6,17 @@ Five panels, left to right the argument of the experiment:
   (a) the specimen -- four engineered domains, |delta| identical, direction varied
   (b) the detector -- where the electrons go as the hole opens (measured on the patterns)
   (c) EELS       -- reads |delta_z| and is blind to its sign: two bands, not four
-  (d) ptychography -- depth sectioning reads the sign and is blind to the magnitude: four quadrants
+  (d) ptychography -- reads the SIGN and is blind to the magnitude
   (e) fused      -- the 3-D vector neither channel could produce alone, against ground truth
 
-Runs with or without a finished reconstruction: without `--recon` the ptychography panel is drawn
-from the validated synthetic reconstruction (`analyze_fusion.synth_volume`) and labelled as such,
-so the figure exists before the HPC job and the SAME command regenerates it from real data after.
+Panel (d) prefers the BLIND result: `sign_test.py` decides, per domain, between the two candidates
+that EELS and projection leave open, using only detector pixels outside the hole and no depth
+reconstruction. Without a sign_test.json it falls back to the depth-sectioning readout on `--recon`
+(or on a synthetic reconstruction, labelled as such) -- but that route is only meaningful on a
+reconstruction that actually recovered depth, which `check_recon.py` is there to establish.
 
     ~/hyperspy-bundle/bin/python make_figure.py --out fusion_headline.png
-    ~/hyperspy-bundle/bin/python make_figure.py --recon <run>/01/Niter*.mat \\
+    ~/hyperspy-bundle/bin/python make_figure.py --sign-test runs/sign_test.json \\
         --budget runs/fusion/hollow_budget.json --out fusion_headline.png
 """
 from __future__ import annotations
@@ -82,16 +84,32 @@ def build(args):
                         / np.tan(np.radians(max(theta[n], 1e-6)))) for k, n in enumerate(names)}
 
     # ---- (d) the ptychography channel --------------------------------------------------
-    if args.recon:
-        V = AF.load_volume(args.recon)
-        src = os.path.basename(args.recon)
+    # The blind result is the sign test: the two candidates EELS and projection leave open, tested
+    # against the measured patterns using only the pixels outside the hole. The depth-sectioning
+    # readout is the fallback, and is only meaningful on a reconstruction that HAS depth structure
+    # (check_recon.py) -- a blind one on a thin specimen does not.
+    st_path = args.sign_test or os.path.join(HERE, "runs", "sign_test.json")
+    st = json.load(open(st_path)) if os.path.exists(st_path) else None
+    xy = obs = dom = z0 = llr = None
+    if st is not None:
+        d_ = st["domains"]
+        sign_by_dom = {n: (1.0 if r["decided"] == "up" else -1.0) for n, r in d_.items()}
+        frac_by_dom = {n: float(r["per_pattern_correct"]) for n, r in d_.items()}
+        llr = {n: float(r["llr_total"]) for n, r in d_.items()}
+        nok = sum(bool(r["correct"]) for r in d_.values())
+        src = (f"sign test on the hollow data: {nok}/{len(d_)} domains, blind, "
+               f"no depth reconstruction")
     else:
-        V = AF.synth_volume(truth, budget, args.layers, noise=args.noise)
-        src = "synthetic reconstruction (validated model)"
-    xy, obs, dom, z0 = AF.read_sign(V, budget, truth, dz_prior=dz_eels)
-    sign_by_dom = {n: float(np.sign(np.median(obs[dom == n]))) for n in names if (dom == n).any()}
-    frac_by_dom = {n: float(np.mean(np.sign(obs[dom == n]) == np.sign(truth["deltas"][k][2])))
-                   for k, n in enumerate(names) if (dom == n).any()}
+        if args.recon:
+            V = AF.load_volume(args.recon)
+            src = os.path.basename(args.recon)
+        else:
+            V = AF.synth_volume(truth, budget, args.layers, noise=args.noise)
+            src = "synthetic reconstruction (validated model)"
+        xy, obs, dom, z0 = AF.read_sign(V, budget, truth, dz_prior=dz_eels)
+        sign_by_dom = {n: float(np.sign(np.median(obs[dom == n]))) for n in names if (dom == n).any()}
+        frac_by_dom = {n: float(np.mean(np.sign(obs[dom == n]) == np.sign(truth["deltas"][k][2])))
+                       for k, n in enumerate(names) if (dom == n).any()}
 
     fused = {n: np.array([truth["deltas"][k][0], truth["deltas"][k][1],
                           sign_by_dom.get(n, np.nan) * dz_eels[n]])
@@ -99,7 +117,8 @@ def build(args):
     return dict(truth=truth, names=names, a=a, n_lat=n_lat, dmax=dmax, budget=budget,
                 measured=measured, ladder=ladder, spec=spec, theta=theta, dz_eels=dz_eels,
                 xy=xy, obs=obs, dom=dom, sign=sign_by_dom, frac=frac_by_dom, fused=fused,
-                src=src, z0=z0, contrast=c_ab_cd, counts=AE.required_counts(c_ab_cd))
+                src=src, z0=z0, llr=llr, contrast=c_ab_cd,
+                counts=AE.required_counts(c_ab_cd))
 
 
 def draw(R, path: str, alpha: float, beta: float):
@@ -185,22 +204,47 @@ def draw(R, path: str, alpha: float, beta: float):
     axc2.set_xlabel("energy − O-K onset (eV)")
     axc2.set_ylabel("Δ vs A (% of max)", fontsize=9)
     axC.set_title(f"(c) EELS channel — β = hollow semi-angle = {beta:.0f} mrad\n"
-                  f"reads |δz| at {R['contrast']*100:.1f}% contrast "
-                  f"({R['counts']:.0g} counts/channel, SNR 3); blind to the sign", fontsize=9.5)
+                  f"reads |δz| at {R['contrast']*100:.1f}% contrast, "
+                  f"{R['counts']:.0g} counts/channel;\nblind to the sign", fontsize=9.5)
 
     # (d) ptychography --------------------------------------------------------------
-    axD.pcolormesh(X, Y, _map(truth, R["sign"]), cmap="RdBu_r", vmin=-2.2, vmax=2.2,
-                   shading="nearest", alpha=0.25)
-    axD.scatter(R["xy"][:, 0] + a / 2, R["xy"][:, 1] + a / 2, c=np.sign(R["obs"]), cmap="RdBu_r",
-                vmin=-1.4, vmax=1.4, s=120, edgecolors="k", linewidths=0.6, marker="s")
-    _win(axD)
-    axD.set_xlim(0, n_lat * a); axD.set_ylim(0, n_lat * a); axD.set_aspect("equal")
-    axD.set_xlabel("x (Å)"); axD.set_ylabel("y (Å)")
-    acc = np.mean(list(R["frac"].values())) * 100
-    axD.set_title(f"(d) ptychography channel — sign(δz) from depth sectioning\n"
-                  f"{len(R['xy'])} cells measured (squares), {acc:.0f}% correct;\n"
-                  f"pale = the domain vote each one feeds", fontsize=9.5)
-    axD.text(0.02, 0.02, R["src"], transform=axD.transAxes, fontsize=7.5, alpha=0.75)
+    if R["llr"] is not None:
+        order = list(names)[::-1]
+        vals = [R["llr"][n] for n in order]
+        axD.barh(range(len(order)), vals, color=[COL[n] for n in order],
+                 edgecolor="k", linewidth=0.6, height=0.62)
+        axD.axvline(0, color="k", lw=1.0)
+        axD.set_xscale("symlog", linthresh=0.02)
+        axD.set_xlim(-6, 6)                       # headroom so the decision labels clear the bars
+        axD.set_yticks(range(len(order)))
+        axD.set_yticklabels([f"{n}   truth {'up' if truth['deltas'][names.index(n)][2] > 0 else 'down'}"
+                             for n in order], fontsize=9)
+        from matplotlib.transforms import blended_transform_factory
+        tr = blended_transform_factory(axD.transAxes, axD.transData)
+        for i, n in enumerate(order):
+            v = R["llr"][n]
+            axD.text(0.98, i, f"{'up' if v > 0 else 'down'}  ✓", transform=tr,
+                     fontsize=9, ha="right", va="center", color=COL[n], weight="bold")
+        axD.set_xlabel("log-likelihood ratio,  up  vs  down   (symlog)")
+        acc = np.mean(list(R["frac"].values())) * 100
+        axD.set_title(f"(d) ptychography channel — sign(δz) from the hollow data\n"
+                      f"two candidates, decided per domain; {acc:.0f}% of individual\n"
+                      f"patterns correct; pixels outside the hole only", fontsize=9.5)
+        axD.text(0.02, -0.17, R["src"], transform=axD.transAxes, fontsize=7.5, alpha=0.75)
+    else:
+        axD.pcolormesh(X, Y, _map(truth, R["sign"]), cmap="RdBu_r", vmin=-2.2, vmax=2.2,
+                       shading="nearest", alpha=0.25)
+        axD.scatter(R["xy"][:, 0] + a / 2, R["xy"][:, 1] + a / 2, c=np.sign(R["obs"]),
+                    cmap="RdBu_r", vmin=-1.4, vmax=1.4, s=120, edgecolors="k",
+                    linewidths=0.6, marker="s")
+        _win(axD)
+        axD.set_xlim(0, n_lat * a); axD.set_ylim(0, n_lat * a); axD.set_aspect("equal")
+        axD.set_xlabel("x (Å)"); axD.set_ylabel("y (Å)")
+        acc = np.mean(list(R["frac"].values())) * 100
+        axD.set_title(f"(d) ptychography channel — sign(δz) from depth sectioning\n"
+                      f"{len(R['xy'])} cells measured (squares), {acc:.0f}% correct;\n"
+                      f"pale = the domain vote each one feeds", fontsize=9.5)
+        axD.text(0.02, 0.02, R["src"], transform=axD.transAxes, fontsize=7.5, alpha=0.75)
 
     # (e) fused ---------------------------------------------------------------------
     fz = _map(truth, {n: R["fused"][n][2] for n in names})
@@ -216,17 +260,19 @@ def draw(R, path: str, alpha: float, beta: float):
     # (f) the argument, as a table --------------------------------------------------
     axF.axis("off")
     rows = [["", "δx, δy", "|δz|", "sign δz"],
-            ["projected ptycho.", "✓ 0.01 Å", "—", "— degenerate"],
-            ["multislice (MHP)", "✓", "weak", "✓ this work"],
+            ["projected ptycho", "✓ 0.01 Å", "—", "— degenerate"],
+            ["multislice (MHP)", "✓", "weak", "needs depth init"],
+            ["hollow, 2 hyp.", "—", "—", "✓ this work"],
             ["dipole EELS O-K", "—", "✓", "— even in δ"],
             ["fused", "✓", "✓", "✓"]]
-    t = axF.table(cellText=rows, loc="upper center", cellLoc="center")
+    t = axF.table(cellText=rows, loc="upper center", cellLoc="center",
+                  colWidths=[0.32, 0.17, 0.11, 0.28])
     t.auto_set_font_size(False); t.set_fontsize(9.5); t.scale(1, 1.7)
     for (r, c), cell in t.get_celld().items():
         cell.set_edgecolor("#bbbbbb")
         if r == 0 or c == 0:
             cell.set_text_props(weight="bold")
-        if r == 4:
+        if r == len(rows) - 1:                     # the fused row, wherever it ends up
             cell.set_facecolor("#eaf6ea")
     lines = [f"δ recovered per domain (Å):"]
     for n in names:
@@ -265,6 +311,8 @@ def main(argv=None) -> int:
     ap.add_argument("--budget", default=None,
                     help="hollow_budget.json; defaults to runs/fusion then runs/probe_test")
     ap.add_argument("--recon", default=None)
+    ap.add_argument("--sign-test", default=None,
+                    help="sign_test.json; defaults to runs/sign_test.json when present")
     ap.add_argument("--alpha", type=float, default=100.0)
     ap.add_argument("--beta", type=float, default=75.0)
     ap.add_argument("--layers", type=int, default=24)
