@@ -132,10 +132,17 @@ All fixes in (bugs 1–7), S1 kernels, `~/Desktop/thin_ab_af2/out/atomfind_a*`
 
 | α | dz (Å) | prec | recall bulk Pb / Ti / O | xy-RMS | z-RMS | species confusion |
 |---|---|---|---|---|---|---|
-| 50 | 3.93 | 0.90 | 57 / 40 / 58% | 0.12 Å | 1.17 Å | 16.6% ⚠ — OLD Cs-enlarged probe; re-sim pending |
-| 70 | 1.97 | — | — | — | — | lab recon pending (see In flight) |
+| 50 | 3.93 | 0.90 | 67 / 43 / 54% | 0.13 Å | 1.20 Å | 17.7% ⚠ unreliable |
+| 70 | 1.97 | **0.98** | **98 / 82 / 75%** | **0.04 Å** | **0.56 Å** | 1.3% |
 | 90 | 1.20 | **0.94** | **95 / 94 / 95%** | **0.03 Å** | **0.37 Å** | 0.0% |
 | 100 | 0.98 | **0.99** | **96 / 94 / 88%** | **0.03 Å** | **0.45 Å** | 3.1% |
+| 110 | 0.81 | — | — | — | — | **RECON FAILED** (see In flight) |
+
+a50/a70 are the REVISED (defocus-spread) probes, `thin_ab_af3`; a90/a100 are `thin_ab_af2`, unchanged
+by the revision. The canonical four-α set is assembled as symlinks in `~/Desktop/thin_ab_af_final/`
+(`recon_af_a*_lab_NL*` + `out/atomfind_a*`), which is what both figure scripts are pointed at.
+a70 works for the first time: its old lab recon was degenerate, and the revised probe + the halo crop
+fixed it. a50 also improved slightly on the traditional probe (Pb bulk 57 → 67%).
 
 Whole-slab recall now matches bulk (a90 94/94/95%), i.e. no surface plane is lost. Figure:
 `figs/2026-W37/atomfind_depth_vs_alpha.png` (log depth axis; hollow = species labels unreliable);
@@ -169,12 +176,19 @@ CSV in `results/2026-W37/`; collator `analysis/collate_atomfind_depth.py`.
   `ALPHAS="50 90 100" MODES=lab RECON_ONLY=1 bash campaign/run_thin_atomfind.sh`. a70/a110 are clean.
 
 ## IN FLIGHT / TO RUN
-- **a110** (1273379–1273385): lab + kernels + pack, BIN=1, plan unchanged by the revision.
-- **a50 + a70 — re-simulate with the revised probes** (all legs; supersedes the old a70 lab re-run
-  1273358, which must be cancelled first if still running — `OVERWRITE=1` rewrites the sim it reads):
-  `ALPHAS="50 70" OVERWRITE=1 bash campaign/run_thin_atomfind.sh` (driver defaults = S1 grid,
-  BETA_LSQ 0.05 on every leg, so a50/a70 come out strictly byte-identical). Then re-extract their
-  kernels (`--zdrop 1` / `2`) and re-run atomfind.
+- ~~a50 + a70 re-sim with the revised probes~~ DONE (`atomfind_results_20260911_1300.tgz`): all six
+  legs finished, kernels clean (25 atoms, argmax centred, peak/bg 217/42/580/94), results in the table.
+- **a110 — the whole point failed at `BETA_LSQ=0.05`; re-run damped.** Both grid legs diverged
+  (LSQML "error contains NaNs"), and the lab leg, though it produced an h5, is **degenerate**: the
+  object is pure speckle with no lattice, and 0.2% of pixels inside the analysed scan field have
+  |obj| < 0.05 (min 4e-4 — the same signature that made the old a70 collapse). atomfind on it gives
+  precision 0.22 / 4% recall and crashes the v1-spike baseline on inf/NaN. Its sims are FINE
+  (`probe_initial_true.mat` present for all three), so only the recons need re-running:
+  `ALPHAS=110 RECON_ONLY=1 BETA_LSQ=0.02 bash campaign/run_thin_atomfind.sh`
+  All three legs must go together — beta_LSQ is an engine setting the kernels must share with the lab.
+  If 0.02 also diverges, a110 may be beyond this engine's stability at BIN=1/NL=34 (dz 0.81 Å); the
+  next levers are a coarser NL (dz ≈ δz rather than δz/2) or GROUPING < 16. Do NOT reach for REGLAYER.
+  **Nothing about a110 is quotable yet** — in particular it is NOT evidence of the physical break.
 
 ## Next steps
 0. ~~Check the PX915 report's NL70 registration for the bug-7 alias~~ CHECKED 2026-09-11: NOT
