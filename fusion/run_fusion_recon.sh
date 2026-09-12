@@ -29,9 +29,12 @@ for f in "${INPUTS[@]}"; do
 done
 [ "$#" -ge 1 ] || { echo "usage: bash fusion/run_fusion_recon.sh <HSA> [HSA ...]   (HSA as a fraction of alpha; 0 = full detector)" >&2; exit 1; }
 
-# depth sectioning is the whole point here: default to ~1 A layers over the reconstructed depth
+# Layer count from the aberration campaign's own rule (campaign/run_thin_atomfind.sh nl_full):
+# NL = box * 2 * alpha^2 / lambda, i.e. Nyquist sampling of the depth resolution lambda/(2 alpha^2).
+# At 100 mrad that is 0.98 A layers -- the spacing its depth-capable legs use.
 BT=$(python3 -c "import json;print(json.load(open('fusion/runs/fusion/hollow_budget.json'))['beam_thickness_A'])" 2>/dev/null || echo 25.4)
-NLAYERS="${NLAYERS:-$(python3 -c "print(max(1,round(${BT}/1.05)))")}"
+ALPHA=$(python3 -c "import json;print(json.load(open('fusion/runs/fusion/hollow_budget.json'))['convergence_mrad'])" 2>/dev/null || echo 100)
+NLAYERS="${NLAYERS:-$(python3 -c "print(max(1,round(${BT}*2*(${ALPHA}/1000)**2/0.0196877)))")}"
 
 # KNOWN_OBJECT: start from the true object (fusion/known_object.py). The job cd's into ptycho/, so
 # the path must be absolute. OBJECT_START=inf freezes it: the run then only EVALUATES the truth

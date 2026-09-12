@@ -108,7 +108,8 @@ def virtual_image(dp, theta_mrad: np.ndarray, inner: float, outer: float, shape)
 def run(out_dir: str, vasp: str, truth_npz: str, scan_window_A: float, scan_step_A: float,
         convergence_mrad: float, hsa_fracs=DEFAULT_HSA, haadf_inner_mrad: float = 100.0,
         bin_factor: int = 4, slice_thickness_A: float = 1.0, device: str = "gpu",
-        phonons: int = 0, test: bool = False, recon_full_box: bool = True) -> str:
+        phonons: int = 0, test: bool = False, recon_full_box: bool = True,
+        cs: float = None, c5: float = None, defocus: float = None) -> str:
     """@brief Simulate the toy membrane and emit everything the two channels need."""
     import ase.io
     require_gpu_job(device)
@@ -130,6 +131,15 @@ def run(out_dir: str, vasp: str, truth_npz: str, scan_window_A: float, scan_step
     s4.SCAN_STEP_A = scan_step_A
     s4.N_PHONONS = phonons
     s4.PER_SPECIES_SIGMA = bool(phonons)                 # per-species RT B factors when TDS is on
+    # Probe shaping. The aberration campaign reaches z-RMS 0.45 A at 100 mrad with a deliberately
+    # ENLARGED probe (C3 -110 um, C1 -238 A on C5 = 1 mm: d90 = 11 A), where the fusion default is a
+    # near-ideal 4 A probe. A large, strongly aberrated probe illuminates far more atoms per position
+    # and changes character over a few A, which is what gives a multislice solve its depth diversity.
+    if cs is not None or c5 is not None:
+        s4.ABERRATED = True
+        s4.ABERRATIONS = {"C30": float(cs or 0.0), "C50": float(c5 or 0.0)}
+    if defocus is not None:
+        s4.DEFOCUS_A = float(defocus)
 
     print("=" * 68)
     print(f"[fusion] toy membrane {len(atoms)} atoms | box {box_a:.3f} x {box_a:.3f} x {box_z:.3f} A")
@@ -175,7 +185,11 @@ def run(out_dir: str, vasp: str, truth_npz: str, scan_window_A: float, scan_step
                        slab_thickness_A=float(truth["slab_thickness_A"]),
                        scan_shape=[nx, ny], scan_step_A=scan_step_A,
                        scan_window_A=scan_window_A, scan_center_A=[ctr, ctr],
-                       beam_thickness_A=beam_thickness, n_phonons=phonons))
+                       beam_thickness_A=beam_thickness, n_phonons=phonons,
+                       bin_factor=bin_factor, slice_thickness_A=slice_thickness_A,
+                       dx_object_A=box_a / (n_b * bin_factor),
+                       aberrations=(s4.ABERRATIONS if s4.ABERRATED else None),
+                       defocus_A=s4._defocus()))
     with open(os.path.join(out_dir, "hollow_budget.json"), "w") as fh:
         json.dump(budget, fh, indent=2)
 
@@ -238,6 +252,10 @@ def main(argv=None) -> int:
     ap.add_argument("--slice-thickness", type=float, default=1.0,
                     help="multislice slice [A]; 1.0 resolves the 2.08 A PbO/TiO2 plane spacing")
     ap.add_argument("--phonons", type=int, default=0, help="frozen-phonon configs (0 = coherent)")
+    ap.add_argument("--cs", type=float, default=None, help="C30/Cs [A] (campaign a100: -110000)")
+    ap.add_argument("--c5", type=float, default=None, help="C50 [A] (campaign: 1e7 = 1 mm)")
+    ap.add_argument("--defocus", type=float, default=None,
+                    help="abTEM defocus [A] (campaign a100: -238); default is -OVERFOCUS_A = -20")
     ap.add_argument("--haadf-inner", type=float, default=100.0)
     ap.add_argument("--hsa", type=float, nargs="+", default=list(DEFAULT_HSA),
                     help="hollow semi-angles as fractions of the convergence angle")
@@ -255,7 +273,8 @@ def main(argv=None) -> int:
     os.makedirs(args.out_dir, exist_ok=True)
     run(args.out_dir, args.vasp, args.truth, args.scan_window, args.scan_step,
         args.convergence, tuple(args.hsa), args.haadf_inner, args.bin_factor,
-        args.slice_thickness, args.device, args.phonons, args.test)
+        args.slice_thickness, args.device, args.phonons, args.test,
+        cs=args.cs, c5=args.c5, defocus=args.defocus)
     return 0
 
 
