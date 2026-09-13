@@ -178,17 +178,27 @@ CSV in `results/2026-W37/`; collator `analysis/collate_atomfind_depth.py`.
 ## IN FLIGHT / TO RUN
 - ~~a50 + a70 re-sim with the revised probes~~ DONE (`atomfind_results_20260911_1300.tgz`): all six
   legs finished, kernels clean (25 atoms, argmax centred, peak/bg 217/42/580/94), results in the table.
-- **a110 — the whole point failed at `BETA_LSQ=0.05`; re-run damped.** Both grid legs diverged
-  (LSQML "error contains NaNs"), and the lab leg, though it produced an h5, is **degenerate**: the
-  object is pure speckle with no lattice, and 0.2% of pixels inside the analysed scan field have
-  |obj| < 0.05 (min 4e-4 — the same signature that made the old a70 collapse). atomfind on it gives
-  precision 0.22 / 4% recall and crashes the v1-spike baseline on inf/NaN. Its sims are FINE
-  (`probe_initial_true.mat` present for all three), so only the recons need re-running:
-  `ALPHAS=110 RECON_ONLY=1 BETA_LSQ=0.02 bash campaign/run_thin_atomfind.sh`
-  All three legs must go together — beta_LSQ is an engine setting the kernels must share with the lab.
-  If 0.02 also diverges, a110 may be beyond this engine's stability at BIN=1/NL=34 (dz 0.81 Å); the
-  next levers are a coarser NL (dz ≈ δz rather than δz/2) or GROUPING < 16. Do NOT reach for REGLAYER.
-  **Nothing about a110 is quotable yet** — in particular it is NOT evidence of the physical break.
+- **a110 FAILS, and damping is not the fix — the probe is wider than the scan field.** Tried at
+  `BETA_LSQ=0.05` (both grid legs NaN) and `0.02` (`atomfind_results_20260912_1137`: lab + Ti
+  "finished", Pb still NaN). Damping changed nothing that matters: the lab object is speckle with
+  **no lattice** — in-plane peak/background at the 3.9 Å A-site spacing = **1.7** (≫1 required) —
+  0.19% of scan-field pixels sit below |obj| 0.05 (min 3.4e-4; healthy a90/a100 = 0.000%), and the
+  Ti "kernel" extracts as 18 blobs at 1.83 Å spacing with the wrong sign. atomfind: precision 0.22,
+  4% recall, and it crashes the v1-spike baseline on inf/NaN.
+
+  **Root cause is geometric, not numerical.** scan-extent ÷ probe d90 across the sweep:
+  5.0 (a50) · 5.0 (a70) · 3.0 (a90) · **1.8 (a100)** · **0.8 (a110)** · 0.34 (a120). At 110 mrad the
+  24.5 Å probe exceeds the whole 20 Å scan field, so the scan translates the probe by less than one
+  probe width and there is almost no positional diversity left to reconstruct from. a110 is therefore
+  NOT evidence of the physical depth-resolution break — it is this experiment's fixed 20 Å scan
+  window running out.
+
+  **Fix if a110 is wanted**: scan a wider field at constant cost — `WIN=40, STEP=1.0` keeps 1600
+  positions (so BIN=1 memory is unchanged), gives scan/probe = 1.6 (≈ a100's 1.8) and still ~96%
+  overlap because the probe is huge. The analysis crop stays 20 Å, so the compared region is
+  unchanged and is now fully surrounded by scanned area. Needs a driver change: the lab leg
+  currently does NOT receive `SCAN_WINDOW` (only the grid legs do), and `STEP` would need to be
+  per-α. Do NOT reach for REGLAYER.
 
 ## Next steps
 0. ~~Check the PX915 report's NL70 registration for the bug-7 alias~~ CHECKED 2026-09-11: NOT
