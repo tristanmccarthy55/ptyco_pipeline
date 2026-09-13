@@ -193,12 +193,19 @@ CSV in `results/2026-W37/`; collator `analysis/collate_atomfind_depth.py`.
   NOT evidence of the physical depth-resolution break — it is this experiment's fixed 20 Å scan
   window running out.
 
-  **Fix if a110 is wanted**: scan a wider field at constant cost — `WIN=40, STEP=1.0` keeps 1600
-  positions (so BIN=1 memory is unchanged), gives scan/probe = 1.6 (≈ a100's 1.8) and still ~96%
-  overlap because the probe is huge. The analysis crop stays 20 Å, so the compared region is
-  unchanged and is now fully surrounded by scanned area. Needs a driver change: the lab leg
-  currently does NOT receive `SCAN_WINDOW` (only the grid legs do), and `STEP` would need to be
-  per-α. Do NOT reach for REGLAYER.
+  **Fix, chosen 2026-09-13 (user): scan a wider field at constant cost.**
+  `ALPHAS=110 WIN=34 STEP=0.85 OVERWRITE=1 bash campaign/run_thin_atomfind.sh` — 41×41 = 1681
+  positions, exactly as before, so BIN=1 memory is unchanged; scan/probe rises 0.8 → **1.39**;
+  overlap is still 96.5% because the probe is huge. The analysis crop stays 20 Å, so the compared
+  region is unchanged and is now fully surrounded by scanned area. The driver now passes
+  `SCAN_WINDOW` to EVERY leg (it previously reached only the grids, leaving the lab on the sim
+  default 20 Å). **WIN is capped near 35 Å**: the box is 70 Å with the scan centred at x = 40, so
+  x_max = 40 + WIN/2 + d90/2 ≤ 70. At WIN = 34 the d90 core ends at 69.2 Å — inside, but the d99
+  tails (51 Å) still wrap ~1% into the x vacuum padding, as they did at WIN = 20. WIN = 40 would
+  push the core itself out of the box. Do NOT reach for REGLAYER.
+  Note `sim/simulate_4dstem.py`'s `[geom]` halo check estimates the exit-wave radius geometrically
+  (`thickness·tanα`) and so IGNORES the aberrated probe size — it will report a comfortable margin
+  at a110 regardless. Trust the numbers above, not that line.
 
 ## Next steps
 0. ~~Check the PX915 report's NL70 registration for the bug-7 alias~~ CHECKED 2026-09-11: NOT

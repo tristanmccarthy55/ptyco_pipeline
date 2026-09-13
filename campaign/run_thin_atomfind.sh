@@ -50,9 +50,15 @@ sim_job(){   # $1 dir $2 alpha $3 bin $4 c3 $5 c1 $6 mode(lab|Pb|Ti) -> jobid
     # 2026-09-09 batch failure. Matches run_campaign.sh's ab_known leg.)
     exp="${exp},BIN_FACTOR=${bin},RECON_FULL_BOX=1,Z_VACUUM=${ZVAC},ABERRATED=1,PROBE_INITIAL=nominal"
     exp="${exp},CS=${c3},C5=${C5},DEFOCUS=${c1},OVERWRITE=${OVERWRITE:-0}"   # OVERWRITE=1 to re-sim over existing
+    # SCAN_WINDOW goes to EVERY leg (it used to reach only the grids, leaving the lab on the sim
+    # default). The scan field must stay larger than the probe or ptychography loses its positional
+    # diversity: scan/d90 is 5.0/5.0/3.0/1.8 at a50-a100 but 0.8 at a110, where the 24.5 A probe
+    # exceeds the 20 A field -- and that alpha reconstructs as featureless speckle. Widening it is
+    # capped by the 70 A box: with the scan centred at x=40, WIN <= ~35 keeps the d90 core inside.
+    exp="${exp},SCAN_WINDOW=${WIN}"
     case "$mode" in
         lab) exp="${exp},THIN_CELLS=${THIN}";;
-        *)   exp="${exp},SINGLE_ATOM=${mode},ATOM_Z=${ATOMZ},GRID_SPACING=${GRIDSP},SCAN_WINDOW=${WIN},GRID_BOX_Z=${BOXZ}";;
+        *)   exp="${exp},SINGLE_ATOM=${mode},ATOM_Z=${ATOMZ},GRID_SPACING=${GRIDSP},GRID_BOX_Z=${BOXZ}";;
     esac
     sbatch --parsable --job-name="af_sim_${mode}" --time="$(stime_for "$bin")" \
         --output="logs/af_sim_%j.out" --error="logs/af_sim_%j.err" --export="${exp}" sim/run_sim.slurm
