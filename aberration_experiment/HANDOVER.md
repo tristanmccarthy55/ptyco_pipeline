@@ -207,6 +207,17 @@ CSV in `results/2026-W37/`; collator `analysis/collate_atomfind_depth.py`.
   (`thickness·tanα`) and so IGNORES the aberrated probe size — it will report a comfortable margin
   at a110 regardless. Trust the numbers above, not that line.
 
+  **2026-09-13 attempt was INVALID — the wide scan never reached the lab leg** (fixed: `run_sim.slurm`
+  kept `--scan-window` inside `SA_ARG`, which is built only when `SINGLE_ATOM` is set, so a labyrinth
+  sim always used the built-in 20 Å window). The lab leg therefore ran 20 Å at `STEP=0.85` = **576
+  positions** — *less* diversity than the 1681-position run before it — and all three legs NaN'd.
+  The grid legs DID get the 34 Å scan (single-atom mode) and still diverged, so a110's sparse grid
+  looks genuinely hard; the labyrinth leg, the one that matters, has still never been tested with a
+  scan field larger than its probe. Re-run after `git pull`:
+  `ALPHAS=110 WIN=34 STEP=0.85 OVERWRITE=1 bash campaign/run_thin_atomfind.sh`
+  and confirm from the recon log that "Number of probe positions" is **1681**, not 576. If the lab
+  leg diverges with the geometry genuinely applied, a110 is out of reach and the sweep ends at 100.
+
 ## Next steps
 0. ~~Check the PX915 report's NL70 registration for the bug-7 alias~~ CHECKED 2026-09-11: NOT
    affected. On `NL70_coherent` (`atomfind/paper/inputs/NL70_new_vol.npy`) comb OFF = +0.36 Å vs

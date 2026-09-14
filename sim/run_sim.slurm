@@ -97,7 +97,14 @@ echo "slice=${SLICE_THICKNESS} Å  step=${SCAN_STEP} Å  phonons=${PHONONS} (sig
 # [SCAN_WINDOW=14] [GRID_SPACING=4]  (GRID_SPACING>0 -> a grid, the one that converges)
 SA_ARG=()
 [ -n "${SINGLE_ATOM:-}" ] && SA_ARG=(--single-atom "${SINGLE_ATOM}" --atom-z "${ATOM_Z:-37}" \
-    --scan-window "${SCAN_WINDOW:-10}" --grid-spacing "${GRID_SPACING:-0}")
+    --grid-spacing "${GRID_SPACING:-0}")
+# SCAN_WINDOW applies to ANY sample, not just the single-atom/grid PSFs. It used to live inside
+# SA_ARG, so a labyrinth sim silently kept the built-in 20 A window however it was set -- which
+# invalidated the a110 wide-scan test (the lab leg ran 20 A at STEP 0.85 = 576 positions, LESS
+# diversity than before, and diverged). The scan field must exceed the probe: scan/d90 is 5.0 at
+# a50 but 0.8 at a110, where the 24.5 A probe outgrows a 20 A field.
+[ -n "${SCAN_WINDOW:-}" ] && SA_ARG+=(--scan-window "${SCAN_WINDOW}")
+[ -z "${SCAN_WINDOW:-}" ] && [ -n "${SINGLE_ATOM:-}" ] && SA_ARG+=(--scan-window 10)
 [ -n "${GRID_BOX_Z:-}" ] && SA_ARG+=(--grid-box-z="${GRID_BOX_Z}")   # [atomfind] matched thin PSF box
 
 # in-situ vacancy mode (analysis/atomfind REQUEST 2): full labyrinth MINUS one atom.
