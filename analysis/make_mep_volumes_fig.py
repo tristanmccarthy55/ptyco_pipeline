@@ -142,8 +142,12 @@ def main():
 
         rows = {}
         if found is not None:
-            rows = {"A-site row: Pb on AO | O on BO₂": pick_row(found, 82, ny, dx),
-                    "B-site row: Ti / apical O alternate": pick_row(found, 22, ny, dx)}
+            # BOTH rows cut O columns -- in ABO3 [001] oxygen sits at (1/2,0) AND (0,1/2), so every
+            # row alternates its cation column with an O column. The rows differ in WHICH cation:
+            # A-site row = Pb <-> O; B-site row = (Ti + apical O) <-> O. Naming only the cation made
+            # the magenta O markers in both panels look like a duplication (they are not).
+            rows = {"A-site row — Pb columns ↔ O columns": pick_row(found, 82, ny, dx),
+                    "B-site row — Ti+O columns ↔ O columns": pick_row(found, 22, ny, dx)}
         else:                                        # no atomfind run yet: fixed rows through the centre
             rows = {"x–z, field centre": ny / 2}
         for j, (lab, row) in enumerate(list(rows.items())[:2]):
@@ -184,7 +188,8 @@ def main():
     fig.suptitle("Multislice ptychography phase volumes vs aperture — Cs-corrected@30 mrad opened up "
                  "(known probe, full box)\n"
                  "ticks at the right edge: ground-truth AO (cyan) / BO₂ (green) planes via atomfind's depth map  ·  "
-                 "grey: 4 Å z-vacuum  ·  markers: atomfind blind atoms\n"
+                 "grey: 4 Å z-vacuum  ·  markers: atomfind blind atoms  ·  O columns appear in BOTH rows "
+                 "(in ABO₃ [001] oxygen sits at ½,0 and 0,½)\n"
                  "x–z slabs ±0.25 Å at equal aspect  ·  in-plane phase-ramp gauge removed for display",
                  fontsize=11)
     out = a.out or os.path.join(week_dir("figs"), "mep_volumes.png")
