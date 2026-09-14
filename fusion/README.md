@@ -38,10 +38,16 @@ further (62.3 → **35.2**, a quarter of the blind residual) and **keeps** the d
 (comb 3.2–5.3, against 0.4–0.7 blind). The depth-sectioning readout then recovers **100 % of cells
 in all four domains**, so the readout was never the problem either.
 
-**The reconstruction is therefore initialisation-limited, not information-limited.** A random start
-falls into a smooth, depth-free minimum more than twice as bad as the truth and never leaves it.
-That is a characterisation result about multislice hollow ptychography on thin specimens, and it
-says the fix is the initial guess, not thickness, dose, optics, layer count or iterations.
+**RESOLVED 2026-09-14 — the cause was scan redundancy.** A random start does fall into a smooth
+minimum more than twice as bad as the truth, but the reason it cannot leave is that the scan was
+under-sampled. At 0.3 Å step the depth power sits *exactly* on the layer-grid Nyquist — the
+two-slice odd/even mode of unregularised multislice — with 37–47 % of in-band power in the top two
+k_z bins. Re-simulating at **0.15 Å step** (25 600 positions, matching the 70 Å reference run)
+moves the peak onto the real lattice: 0.2365 Å⁻¹ = **4.23 Å at 4.51× prominence**, top-two-bin
+power down to 12 %. Probe, β_LSQ, binning, layer count and thickness were eliminated first, the
+last of them by the 70 Å labyrinth run, which works using these very settings. **Use
+`SCAN_STEP=0.15`**; see `HANDOVER.md` §2. (An earlier reading of this as *initialisation*-limited
+was wrong: the initial guess is not the fix, the sampling is.)
 
 **Caveat to keep straight.** The known-object runs are *diagnostics*, not measurements: started from
 the truth, their signs are not an independent result. The blind result is the sign test.
