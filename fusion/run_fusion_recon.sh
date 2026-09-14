@@ -47,8 +47,14 @@ if [ -n "${KNOWN_OBJECT:-}" ]; then
     case "${OBJECT_START:-1}" in inf|Inf|INF) SUFFIX="${SUFFIX}_frozen" ;; esac
 fi
 
+# The folder name must identify the DATA as well as the settings: two legs that differ only in
+# their sim (a marker specimen vs a finer scan) otherwise land on the same tag, re-point each
+# other's input symlinks and write into one output directory.
+SIMREF="$(basename "$(dirname "${SRC}")")"; SIMREF="${SIMREF#fusion_}"
+[ "${SIMREF}" = "fusion" ] && SIMREF="base"
+
 for HSA in "$@"; do
-    TAG="hsa${HSA}_NL${NLAYERS}${SUFFIX}"
+    TAG="${SIMREF}_hsa${HSA}_NL${NLAYERS}${SUFFIX}"
     JOB_DIR="${REPO_DIR}/fusion/runs/recon_${TAG}"
     DST="${JOB_DIR}/01"
     mkdir -p "${DST}"
