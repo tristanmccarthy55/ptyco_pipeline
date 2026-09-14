@@ -123,11 +123,18 @@ def main():
         V, dx, cfg, pos, Z = load(h5, NL, os.path.expanduser(a.gt))
         V = deplane(V)
         dz = cfg.dz; nL, ny, nx = V.shape
-        found, al, gt = None, None, None
+        found, al, gt, hw95 = None, None, None, None
         if a.atomfind:
             d = os.path.join(os.path.expanduser(a.atomfind), f"atomfind_a{A}")
             if os.path.exists(os.path.join(d, "found_atoms.npy")):
                 found = np.load(os.path.join(d, "found_atoms.npy"))
+                # 95% conformal depth intervals, written per atom alongside the .npy (the .npy
+                # carries only the model sigma; the calibrated half-width is in the CSV)
+                csv = os.path.join(d, "found_atoms.csv")
+                if os.path.exists(csv):
+                    rows = np.genfromtxt(csv, delimiter=",", names=True)
+                    if len(rows) == len(found) and "halfwidth95_z_A" in (rows.dtype.names or ()):
+                        hw95 = rows["halfwidth95_z_A"]
                 # Rebuild the run's alignment rather than reading report.json's summary: it is
                 # deterministic from the same inputs, and only the Alignment object can map GT atoms
                 # into the reconstruction's frame (site_to_index, incl. the affine + depth-scale
@@ -190,8 +197,12 @@ def main():
             if found is not None:
                 m = np.abs(found["row"] - row) <= 2 * half_px
                 for sp, (nm, col, mk) in SP.items():
-                    f = found[m & (found["species"] == sp)]
+                    q = m & (found["species"] == sp)
+                    f = found[q]
                     if len(f):
+                        if hw95 is not None:      # calibrated 95% depth interval, per atom
+                            axx.errorbar(f["col"] * dx, f["z_A"], yerr=hw95[q], fmt="none",
+                                         ecolor=col, elinewidth=0.9, alpha=0.5, capsize=0, zorder=2.5)
                         axx.scatter(f["col"] * dx, f["z_A"], s=34, marker=mk, facecolors="none",
                                     edgecolors=col, linewidths=1.1, zorder=3, label=f"found {nm}")
                 if i == 0 and j == 0:
@@ -208,8 +219,8 @@ def main():
                  "(known probe, full box)\n"
                  "ticks at the right edge: ground-truth AO (cyan) / BO₂ (green) planes via atomfind's depth map  ·  "
                  "grey: 4 Å z-vacuum  ·  O columns appear in BOTH rows (in ABO₃ [001] oxygen sits at ½,0 "
-                 "and 0,½)\nhollow rings = atomfind (blind)  ·  filled dots = ground truth: a ring with no "
-                 "dot is spurious, a dot with no ring was missed\n"
+                 "and 0,½)\nhollow rings = atomfind (blind), with calibrated 95% depth intervals  ·  filled "
+                 "dots = ground truth: a ring with no dot is spurious, a dot with no ring was missed\n"
                  "x–z slabs ±0.25 Å at equal aspect  ·  in-plane phase-ramp gauge removed for display",
                  fontsize=11)
     out = a.out or os.path.join(week_dir("figs"), "mep_volumes.png")
