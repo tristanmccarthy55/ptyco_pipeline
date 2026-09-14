@@ -1,63 +1,87 @@
 #!/usr/bin/env python
 """@file make_figures.py
-@brief Figures from the reconstructed volumes: the phase volume, atoms in depth, and the EELS axis.
+@brief Figures for the hollow-detector fusion study, from the real simulations, reconstructions and spectra.
 
-Three figures, all from real reconstructions and real CASTEP spectra:
+  1  the measurement    -- the detector plane (mean and single patterns, the holes), the measured
+                           dose split, and the simultaneous virtual HAADF / BF images
+  2  sign vs hole size  -- the blind likelihood-ratio sign test at 50-95 mrad: evidence per recorded
+                           and per incident electron, and the electrons per pattern that implies
+  3  the phase volume   -- projected phase, depth sections through Pb and Ti-O columns against the
+                           true atom depths, and the k_z spectra
+  4  atoms in depth     -- fitted atom depths and the per-cell sign readout, blind against known start
+  5  the EELS axis      -- the CASTEP ladder, the domain spectra, and the inversion to |delta_z|
 
-  1  the phase volume      -- projected lattice, depth profiles against the true atom planes, and
-                              the k_z spectra that show what scan sampling does to the depth axis
-  2  atoms in depth        -- z-centroids fitted per column against ground truth, and the
-                              Pb-to-Ti-O offset that carries sign(delta_z)
-  3  the EELS axis         -- the CASTEP displacement ladder, the four domain spectra, and the
-                              inversion that turns O-K contrast into |delta_z|
+Inputs are the Blythe pulls under ~/Desktop/fusion_recons/round2-5 (fusion/runs is gitignored).
 
-    ~/hyperspy-bundle/bin/python make_figures.py --out-dir figs
+    ~/hyperspy-bundle/bin/python make_figures.py [--fig 1 2 3 4 5]
 """
 from __future__ import annotations
 
 import argparse
+import functools
 import glob
 import json
 import os
+import re
 import sys
 
 import numpy as np
 import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
+from matplotlib.colors import LogNorm
+from matplotlib.patches import Circle
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
 sys.path.insert(0, os.path.join(HERE, "..", "analysis"))
 import analyze_fusion as AF     # noqa: E402
 import eels_forward as F        # noqa: E402
-import toy_sample as T          # noqa: E402
 
 DESK = "/Users/u2109287/Desktop/fusion_recons"
+R5 = os.path.join(DESK, "round5", "fusion", "runs")
+S015_BUDGET = os.path.join(DESK, "round4", "fusion", "runs", "fusion_s015", "hollow_budget.json")
+NL70 = "/Users/u2109287/Desktop/NL70_new_vol.npy"
+
 COL = {"A": "#c0392b", "B": "#2980b9", "C": "#e67e22", "D": "#16a085"}
 SPEC = {"Pb": "#6D4AA6", "TiO": "#16786A", "Oeq": "#B3701A"}
+EELS_C, PTY_C, HOLE_C = "#6D4AA6", "#16786A", "#58D6C2"
+RUN_C = {"blind03": "#9C8F7A", "blind015": "#B3701A", "known": "#16786A"}
+LABEL = {"blind03": "blind · 0.3 Å step", "blind015": "blind · 0.15 Å step",
+         "known": "known start · diagnostic"}
 plt.rcParams.update({"font.size": 9, "axes.titlesize": 9.5, "axes.labelsize": 9,
                      "axes.spines.top": False, "axes.spines.right": False,
                      "figure.facecolor": "white"})
 
 
-def vol(path):
-    return AF.load_volume(glob.glob(path, recursive=True)[0])
-
-
-def budget_for(nl, dx=None):
-    """@brief Geometry for a fusion recon; dx must come from the file for a presolve object."""
-    b = json.load(open(os.path.join(DESK, "round2", "hollow_budget_production.json")))
-    # derive dx from the detector geometry unless the caller knows better (a presolve object has
-    # its own, coarser pixel size and must pass it in)
-    b["dx_object_A"] = dx if dx is not None else AF.object_pixel_A(b)
-    return b
-
-
+# ---------------------------------------------------------------- inputs
 def pixel_size(path):
     import h5py
-    with h5py.File(glob.glob(path, recursive=True)[0], "r") as f:
+    with h5py.File(path, "r") as f:
         return float(np.asarray(f["outputs"]["pixel_size"]).ravel()[0]) * 1e10
+
+
+@functools.lru_cache(maxsize=None)
+def recon(name):
+    """@brief (volume, budget) for a named reconstruction; the object pixel always from the file."""
+    if name == "blind015":
+        p = glob.glob(os.path.join(R5, "recon_hsa0_NL26", "01", "*step02*", "Niter200.mat"))[0]
+        b = json.load(open(S015_BUDGET))
+    else:
+        p = (os.path.join(DESK, "hsa0_Niter200.mat") if name == "blind03" else
+             glob.glob(os.path.join(DESK, "round3", "**", "recon_hsa0_NL16_known", "01", "*",
+                                    "Niter200.mat"), recursive=True)[0])
+        b = json.load(open(os.path.join(DESK, "round2", "hollow_budget_production.json")))
+    b["dx_object_A"] = pixel_size(p)
+    return AF.load_volume(p), b
+
+
+def dp_samples():
+    return np.load(os.path.join(R5, "fig_dp_step0p3.npz"), allow_pickle=True)
+
+
+def names_of(truth):
+    return [str(x) for x in truth["names"]]
 
 
 def kz_spectrum(P, dz):
@@ -70,104 +94,358 @@ def kz_spectrum(P, dz):
     return f, S / np.median(S[f > 0.12])
 
 
+def eels_dz_prior(truth):
+    """@brief |delta_z| per domain as the EELS channel reports it (theta inverted, delta_xy known)."""
+    theta = AF.eels_theta_from_contrast(truth, 100.0, 75.0)
+    return {n: float(np.linalg.norm(truth["deltas"][k][:2]) / np.tan(np.radians(theta[n])))
+            for k, n in enumerate(names_of(truth))}
+
+
 # ---------------------------------------------------------------- figure 1
-def figure_volume(truth, out):
-    """@brief The reconstructed phase volume, and what scan sampling does to its depth axis."""
-    fig = plt.figure(figsize=(13.2, 7.4), constrained_layout=True)
-    gs = fig.add_gridspec(2, 3, width_ratios=[1.05, 1.25, 1.25])
-    a_lat, c_lat = float(truth["a"]), float(truth["c"])
+def figure_measurement(truth, out):
+    """@brief What one hollow-detector scan records: the patterns, the split, the virtual images."""
+    d = dp_samples()
+    th, M = d["theta_mrad"], d["mean"]
+    alpha = float(d["convergence_mrad"])
+    R = th.shape[0] * float(d["d_alpha_mrad"]) / 2
+    ext = [-R, R, R, -R]
+    names = names_of(truth)
+    a = float(truth["a"])
 
-    good = os.path.join(DESK, "round3", "**", "recon_hsa0_NL16_known", "01", "*", "Niter200.mat")
-    fine = os.path.join(DESK, "round4", "**", "recon_hsa0_NL26", "01", "*step01*", "Niter200.mat")
-    Vg, Vf = vol(good), vol(fine)
-    bg = budget_for(16)
-    bf = budget_for(26, dx=pixel_size(fine))
+    fig = plt.figure(figsize=(13.2, 7.0), constrained_layout=True)
+    gs = fig.add_gridspec(2, 4)
 
-    # (a) projected phase, zoomed, with the three column types marked
-    ax = fig.add_subplot(gs[0, 0])
-    P = Vg.sum(0)
-    dx = bg["dx_object_A"]
-    n = int(round(3.2 * a_lat / dx))
-    o = P.shape[0] // 2
-    sub = P[o:o + n, o:o + n]
-    ax.imshow(sub, cmap="bone", extent=[0, n * dx, n * dx, 0])
-    # anchor the sublattices on the brightest Pb column IN THIS CROP, so the markers cannot
-    # drift away from the image the way a coordinate round-trip can
-    from scipy.ndimage import gaussian_filter
-    sm = gaussian_filter(sub, 0.25 / dx)
-    py0, px0 = np.unravel_index(np.argmax(sm), sm.shape)
-    step = a_lat / dx
-    for lab, (sx, sy), key, mk in (("Pb", (0, 0), "Pb", "o"),
-                                   ("Ti + O$_{ap}$", (.5, .5), "TiO", "s"),
-                                   ("O$_{eq}$", (.5, 0), "Oeq", "^")):
-        gx = (px0 + (np.arange(-2, 4) + sx) * step) * dx
-        gy = (py0 + (np.arange(-2, 4) + sy) * step) * dx
-        X, Y = np.meshgrid(gx, gy)
-        k = (X > .5) & (X < n * dx - .5) & (Y > .5) & (Y < n * dx - .5)
-        ax.scatter(X[k], Y[k], s=30, marker=mk, facecolors="none", edgecolors=SPEC[key],
-                   linewidths=1.4, label=lab)
-    ax.set_xlim(0, n * dx); ax.set_ylim(n * dx, 0)
-    ax.legend(frameon=False, fontsize=7.5, loc="upper right")
-    ax.set_title("(a) projected phase — the lattice", loc="left")
-    ax.set_xlabel("x (Å)"); ax.set_ylabel("y (Å)")
+    def rings(ax):
+        ax.add_patch(Circle((0, 0), alpha, fill=False, ec="white", lw=0.9, ls="--"))
+        for h in (50, 90, 95):
+            ax.add_patch(Circle((0, 0), h, fill=False, ec="white", lw=0.6, alpha=0.45))
+        ax.add_patch(Circle((0, 0), 75, fill=False, ec=HOLE_C, lw=1.8))
+        ax.set_xlim(-R, R); ax.set_ylim(R, -R)
+        ax.set_xticks([-200, -100, 0, 100, 200]); ax.set_yticks([-200, -100, 0, 100, 200])
 
-    # (b, c) depth profiles against the true atom planes
-    z_off = 0.5 * (float(bg["beam_thickness_A"]) - float(truth["slab_thickness_A"]))
-    for col, (lbl, V, b) in enumerate([("0.3 Å step — blind", vol(os.path.join(DESK, "hsa0_Niter200.mat")),
-                                        budget_for(24)),
-                                       ("depth-capable reference", Vg, bg)]):
-        cells, xy, z = AF.column_maps(V, b, truth)
-        gi = np.floor(xy[:, 0] / a_lat).astype(int) % int(truth["n_lat"])
-        gj = np.floor(xy[:, 1] / a_lat).astype(int) % int(truth["n_lat"])
-        dom = truth["domain_grid"][gi, gj]
-        ax = fig.add_subplot(gs[col, 1])
-        for name in ("A", "B"):
-            m = dom == name
-            if not m.any():
-                continue
-            prof = np.mean([AF._norm(cells[i]["TiO"]) for i in np.where(m)[0]], axis=0)
-            ax.plot(z, prof, color=COL[name], lw=1.9, label=f"domain {name}")
-        d = truth["deltas"][0]
-        zs, _ = AF.column_sites(d, truth, "TiO")
-        for zz in zs + z_off:
-            ax.axvline(zz, color="0.75", lw=0.8, zorder=0)
-        ax.set_title(f"({'bc'[col]}) Ti–O column depth profile · {lbl}", loc="left")
-        ax.set_xlabel("z (Å)"); ax.set_ylabel("phase (norm.)")
-        ax.legend(frameon=False, fontsize=8, loc="upper left", ncol=2)
-        ax.text(0.5, -0.19, "grey = true atom planes (domain A)", transform=ax.transAxes,
-                ha="center", fontsize=7.5, color="0.45")
-
-    # (d, e) kz spectra
-    ax = fig.add_subplot(gs[:, 2])
-    runs = [("0.3 Å step, NL24", vol(os.path.join(DESK, "hsa0_Niter200.mat")), 25.368 / 24, "#B3701A"),
-            ("0.15 Å step, NL26", Vf, 25.368 / 26, "#16786A"),
-            ("70 Å reference (NL70)", None, 0.999, "#6D4AA6")]
-    for lbl, V, dz, c in runs:
-        if V is None:
-            W = np.load("/Users/u2109287/Desktop/NL70_new_vol.npy")
-            P = np.angle(W).astype(float)
+    pats = [("(a) mean of %d patterns" % int(d["n_pos"]), M)]
+    pats += [(f"({'bcd'[k]}) probe {lab}", d["singles"][k]) for k, lab in enumerate(d["single_labels"])]
+    for k, (title, P) in enumerate(pats):
+        ax = fig.add_subplot(gs[0, k])
+        norm = LogNorm(vmin=P.max() * 1e-5, vmax=P.max())
+        ax.imshow(np.maximum(P, norm.vmin), cmap="magma", norm=norm, extent=ext)
+        rings(ax)
+        ax.set_title(title, loc="left")
+        ax.set_xlabel("θx (mrad)")
+        if k == 0:
+            ax.set_ylabel("θy (mrad)")
+            ax.text(0.03, 0.97, "cyan: 75 mrad hole → EELS\ndashed: α = 100 mrad\nfaint: 50 / 90 / 95",
+                    transform=ax.transAxes, va="top", fontsize=7.5, color="white")
         else:
-            P = V
-        P = P - np.median(P, axis=(1, 2), keepdims=True)
-        f, S = kz_spectrum(P, dz)
-        m = f > 0.10
-        ax.semilogy(f[m], S[m], color=c, lw=1.8, label=lbl)
-        ax.axvline(1 / (2 * dz), color=c, lw=0.9, ls=":", alpha=0.8)
-    ax.axvline(1 / c_lat, color="0.35", lw=1.2, ls="--")
-    ax.annotate(f"PbTiO₃ {c_lat:.2f} Å", (1 / c_lat, ax.get_ylim()[1]), xytext=(4, -12),
-                textcoords="offset points", fontsize=8, color="0.35")
-    ax.set_xlabel("depth spatial frequency $k_z$ (Å$^{-1}$)")
-    ax.set_ylabel("power / median band power")
-    ax.set_title("(d) the depth axis: sampling decides", loc="left")
-    ax.legend(frameon=False, fontsize=8, loc="upper right")
-    ax.text(0.02, 0.02, "dotted = each run's layer-grid Nyquist", transform=ax.transAxes,
-            fontsize=7.5, color="0.45")
+            ax.set_yticklabels([])
 
+    # (e, f) the simultaneous virtual images, on the 0.15 A scan, with the four domains marked
+    b = json.load(open(S015_BUDGET))
+    cx, cy = b["scan_center_A"]
+    w = float(b["scan_window_A"])
+    wall = 0.5 * float(truth["box_A"])                       # the four domains meet at the centre
+    for k, (fn, lbl, rng_mrad, frac) in enumerate((
+            ("haadf", "HAADF", "100–200", 100 * M[th >= 100].sum() / M.sum()),
+            ("bf", "BF", "0–100", 100 * M[th <= alpha].sum() / M.sum()))):
+        img = np.load(os.path.join(R5, "fusion_s015", f"{fn}.npy")).T   # (nx, ny) -> rows = y
+        X = np.linspace(cx - w / 2, cx + w / 2, img.shape[1])
+        Y = np.linspace(cy - w / 2, cy + w / 2, img.shape[0])
+        XX, YY = np.meshgrid(X, Y)
+        dom = truth["domain_grid"][np.floor(XX / a).astype(int) % int(truth["n_lat"]),
+                                   np.floor(YY / a).astype(int) % int(truth["n_lat"])]
+        means = [img[dom == n].mean() for n in names]
+        spread = 100 * (max(means) - min(means)) / np.mean(means)
+        ax = fig.add_subplot(gs[1, k])
+        ax.imshow(img, cmap="gray", extent=[X[0], X[-1], Y[-1], Y[0]])
+        ax.axvline(wall, color="white", lw=0.8, alpha=0.7)
+        ax.axhline(wall, color="white", lw=0.8, alpha=0.7)
+        for n in names:
+            m = dom == n
+            ax.text(XX[m].mean(), YY[m].mean(), n, ha="center", va="center", fontsize=11,
+                    weight="bold", color=COL[n],
+                    bbox=dict(boxstyle="round,pad=0.15", fc="white", ec="none", alpha=0.8))
+        ax.set_title(f"({'ef'[k]}) virtual {lbl} · {frac:.1f} % of beam", loc="left")
+        ax.set_xlabel("x (Å)")
+        if k == 0:
+            ax.set_ylabel("y (Å)")
+        ax.text(0.5, -0.24, f"{rng_mrad} mrad · domain means within {spread:.2f} %",
+                transform=ax.transAxes, ha="center", fontsize=8, color="0.35")
+        print(f"[fig1] {fn}: {frac:.2f} % of beam, domain means within {spread:.2f} %")
+
+    # (g) the split itself, measured on the patterns
+    ax = fig.add_subplot(gs[1, 2:])
+    tg = np.arange(0, 201)
+    inside = np.array([M[th < t].sum() for t in tg]) / M.sum() * 100
+    ax.plot(tg, inside, color=EELS_C, lw=2.2, label="through the hole → spectrometer")
+    ax.plot(tg, 100 - inside, color=PTY_C, lw=2.2, label="recorded → hollow ptychography")
+    ax.axvline(alpha, color="0.55", lw=0.9, ls="--")
+    ax.text(alpha + 2, 50, "α", color="0.4", fontsize=9)
+    for h, (tx, ty, ha) in ((50, (-6, 7, "right")), (75, (8, -12, "left")),
+                            (90, (-6, 7, "right")), (95, (-6, 7, "right"))):
+        v = np.interp(h, tg, inside)
+        ax.plot([h], [v], "o", color=EELS_C, ms=5.5, mec="white", mew=1)
+        ax.annotate(f"{v:.1f} %", (h, v), xytext=(tx, ty), textcoords="offset points",
+                    fontsize=8, color=EELS_C, ha=ha)
+    ax.annotate(f"{100 - inside[100]:.2f} % beyond α — the HAADF band", (150, 100 - inside[150]),
+                xytext=(0, 22), textcoords="offset points", fontsize=8, color=PTY_C, ha="center",
+                arrowprops=dict(arrowstyle="-", color=PTY_C, lw=0.8))
+    ax.set_xlim(0, 200); ax.set_ylim(-3, 103)
+    ax.set_xlabel("hole semi-angle (mrad)"); ax.set_ylabel("% of the incident beam")
+    ax.set_title("(g) the dose split, measured on the simulated patterns", loc="left")
+    ax.legend(frameon=False, fontsize=8, loc="center right")
+
+    fig.suptitle("One scan, 300 keV, α = 100 mrad, 200 mrad detector: the hole is a dose splitter, "
+                 "and the conventional images cannot see the domains", fontsize=10)
     fig.savefig(out, dpi=170)
     print(f"wrote {out}")
 
 
 # ---------------------------------------------------------------- figure 2
+_LLR = re.compile(r"  ([ABCD]): truth\s+(\w+), decided\s+(\w+)\s+(?:OK|WRONG)\s+\|\s+LLR ([-+0-9.e]+) "
+                  r"\(([-+0-9.e]+)/pattern\), (\d+)% of individual")
+
+
+def sign_sweep():
+    """@brief The four sign-test logs -> per hole: fraction recorded, and per-domain LLR results.
+
+    `sign_test.log_likelihood_ratio` normalises every pattern, so LLR/pattern is evidence per
+    RECORDED electron (~ the KL divergence between the hypotheses). Multiplying by the fraction the
+    annulus keeps -- measured on the same patterns -- gives evidence per INCIDENT electron.
+    """
+    d = dp_samples()
+    M, th = d["mean"], d["theta_mrad"]
+    rows = []
+    for f in glob.glob(os.path.join(R5, "sign_test_12744*.out")):
+        s = open(f).read()
+        hole = float(re.search(r"hole (\d+) mrad", s).group(1))
+        dom = {m.group(1): dict(truth=m.group(2), decided=m.group(3), llr=float(m.group(4)),
+                                per=float(m.group(5)), frac=int(m.group(6)))
+               for m in _LLR.finditer(s)}
+        rows.append(dict(hole=hole, kept=float(M[th >= hole].sum() / M.sum()), dom=dom))
+    return sorted(rows, key=lambda r: r["hole"])
+
+
+def figure_sign(truth, out):
+    """@brief The blind sign test against hole size: the evidence barely notices the hole."""
+    rows = sign_sweep()
+    names = names_of(truth)
+    x = np.array([100 * (1 - r["kept"]) for r in rows])
+    kept = np.array([r["kept"] for r in rows])
+    n_ok = sum(r["dom"][n]["decided"] == r["dom"][n]["truth"] for r in rows for n in names)
+    worst = min(r["dom"][n]["frac"] for r in rows for n in names)
+
+    fig, ax = plt.subplots(1, 3, figsize=(13.2, 4.3), constrained_layout=True)
+    ax[1].sharey(ax[0])
+    for k, n in enumerate(names):
+        dz = float(truth["deltas"][k][2])
+        per = np.array([abs(r["dom"][n]["per"]) for r in rows])
+        inc = per * kept
+        style = dict(color=COL[n], marker="o" if dz > 0 else "s", ms=6.5, lw=1.8,
+                     mfc=COL[n] if dz > 0 else "white", mew=1.6)
+        ax[0].semilogy(x, per, **style, label=f"{n}   δz {dz:+.3f} Å")
+        ax[1].semilogy(x, inc, **style)
+        ax[2].semilogy(x, np.log(100) / inc, **style)
+        print(f"[fig2] {n}: per recorded e- {per.round(6)}, per incident e- {inc.round(6)} "
+              f"({100 * (inc[-1] / inc[0] - 1):+.0f} %), e-/pattern for 100:1 "
+              f"{(np.log(100) / inc).round(0)}")
+        if n in ("A", "C"):
+            ax[1].annotate(f"{100 * (inc[-1] / inc[0] - 1):+.0f} %", (x[-1], inc[-1]),
+                           xytext=(6, -3 if n == "A" else 6), textcoords="offset points",
+                           fontsize=8.5, color=COL[n], weight="bold")
+    ticks = [f"{xx:.0f} %\n({r['hole']:.0f})" for xx, r in zip(x, rows)]
+    for a_ in ax:
+        a_.set_xticks(x)
+        a_.set_xticklabels(ticks, fontsize=7.5)
+        a_.set_xlim(15, 106)
+        a_.set_xlabel("share of beam sent to the spectrometer\n(hole semi-angle, mrad)")
+        a_.grid(axis="y", which="major", color="0.92", lw=0.8)
+    ax[0].set_ylabel("|log-likelihood ratio| per electron (nats)")
+    ax[0].set_title("(a) sign evidence per recorded electron", loc="left")
+    ax[0].legend(frameon=False, fontsize=8, loc="upper left", title="filled = up, open = down",
+                 title_fontsize=7.5)
+    ax[1].set_title("(b) per incident electron: nearly flat", loc="left")
+    ax[1].tick_params(labelleft=False)
+    ax[2].set_ylabel("incident electrons per pattern")
+    ax[2].set_title("(c) dose for 100 : 1 odds from a single pattern", loc="left")
+    ax[2].set_yticks([2e3, 5e3, 1e4, 2e4, 4e4])
+    ax[2].set_yticklabels(["2×10³", "5×10³", "10⁴", "2×10⁴", "4×10⁴"])
+    ax[2].minorticks_off()
+    ax[2].text(0.03, 0.45, "expected LLR = N · KL, so N = ln 100 / KL\n(no Poisson draw about it)",
+               transform=ax[2].transAxes, fontsize=7.5, color="0.45")
+    pats = "100 %" if worst == 100 else f"≥ {worst} %"
+    fig.suptitle(f"Blind sign test, hollow data only, no depth reconstruction: {n_ok}/{len(rows) * 4} "
+                 f"domain decisions correct at 4 hole sizes; {pats} of individual patterns correct "
+                 f"at every hole", fontsize=10)
+    fig.savefig(out, dpi=170)
+    print(f"wrote {out}")
+
+
+# ---------------------------------------------------------------- figure 3
+def _cell(truth, X, Y):
+    a, n = float(truth["a"]), int(truth["n_lat"])
+    return int(np.floor(X / a + 1e-6)) % n, int(np.floor(Y / a + 1e-6)) % n
+
+
+def column_line(truth, frame, shape, name, n_max=5, margin_A=1.2):
+    """@brief The longest [110] run of alternating Pb and Ti-O columns inside one domain and the ROI."""
+    a, n = float(truth["a"]), int(truth["n_lat"])
+    x0, y0, ox, oy, dx = frame
+    _, Ny, Nx = shape
+    m = margin_A / dx
+
+    def ok(X, Y):
+        px, py = (X + ox - x0) / dx, (Y + oy - y0) / dx
+        return (m < px < Nx - 1 - m and m < py < Ny - 1 - m
+                and truth["domain_grid"][_cell(truth, X, Y)] == name)
+
+    best = []
+    for i in range(n):
+        for j in range(n):
+            for start in ((i * a, j * a), ((i + .5) * a, (j + .5) * a)):
+                run = []
+                while ok(start[0] + len(run) * a / 2, start[1] + len(run) * a / 2):
+                    run.append((start[0] + len(run) * a / 2, start[1] + len(run) * a / 2))
+                if len(run) > len(best):
+                    best = run
+    k = max(0, (len(best) - n_max) // 2)
+    return best[k:k + n_max]
+
+
+def section(V, frame, run, half_width_A=0.3, pad_A=1.0):
+    """@brief Depth section (layers x distance) along a column run, averaged across a thin slab."""
+    from scipy.ndimage import map_coordinates
+    x0, y0, ox, oy, dx = frame
+    (Xa, Ya), (Xb, Yb) = run[0], run[-1]
+    L = np.hypot(Xb - Xa, Yb - Ya)
+    u = np.array([Xb - Xa, Yb - Ya]) / L
+    s = np.arange(-pad_A, L + pad_A + 1e-9, dx)
+    S, W = np.meshgrid(s, np.linspace(-half_width_A, half_width_A, 7), indexing="ij")
+    px = (Xa + S * u[0] - W * u[1] + ox - x0) / dx
+    py = (Ya + S * u[1] + W * u[0] + oy - y0) / dx
+    sec = np.stack([map_coordinates(V[l], [py.ravel(), px.ravel()], order=1)
+                    .reshape(S.shape).mean(1) for l in range(V.shape[0])])
+    return s, sec
+
+
+def figure_volume(truth, out):
+    """@brief The reconstructed phase volume against the true atoms, and its depth spectrum."""
+    a_lat, c_lat = float(truth["a"]), float(truth["c"])
+    fig = plt.figure(figsize=(13.2, 9.4), constrained_layout=True)
+    gs = fig.add_gridspec(2, 2, height_ratios=[1, 1.55], width_ratios=[1, 1.75])
+
+    # (a) projected phase of the blind full-resolution object, with the three column types
+    from scipy.ndimage import gaussian_filter
+    V, b = recon("blind015")
+    x0, y0, ox, oy, dx = AF.lattice_frame(V, b, truth)
+    ax = fig.add_subplot(gs[0, 0])
+    P = gaussian_filter(V.sum(0), 0.08 / dx)
+    n = int(round(3.2 * a_lat / dx))
+    o = P.shape[0] // 2
+    sub = P[o:o + n, o:o + n]
+    lo, hi = np.percentile(sub, [1, 99.7])
+    ax.imshow(sub, cmap="bone", vmin=lo, vmax=hi, extent=[0, n * dx, n * dx, 0])
+    # markers at the TRUE column positions: registered site + the species' in-plane polar shift,
+    # referred to the Pb sublattice the registration anchors on
+    cols = {k: AF.inplane_offsets(V, b, truth, k) for k in AF.KINDS}
+    pb_mean = cols["Pb"][2].mean(0)
+    for lab, key, mk in (("Pb", "Pb", "o"), ("Ti + O$_{ap}$", "TiO", "s"), ("O$_{eq}$", "Oeq", "^")):
+        site, _, pred, _ = cols[key]
+        X = ((site[:, 0] + ox - x0) / dx - o + 0.5) * dx + pred[:, 0] - pb_mean[0]
+        Y = ((site[:, 1] + oy - y0) / dx - o + 0.5) * dx + pred[:, 1] - pb_mean[1]
+        k = (X > .3) & (X < n * dx - .3) & (Y > .3) & (Y < n * dx - .3)
+        ax.scatter(X[k], Y[k], s=30, marker=mk, facecolors="none", edgecolors=SPEC[key],
+                   linewidths=1.4, label=lab)
+    meas, pred = cols["Pb"][1], cols["Pb"][2]
+    meas, pred = meas - meas.mean(0), pred - pred.mean(0)
+    before = np.sqrt((meas ** 2).sum(1).mean())
+    after = np.sqrt(((meas - pred) ** 2).sum(1).mean())
+    print(f"[fig3] Pb in-plane: {before:.3f} A RMS about the undistorted lattice, {after:.3f} A about "
+          f"the true polar shift ({len(meas)} columns)")
+    ax.text(0.02, 0.02, f"Pb peaks: {after:.2f} Å RMS from their true in-plane positions\n"
+            f"({before:.2f} Å from the undistorted lattice)", transform=ax.transAxes, fontsize=7.5,
+            color="white", va="bottom",
+            bbox=dict(boxstyle="round,pad=0.3", fc="black", alpha=0.55, ec="none"))
+    ax.set_xlim(0, n * dx); ax.set_ylim(n * dx, 0)
+    ax.legend(fontsize=7.5, loc="upper right", labelcolor="white", facecolor="black",
+              framealpha=0.55, edgecolor="none")
+    ax.set_title("(a) projected phase · blind 0.15 Å, true column positions", loc="left")
+    ax.set_xlabel("x (Å)"); ax.set_ylabel("y (Å)")
+
+    # (b) the depth spectrum
+    ax = fig.add_subplot(gs[0, 1])
+    for name, dz in (("blind03", None), ("blind015", None), ("known", None), ("NL70", 0.999)):
+        if name == "NL70":
+            W = np.angle(np.load(NL70)).astype(float)
+            lbl, col = "70 Å labyrinth reference (NL70)", "#6D4AA6"
+        else:
+            W, bb = recon(name)
+            dz = float(bb["beam_thickness_A"]) / W.shape[0]
+            lbl, col = f"{LABEL[name]}  (NL{W.shape[0]})", RUN_C[name]
+        W = W - np.median(W, axis=(1, 2), keepdims=True)
+        f, S = kz_spectrum(W, dz)
+        m = f > 0.10
+        ax.semilogy(f[m], S[m], color=col, lw=2.0 if name == "blind015" else 1.5, label=lbl)
+        ax.axvline(1 / (2 * dz), color=col, lw=0.9, ls=":", alpha=0.8)
+    ax.axvline(1 / c_lat, color="0.35", lw=1.2, ls="--")
+    ax.annotate(f"PbTiO₃ c = {c_lat:.2f} Å", (1 / c_lat, ax.get_ylim()[1]), xytext=(4, -12),
+                textcoords="offset points", fontsize=8, color="0.35")
+    ax.set_xlabel("depth spatial frequency $k_z$ (Å$^{-1}$)")
+    ax.set_ylabel("power / median band power")
+    ax.set_title("(b) the depth axis: 0.15 Å step moves the peak off the layer Nyquist and onto "
+                 "the lattice", loc="left")
+    ax.legend(frameon=False, fontsize=8, loc="lower right")
+    ax.text(0.01, 0.02, "dotted = each run's layer-grid Nyquist", transform=ax.transAxes,
+            fontsize=7.5, color="0.45")
+
+    # (c) depth sections along [110] through alternating Pb and Ti-O columns, truth overlaid
+    z_off = 0.5 * (float(b["beam_thickness_A"]) - float(truth["slab_thickness_A"]))
+    groups = gs[1, :].subgridspec(1, 3)
+    first = None
+    for g, name in enumerate(("blind03", "blind015", "known")):
+        V, bb = recon(name)
+        frame = AF.lattice_frame(V, bb, truth)
+        T = float(bb["beam_thickness_A"])
+        pair = groups[g].subgridspec(1, 2, wspace=0.04)
+        for p, dom in enumerate(("A", "B")):
+            run = column_line(truth, frame, V.shape, dom)
+            s, sec = section(V, frame, run)
+            ax = fig.add_subplot(pair[p], sharey=first) if first else fig.add_subplot(pair[p])
+            first = first or ax
+            lo, hi = np.percentile(sec, [2, 99.7])
+            ax.imshow(sec, cmap="bone", vmin=lo, vmax=hi, extent=[s[0], s[-1], T, 0],
+                      aspect="auto")
+            Xa, Ya = run[0]
+            for X, Y in run:
+                sk = np.hypot(X - Xa, Y - Ya)
+                d = truth["delta_grid"][_cell(truth, X, Y)]
+                is_pb = abs(X / a_lat - round(X / a_lat)) < 0.25
+                zs, wt = AF.column_sites(d, truth, "Pb" if is_pb else "TiO")
+                zs = zs + z_off
+                heavy = np.isclose(wt, wt.max())
+                if is_pb:
+                    ax.scatter(np.full(heavy.sum(), sk), zs[heavy], s=34, marker="o",
+                               facecolors="none", edgecolors=SPEC["Pb"], linewidths=1.3)
+                else:
+                    ax.scatter(np.full(heavy.sum(), sk), zs[heavy], s=30, marker="s",
+                               facecolors="none", edgecolors=SPEC["TiO"], linewidths=1.3)
+                    ax.scatter(np.full((~heavy).sum(), sk), zs[~heavy], s=16, marker="^",
+                               facecolors="none", edgecolors=SPEC["Oeq"], linewidths=1.1)
+            head = f"{LABEL[name]}\n" if p == 0 else "\n"
+            ax.set_title(f"{head}domain {dom} · δz {'> 0' if dom == 'A' else '< 0'}", loc="left",
+                         fontsize=8.5, color=RUN_C[name] if p == 0 else "0.2")
+            ax.set_xlabel("along [110] (Å)")
+            if g == 0 and p == 0:
+                ax.set_ylabel("depth z (Å) · beam ↓")
+            else:
+                ax.tick_params(labelleft=False)
+    fig.supxlabel("(c) depth sections through Pb (○) and Ti–O columns: true Ti □ and apical O △ "
+                  "overlaid. A and B differ only in the stacking order of Ti against Pb.",
+                  fontsize=8.5, x=0.01, ha="left")
+    fig.savefig(out, dpi=170)
+    print(f"wrote {out}")
+
+
+# ---------------------------------------------------------------- figure 4
 def fit_z(profile, z, z0, half):
     """@brief Sub-layer z centroid of the peak nearest z0, by parabolic fit on the maximum."""
     m = np.abs(z - z0) <= half
@@ -183,99 +461,105 @@ def fit_z(profile, z, z0, half):
     return float(z[k] + np.clip(d, -1, 1) * (z[1] - z[0]))
 
 
-def figure_atoms(truth, out):
-    """@brief Fitted atom depths against ground truth, and the offset that carries the sign."""
-    good = os.path.join(DESK, "round3", "**", "recon_hsa0_NL16_known", "01", "*", "Niter200.mat")
-    V, b = vol(good), budget_for(16)
-    a_lat, c_lat = float(truth["a"]), float(truth["c"])
+def atom_fits(name, truth):
+    """@brief Fitted against true depth for every Pb and Ti atom -> (kind, z_true, z_fit)."""
+    V, b = recon(name)
+    a_lat, c_lat, n = float(truth["a"]), float(truth["c"]), int(truth["n_lat"])
     z_off = 0.5 * (float(b["beam_thickness_A"]) - float(truth["slab_thickness_A"]))
     cells, xy, z = AF.column_maps(V, b, truth)
-    gi = np.floor(xy[:, 0] / a_lat).astype(int) % int(truth["n_lat"])
-    gj = np.floor(xy[:, 1] / a_lat).astype(int) % int(truth["n_lat"])
-    dom = truth["domain_grid"][gi, gj]
-
+    gi = np.floor(xy[:, 0] / a_lat).astype(int) % n
+    gj = np.floor(xy[:, 1] / a_lat).astype(int) % n
     rows = []
     for i in range(len(cells)):
         d = truth["delta_grid"][gi[i], gj[i]]
         for kind in ("Pb", "TiO"):
-            zs, w = AF.column_sites(d, truth, kind)
-            if kind == "TiO":                       # the Ti sub-peak only (drop the apical O)
-                zs = zs[::2]
-            for zt in zs + z_off:
-                if zt < z.min() + 1.2 or zt > z.max() - 1.2:
-                    continue
-                zf = fit_z(cells[i][kind], z, zt, 0.45 * c_lat)
-                rows.append((dom[i], kind, zt, zf))
-    R = np.array([(d, k, a, b_) for d, k, a, b_ in rows if np.isfinite(b_)],
-                 dtype=object)
+            zs, wt = AF.column_sites(d, truth, kind)
+            for zt in zs[np.isclose(wt, wt.max())] + z_off:       # Pb, or the Ti of the Ti-O column
+                if z.min() + 1.2 <= zt <= z.max() - 1.2:
+                    zf = fit_z(cells[i][kind], z, zt, 0.45 * c_lat)
+                    if np.isfinite(zf):
+                        rows.append((kind, zt, zf))
+    return (np.array([r[0] for r in rows]), np.array([r[1] for r in rows]),
+            np.array([r[2] for r in rows]))
 
-    fig, ax = plt.subplots(1, 3, figsize=(13.2, 4.0), constrained_layout=True)
 
-    # (a) found vs true
-    for kind in ("Pb", "TiO"):
-        m = R[:, 1] == kind
-        ax[0].scatter(R[m, 2].astype(float), R[m, 3].astype(float), s=16, alpha=0.65,
-                      color=SPEC[kind], label={"Pb": "Pb column", "TiO": "Ti (Ti–O column)"}[kind],
-                      edgecolors="none")
-    lim = [z.min(), z.max()]
-    ax[0].plot(lim, lim, color="0.4", lw=1, ls="--", zorder=0)
+def figure_atoms(truth, out):
+    """@brief Atoms placed in depth, and the per-cell sign, blind against a known start."""
+    c_lat = float(truth["c"])
+    names = names_of(truth)
+    dzp = eels_dz_prior(truth)
+    fig, ax = plt.subplots(1, 3, figsize=(13.2, 4.4), constrained_layout=True)
+    guess = 0.45 * c_lat / np.sqrt(3)
+
+    for name in ("blind015", "known"):
+        kind, zt, zf = atom_fits(name, truth)
+        res = zf - zt
+        for kd, mk in (("Pb", "o"), ("TiO", "s")):
+            m = kind == kd
+            ax[0].scatter(zt[m], zf[m], s=15, marker=mk, alpha=0.6, color=RUN_C[name],
+                          edgecolors="none",
+                          label=f"{LABEL[name]} · {'Pb' if kd == 'Pb' else 'Ti'}")
+        rms = {kd: float(np.sqrt(np.mean(res[kind == kd] ** 2))) for kd in ("Pb", "TiO")}
+        ax[1].hist(res, bins=np.linspace(-2, 2, 33), alpha=0.6, color=RUN_C[name],
+                   label=f"{LABEL[name]}\nPb {rms['Pb']:.2f} Å · Ti {rms['TiO']:.2f} Å RMS")
+        print(f"[fig4] {name}: {len(res)} atoms, RMS Pb {rms['Pb']:.3f} Ti {rms['TiO']:.3f} "
+              f"all {np.sqrt(np.mean(res ** 2)):.3f} A (uniform guess {guess:.2f})")
+    V0, _ = recon("known")
+    z = (np.arange(V0.shape[0]) + 0.5) * float(recon("known")[1]["beam_thickness_A"]) / V0.shape[0]
+    ax[0].plot([z.min(), z.max()], [z.min(), z.max()], color="0.4", lw=1, ls="--", zorder=0)
     ax[0].set_xlabel("true atom depth (Å)"); ax[0].set_ylabel("fitted depth (Å)")
-    ax[0].set_title("(a) atom depths recovered", loc="left")
-    ax[0].legend(frameon=False, fontsize=8)
-
-    # (b) residuals
-    res = R[:, 3].astype(float) - R[:, 2].astype(float)
-    for kind in ("Pb", "TiO"):
-        m = R[:, 1] == kind
-        ax[1].hist(res[m], bins=np.linspace(-1.2, 1.2, 33), alpha=0.65, color=SPEC[kind],
-                   label=f"{kind}  RMS {np.sqrt((res[m]**2).mean()):.2f} Å")
+    ax[0].set_title("(a) atom depths: fitted against truth", loc="left")
+    ax[0].legend(frameon=False, fontsize=7.5, loc="upper left", markerscale=1.6)
     ax[1].axvline(0, color="0.4", lw=1, ls="--")
     ax[1].set_xlabel("fitted − true depth (Å)"); ax[1].set_ylabel("atoms")
     ax[1].set_title("(b) depth residual", loc="left")
-    ax[1].legend(frameon=False, fontsize=8)
+    ax[1].legend(frameon=False, fontsize=7.5, loc="upper left")
+    ax[1].text(0.98, 0.97, f"fit window ±{0.45 * c_lat:.2f} Å\nuniform guess: RMS {guess:.2f} Å",
+               transform=ax[1].transAxes, ha="right", va="top", fontsize=7.5, color="0.4")
 
-    # (c) the readout that actually works: matched filter over the whole depth profile
-    theta = AF.eels_theta_from_contrast(truth, 100.0, 75.0)
-    dzp = {str(n): float(np.linalg.norm(truth["deltas"][k][:2])
-                         / np.tan(np.radians(theta[str(n)])))
-           for k, n in enumerate([str(x) for x in truth["names"]])}
-    xy2, obs, dom2, z0 = AF.read_sign(V, b, truth, dz_prior=dzp)
-    names = [str(x) for x in truth["names"]]
-    for k, name in enumerate(names):
-        m = dom2 == name
-        if not m.any():
-            continue
-        rng = np.random.default_rng(k)
-        ax[2].scatter(np.full(m.sum(), k) + rng.normal(0, .07, m.sum()), obs[m], s=26,
-                      alpha=0.75, color=COL[name], edgecolors="none")
-        ax[2].plot([k - .3, k + .3], [np.median(obs[m])] * 2, color=COL[name], lw=2.6)
+    # (c) the per-cell matched-filter readout, each run scaled by its own RMS (only the sign is used)
+    for r, name in enumerate(("blind015", "known")):
+        V, b = recon(name)
+        _, obs, dom, _ = AF.read_sign(V, b, truth, dz_prior=dzp)
+        obs = obs / np.sqrt(np.mean(obs ** 2))
+        right = []
+        for k, dn in enumerate(names):
+            m = dom == dn
+            if not m.any():
+                continue
+            want = np.sign(truth["deltas"][k][2])
+            right.append(np.sign(obs[m]) == want)
+            xk = k + (-0.19 if r == 0 else 0.19)
+            rng = np.random.default_rng(10 * k + r)
+            ax[2].scatter(xk + rng.normal(0, .045, m.sum()), obs[m], s=22, alpha=0.8,
+                          color=RUN_C[name], edgecolors="none")
+            ax[2].plot([xk - .13, xk + .13], [np.median(obs[m])] * 2, color=RUN_C[name], lw=2.4)
+        acc = 100 * np.mean(np.concatenate(right))
+        ax[2].scatter([], [], color=RUN_C[name], s=22, label=f"{LABEL[name]}: {acc:.0f} % of cells")
+        print(f"[fig4] {name}: sign readout {acc:.0f} % of cells")
     ax[2].axhline(0, color="0.35", lw=1.1)
     ax[2].set_xticks(range(4))
     ax[2].set_xticklabels([f"{n}\n{'δz > 0' if truth['deltas'][i][2] > 0 else 'δz < 0'}"
                            for i, n in enumerate(names)])
-    ax[2].set_xlabel("domain"); ax[2].set_ylabel("matched-filter discriminant")
-    ax[2].set_title("(c) sign(δz) from the whole depth profile", loc="left")
-    ax[2].text(0.02, 0.97, "above 0 → up", transform=ax[2].transAxes, fontsize=8,
-               va="top", color="0.4")
-    ax[2].text(0.02, 0.03, "below 0 → down", transform=ax[2].transAxes, fontsize=8,
-               va="bottom", color="0.4")
-
-    fig.suptitle("Atoms placed in depth — depth-capable reconstruction, "
-                 f"{len(R)} atoms over {len(cells)} unit cells. A single Ti–Pb offset is too noisy "
-                 "for the sign;\nthe matched filter over the whole profile gets every cell right.",
-                 fontsize=10)
+    ax[2].set_ylabel("matched-filter discriminant / RMS")
+    ax[2].set_title("(c) per-cell sign from the depth profile", loc="left")
+    ax[2].legend(frameon=False, fontsize=7.5, loc="lower left")
+    ax[2].text(0.98, 0.97, "correct: > 0 for A, C; < 0 for B, D", transform=ax[2].transAxes,
+               ha="right", va="top", fontsize=7.5, color="0.4")
+    fig.suptitle("Placing atoms in depth: the known-start object does it and reads every cell's "
+                 "sign; the blind object, even at 0.15 Å step, does neither yet", fontsize=10)
     fig.savefig(out, dpi=170)
     print(f"wrote {out}")
 
 
-# ---------------------------------------------------------------- figure 3
+# ---------------------------------------------------------------- figure 5
 def figure_eels(truth, out, alpha=100.0, beta=75.0):
     """@brief The CASTEP ladder, the domain spectra, and the inversion to |delta_z|."""
     lad = F.load_ladder()
     s_grid, e, S_par, S_perp = lad
     w = F.aperture_weights(alpha, beta)
     dmax = float(truth["delta_Ti_A"])
-    names = [str(x) for x in truth["names"]]
+    names = names_of(truth)
     m = (e >= -3) & (e <= 30)
 
     fig, ax = plt.subplots(1, 3, figsize=(13.2, 4.1), constrained_layout=True)
@@ -288,9 +572,9 @@ def figure_eels(truth, out, alpha=100.0, beta=75.0):
     ax[0].set_xlabel("energy − O-K onset (eV)"); ax[0].set_ylabel("intensity (norm.)")
     ax[0].set_title("(a) CASTEP ladder, q ⊥ c", loc="left")
     ax[0].legend(frameon=False, fontsize=7.5, title="along-chain distortion", title_fontsize=7.5,
-                 loc="center right")
-    ax[0].annotate("π* grows with the\npolar displacement", (8.9, 1.0), xytext=(-4, -30),
-                   textcoords="offset points", fontsize=8, color="0.4", ha="left",
+                 loc="upper right")
+    ax[0].annotate("π* grows with the\npolar displacement", (8.9, 1.0), xytext=(7.2, 0.97),
+                   textcoords="data", fontsize=8, color="0.4", ha="right", va="top",
                    arrowprops=dict(arrowstyle="-", color="0.55", lw=0.8))
 
     # (b) the four domains, and the difference
@@ -300,7 +584,7 @@ def figure_eels(truth, out, alpha=100.0, beta=75.0):
         ax[1].plot(e[m], (spec[n] - ref)[m] / ref[m].max() * 100, color=COL[n],
                    lw=2.6 if n == "C" else 1.5,
                    label=f"{n} − A   |δz| = {abs(truth['deltas'][names.index(n)][2]):.3f} Å")
-    ax[1].annotate("C − A and D − A coincide", (0.97, 0.92), xycoords="axes fraction",
+    ax[1].annotate("C − A and D − A coincide", (0.97, 0.10), xycoords="axes fraction",
                    ha="right", fontsize=8, color="0.4")
     ax[1].axhline(0, color="0.4", lw=0.8)
     ax[1].set_xlabel("energy − O-K onset (eV)"); ax[1].set_ylabel("difference (% of edge max)")
@@ -327,7 +611,7 @@ def figure_eels(truth, out, alpha=100.0, beta=75.0):
     ax[2].set_title("(c) EELS is monotonic in |δz|", loc="left")
     for lbl, k in (("A, B coincide — sign-blind", 0), ("C, D coincide", 2)):
         dzk = abs(truth["deltas"][k][2])
-        ax[2].annotate(lbl, (dzk, np.interp(-dzk, -dz, c)), xytext=(-14, 30 if k == 0 else -26),
+        ax[2].annotate(lbl, (dzk, np.interp(-dzk, -dz, c)), xytext=(-30, -24) if k == 0 else (-14, -26),
                        textcoords="offset points", fontsize=8, color="0.4", ha="right",
                        arrowprops=dict(arrowstyle="-", color="0.55", lw=0.8))
 
@@ -337,20 +621,24 @@ def figure_eels(truth, out, alpha=100.0, beta=75.0):
     print(f"wrote {out}")
 
 
+FIGURES = {"1": (figure_measurement, "fig1_measurement.png"),
+           "2": (figure_sign, "fig2_sign_vs_hole.png"),
+           "3": (figure_volume, "fig3_phase_volume.png"),
+           "4": (figure_atoms, "fig4_atoms_depth.png"),
+           "5": (figure_eels, "fig5_eels_axis.png")}
+
+
 def main(argv=None) -> int:
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--out-dir", default=os.path.join(HERE, "figs"))
     ap.add_argument("--truth", default=os.path.join(HERE, "sample", "toy_truth.npz"))
-    ap.add_argument("--fig", nargs="*", default=["1", "2", "3"])
+    ap.add_argument("--fig", nargs="*", default=list(FIGURES))
     args = ap.parse_args(argv)
     os.makedirs(args.out_dir, exist_ok=True)
     truth = np.load(args.truth, allow_pickle=True)
-    if "1" in args.fig:
-        figure_volume(truth, os.path.join(args.out_dir, "fig1_phase_volume.png"))
-    if "2" in args.fig:
-        figure_atoms(truth, os.path.join(args.out_dir, "fig2_atoms_depth.png"))
-    if "3" in args.fig:
-        figure_eels(truth, os.path.join(args.out_dir, "fig3_eels_axis.png"))
+    for k in args.fig:
+        fn, name = FIGURES[k]
+        fn(truth, os.path.join(args.out_dir, name))
     return 0
 
 

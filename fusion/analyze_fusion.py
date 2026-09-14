@@ -268,22 +268,18 @@ def register_lattice(V, dx: float, a: float, trim_A: float = 1.2):
     return float(ox), float(oy), float(min(abs(zx), abs(zy))), float(ratio), float(t * dx)
 
 
-def column_maps(V, budget, truth, radius_A: float = 0.6, register: bool = True):
-    """@brief Depth profile of each of the three column types, for every complete cell in the ROI.
+def lattice_frame(V, budget, truth, register: bool = True):
+    """@brief Where the specimen lattice sits in a reconstruction -> (x0, y0, ox, oy, dx).
 
     The ROI centre is taken to be the scan centre (the engine crops symmetrically about the scanned
     region), which fixes the absolute position to within half a cell; `register_lattice` then pins
-    the sublattice down within the cell. Together they say which column is Pb and which is Ti-O,
-    which is the whole basis of the sign readout.
-
-    @return (cells, xy, z_axis) -- cells is a list of {kind: profile}, xy the cell origins in the
-            SAMPLE frame so each can be tagged with a domain.
+    the sublattice down within the cell. A sample-frame point (X, Y) lands on column
+    (X + ox - x0) / dx and row (Y + oy - y0) / dx of a volume indexed [layer, row, col].
     """
-    nL, Ny, Nx = V.shape
+    _, Ny, Nx = V.shape
     a = float(truth["a"])
     cx, cy = budget["scan_center_A"]
     dx = object_pixel_A(budget)
-    z_axis = (np.arange(nL) + 0.5) * float(budget["beam_thickness_A"]) / nL
     x0, y0 = cx - Nx * dx / 2.0, cy - Ny * dx / 2.0           # ROI is centred on the scan
 
     ox = oy = 0.0
@@ -300,6 +296,60 @@ def column_maps(V, budget, truth, radius_A: float = 0.6, register: bool = True):
             raise SystemExit(f"lattice registration is unsafe (coherence {coh:.2f}, "
                              f"Pb:TiO {ratio:.2f}) -- cannot tell Pb from Ti, so the sign readout "
                              f"would be meaningless")
+    return x0, y0, ox, oy, dx
+
+
+def inplane_offsets(V, budget, truth, kind: str = "Pb", window_A: float = 0.9):
+    """@brief Measured in-plane column positions against the polar mode -> (site_xy, meas, pred, domain).
+
+    The in-plane half of the measurement: each column's peak is found in the high-passed projected
+    phase within `window_A` of its registered lattice site (`meas`, A), and compared with the
+    species' in-plane polar shift w * (-delta_xy / |delta_Ti|) (`pred`, A). Both are raw offsets
+    from the registered Pb sublattice; subtract each one's field mean before comparing, since the
+    registration absorbs the mean shift. `site_xy` is the undistorted site in the SAMPLE frame.
+    """
+    from scipy.ndimage import gaussian_filter
+    a, n = float(truth["a"]), int(truth["n_lat"])
+    x0, y0, ox, oy, dx = lattice_frame(V, budget, truth)
+    P = gaussian_filter(V.sum(0), 0.08 / dx)
+    P = P - gaussian_filter(P, 1.2 / dx)                     # keep the columns, drop the background
+    Ny, Nx = P.shape
+    r = int(round(window_A / dx))
+    edge = r + int(round(1.2 / dx))                          # stay off the reconstruction rim
+    w, d_ti = T.polar_mode()
+    wk = dict(zip(KINDS, w))[kind]
+    sx, sy = {"Pb": (0.0, 0.0), "TiO": (0.5, 0.5), "Oeq": (0.5, 0.0)}[kind]
+    site, meas, pred, dom = [], [], [], []
+    for i in range(int(np.floor(x0 / a)) - 1, int(np.ceil((x0 + Nx * dx) / a)) + 1):
+        for j in range(int(np.floor(y0 / a)) - 1, int(np.ceil((y0 + Ny * dx) / a)) + 1):
+            X, Y = (i + sx) * a, (j + sy) * a
+            px, py = (X + ox - x0) / dx, (Y + oy - y0) / dx
+            ix, iy = int(round(px)), int(round(py))
+            if not (edge <= ix < Nx - edge and edge <= iy < Ny - edge):
+                continue
+            win = P[iy - r:iy + r + 1, ix - r:ix + r + 1]
+            ky, kx = np.unravel_index(np.argmax(win), win.shape)
+            d = truth["delta_grid"][i % n, j % n]
+            site.append((X, Y))
+            meas.append(((ix - r + kx - px) * dx, (iy - r + ky - py) * dx))
+            pred.append(wk * (-np.asarray(d[:2], float) / abs(d_ti)))
+            dom.append(truth["domain_grid"][i % n, j % n])
+    return np.asarray(site), np.asarray(meas), np.asarray(pred), np.asarray(dom)
+
+
+def column_maps(V, budget, truth, radius_A: float = 0.6, register: bool = True):
+    """@brief Depth profile of each of the three column types, for every complete cell in the ROI.
+
+    `lattice_frame` says which column is Pb and which is Ti-O, which is the whole basis of the sign
+    readout.
+
+    @return (cells, xy, z_axis) -- cells is a list of {kind: profile}, xy the cell origins in the
+            SAMPLE frame so each can be tagged with a domain.
+    """
+    nL, Ny, Nx = V.shape
+    a = float(truth["a"])
+    z_axis = (np.arange(nL) + 0.5) * float(budget["beam_thickness_A"]) / nL
+    x0, y0, ox, oy, dx = lattice_frame(V, budget, truth, register)
 
     rad = max(1, int(round(radius_A / dx)))
     offs = {"Pb": (0.0, 0.0), "TiO": (0.5 * a, 0.5 * a), "Oeq": (0.5 * a, 0.0)}

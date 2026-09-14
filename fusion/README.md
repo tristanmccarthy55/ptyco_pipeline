@@ -24,7 +24,7 @@ patterns** favouring the right hypothesis, using only the electrons **outside** 
 a two-hypothesis problem in the first place: EELS fixes |δz|, projection fixes δxy, and only the
 stacking order is left to decide.
 
-**Why the depth reconstruction failed, settled.** Three candidate explanations, all now tested:
+**Why the depth reconstruction failed, narrowed.** Three candidate explanations, all now tested:
 
 | candidate | test | verdict |
 |---|---|---|
@@ -38,16 +38,23 @@ further (62.3 → **35.2**, a quarter of the blind residual) and **keeps** the d
 (comb 3.2–5.3, against 0.4–0.7 blind). The depth-sectioning readout then recovers **100 % of cells
 in all four domains**, so the readout was never the problem either.
 
-**RESOLVED 2026-09-14 — the cause was scan redundancy.** A random start does fall into a smooth
-minimum more than twice as bad as the truth, but the reason it cannot leave is that the scan was
-under-sampled. At 0.3 Å step the depth power sits *exactly* on the layer-grid Nyquist — the
-two-slice odd/even mode of unregularised multislice — with 37–47 % of in-band power in the top two
-k_z bins. Re-simulating at **0.15 Å step** (25 600 positions, matching the 70 Å reference run)
-moves the peak onto the real lattice: 0.2365 Å⁻¹ = **4.23 Å at 4.51× prominence**, top-two-bin
-power down to 12 %. Probe, β_LSQ, binning, layer count and thickness were eliminated first, the
-last of them by the 70 Å labyrinth run, which works using these very settings. **Use
-`SCAN_STEP=0.15`**; see `HANDOVER.md` §2. (An earlier reading of this as *initialisation*-limited
-was wrong: the initial guess is not the fix, the sampling is.)
+**PARTLY RESOLVED 2026-09-14 — scan redundancy removes the artefact; blind depth is still not
+there.** At 0.3 Å step the depth power sits *exactly* on the layer-grid Nyquist — the two-slice
+odd/even mode of unregularised multislice — with 37–47 % of in-band power in the top two k_z bins.
+Re-simulating at **0.15 Å step** (25 600 positions, matching the 70 Å reference run) moves the peak
+onto the lattice: 0.2365 Å⁻¹ = 4.23 Å, at 4.51× in the presolve object and **3.08×** (top-two-bin
+power 22.7 %) in the full-resolution one.
+
+**But the full-resolution blind object does not place atoms in depth.** Fitted Pb and Ti depths
+scatter with RMS **1.54 Å** (no global z shift brings it below 1.4 Å) — worse than a uniform guess
+in the fit window (1.08 Å) — against **0.54 Å** for the known-start run. The matched-filter sign
+readout is at chance: **10 of 25 cells**. It is not a convention error: flipping z takes the known
+start from 100 % to 0 %. The
+residual ends at 159.0, still falling 0.4 %/iteration at 200, where the blind 0.3 Å run also ended
+(159.2); the known start on the 0.3 Å data reaches 35.2. The sampling fixed the Nyquist mode, not
+the basin. Next: run the 0.15 Å reconstruction to ≥1000 iterations, and a known start on the
+0.15 Å data. Probe, β_LSQ, binning, layer count and thickness were eliminated first; see
+`HANDOVER.md` §2. **The sign result does not depend on any of this.**
 
 **Caveat to keep straight.** The known-object runs are *diagnostics*, not measurements: started from
 the truth, their signs are not an independent result. The blind result is the sign test.

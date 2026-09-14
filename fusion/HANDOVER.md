@@ -17,6 +17,22 @@ individual patterns, using only detector pixels **outside** the 0.75α hole and 
 reconstruction**. LLR ±0.997 for A/B (|δz| = 0.311 Å) against ±0.071 for C/D (|δz| = 0.166 Å).
 Fused δ matches ground truth exactly in all four domains.
 
+**It holds at every hole size tested** (jobs 1274400–1274403; 200 patterns per domain): 4/4 and
+100 % of patterns at 50, 75, 90 and 95 mrad. `sign_test` normalises each pattern, so LLR/pattern is
+evidence per *recorded* electron (≈ the KL divergence); multiply by the measured fraction outside
+the hole for evidence per *incident* electron:
+
+| hole | to EELS | LLR/pattern A (C) | per incident e⁻ A (C) | e⁻/pattern for 100:1, A (C) |
+|---|---|---|---|---|
+| 50 mrad | 25.0 % | 0.00323 (0.000255) | 0.00242 (0.000191) | 1.9e3 (2.4e4) |
+| 75 mrad | 56.2 % | 0.00498 (0.000355) | 0.00218 (0.000156) | 2.1e3 (3.0e4) |
+| 90 mrad | 80.8 % | 0.0103 (0.000669) | 0.00197 (0.000128) | 2.3e3 (3.6e4) |
+| 95 mrad | 90.0 % | 0.0186 (0.00117) | 0.00187 (0.000118) | 2.5e3 (3.9e4) |
+
+Sending 25 → 90 % of the beam to the spectrometer costs only **23 %** of the sign evidence per
+incident electron for A/B (39 % for C/D): the information sits just outside the bright-field edge.
+The last column is ln(100)/KL — an expected-LLR statement, no Poisson fluctuation about it.
+
 Fusion is what makes this a two-hypothesis problem: EELS fixes |δz|, projection fixes δxy, and only
 the stacking order along the beam is left to decide.
 
@@ -32,6 +48,12 @@ domains at all (0.99 % spread) — as it must not.
 **Degeneracies verified, not assumed.** A≡B and C≡D in EELS to < 1e-12 (a round aperture cannot tell
 an x-chain from a y-chain). The sign-encoding null — δ purely in-plane, so flipping δz is a no-op —
 gives exactly 0.000e+00.
+
+**The blind reconstruction does measure δxy.** `analyze_fusion.inplane_offsets`: Pb peaks in the
+projected phase of the blind 0.15 Å object follow each domain's in-plane polar shift — RMS offset
+**0.170 → 0.020 Å** once the predicted shift is subtracted (known start 0.175 → 0.022 Å). Ti–O
+columns (Ti + apical O, |w_Ti| half of |w_Pb|) track less well blind: 0.076 → 0.069 Å (known start
+0.061 → 0.029). `fuse()` still takes δxy as given; this is what would feed it.
 
 ---
 
@@ -49,18 +71,37 @@ data with the exact probe and positions. Ruled out in order:
 | probe / beta_LSQ / bin / thickness | the user's NL70 labyrinth run works at 70 Å with betaLSQ 0.1, NpbstInf, p1, bin 4, reg 0, dz 0.999 | **no** — those are our settings |
 | **scan redundancy** | re-sim at 0.15 Å step (25 600 positions) | **YES** |
 
-**The answer is scan sampling.** At 0.3 Å step the depth power sits at the layer-grid Nyquist — the
-two-slice odd/even mode `aberration_experiment/HANDOVER.md` documents for a110/a120 — with 37–47 %
-of in-band power in the top two kz bins. At **0.15 Å** step (matching NL70) the peak moves to the
-real lattice:
+**Scan sampling explains the Nyquist artefact — not the whole failure.** At 0.3 Å step the depth
+power sits at the layer-grid Nyquist — the two-slice odd/even mode
+`aberration_experiment/HANDOVER.md` documents for a110/a120 — with 37–47 % of in-band power in the
+top two kz bins. At **0.15 Å** step (matching NL70) the peak moves to the real lattice:
 
 | run | kz peak | period | Nyquist | top-2-bin power |
 |---|---|---|---|---|
 | NL70 labyrinth (reference, works) | 0.2574 Å⁻¹ | 3.885 Å | — | — |
 | fusion NL24, 0.3 Å step | 0.4730 | 2.11 Å | 0.4730 | **47 %** |
 | fusion NL16, 0.3 Å step | 0.3154 | 3.17 Å | 0.3155 | — |
-| **fusion NL26, 0.15 Å step** | **0.2365** | **4.23 Å** | 0.5125 | **12 %** |
+| fusion NL26, 0.15 Å step, presolve (step01) | 0.2365 | 4.23 Å | 0.5125 | 12 % |
+| **fusion NL26, 0.15 Å step, full res (step02)** | **0.2365** | **4.23 Å (3.08×)** | 0.5125 | **22.7 %** |
 | fusion NL16 from the true object | 0.2365 | 4.23 Å | — | — |
+
+**The lattice comb is not the atoms.** On the full-resolution 0.15 Å object (`round5/`):
+
+| object | atom-depth RMS, best global z shift | corr(⟨Pb⟩,⟨TiO⟩) | sign readout | residual @200 (slope) |
+|---|---|---|---|---|
+| blind, 0.3 Å, NL24 | 1.38 Å | −0.49 | 33 % | 159.2 (−0.44 %/it) |
+| blind, 0.15 Å, NL26 step02 | **1.43 Å** | −0.28 | **10/25 cells** (flipped z: 64 %) | 159.0 (−0.41 %/it) |
+| known start, 0.3 Å, NL16 | **0.58 Å** | −0.72 | 100 % (flipped z: 0 %) | 35.2 (−1.7 %/it) |
+
+A uniform guess inside the ±0.45c fit window gives 1.08 Å, so the blind fits carry no depth
+information. At the geometric depth origin, Ti selected by scattering weight (`make_figures.py`
+fig 4 — the RMS column above used `zs[::2]`, which also caught the cap-plane apical O): blind
+0.3 Å 1.43 Å and 9/25 cells, blind 0.15 Å **1.54 Å** and 10/25, known start **0.54 Å** and 25/25.
+Same processing, k_z prominence / top-two-bin power: 5.6× / 47.1 %, 3.1× / 22.7 %, 6.9× / 13.5 %;
+NL70 4.4× / 4.7 % (3.9× without the per-layer median removal `load_volume` applies). Flipping z sends the known start to 0 %, so the depth
+convention is right. Both blind runs are still descending at 200 iterations. Next tests, in order: continue
+the 0.15 Å run to ≥1000 iterations (`PROBE_START`/restart from step02), then a known start on the
+0.15 Å data to see whether that basin is reachable at all from this sampling.
 
 The metric is validated: run on `~/Desktop/NL70_new_vol.npy` it reproduces that run's published
 0.257 Å⁻¹ / 3.9 Å / 4.0× as **0.2574 / 3.885 / 3.92×**.
@@ -77,13 +118,10 @@ reaches **35.2** and keeps the comb (3.2–5.3 vs 0.4–0.7 blind); the matched-
 
 ## 3. Open
 
-1. **The 0.15 Å full-resolution object has not been analysed.** Only the *presolve* engine
-   (`*_Ndp118_step01*`, 0.099 Å pixels) was pulled. On it the lattice is recovered but the sign
-   readout gives 41 % with a common-mode positive bias on all four domains — expected, since the
-   sign lives in sub-Å offsets between the Pb and Ti–O sublattices. Pull
-   `recon_hsa0_NL26/01/*step02*/Niter200.mat` and re-run `check_recon.py` + the readout.
-   **Beware `ls -1v`** on these folder names: `g32` (step02) sorts before `g64` (step01), so
-   `| tail -1` yields the *presolve* file. Select `*step02*` explicitly.
+1. **Blind depth at 0.15 Å step does not place atoms** (§2): comb present, atoms at RMS 1.54 Å,
+   sign readout 10/25 cells, residual still falling at 200 iterations. Run it longer; then a known start
+   on the 0.15 Å data. **Beware `ls -1v`** on these folder names: `g32` (step02) sorts before `g64`
+   (step01), so `| tail -1` yields the *presolve* file. Select `*step02*` explicitly.
 2. **Leg A (marker specimen) was simulated but never reconstructed.** Both NL26 jobs loaded 25 600
    positions, i.e. both ran leg B — the recon folder tag did not include the data source, so the
    second launch re-pointed the first's symlinks. Fixed in `c25719b`; the sim
@@ -92,7 +130,9 @@ reaches **35.2** and keeps the comb (3.2–5.3 vs 0.4–0.7 blind); the matched-
    z-degeneracy hypothesis.
 3. Frozen phonons and finite dose are both off. `--phonons` and `sim/add_poisson_noise.py` exist.
 4. Per-column (rather than per-domain) sign, which needs the depth route working blind.
-5. HSA sweep of the sign test itself (jobs 1274400–1274403) — results not yet read.
+5. ~~HSA sweep of the sign test~~ — done, §1: 4/4 at every hole 50–95 mrad.
+6. The sign test uses 200 patterns per domain at infinite dose. A Poisson draw at the
+   e⁻/pattern of §1 would turn the expected-LLR table into an error rate.
 
 ---
 
@@ -136,7 +176,8 @@ bash fusion/run_gpu.sh depth_constraint --thickness 3 5 10 20
 ~/hyperspy-bundle/bin/python make_figure.py --budget runs/fusion/hollow_budget.json
 ```
 
-`SCAN_STEP=0.15` is now the default worth using — 0.3 does not give depth.
+`SCAN_STEP=0.15` removes the Nyquist mode; neither step yet gives atom depths blind (§2).
+Figures: `~/hyperspy-bundle/bin/python make_figures.py` → `figs/fig1`–`fig5`.
 
 ---
 
