@@ -82,6 +82,5 @@ done
 
 echo
 echo "when they finish:"
-echo "  ~/hyperspy-bundle/bin/python fusion/make_figure.py \\"
-echo "      --recon fusion/runs/recon_<TAG above>/01/*step02*/Niter*.mat \\"
-echo "      --budget fusion/runs/fusion/hollow_budget.json --out fusion/fusion_headline.png"
+echo "  ~/hyperspy-bundle/bin/python fusion/check_recon.py \\"
+echo "      --recon fusion/runs/recon_<TAG above>/01/*step02*/Niter*.mat"

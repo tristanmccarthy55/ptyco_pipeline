@@ -6,7 +6,7 @@ state of play: what is established, what is still open, where everything lives, 
 Repo `ptychoshelves-clean` == `origin/main` (github `tristanmccarthy55/ptyco_pipeline`). Blythe:
 `$SHARE/phucrh/ptyco_baseline/ptyco_pipeline`. **Runs are sbatch-only — hand the user commands.**
 Analysis env `~/hyperspy-bundle/bin/python`. `fusion/runs/` is gitignored; Desktop copies under
-`~/Desktop/fusion_recons/round{2,3,4}/` are the durable record.
+`~/Desktop/fusion_recons/round{2,3,4,5}/` are the durable record.
 
 ---
 
@@ -43,7 +43,8 @@ magic angle the anisotropy inverts and saturates rather than vanishing.
 
 **Measured dose split** (on the simulated patterns, not estimated): 0.50α → 24.3 % EELS, **0.75α →
 55.5 / 44.5**, 0.95α → 89.8 %. Simultaneous HAADF takes 1.0 % of the beam and cannot separate the
-domains at all (0.99 % spread) — as it must not.
+domains at all (0.99 % spread) — as it must not. Do not show that image: the probe is 20 Å
+overfocused (the ptychography geometry) and there are no phonons, so columns image as rings.
 
 **Degeneracies verified, not assumed.** A≡B and C≡D in EELS to < 1e-12 (a round aperture cannot tell
 an x-chain from a y-chain). The sign-encoding null — δ purely in-plane, so flipping δz is a no-op —
@@ -69,7 +70,7 @@ data with the exact probe and positions. Ruled out in order:
 | binned window truncation | probe intensity outside 11.7 Å window | **no** — 0.2–0.5 % |
 | engine can't model the data | `known_object.py`, object frozen | **no** — truth scores **73.1** vs blind converged **158.8** |
 | probe / beta_LSQ / bin / thickness | the user's NL70 labyrinth run works at 70 Å with betaLSQ 0.1, NpbstInf, p1, bin 4, reg 0, dz 0.999 | **no** — those are our settings |
-| **scan redundancy** | re-sim at 0.15 Å step (25 600 positions) | **YES** |
+| **scan redundancy** | re-sim at 0.15 Å step (25 600 positions) | **partly** — removes the Nyquist mode; atoms still not placed |
 
 **Scan sampling explains the Nyquist artefact — not the whole failure.** At 0.3 Å step the depth
 power sits at the layer-grid Nyquist — the two-slice odd/even mode
@@ -95,7 +96,7 @@ top two kz bins. At **0.15 Å** step (matching NL70) the peak moves to the real 
 
 A uniform guess inside the ±0.45c fit window gives 1.08 Å, so the blind fits carry no depth
 information. At the geometric depth origin, Ti selected by scattering weight (`make_figures.py`
-fig 4 — the RMS column above used `zs[::2]`, which also caught the cap-plane apical O): blind
+fig 5 — the RMS column above used `zs[::2]`, which also caught the cap-plane apical O): blind
 0.3 Å 1.43 Å and 9/25 cells, blind 0.15 Å **1.54 Å** and 10/25, known start **0.54 Å** and 25/25.
 Same processing, k_z prominence / top-two-bin power: 5.6× / 47.1 %, 3.1× / 22.7 %, 6.9× / 13.5 %;
 NL70 4.4× / 4.7 % (3.9× without the per-layer median removal `load_volume` applies). Flipping z sends the known start to 0 %, so the depth
@@ -149,7 +150,7 @@ reaches **35.2** and keeps the comb (3.2–5.3 vs 0.4–0.7 blind); the matched-
 | `known_object.py` | writes the TRUE object in the engine's frame; optimiser-vs-model diagnosis |
 | `check_recon.py` | **run before reading physics off any reconstruction** — did it recover depth? |
 | `analyze_fusion.py` | matched-filter depth readout, EELS magnitude inversion, fusion |
-| `make_figure.py` | the headline figure |
+| `make_figures.py` | figures 1–5 (headline, EELS axis, sign vs hole, phase volume, atoms in depth) |
 | `../ptycho/run_fusion_hollow.m` | MHP driver: `run_synthetic_recon_ML.m` + the hole, `KNOWN_OBJECT`, `OBJECT_START` |
 | `test_fusion.py` | 19 tests, includes the labyrinth-code-untouched gate |
 
@@ -173,7 +174,7 @@ bash fusion/run_gpu.sh depth_constraint --thickness 3 5 10 20
 
 # read out
 ~/hyperspy-bundle/bin/python check_recon.py --recon <...>/*step02*/Niter*.mat
-~/hyperspy-bundle/bin/python make_figure.py --budget runs/fusion/hollow_budget.json
+~/hyperspy-bundle/bin/python make_figures.py              # figures 1-5, inputs under ~/Desktop/fusion_recons
 ```
 
 `SCAN_STEP=0.15` removes the Nyquist mode; neither step yet gives atom depths blind (§2).

@@ -36,5 +36,4 @@ matlab -nodisplay -nosplash -nodesktop \
     echo "[$(date)] HOLLOW RECON FAILED (exit $?)"; exit 1; }
 
 echo "[$(date)] done. Read it out with:"
-echo "  ~/hyperspy-bundle/bin/python fusion/make_figure.py --recon <this run>/01/*/Niter*.mat \\"
-echo "      --budget fusion/runs/fusion/hollow_budget.json --out fusion/fusion_headline.png"
+echo "  ~/hyperspy-bundle/bin/python fusion/check_recon.py --recon <this run>/01/*step02*/Niter*.mat"

@@ -2,14 +2,14 @@
 """@file make_figures.py
 @brief Figures for the hollow-detector fusion study, from the real simulations, reconstructions and spectra.
 
-  1  the measurement    -- the detector plane (mean and single patterns, the holes), the measured
-                           dose split, and the simultaneous virtual HAADF / BF images
-  2  sign vs hole size  -- the blind likelihood-ratio sign test at 50-95 mrad: evidence per recorded
+  1  the headline       -- the specimen, the detector split into its two channels, and the fusion
+                           of the EELS |delta_z| with the sign the hollow data decide
+  2  the EELS axis      -- the CASTEP ladder, the domain spectra, and the inversion to |delta_z|
+  3  sign vs hole size  -- the blind likelihood-ratio sign test at 50-95 mrad: evidence per recorded
                            and per incident electron, and the electrons per pattern that implies
-  3  the phase volume   -- projected phase, depth sections through Pb and Ti-O columns against the
-                           true atom depths, and the k_z spectra
-  4  atoms in depth     -- fitted atom depths and the per-cell sign readout, blind against known start
-  5  the EELS axis      -- the CASTEP ladder, the domain spectra, and the inversion to |delta_z|
+  4  the phase volume   -- projected phase at the true column positions, depth sections through Pb
+                           and Ti-O columns against the true atom depths, and the k_z spectra
+  5  atoms in depth     -- fitted atom depths and the per-cell sign readout, blind against known start
 
 Inputs are the Blythe pulls under ~/Desktop/fusion_recons/round2-5 (fusion/runs is gitignored).
 
@@ -102,105 +102,215 @@ def eels_dz_prior(truth):
 
 
 # ---------------------------------------------------------------- figure 1
-def figure_measurement(truth, out):
-    """@brief What one hollow-detector scan records: the patterns, the split, the virtual images."""
-    d = dp_samples()
-    th, M = d["theta_mrad"], d["mean"]
-    alpha = float(d["convergence_mrad"])
-    R = th.shape[0] * float(d["d_alpha_mrad"]) / 2
-    ext = [-R, R, R, -R]
+INK = "#14131A"
+
+
+def _glyph(ax, x, y, delta, dmax, scale):
+    """@brief A polarisation vector seen down the beam: dot/cross ring for sign(delta_z), arrow for delta_xy.
+
+    Ring radius is proportional to |delta_z| and arrow length to |delta_xy|, both to one scale.
+    """
+    from matplotlib.patches import Circle, FancyArrowPatch
+    r = 0.32 * scale * abs(delta[2]) / dmax
+    ax.add_patch(Circle((x, y), r, fc="white", ec=INK, lw=1.8, zorder=3))
+    if delta[2] > 0:
+        ax.add_patch(Circle((x, y), 0.24 * r, fc=INK, ec="none", zorder=4))
+    else:
+        k = 0.6 * r
+        for sgn in (1, -1):
+            ax.plot([x - k, x + k], [y - sgn * k, y + sgn * k], color=INK, lw=1.8, zorder=4,
+                    solid_capstyle="round")
+    L = scale * np.asarray(delta[:2], float) / dmax
+    if np.linalg.norm(L) > 1e-9:
+        u = L / np.linalg.norm(L)
+        p0 = np.array([x, y]) + u * r
+        ax.add_patch(FancyArrowPatch(tuple(p0), tuple(p0 + L), arrowstyle="-|>", mutation_scale=15,
+                                     lw=2.0, color=INK, zorder=3, shrinkA=0, shrinkB=0))
+
+
+def figure_headline(truth, out, hole=75.0):
+    """@brief The whole argument in three panels: the specimen, the split detector, and the fusion."""
+    from matplotlib.lines import Line2D
+    from matplotlib.patches import Rectangle, Wedge
     names = names_of(truth)
-    a = float(truth["a"])
+    a, n_lat = float(truth["a"]), int(truth["n_lat"])
+    box, dmax = float(truth["box_A"]), float(truth["delta_Ti_A"])
+    half = box / 2
 
-    fig = plt.figure(figsize=(13.2, 7.0), constrained_layout=True)
-    gs = fig.add_gridspec(2, 4)
+    with plt.rc_context({"font.size": 10, "axes.titlesize": 10.5, "axes.labelsize": 10}):
+        fig = plt.figure(figsize=(13.2, 4.9), constrained_layout=True)
+        gs = fig.add_gridspec(1, 3, width_ratios=[1, 1, 1.3])
 
-    def rings(ax):
-        ax.add_patch(Circle((0, 0), alpha, fill=False, ec="white", lw=0.9, ls="--"))
-        for h in (50, 90, 95):
-            ax.add_patch(Circle((0, 0), h, fill=False, ec="white", lw=0.6, alpha=0.45))
-        ax.add_patch(Circle((0, 0), 75, fill=False, ec=HOLE_C, lw=1.8))
+        # (a) the specimen, seen down the beam
+        ax = fig.add_subplot(gs[0])
+        for k in range(n_lat + 1):
+            ax.axhline(k * a, color="#E6E3EC", lw=0.6, zorder=0)
+            ax.axvline(k * a, color="#E6E3EC", lw=0.6, zorder=0)
+        ax.axhline(half, color="#8F8A99", lw=1.4, zorder=1)
+        ax.axvline(half, color="#8F8A99", lw=1.4, zorder=1)
+        scale = 0.36 * half
+        for k, n in enumerate(names):
+            qx, qy = (int(v) for v in truth["quads"][k])
+            x0, y0 = qx * half, qy * half
+            d = np.asarray(truth["deltas"][k], float)
+            L = scale * d[:2] / dmax
+            cx, cy = x0 + half / 2 - 0.5 * L[0], y0 + half / 2 + 1.2 - 0.5 * L[1]
+            _glyph(ax, cx, cy, d, dmax, scale)
+            ax.text(x0 + 1.4, y0 + half - 1.4, n, ha="left", va="top", fontsize=15,
+                    weight="bold", color=INK)
+            ax.text(x0 + 4.6, y0 + half - 2.1, f"θ = {float(truth['theta_deg'][k]):.0f}°",
+                    ha="left", va="top", fontsize=9, color="0.4")
+            ax.text(x0 + half / 2, y0 + 2.0, f"({d[0]:+.2f}, {d[1]:+.2f}, {d[2]:+.2f})",
+                    ha="center", va="bottom", fontsize=8.5, family="monospace", color="0.3")
+        ax.set_xlim(0, box); ax.set_ylim(0, box); ax.set_aspect("equal")
+        ax.set_xticks([]); ax.set_yticks([])
+        for s_ in ax.spines.values():
+            s_.set_visible(True); s_.set_color("#8F8A99")
+        ax.set_title(f"(a) specimen: {n_lat} × {n_lat} × {int(truth['n_z'])} cells, "
+                     f"{float(truth['slab_thickness_A']):.1f} Å thick", loc="left")
+        ax.text(0.0, -0.04, f"|δ| = {dmax:.3f} Å in every domain; only its direction differs\n"
+                "⊙ δz > 0    ⊗ δz < 0    ring ∝ |δz|    arrow ∝ δxy    δ in Å",
+                transform=ax.transAxes, va="top", fontsize=8.5, color="0.35", linespacing=1.6)
+
+        # (b) the detector: the measured mean pattern, split into the two channels
+        ax = fig.add_subplot(gs[1])
+        dps = dp_samples()
+        th, M = dps["theta_mrad"], dps["mean"]
+        alpha = float(dps["convergence_mrad"])
+        R = th.shape[0] * float(dps["d_alpha_mrad"]) / 2
+        eels = M[th < hole].sum() / M.sum()
+        norm = LogNorm(vmin=M.max() * 1e-5, vmax=M.max())
+        ax.imshow(np.maximum(M, norm.vmin), cmap="gray", norm=norm, extent=[-R, R, R, -R])
+        ax.add_patch(Wedge((0, 0), R, 0, 360, width=R - hole, fc=PTY_C, alpha=0.18, ec="none"))
+        ax.add_patch(Circle((0, 0), hole, fc=EELS_C, alpha=0.55, ec="none"))
+        ax.add_patch(Circle((0, 0), alpha, fill=False, ec="white", lw=1.0, ls=(0, (4, 3))))
+        ax.text(0, 0, f"hole → EELS\n{100 * eels:.0f} % of beam", ha="center", va="center",
+                fontsize=10, weight="bold", color="white")
+        ax.text(0, -(hole + R) / 2 - 8, f"annulus → ptychography  {100 * (1 - eels):.0f} %",
+                ha="center", va="center", fontsize=9.5, weight="bold", color=PTY_C,
+                bbox=dict(boxstyle="round,pad=0.3", fc="white", ec="none", alpha=0.92))
+        ax.text(alpha * 0.71 + 6, alpha * 0.71 + 6, "α", color="white", fontsize=10)
         ax.set_xlim(-R, R); ax.set_ylim(R, -R)
         ax.set_xticks([-200, -100, 0, 100, 200]); ax.set_yticks([-200, -100, 0, 100, 200])
+        ax.set_xlabel("scattering angle (mrad)")
+        ax.set_title(f"(b) one detector, two channels: {hole:.0f} mrad hole", loc="left")
 
-    pats = [("(a) mean of %d patterns" % int(d["n_pos"]), M)]
-    pats += [(f"({'bcd'[k]}) probe {lab}", d["singles"][k]) for k, lab in enumerate(d["single_labels"])]
-    for k, (title, P) in enumerate(pats):
-        ax = fig.add_subplot(gs[0, k])
-        norm = LogNorm(vmin=P.max() * 1e-5, vmax=P.max())
-        ax.imshow(np.maximum(P, norm.vmin), cmap="magma", norm=norm, extent=ext)
-        rings(ax)
-        ax.set_title(title, loc="left")
-        ax.set_xlabel("θx (mrad)")
-        if k == 0:
-            ax.set_ylabel("θy (mrad)")
-            ax.text(0.03, 0.97, "cyan: 75 mrad hole → EELS\ndashed: α = 100 mrad\nfaint: 50 / 90 / 95",
-                    transform=ax.transAxes, va="top", fontsize=7.5, color="white")
-        else:
-            ax.set_yticklabels([])
+        # (c) the fusion, per domain
+        ax = fig.add_subplot(gs[2])
+        theta = AF.eels_theta_from_contrast(truth, alpha, hole)
+        sweep = {r["hole"]: r for r in sign_sweep()}[hole]
+        ys = {n: len(names) - 1 - k for k, n in enumerate(names)}
+        for k, n in enumerate(names):
+            y = ys[n]
+            d = np.asarray(truth["deltas"][k], float)
+            mag = float(np.linalg.norm(d[:2]) / np.tan(np.radians(theta[n])))
+            res = sweep["dom"][n]
+            s = 1.0 if res["decided"] == "up" else -1.0
+            ax.plot([-mag, mag], [y, y], color=EELS_C, lw=1.2, alpha=0.45, zorder=1)
+            ax.annotate("", xy=(s * mag * 0.93, y + 0.30), xytext=(0, y + 0.30),
+                        arrowprops=dict(arrowstyle="-|>", color=PTY_C, lw=2.2, mutation_scale=14))
+            ax.scatter([-mag, mag], [y, y], s=130, facecolors="white", edgecolors=EELS_C,
+                       linewidths=2.0, zorder=3)
+            ax.plot([d[2], d[2]], [y - 0.22, y + 0.18], color="0.55", lw=1.6, zorder=2)
+            ax.scatter([s * mag], [y], s=42, color=INK, zorder=4)
+            ax.text(0.47, y, f"{res['frac']} %", ha="right", va="center", fontsize=9.5,
+                    color=PTY_C, weight="bold")
+            print(f"[fig1] {n}: EELS |dz| {mag:.4f} (truth {abs(d[2]):.4f}), sign {res['decided']} "
+                  f"({res['frac']} % of patterns), fused {s * mag:+.4f} vs truth {d[2]:+.4f}")
+        ax.axvline(0, color="0.75", lw=1.0, zorder=0)
+        ax.set_yticks([ys[n] for n in names])
+        ax.set_yticklabels(names, fontsize=12, weight="bold")
+        ax.set_ylim(-0.7, len(names) - 0.15)
+        ax.set_xlim(-0.42, 0.50)
+        ax.set_xticks([-0.3, -0.15, 0, 0.15, 0.3])
+        ax.set_xlabel("δz (Å)")
+        ax.text(0.47, len(names) - 0.38, "patterns correct", ha="right", va="center",
+                fontsize=8.5, color=PTY_C)
+        ax.spines["left"].set_visible(False)
+        ax.tick_params(axis="y", length=0)
+        handles = [Line2D([], [], ls="none", marker="o", ms=9, mfc="white", mec=EELS_C, mew=2,
+                          label="EELS: |δz|, either sign"),
+                   Line2D([], [], color=PTY_C, lw=2.2, marker=">", ms=7, label="hollow data: the sign"),
+                   Line2D([], [], ls="none", marker="o", ms=6, color=INK, label="fused δz"),
+                   Line2D([], [], color="0.55", lw=1.6, label="ground truth")]
+        ax.legend(handles=handles, frameon=False, fontsize=8.5, ncol=2, loc="upper center",
+                  bbox_to_anchor=(0.45, -0.14))
+        ax.set_title("(c) fusion: EELS leaves ±|δz|, the recorded annulus picks one", loc="left")
 
-    # (e, f) the simultaneous virtual images, on the 0.15 A scan, with the four domains marked
-    b = json.load(open(S015_BUDGET))
-    cx, cy = b["scan_center_A"]
-    w = float(b["scan_window_A"])
-    wall = 0.5 * float(truth["box_A"])                       # the four domains meet at the centre
-    for k, (fn, lbl, rng_mrad, frac) in enumerate((
-            ("haadf", "HAADF", "100–200", 100 * M[th >= 100].sum() / M.sum()),
-            ("bf", "BF", "0–100", 100 * M[th <= alpha].sum() / M.sum()))):
-        img = np.load(os.path.join(R5, "fusion_s015", f"{fn}.npy")).T   # (nx, ny) -> rows = y
-        X = np.linspace(cx - w / 2, cx + w / 2, img.shape[1])
-        Y = np.linspace(cy - w / 2, cy + w / 2, img.shape[0])
-        XX, YY = np.meshgrid(X, Y)
-        dom = truth["domain_grid"][np.floor(XX / a).astype(int) % int(truth["n_lat"]),
-                                   np.floor(YY / a).astype(int) % int(truth["n_lat"])]
-        means = [img[dom == n].mean() for n in names]
-        spread = 100 * (max(means) - min(means)) / np.mean(means)
-        ax = fig.add_subplot(gs[1, k])
-        ax.imshow(img, cmap="gray", extent=[X[0], X[-1], Y[-1], Y[0]])
-        ax.axvline(wall, color="white", lw=0.8, alpha=0.7)
-        ax.axhline(wall, color="white", lw=0.8, alpha=0.7)
-        for n in names:
-            m = dom == n
-            ax.text(XX[m].mean(), YY[m].mean(), n, ha="center", va="center", fontsize=11,
-                    weight="bold", color=COL[n],
-                    bbox=dict(boxstyle="round,pad=0.15", fc="white", ec="none", alpha=0.8))
-        ax.set_title(f"({'ef'[k]}) virtual {lbl} · {frac:.1f} % of beam", loc="left")
-        ax.set_xlabel("x (Å)")
-        if k == 0:
-            ax.set_ylabel("y (Å)")
-        ax.text(0.5, -0.24, f"{rng_mrad} mrad · domain means within {spread:.2f} %",
-                transform=ax.transAxes, ha="center", fontsize=8, color="0.35")
-        print(f"[fig1] {fn}: {frac:.2f} % of beam, domain means within {spread:.2f} %")
-
-    # (g) the split itself, measured on the patterns
-    ax = fig.add_subplot(gs[1, 2:])
-    tg = np.arange(0, 201)
-    inside = np.array([M[th < t].sum() for t in tg]) / M.sum() * 100
-    ax.plot(tg, inside, color=EELS_C, lw=2.2, label="through the hole → spectrometer")
-    ax.plot(tg, 100 - inside, color=PTY_C, lw=2.2, label="recorded → hollow ptychography")
-    ax.axvline(alpha, color="0.55", lw=0.9, ls="--")
-    ax.text(alpha + 2, 50, "α", color="0.4", fontsize=9)
-    for h, (tx, ty, ha) in ((50, (-6, 7, "right")), (75, (8, -12, "left")),
-                            (90, (-6, 7, "right")), (95, (-6, 7, "right"))):
-        v = np.interp(h, tg, inside)
-        ax.plot([h], [v], "o", color=EELS_C, ms=5.5, mec="white", mew=1)
-        ax.annotate(f"{v:.1f} %", (h, v), xytext=(tx, ty), textcoords="offset points",
-                    fontsize=8, color=EELS_C, ha=ha)
-    ax.annotate(f"{100 - inside[100]:.2f} % beyond α — the HAADF band", (150, 100 - inside[150]),
-                xytext=(0, 22), textcoords="offset points", fontsize=8, color=PTY_C, ha="center",
-                arrowprops=dict(arrowstyle="-", color=PTY_C, lw=0.8))
-    ax.set_xlim(0, 200); ax.set_ylim(-3, 103)
-    ax.set_xlabel("hole semi-angle (mrad)"); ax.set_ylabel("% of the incident beam")
-    ax.set_title("(g) the dose split, measured on the simulated patterns", loc="left")
-    ax.legend(frameon=False, fontsize=8, loc="center right")
-
-    fig.suptitle("One scan, 300 keV, α = 100 mrad, 200 mrad detector: the hole is a dose splitter, "
-                 "and the conventional images cannot see the domains", fontsize=10)
-    fig.savefig(out, dpi=170)
+        fig.savefig(out, dpi=170)
     print(f"wrote {out}")
 
 
 # ---------------------------------------------------------------- figure 2
+def figure_eels(truth, out, alpha=100.0, beta=75.0):
+    """@brief The CASTEP ladder, the domain spectra, and the inversion to |delta_z|."""
+    lad = F.load_ladder()
+    s_grid, e, S_par, S_perp = lad
+    w = F.aperture_weights(alpha, beta)
+    dmax = float(truth["delta_Ti_A"])
+    names = names_of(truth)
+    m = (e >= -3) & (e <= 30)
+
+    fig, ax = plt.subplots(1, 3, figsize=(13.2, 4.1), constrained_layout=True)
+
+    # (a) the displacement ladder, q perp c -- the channel a 100 mrad probe lands on
+    ramp = plt.get_cmap("viridis")(np.linspace(0.05, 0.78, len(s_grid)))   # skip the pale yellow
+    for i, sv in enumerate(s_grid):
+        ax[0].plot(e[m], S_perp[i][m] / S_perp.max(), color=ramp[i], lw=1.7,
+                   label=f"s = {sv:.2f}")
+    ax[0].set_xlabel("energy − O-K onset (eV)"); ax[0].set_ylabel("intensity (norm.)")
+    ax[0].set_title("(a) CASTEP ladder, q ⊥ c", loc="left")
+    ax[0].legend(frameon=False, fontsize=7.5, title="along-chain distortion", title_fontsize=7.5,
+                 loc="upper right")
+    ax[0].annotate("π* grows with the\npolar displacement", (8.9, 1.0), xytext=(7.2, 0.97),
+                   textcoords="data", fontsize=8, color="0.4", ha="right", va="top",
+                   arrowprops=dict(arrowstyle="-", color="0.55", lw=0.8))
+
+    # (b) the four domains, and the difference
+    spec = {n: F.column_spectrum(truth["deltas"][k], dmax, w, lad) for k, n in enumerate(names)}
+    ref = spec[names[0]]
+    for n in names[1:]:
+        ax[1].plot(e[m], (spec[n] - ref)[m] / ref[m].max() * 100, color=COL[n],
+                   lw=2.6 if n == "C" else 1.5,
+                   label=f"{n} − A   |δz| = {abs(truth['deltas'][names.index(n)][2]):.3f} Å")
+    ax[1].annotate("C − A and D − A coincide", (0.97, 0.10), xycoords="axes fraction",
+                   ha="right", fontsize=8, color="0.4")
+    ax[1].axhline(0, color="0.4", lw=0.8)
+    ax[1].set_xlabel("energy − O-K onset (eV)"); ax[1].set_ylabel("difference (% of edge max)")
+    ax[1].set_title("(b) domain spectra, differenced", loc="left")
+    ax[1].legend(frameon=False, fontsize=7.5)
+    ax[1].annotate("B − A ≡ 0 : sign-blind", (0.04, 0.16), xycoords="axes fraction",
+                   fontsize=8.5, color=COL["B"], weight="bold")
+
+    # (c) the inversion: contrast against |delta_z|
+    th = np.linspace(0, 90, 46)
+    lib = [F.column_spectrum(dmax * np.array([np.sin(np.radians(t)), 0, np.cos(np.radians(t))]),
+                             dmax, w, lad) for t in th]
+    base = lib[0]
+    c = np.array([F.contrast(x, base, e) * 100 for x in lib])
+    dz = dmax * np.cos(np.radians(th))
+    ax[2].plot(dz, c, color="#6D4AA6", lw=2)
+    for k, n in enumerate(names):
+        dzk = abs(truth["deltas"][k][2])
+        ck = np.interp(-dzk, -dz, c)
+        ax[2].scatter([dzk], [ck], s=48, color=COL[n], zorder=3, edgecolors="white", linewidths=1.2)
+        ax[2].annotate(n, (dzk, ck), xytext=(7 if n in ("A", "C") else -13, 5),
+                       textcoords="offset points", fontsize=9, color=COL[n], weight="bold")
+    ax[2].set_xlabel("|δz| (Å)"); ax[2].set_ylabel("O-K contrast vs fully along-beam (%)")
+    ax[2].set_title("(c) EELS is monotonic in |δz|", loc="left")
+    for lbl, k in (("A, B coincide — sign-blind", 0), ("C, D coincide", 2)):
+        dzk = abs(truth["deltas"][k][2])
+        ax[2].annotate(lbl, (dzk, np.interp(-dzk, -dz, c)), xytext=(-30, -24) if k == 0 else (-14, -26),
+                       textcoords="offset points", fontsize=8, color="0.4", ha="right",
+                       arrowprops=dict(arrowstyle="-", color="0.55", lw=0.8))
+
+    fig.suptitle("The EELS axis: O-K near-edge structure carries |δz|, and nothing about its sign",
+                 fontsize=10)
+    fig.savefig(out, dpi=170)
+    print(f"wrote {out}")
+
+
+# ---------------------------------------------------------------- figure 3
 _LLR = re.compile(r"  ([ABCD]): truth\s+(\w+), decided\s+(\w+)\s+(?:OK|WRONG)\s+\|\s+LLR ([-+0-9.e]+) "
                   r"\(([-+0-9.e]+)/pattern\), (\d+)% of individual")
 
@@ -280,7 +390,7 @@ def figure_sign(truth, out):
     print(f"wrote {out}")
 
 
-# ---------------------------------------------------------------- figure 3
+# ---------------------------------------------------------------- figure 4
 def _cell(truth, X, Y):
     a, n = float(truth["a"]), int(truth["n_lat"])
     return int(np.floor(X / a + 1e-6)) % n, int(np.floor(Y / a + 1e-6)) % n
@@ -445,7 +555,7 @@ def figure_volume(truth, out):
     print(f"wrote {out}")
 
 
-# ---------------------------------------------------------------- figure 4
+# ---------------------------------------------------------------- figure 5
 def fit_z(profile, z, z0, half):
     """@brief Sub-layer z centroid of the peak nearest z0, by parabolic fit on the maximum."""
     m = np.abs(z - z0) <= half
@@ -552,80 +662,11 @@ def figure_atoms(truth, out):
     print(f"wrote {out}")
 
 
-# ---------------------------------------------------------------- figure 5
-def figure_eels(truth, out, alpha=100.0, beta=75.0):
-    """@brief The CASTEP ladder, the domain spectra, and the inversion to |delta_z|."""
-    lad = F.load_ladder()
-    s_grid, e, S_par, S_perp = lad
-    w = F.aperture_weights(alpha, beta)
-    dmax = float(truth["delta_Ti_A"])
-    names = names_of(truth)
-    m = (e >= -3) & (e <= 30)
-
-    fig, ax = plt.subplots(1, 3, figsize=(13.2, 4.1), constrained_layout=True)
-
-    # (a) the displacement ladder, q perp c -- the channel a 100 mrad probe lands on
-    ramp = plt.get_cmap("viridis")(np.linspace(0.05, 0.78, len(s_grid)))   # skip the pale yellow
-    for i, sv in enumerate(s_grid):
-        ax[0].plot(e[m], S_perp[i][m] / S_perp.max(), color=ramp[i], lw=1.7,
-                   label=f"s = {sv:.2f}")
-    ax[0].set_xlabel("energy − O-K onset (eV)"); ax[0].set_ylabel("intensity (norm.)")
-    ax[0].set_title("(a) CASTEP ladder, q ⊥ c", loc="left")
-    ax[0].legend(frameon=False, fontsize=7.5, title="along-chain distortion", title_fontsize=7.5,
-                 loc="upper right")
-    ax[0].annotate("π* grows with the\npolar displacement", (8.9, 1.0), xytext=(7.2, 0.97),
-                   textcoords="data", fontsize=8, color="0.4", ha="right", va="top",
-                   arrowprops=dict(arrowstyle="-", color="0.55", lw=0.8))
-
-    # (b) the four domains, and the difference
-    spec = {n: F.column_spectrum(truth["deltas"][k], dmax, w, lad) for k, n in enumerate(names)}
-    ref = spec[names[0]]
-    for n in names[1:]:
-        ax[1].plot(e[m], (spec[n] - ref)[m] / ref[m].max() * 100, color=COL[n],
-                   lw=2.6 if n == "C" else 1.5,
-                   label=f"{n} − A   |δz| = {abs(truth['deltas'][names.index(n)][2]):.3f} Å")
-    ax[1].annotate("C − A and D − A coincide", (0.97, 0.10), xycoords="axes fraction",
-                   ha="right", fontsize=8, color="0.4")
-    ax[1].axhline(0, color="0.4", lw=0.8)
-    ax[1].set_xlabel("energy − O-K onset (eV)"); ax[1].set_ylabel("difference (% of edge max)")
-    ax[1].set_title("(b) domain spectra, differenced", loc="left")
-    ax[1].legend(frameon=False, fontsize=7.5)
-    ax[1].annotate("B − A ≡ 0 : sign-blind", (0.04, 0.16), xycoords="axes fraction",
-                   fontsize=8.5, color=COL["B"], weight="bold")
-
-    # (c) the inversion: contrast against |delta_z|
-    th = np.linspace(0, 90, 46)
-    lib = [F.column_spectrum(dmax * np.array([np.sin(np.radians(t)), 0, np.cos(np.radians(t))]),
-                             dmax, w, lad) for t in th]
-    base = lib[0]
-    c = np.array([F.contrast(x, base, e) * 100 for x in lib])
-    dz = dmax * np.cos(np.radians(th))
-    ax[2].plot(dz, c, color="#6D4AA6", lw=2)
-    for k, n in enumerate(names):
-        dzk = abs(truth["deltas"][k][2])
-        ck = np.interp(-dzk, -dz, c)
-        ax[2].scatter([dzk], [ck], s=48, color=COL[n], zorder=3, edgecolors="white", linewidths=1.2)
-        ax[2].annotate(n, (dzk, ck), xytext=(7 if n in ("A", "C") else -13, 5),
-                       textcoords="offset points", fontsize=9, color=COL[n], weight="bold")
-    ax[2].set_xlabel("|δz| (Å)"); ax[2].set_ylabel("O-K contrast vs fully along-beam (%)")
-    ax[2].set_title("(c) EELS is monotonic in |δz|", loc="left")
-    for lbl, k in (("A, B coincide — sign-blind", 0), ("C, D coincide", 2)):
-        dzk = abs(truth["deltas"][k][2])
-        ax[2].annotate(lbl, (dzk, np.interp(-dzk, -dz, c)), xytext=(-30, -24) if k == 0 else (-14, -26),
-                       textcoords="offset points", fontsize=8, color="0.4", ha="right",
-                       arrowprops=dict(arrowstyle="-", color="0.55", lw=0.8))
-
-    fig.suptitle("The EELS axis: O-K near-edge structure carries |δz|, and nothing about its sign",
-                 fontsize=10)
-    fig.savefig(out, dpi=170)
-    print(f"wrote {out}")
-
-
-FIGURES = {"1": (figure_measurement, "fig1_measurement.png"),
-           "2": (figure_sign, "fig2_sign_vs_hole.png"),
-           "3": (figure_volume, "fig3_phase_volume.png"),
-           "4": (figure_atoms, "fig4_atoms_depth.png"),
-           "5": (figure_eels, "fig5_eels_axis.png")}
+FIGURES = {"1": (figure_headline, "fig1_headline.png"),
+           "2": (figure_eels, "fig2_eels_axis.png"),
+           "3": (figure_sign, "fig3_sign_vs_hole.png"),
+           "4": (figure_volume, "fig4_phase_volume.png"),
+           "5": (figure_atoms, "fig5_atoms_depth.png")}
 
 
 def main(argv=None) -> int:

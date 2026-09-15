@@ -15,11 +15,12 @@ mask, so sweeping the hollow semi-angle costs reconstructions, not simulations.
 
 ---
 
-## Status (2026-09-12) — the proof of concept works; the depth reconstruction is initialisation-limited
+## Status (2026-09-14) — the sign result holds at every hole size; blind depth sectioning is still open
 
 **The headline.** `sign_test.py` recovers sign(P_z) in **4 of 4 domains**, with **100 % of individual
 patterns** favouring the right hypothesis, using only the electrons **outside** the 0.75α hole and
-**no depth reconstruction at all**. Log-likelihood ratios scale with the signal as they should:
+**no depth reconstruction at all** — and it holds at every hole from 50 to 95 mrad (`HANDOVER.md` §1).
+Log-likelihood ratios scale with the signal as they should:
 ±0.997 for A/B (|δz| = 0.311 Å) against ±0.071 for C/D (|δz| = 0.166 Å). Fusion is what makes this
 a two-hypothesis problem in the first place: EELS fixes |δz|, projection fixes δxy, and only the
 stacking order is left to decide.
@@ -49,8 +50,7 @@ power 22.7 %) in the full-resolution one.
 scatter with RMS **1.54 Å** (no global z shift brings it below 1.4 Å) — worse than a uniform guess
 in the fit window (1.08 Å) — against **0.54 Å** for the known-start run. The matched-filter sign
 readout is at chance: **10 of 25 cells**. It is not a convention error: flipping z takes the known
-start from 100 % to 0 %. The
-residual ends at 159.0, still falling 0.4 %/iteration at 200, where the blind 0.3 Å run also ended
+start from 100 % to 0 %. The residual ends at 159.0, still falling 0.4 %/iteration at 200, where the blind 0.3 Å run also ended
 (159.2); the known start on the 0.3 Å data reaches 35.2. The sampling fixed the Nyquist mode, not
 the basin. Next: run the 0.15 Å reconstruction to ≥1000 iterations, and a known start on the
 0.15 Å data. Probe, β_LSQ, binning, layer count and thickness were eliminated first; see
@@ -112,7 +112,8 @@ Where the beam actually goes, measured on the simulated patterns (not estimated)
 | **0.75α** | **55.5 %** | **44.5 %** |
 | 0.95α | 89.8 % | 10.2 % |
 
-plus a simultaneous virtual HAADF (100–200 mrad) carrying 1.0 % of the beam. Nothing is lost to the
+plus a simultaneous virtual HAADF (100–200 mrad) carrying 1.0 % of the beam (not a fair image in
+this geometry: the probe is 20 Å overfocused for ptychography and the simulation has no phonons). Nothing is lost to the
 kept pixels: masking discards *information*, not counts, which is why MHP keeps sub-Å resolution.
 
 ---
@@ -186,7 +187,7 @@ homogeneity along the beam, one undistorted lattice). Writes `sample/toy_membran
 ~/hyperspy-bundle/bin/python analyze_fusion.py --predict
 ~/hyperspy-bundle/bin/python analyze_fusion.py --selftest
 ~/hyperspy-bundle/bin/python analyze_fusion.py --robustness
-~/hyperspy-bundle/bin/python make_figure.py               # headline figure, synthetic recon
+~/hyperspy-bundle/bin/python make_figures.py --fig 5      # EELS figure (local inputs only)
 ```
 
 ### 4. Simulate on Blythe (GPU)
@@ -222,10 +223,8 @@ with all of these so the log is self-documenting.
 ### 6. Read it out and make the figure
 
 ```bash
-~/hyperspy-bundle/bin/python fusion/make_figure.py \
-    --recon fusion/runs/recon_hsa0.75_NL24/01/*/Niter*.mat \
-    --budget fusion/runs/fusion/hollow_budget.json \
-    --out fusion/fusion_headline.png
+~/hyperspy-bundle/bin/python fusion/check_recon.py --recon fusion/runs/recon_<tag>/01/*step02*/Niter*.mat
+~/hyperspy-bundle/bin/python fusion/make_figures.py   # figures 1-5 from the pulls in ~/Desktop/fusion_recons
 ```
 
 ---
@@ -241,7 +240,7 @@ with all of these so the log is self-documenting.
 | `analyze_fusion.py` | the matched-filter sign readout, the EELS magnitude inversion, and the fusion |
 | `check_recon.py` | did a reconstruction recover DEPTH? run this before reading physics off one |
 | `sign_encoding.py` | is the sign in the data at all, and how does it grow with thickness (noiseless) |
-| `make_figure.py` | the headline figure |
+| `make_figures.py` | figures 1–5: headline, EELS axis, sign vs hole size, phase volume, atoms in depth |
 | `run_fusion_sim.slurm`, `run_fusion_recon.sh` | Blythe launchers |
 
 **Nothing specific to the PTO/STO labyrinth was touched.** `sim/simulate_4dstem.py` is imported and
@@ -259,6 +258,3 @@ sibling that differs only in the mask block, the depth-layer default and the out
 * The 4.7% contrast is a **domain-scale** measurement at realistic dose, not a per-probe-position
   one; bin over a domain before inverting for θ.
 * Frozen phonons are off by default (`--phonons 0`). Turn them on for the dose-realistic run.
-* The synthetic-reconstruction fallback in `make_figure.py` is a *model*, clearly labelled in the
-  panel; it exists so the figure and the readout are validated before the HPC run, not to stand in
-  for one.
