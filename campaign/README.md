@@ -46,7 +46,7 @@ CAMPAIGN=round    bash campaign/run_campaign.sh      # 7 α × 3 legs + pack job
 CAMPAIGN=nonround bash campaign/run_campaign.sh      # 5 levels × 3 legs + pack job
 ```
 Each prints a pack-job id and the exact `scp -O ...` line for the tarball
-(`$SHARE/<campaign>_results_<timestamp>.tgz`). The pack job is `afterany`, so a partial sweep
+(`$SHARE/$USER/<campaign>_results_<timestamp>.tgz`, i.e. your own subdirectory, not the group root). The pack job is `afterany`, so a partial sweep
 still comes down.
 
 Useful env overrides (defaults tuned for blind-fit convergence): `NITER=200 PSTART=40 BETA=0.05
