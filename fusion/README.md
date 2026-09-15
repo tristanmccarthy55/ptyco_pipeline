@@ -15,15 +15,18 @@ mask, so sweeping the hollow semi-angle costs reconstructions, not simulations.
 
 ---
 
-## Status (2026-09-14) — the sign result holds at every hole size; blind depth sectioning is still open
+## Status (2026-09-15) — the sign is in the hollow data (model test); it has not been recovered from a reconstruction
 
-**The headline.** `sign_test.py` recovers sign(P_z) in **4 of 4 domains**, with **100 % of individual
+**What is established — information content, not a measurement.** `sign_test.py`, a two-hypothesis
+model test on noiseless simulated patterns with the exact forward model, picks sign(P_z) in **4 of 4 domains**, with **100 % of individual
 patterns** favouring the right hypothesis, using only the electrons **outside** the 0.75α hole and
 **no depth reconstruction at all** — and it holds at every hole from 50 to 95 mrad (`HANDOVER.md` §1).
 Log-likelihood ratios scale with the signal as they should:
 ±0.997 for A/B (|δz| = 0.311 Å) against ±0.071 for C/D (|δz| = 0.166 Å). Fusion is what makes this
 a two-hypothesis problem in the first place: EELS fixes |δz|, projection fixes δxy, and only the
-stacking order is left to decide.
+stacking order is left to decide. **Recovering the sign from a reconstruction — the measurement — has not
+worked**: blind multislice does not place atoms at their depths, and atomfind's Ti-to-equatorial-O offsets
+on it give no interval that clears zero (`atomfind_sign.py`, `HANDOVER.md` §2).
 
 **Why the depth reconstruction failed, narrowed.** Three candidate explanations, all now tested:
 
@@ -240,7 +243,7 @@ with all of these so the log is self-documenting.
 | `analyze_fusion.py` | the matched-filter sign readout, the EELS magnitude inversion, and the fusion |
 | `check_recon.py` | did a reconstruction recover DEPTH? run this before reading physics off one |
 | `sign_encoding.py` | is the sign in the data at all, and how does it grow with thickness (noiseless) |
-| `make_figures.py` | figures 1–5: headline, EELS axis, sign vs hole size, phase volume, atoms in depth |
+| `make_figures.py` | figures 1–5: headline, EELS axis, model test vs hole size, depth sections with atomfind picks, Ti–equatorial-O offsets |
 | `run_fusion_sim.slurm`, `run_fusion_recon.sh` | Blythe launchers |
 
 **Nothing specific to the PTO/STO labyrinth was touched.** `sim/simulate_4dstem.py` is imported and

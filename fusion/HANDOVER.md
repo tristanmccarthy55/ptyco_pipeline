@@ -12,10 +12,13 @@ Analysis env `~/hyperspy-bundle/bin/python`. `fusion/runs/` is gitignored; Deskt
 
 ## 1. What is established
 
-**The proof of concept works.** `sign_test.py` recovers sign(P_z) in **4 of 4 domains**, 100 % of
+**The sign is in the data — shown by a model test, not measured.** `sign_test.py` picks sign(P_z) in
+**4 of 4 domains**, 100 % of
 individual patterns, using only detector pixels **outside** the 0.75α hole and **no depth
 reconstruction**. LLR ±0.997 for A/B (|δz| = 0.311 Å) against ±0.071 for C/D (|δz| = 0.166 Å).
-Fused δ matches ground truth exactly in all four domains.
+The candidates come from the same simulator as the patterns, with no noise and probe, positions and
+in-plane δ known, so this bounds what the data contain; it is not a measurement. Recovering the sign
+from a reconstruction failed (§2).
 
 **It holds at every hole size tested** (jobs 1274400–1274403; 200 patterns per domain): 4/4 and
 100 % of patterns at 50, 75, 90 and 95 mrad. `sign_test` normalises each pattern, so LLR/pattern is
@@ -95,8 +98,7 @@ top two kz bins. At **0.15 Å** step (matching NL70) the peak moves to the real 
 | known start, 0.3 Å, NL16 | **0.58 Å** | −0.72 | 100 % (flipped z: 0 %) | 35.2 (−1.7 %/it) |
 
 A uniform guess inside the ±0.45c fit window gives 1.08 Å, so the blind fits carry no depth
-information. At the geometric depth origin, Ti selected by scattering weight (`make_figures.py`
-fig 5 — the RMS column above used `zs[::2]`, which also caught the cap-plane apical O): blind
+information. At the geometric depth origin, Ti selected by scattering weight (the atom-fit figure, since replaced — the RMS column above used `zs[::2]`, which also caught the cap-plane apical O): blind
 0.3 Å 1.43 Å and 9/25 cells, blind 0.15 Å **1.54 Å** and 10/25, known start **0.54 Å** and 25/25.
 Same processing, k_z prominence / top-two-bin power: 5.6× / 47.1 %, 3.1× / 22.7 %, 6.9× / 13.5 %;
 NL70 4.4× / 4.7 % (3.9× without the per-layer median removal `load_volume` applies). Flipping z sends the known start to 0 %, so the depth
@@ -116,6 +118,13 @@ and apical O share a column 2 Å apart and blur together (domain A wrong even on
 | ideal, 0.1x recon background | 0.05 / 0.17 / 0.24 Å | 180/180 | 99 % | 4/4 |
 | ideal, 1x recon background (white) | 0.04 / 0.20 / 1.55 Å | 0 of 56 found | — | — |
 | blind 0.15 Å step02 | 0.91 / 0.60 / 1.58 Å | 44/141 | 64 % | A +0.02±0.08, B −0.13±0.19, C −0.06±0.24 (wrong), D −0.41±0.10 |
+
+**With atomfind's calibrated 95 % intervals** (split-conformal on each volume; z coverage 97 % blind,
+96 % reference; one-to-one species-agnostic match, so blind depth RMS reads Pb/Ti/O 0.87/0.48/0.76 Å)
+no blind Ti interval clears zero (0 of 44 usable; intervals ±1.3–1.6 Å) and every inverse-variance
+domain mean spans zero: A −0.01±0.35, B −0.04±0.47, C −0.11±0.66, D −0.38±0.41 Å. Reference at 0.1x
+background: 62 of 180 clear zero, all on the right side; means +0.31, −0.34, +0.19, −0.18 Å (±0.05).
+Figures 4 and 5 of `make_figures.py` draw exactly this.
 
 Atom positions carry the sign when the reconstruction has them at their depths; the blind object
 does not. The control uses the finder's own kernels, so it is optimistic, and the 1x background
@@ -171,7 +180,7 @@ reaches **35.2** and keeps the comb (3.2–5.3 vs 0.4–0.7 blind); the matched-
 | `check_recon.py` | **run before reading physics off any reconstruction** — did it recover depth? |
 | `atomfind_sign.py` | sign from located atoms: atomfind v3 on an ideal control and a reconstruction, Ti against its O |
 | `analyze_fusion.py` | matched-filter depth readout, EELS magnitude inversion, fusion |
-| `make_figures.py` | figures 1–5 (headline, EELS axis, sign vs hole, phase volume, atoms in depth) |
+| `make_figures.py` | figures 1–5 (headline, EELS axis, model test vs hole, depth sections with atomfind picks, Ti–equatorial-O offsets) |
 | `../ptycho/run_fusion_hollow.m` | MHP driver: `run_synthetic_recon_ML.m` + the hole, `KNOWN_OBJECT`, `OBJECT_START` |
 | `test_fusion.py` | 19 tests, includes the labyrinth-code-untouched gate |
 
