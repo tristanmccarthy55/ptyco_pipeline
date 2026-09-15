@@ -105,72 +105,63 @@ def eels_dz_prior(truth):
 INK = "#14131A"
 
 
-def _glyph(ax, x, y, delta, dmax, scale):
-    """@brief A polarisation vector seen down the beam: dot/cross ring for sign(delta_z), arrow for delta_xy.
+def _vector3d(ax, delta, dmax):
+    """@brief One domain's polar displacement in 3-D: the vector, the beam axis, and its projection.
 
-    Ring radius is proportional to |delta_z| and arrow length to |delta_xy|, both to one scale.
+    The dashed shadow on the image plane is everything projected ptychography measures (A and B cast
+    the same shadow); the vertical drop from it to the tip is |delta_z|, what EELS measures.
     """
-    from matplotlib.patches import Circle, FancyArrowPatch
-    r = 0.32 * scale * abs(delta[2]) / dmax
-    ax.add_patch(Circle((x, y), r, fc="white", ec=INK, lw=1.8, zorder=3))
-    if delta[2] > 0:
-        ax.add_patch(Circle((x, y), 0.24 * r, fc=INK, ec="none", zorder=4))
-    else:
-        k = 0.6 * r
-        for sgn in (1, -1):
-            ax.plot([x - k, x + k], [y - sgn * k, y + sgn * k], color=INK, lw=1.8, zorder=4,
-                    solid_capstyle="round")
-    L = scale * np.asarray(delta[:2], float) / dmax
-    if np.linalg.norm(L) > 1e-9:
-        u = L / np.linalg.norm(L)
-        p0 = np.array([x, y]) + u * r
-        ax.add_patch(FancyArrowPatch(tuple(p0), tuple(p0 + L), arrowstyle="-|>", mutation_scale=15,
-                                     lw=2.0, color=INK, zorder=3, shrinkA=0, shrinkB=0))
+    v = 0.95 * np.asarray(delta, float) / dmax
+    plane = "#D9D5E0"
+    sq = np.array([[-1, -1], [1, -1], [1, 1], [-1, 1], [-1, -1]], float)
+    ax.plot(sq[:, 0], sq[:, 1], np.zeros(5), color=plane, lw=0.9)
+    ax.plot([-1, 1], [0, 0], [0, 0], color=plane, lw=0.7)
+    ax.plot([0, 0], [-1, 1], [0, 0], color=plane, lw=0.7)
+    ax.text(1.12, 0, 0, "x", color="0.55", fontsize=8, ha="center", va="center")
+    ax.text(0, 1.12, 0, "y", color="0.55", fontsize=8, ha="center", va="center")
+    ax.plot([0, 0], [0, 0], [-1.1, 1.1], color="#8F8A99", lw=1.1)
+    ax.text(0.12, 0, 1.05, "z", color="0.4", fontsize=8.5, ha="left", va="center")
+    ax.plot([0, v[0]], [0, v[1]], [0, 0], color=PTY_C, lw=2.2, ls=(0, (3, 1.6)))   # projection
+    ax.plot([v[0], v[0]], [v[1], v[1]], [0, v[2]], color=EELS_C, lw=1.8)          # |delta_z|
+    ax.quiver(0, 0, 0, v[0], v[1], v[2], color=INK, linewidth=2.4, arrow_length_ratio=0.22)
+    ax.set_xlim(-1, 1); ax.set_ylim(-1, 1); ax.set_zlim(-1, 1)
+    ax.set_proj_type("ortho")
+    ax.view_init(elev=24, azim=-58)
+    ax.set_box_aspect((1, 1, 1), zoom=1.9)
+    ax.set_axis_off()
 
 
 def figure_headline(truth, out, hole=75.0):
     """@brief The whole argument in three panels: the specimen, the split detector, and the fusion."""
     from matplotlib.lines import Line2D
-    from matplotlib.patches import Rectangle, Wedge
+    from matplotlib.patches import Wedge
     names = names_of(truth)
-    a, n_lat = float(truth["a"]), int(truth["n_lat"])
-    box, dmax = float(truth["box_A"]), float(truth["delta_Ti_A"])
-    half = box / 2
+    dmax = float(truth["delta_Ti_A"])
 
     with plt.rc_context({"font.size": 10, "axes.titlesize": 10.5, "axes.labelsize": 10}):
         fig = plt.figure(figsize=(13.2, 4.9), constrained_layout=True)
-        gs = fig.add_gridspec(1, 3, width_ratios=[1, 1, 1.3])
+        gs = fig.add_gridspec(1, 3, width_ratios=[1.15, 0.95, 1.25])
 
-        # (a) the specimen, seen down the beam
-        ax = fig.add_subplot(gs[0])
-        for k in range(n_lat + 1):
-            ax.axhline(k * a, color="#E6E3EC", lw=0.6, zorder=0)
-            ax.axvline(k * a, color="#E6E3EC", lw=0.6, zorder=0)
-        ax.axhline(half, color="#8F8A99", lw=1.4, zorder=1)
-        ax.axvline(half, color="#8F8A99", lw=1.4, zorder=1)
-        scale = 0.36 * half
+        # (a) the polar displacement in each domain, in 3-D, beam along z
+        sub = gs[0].subgridspec(4, 2, height_ratios=[0.09, 1, 1, 0.20], hspace=0.02, wspace=0.02)
+        tax = fig.add_subplot(sub[0, :])
+        tax.axis("off")
+        tax.text(0.0, 0.5, "(a) four domains: same |δ|, different direction", transform=tax.transAxes,
+                 ha="left", va="center", fontsize=10.5)
         for k, n in enumerate(names):
-            qx, qy = (int(v) for v in truth["quads"][k])
-            x0, y0 = qx * half, qy * half
             d = np.asarray(truth["deltas"][k], float)
-            L = scale * d[:2] / dmax
-            cx, cy = x0 + half / 2 - 0.5 * L[0], y0 + half / 2 + 1.2 - 0.5 * L[1]
-            _glyph(ax, cx, cy, d, dmax, scale)
-            ax.text(x0 + 1.4, y0 + half - 1.4, n, ha="left", va="top", fontsize=15,
-                    weight="bold", color=INK)
-            ax.text(x0 + 4.6, y0 + half - 2.1, f"θ = {float(truth['theta_deg'][k]):.0f}°",
-                    ha="left", va="top", fontsize=9, color="0.4")
-            ax.text(x0 + half / 2, y0 + 2.0, f"({d[0]:+.2f}, {d[1]:+.2f}, {d[2]:+.2f})",
-                    ha="center", va="bottom", fontsize=8.5, family="monospace", color="0.3")
-        ax.set_xlim(0, box); ax.set_ylim(0, box); ax.set_aspect("equal")
-        ax.set_xticks([]); ax.set_yticks([])
-        for s_ in ax.spines.values():
-            s_.set_visible(True); s_.set_color("#8F8A99")
-        ax.set_title(f"(a) specimen: {n_lat} × {n_lat} × {int(truth['n_z'])} cells, "
-                     f"{float(truth['slab_thickness_A']):.1f} Å thick", loc="left")
-        ax.text(0.0, -0.04, f"|δ| = {dmax:.3f} Å in every domain; only its direction differs\n"
-                "⊙ δz > 0    ⊗ δz < 0    ring ∝ |δz|    arrow ∝ δxy    δ in Å",
-                transform=ax.transAxes, va="top", fontsize=8.5, color="0.35", linespacing=1.6)
+            ax3 = fig.add_subplot(sub[1 + k // 2, k % 2], projection="3d")
+            _vector3d(ax3, d, dmax)
+            ax3.text2D(0.0, 1.0, n, transform=ax3.transAxes, fontsize=13, weight="bold",
+                       color=INK, va="top")
+            ax3.text2D(0.13, 0.985, "up" if d[2] > 0 else "down", transform=ax3.transAxes,
+                       fontsize=9.5, color="0.35", va="top")
+        fax = fig.add_subplot(sub[3, :])
+        fax.axis("off")
+        fax.text(0.0, 0.95, f"arrow: polar displacement δ, |δ| = {dmax:.3f} Å; z is the beam axis\n"
+                 "teal dashed: in-plane projection (ptychography)   purple: |δz| (EELS)",
+                 transform=fax.transAxes, ha="left", va="top", fontsize=8.5, color="0.35",
+                 linespacing=1.6)
 
         # (b) the detector: the measured mean pattern, split into the two channels
         ax = fig.add_subplot(gs[1])

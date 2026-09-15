@@ -104,6 +104,26 @@ convention is right. Both blind runs are still descending at 200 iterations. Nex
 the 0.15 Å run to ≥1000 iterations (`PROBE_START`/restart from step02), then a known start on the
 0.15 Å data to see whether that basin is reachable at all from this sampling.
 
+**atomfind confirms it** (`atomfind_sign.py`, 2026-09-15). The v3 finder with the NL70 Pb/Ti
+kernels (same probe, bin and engine settings; dz 0.999 vs 0.976), then each located Ti against its
+equatorial O ring. Of the three references tried this is the reliable one: the full O6 cage needs
+all six O (71 of 180 Ti on the ideal volume, 93 % right) and the apical pair is biased, because Ti
+and apical O share a column 2 Å apart and blur together (domain A wrong even on the ideal volume).
+
+| volume | z RMS Pb / Ti / O | Ti usable | per-Ti sign | domains |
+|---|---|---|---|---|
+| ideal (true atoms x kernels), noiseless | 0.04 / 0.17 / 0.24 Å | 180/180 | 100 % | 4/4 |
+| ideal, 0.1x recon background | 0.05 / 0.17 / 0.24 Å | 180/180 | 99 % | 4/4 |
+| ideal, 1x recon background (white) | 0.04 / 0.20 / 1.55 Å | 0 of 56 found | — | — |
+| blind 0.15 Å step02 | 0.91 / 0.60 / 1.58 Å | 44/141 | 64 % | A +0.02±0.08, B −0.13±0.19, C −0.06±0.24 (wrong), D −0.41±0.10 |
+
+Atom positions carry the sign when the reconstruction has them at their depths; the blind object
+does not. The control uses the finder's own kernels, so it is optimistic, and the 1x background
+includes the blind object's depth smearing, so that row is a pessimistic bound. atomfind's Pb depth
+RMS per checkpoint is the convergence criterion for the long run (ideal 0.04 Å; target <~ 0.2 Å).
+Cached finder output and JSON sit in the session scratchpad; re-run with
+`--ideal-noise 0 0.1 1 --cache <prefix> --reuse`.
+
 The metric is validated: run on `~/Desktop/NL70_new_vol.npy` it reproduces that run's published
 0.257 Å⁻¹ / 3.9 Å / 4.0× as **0.2574 / 3.885 / 3.92×**.
 
@@ -149,6 +169,7 @@ reaches **35.2** and keeps the comb (3.2–5.3 vs 0.4–0.7 blind); the matched-
 | `depth_constraint.py` | do the data constrain depth at all (true vs smeared stacking) |
 | `known_object.py` | writes the TRUE object in the engine's frame; optimiser-vs-model diagnosis |
 | `check_recon.py` | **run before reading physics off any reconstruction** — did it recover depth? |
+| `atomfind_sign.py` | sign from located atoms: atomfind v3 on an ideal control and a reconstruction, Ti against its O |
 | `analyze_fusion.py` | matched-filter depth readout, EELS magnitude inversion, fusion |
 | `make_figures.py` | figures 1–5 (headline, EELS axis, sign vs hole, phase volume, atoms in depth) |
 | `../ptycho/run_fusion_hollow.m` | MHP driver: `run_synthetic_recon_ML.m` + the hole, `KNOWN_OBJECT`, `OBJECT_START` |
