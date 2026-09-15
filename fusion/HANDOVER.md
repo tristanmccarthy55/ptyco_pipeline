@@ -1,5 +1,9 @@
 # fusion — handover (2026-09-14)
 
+> **CLOSED 2026-09-15.** The sign is in the hollow data only by model test; recovering it from a
+> reconstruction failed (§2). The follow-on experiment (single-cell monolayer, ptychography for
+> δxy + DFT-assisted EELS for |δz|) lives in its own repo: `../../monolayer-fusion/HANDOVER.md`.
+
 Pairs with `README.md` (design + physics) and the `hollow-fusion-poc` auto-memory. This file is the
 state of play: what is established, what is still open, where everything lives, and the traps.
 
