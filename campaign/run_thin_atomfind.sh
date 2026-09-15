@@ -30,7 +30,7 @@ CELL_Z=3.905; LAM=0.0196877
 BOXZ=$(awk "BEGIN{printf \"%.3f\", ${THIN}*${CELL_Z}+2*${ZVAC}}")      # full box thickness [Å]
 ATOMZ=$(awk "BEGIN{printf \"%.3f\", ${BOXZ}/2}")                        # PSF atom at box centre
 INPUTS=(data_dp.hdf5 data_position.hdf5 sim_meta.mat)
-TS="$(date +%Y%m%d_%H%M)"; PACK="${SHARE:-$REPO_DIR}/atomfind_results_${TS}.tgz"
+TS="$(date +%Y%m%d_%H%M)"; PACK="${SHARE:+$SHARE/$USER}"; PACK="${PACK:-$REPO_DIR}/atomfind_results_${TS}.tgz"   # own subdir, not the shared group dir
 echo "full box ${BOXZ} A (THIN=${THIN} cells + 2x${ZVAC} A vac); PSF atom z=${ATOMZ}; alphas: ${ALPHAS}"
 
 nl_full(){ awk "BEGIN{n=int(${BOXZ}*2*($1/1000)^2/${LAM}+0.5); if(n<1)n=1; print n}"; }

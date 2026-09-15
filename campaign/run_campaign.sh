@@ -41,7 +41,7 @@ PSFFT="${PSFFT:-1}"                              # Fourier probe support on the 
 PERF_BIN="${PERF_BIN:-4}"                        # perfect leg is a compact ~4 Å probe -> its own BIN=4
 C5DEF="${C5:-1e7}"; SAVE="${SAVE_EVERY:-25}"
 INPUTS=(data_dp.hdf5 data_position.hdf5 sim_meta.mat)               # probe chosen per-leg
-TS="$(date +%Y%m%d_%H%M)"; PACK="${SHARE:-$REPO_DIR}/${CAMPAIGN}_results_${TS}.tgz"
+TS="$(date +%Y%m%d_%H%M)"; PACK="${SHARE:+$SHARE/$USER}"; PACK="${PACK:-$REPO_DIR}/${CAMPAIGN}_results_${TS}.tgz"   # own subdir, not the shared group dir
 
 # resources per BIN (planner emits bin 4 light / 2 medium / 1 heavy). See HPC_COMMANDS.md.
 mem_for(){   case "$1" in 1) echo 175G;;   2) echo 96G;;      *) echo 48G;;      esac; }
