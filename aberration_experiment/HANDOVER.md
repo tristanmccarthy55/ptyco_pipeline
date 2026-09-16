@@ -11,7 +11,7 @@ atomfind with matched kernels. **The round-α campaign is complete**: depth reco
 aperture opens, from 50 to 90 mrad, and 110 mrad is out of reach. The next phase relaxes the
 idealisations one at a time toward a publishable result — see `NEXT_PHASE.md`.
 
-PI-meeting page (private): https://claude.ai/code/artifact/2afda5b8-4390-4e40-9ed6-161617f85e07
+PI-meeting page (private): https://claude.ai/artifact/6JuRq4kgP8v6FjDC8agcpn
 
 ## Results
 
