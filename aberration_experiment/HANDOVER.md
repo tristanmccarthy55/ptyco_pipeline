@@ -1,256 +1,179 @@
-# Aberration experiment — handover (2026-W37, updated 2026-09-11)
+# Aberration experiment — handover (updated 2026-09-16)
 
-Continuation notes; pairs with the `aberration-campaign` auto-memory. Overview in `README.md`.
-PSF kernel rules live in `PSF_KERNELS.md` — read that before touching the grid legs.
+**Read in this order:** this file → **`NEXT_PHASE.md`** (what to do next) → `PSF_KERNELS.md` (the
+kernel rules). Pairs with the `aberration-campaign` auto-memory; overview in `README.md`.
 
-## Goal
-Thin PTO/STO slab, 300 keV, multislice electron ptychography (PtychoShelves GPU LSQ-ML). Model a
-**Cs-corrected-at-30-mrad scope opened up**: C5 = 1 mm is a FIXED corrector residual; retune C3(Cs)+
-C1(defocus) — the `campaign/round_sweep.tsv` balance — to keep the probe compact as α opens. Show
-(a) depth resolution improving with α, (b) **atomfind** localising atoms in depth. ROUND only for now.
+## Where it stands
 
-## Infra / conventions
-- **Repo**: this `ptychoshelves-clean` == `origin/main` (github `tristanmccarthy55/ptyco_pipeline`).
-  Blythe: `$SHARE/phucrh/ptyco_baseline/ptyco_pipeline` (= `/springbrook/share/physics/phucrh/...`),
-  pulls `origin/main`. **Runs are sbatch-only — give the user commands, they run them** (no SSH access
-  from here). Analysis env: `~/hyperspy-bundle/bin/python` (abtem/skimage/h5py).
-- **Outputs → git, week-ordered**: figures to `aberration_experiment/figs/<ISO-week>/`, small products
-  to `results/<week>/`. Big raw data (`*.tgz`, recons, `*_vol.npy`) is gitignored — Blythe `$SHARE` /
-  Desktop scratch (`~/Desktop/thin_ab_af`).
-- **scp** (2FA — AVOID nested `ssh $(ssh ...)`): one connection with a remote glob, then `tar xzf`
-  SEPARATELY (it gets skipped when chained).
-- Only uncommitted files are the user's report/atomfind **docs** (`report_v2.tex`, atomfind `*.md`,
-  `*.bak_*`) — leave them; commit only code/figures, push to `origin/main`.
+A Cs-corrected 30 mrad instrument (C5 = 1 mm fixed residual), opened to 100 mrad, 300 keV, a 5-cell
+PbTiO₃/SrTiO₃ labyrinth slab, multislice ptychography with a **known probe**, atoms found blind by
+atomfind with matched kernels. **The round-α campaign is complete**: depth recovery improves as the
+aperture opens, from 50 to 90 mrad, and 110 mrad is out of reach. The next phase relaxes the
+idealisations one at a time toward a publishable result — see `NEXT_PHASE.md`.
 
-## What WORKS (banked)
-- **Known/calibrated probe**: `ab_known ≈ perfect` across α. Depth sharpens with α →
-  `figs/2026-W37/round_depth.png`. Sweep tool: `analysis/analyze_thin_campaign.py <dir>`.
-- **Ronchigram/probe evolution**: `figs/2026-W37/ronchigram_evolution.png` (rebuilt 2026-09-11:
-  simulated Ronchigrams, wrapped χ, probe, phase-ramp profiles Δx = ∂W/∂θ, probe size vs α). Probe
-  d90 held at the 4 Å TARGET to 70 mrad, then 6.6 / 11.0 / 24.5 / ~60 Å at 90/100/110/120 (converged
-  140 Å box — the old figure's 21/26 Å at 110/120 came from a 30 Å box). **a120 is not simulable**:
-  d99 ≈ 105 Å > the 70 Å BIN=1 window; a110 (d99 51 Å) is tight but valid. The figure reads its probes
-  from `round_sweep.tsv` and its flatness metric from `plan_probe.py`, so it cannot drift from the plan.
-- **Probe plan REVISED 2026-09-11 (user): the traditional recipe at low α.** Objective: d90 = 4 Å
-  first, flattest Ronchigram second. Flatness = P-V of the NON-defocus aberration (C3θ⁴ + C5θ⁶ minus
-  its best-fit θ²) across the aperture; flat ≤ λ/4 (π/2 rad). Where 4 Å is reachable (30–70 mrad,
-  the "free" regime; smallest reachable 1.2/0.8/2.2 Å) the probe is deliberately ENLARGED by
-  **defocus**, with Cs kept flat: the realistic +1 µm corrector residual if already flat, else the
-  flattest 1 µm step against C5. Where it is not (≥90, "floor"), C3 and C1 both fight C5 as before.
+PI-meeting page (private): https://claude.ai/code/artifact/2afda5b8-4390-4e40-9ed6-161617f85e07
 
-  | α | old (Cs, C1) | new (Cs, C1) | non-defocus P-V |
-  |---|---|---|---|
-  | 30 | +1 µm, −50 Å | +1 µm, −50 Å (unchanged — already traditional) | 0.33 rad, flat |
-  | 50 | −4 µm, 0 Å (Cs enlarged it) | **−2 µm, +38 Å** | 2.34 → **1.14 rad, flat** |
-  | 70 | −4 µm, +2 Å | **−5 µm, −60 Å** | 8.23 → 6.23 rad (flattest possible; C5 dominates) |
-  | ≥90 | unchanged | unchanged (floor) | 30 / 55 / 94 / 163 rad |
+## Results
 
-  a50/a70 therefore need re-simulating (all three legs); a90–a120 rows are byte-identical, so the
-  running a110 stays valid. The old plan's tie-break ("least defocus, then least Cs") is what had
-  made Cs do the enlarging.
-- **`round_depth.png` rows a110/a120 are a RECONSTRUCTION failure, not the aberration break** — do not
-  cite them. Their "diamonds" have a depth period of exactly 2 slices (1.67 Å at NL14, the layer
-  grid's Nyquist; the physical AO/BO₂ period 1.95 Å is a different Fourier bin): the odd/even-layer
-  ambiguity of unregularised multislice, drawn bilinearly. The aberration-FREE "perfect" leg also
-  fails there, which a C5 break cannot explain. Watch for the same mode in the new a110.
-- **atomfind runs end-to-end on the thin recons** and the depth trend is real (see Results).
+Matched S1 kernels, per-atom depth registration, scan-field crop, noiseless, known probe.
 
-## What's DEAD
-- **Blind probe fitting**: 5 failures. Intractable on this thin weak-phase slab. Known-probe is the
-  deliverable. Next goal after atomfind: blind from a BEST-GUESS probe (needs a vacuum/edge region
-  in the scan, or a thicker sample — not a solver flag).
+| α (mrad) | slice | precision | bulk recall Pb / Ti / O | xy-RMS | z-RMS | confusion | false positives |
+|---|---|---|---|---|---|---|---|
+| 50 | 3.93 Å | 0.90 | 67 / 43 / 54% | 0.13 Å | 1.20 Å | 17.7% ⚠ | 34 of 356 (O 23, Pb 11) |
+| 70 | 1.97 Å | 0.98 | 98 / 82 / 75% | 0.04 Å | 0.56 Å | 1.3% | 10 of 486 (O 6, Pb 4) |
+| 90 | 1.20 Å | 0.94 | 95 / 94 / 95% | 0.03 Å | 0.37 Å | 0.0% | 35 of 581 (O 33, Pb 2) |
+| 100 | 0.98 Å | 0.99 | 96 / 94 / 88% | 0.03 Å | 0.45 Å | 3.1% | 7 of 519 (O 4, Pb 3) |
+| 110 | 0.81 Å | — | — | — | — | — | **not reconstructible** |
 
-## 2026-09-10/11: bugs found and fixed (all pushed)
+Figures, all in `figs/2026-W37/`, each regenerated by a script that reads the data directly:
 
-1. **`probe_initial_true.mat` never written** (`92d1b4b`). `run_thin_atomfind.sh` passed
-   `PROBE_INITIAL=true`, but the sim writes `probe_initial_true.mat` only for a *nominal* initial
-   probe (`simulate_4dstem.py:584`); with `=true` it writes the true probe AS `probe_initial.mat`
-   and skips the other. `recon_job` symlinks `probe_initial.mat -> probe_initial_true.mat`, so the
-   link dangled and all 12 recons span forever on "File corrupt". Now `PROBE_INITIAL=nominal`,
-   matching `run_campaign.sh`'s proven ab_known leg.
-   *Recovery without re-simulating*: the old run's `probe_initial.mat` already IS the true probe —
-   `cp` it to `probe_initial_true.mat`, then `RECON_ONLY=1`.
-2. **Wrong in-plane origin** (`889ce2c`) — the big one. The `thin` preset set `dx` for the full-field
-   object but kept `X0=30/Y0=10`, the SCAN-WINDOW corner, valid only when the object covers the scan.
-   These recons put a 20 Å scan on a 37 Å (753 px, BIN=4) / 54.6 Å (1109 px, BIN=2) object → off by
-   8.75 / 17.25 Å, not a lattice vector, so every atom mapped to the wrong site. `X0/Y0 = None` now
-   → `align.resolve_origin()` derives them from the object size (verified against `p/illum_sum`,
-   whose centroid sits at the object centre).
-3. **Wrong ground truth** (`889ce2c`). The cached GT is the full 18-cell/70 Å box; the campaign sims
-   a 5-cell/27.5 Å slab. `make_gt_cache --thin-cells 5 --z-vacuum 4` builds the matching GT
-   (`align._prepare_gt_thin`, mirrors the sim's `build_thin_sample`). Thin GT spans z 4.00–23.52 Å,
-   independently confirming `trim_z_A=(4.0,23.5)`. Lives at `~/Desktop/thin_ab_af/gtdata/` — pass it
-   with `--data-dir` (it shadows the packaged 70 Å cache by basename).
-   *Combined effect of 2+3 at a50*: Pb recall 2→55%, xy-RMS 0.46→0.17 Å, depth corr 0.30→0.71,
-   species confusion 67→17.5%.
-4. **Halo included in the analysis** (`fea29ea`). The finder ran over the whole 37–55 Å object though
-   only the ~20 Å scan is data-constrained. `cfg.fov_A` (thin preset: 20.0) crops to the scan field
-   and shifts X0/Y0. Precision a50 0.25→0.75, a90 0.11→0.73, a100 0.11→0.77, recall held.
-5. **One-blob kernel extractor** (`014d4bf`). Even from the clean S1 grids it mis-picked 3/8 kernels:
-   it searched the whole object (junk scan edge), took one blob, never removed the phase-ramp
-   gauge. Now it deramps, locates the interior grid atoms, and AVERAGES 25 of them. See
-   `PSF_KERNELS.md` § Extraction. `--zdrop` is required now (old default 12 erased NL=7 volumes).
-6. **Relative `SIM_BASE` in a hand-written sbatch** (`014d4bf`). MATLAB starts in `ptycho/` (`-sd`),
-   so a relative SIM_BASE resolved there, and job 1272524 (a70 lab re-run) died in 2 min with its
-   reason in the unpacked `.err`. The wrapper now anchors relative paths to the submit dir and
-   **preflights** sim_meta / data_dp / data_position / probe_initial (`-e` follows links), failing to
-   stdout before MATLAB. This also stops the endless "File corrupt ... Retrying" loop of bug 1 from
-   ever burning walltime again. **Prefer the driver** (`run_thin_atomfind.sh`, which always passes
-   absolute paths) over hand-written sbatch lines.
-7. **Depth registration aliased by one unit cell** (a90/a100 OFF −3.86/−3.92 Å = −c). atomfind's comb
-   registration groups GT Pb atoms into columns by rounding (x, y) to a 0.5 Å grid; the labyrinth's
-   wandering columns (polar displacements) fragment into ONE-atom "columns", so each comb has a
-   single tooth and fits any atom along the column. Diagnosed by mapping the found atoms with the
-   fitted map: 11% landed OUTSIDE the physical slab (0% at OFF = 0). Fix: `depth_register="atoms"`
-   (thin preset only) scores every GT Pb atom at its own (x, y, z+OFF) inside the atomic band — no
-   column grouping; OFF now +0.19/+0.12/+0.01 Å. Default stays "comb" so the published presets are
-   bit-identical. The PX915 report's NL70 numbers use the comb method on the same labyrinth and
-   were CHECKED: not aliased (comb +0.36 vs per-atom +0.22 Å; see Next steps 0).
+- `ronchigram_evolution.png` — `analysis/make_ronchigram_fig.py`. Simulated Ronchigrams, wrapped χ,
+  probes at a common scale, phase-ramp profiles Δx = ∂W/∂θ, probe size and Ronchigram flatness vs α.
+  Reads its probes from `campaign/round_sweep.tsv` and its flatness metric from `plan_probe.py`.
+- `atomfind_depth_vs_alpha.png` — `analysis/collate_atomfind_depth.py`. Recall and depth error vs α;
+  hollow markers where species labels are unreliable. CSV in `results/2026-W37/`.
+- `mep_volumes.png` — `analysis/make_mep_volumes_fig.py`. In-plane phase plus two x–z sections per α,
+  equal aspect; found atoms (rings, with calibrated 95% depth intervals) over ground-truth atoms
+  (dots), so spurious, missed and misplaced atoms all read off the figure.
 
-## PSF kernels — the rule (`PSF_KERNELS.md`, `35c6acb`)
-A kernel is the matched system PSF only if the grid leg and the lab leg agree on **everything except
-the object**: same per-α `NL` (7/14/23/28 at 50/70/90/100) and `dz` (27.525/NL), same box, same
-probe, same engine settings. **`REGLAYER` stays 0 on every leg** — it "symmetrizes information
-content between layers" (Odstrčil), i.e. low-passes the depth axis, which is both the measurement
-and the entire content of a kernel; `run_fusion_hollow.m` warns anything >0.05 "destroys the signal"
-and prints `regularize_layers <- MUST be 0`. An earlier `REGLAYER=0.5` proposal here was WRONG and is
-recorded as rejected in the note. **Fix the object/scan, never the operator.**
+**How to read it.**
+- **Depth error falls with α** — 1.20 → 0.56 → 0.37 Å — always far below δz = λ/α² (7.9 → 2.0 Å),
+  because the finder fits atom centres rather than resolving them.
+- **In-plane error is 0.03 Å at 90–100 mrad, while atoms within one column genuinely wander
+  in-plane by a median 0.24 Å (up to 0.8 Å)** — the labyrinth's polar displacements. They are
+  tracked, not averaged away.
+- **False positives are a benign tail**: almost all oxygen, **never Ti at any α**, scoring lower on
+  atomfind's quality measure (0.56–0.61 vs 0.73–0.84 for true detections), and at 50 mrad over half
+  sit in the vacuum bands. Separable by a quality or depth cut; deliberately left in.
+- **50 mrad's species split is not physics**: at 3.93 Å slices the AO and BO₂ planes merge and
+  labels swap (confusion 17.7%, over atomfind's 5% health threshold).
+- **100 trails 90 on oxygen** (88 vs 95%) and survives every correction — it tracks the probe growing
+  from 6.6 to 11 Å.
+- **The Ronchigram stops being flat between 50 and 70 mrad** (non-defocus P–V crosses λ/4), where a
+  conventional instrument is finished; recall keeps climbing past it.
+- **Matched kernels are worth ~2× in depth error** against a kernel measured from the data itself.
 
-Why the kernels broke at high α: NOT blob overlap (the reconstructed blob is **0.20 Å FWHM** against
-a 4.01 Å probe — ptycho resolves ~20× below the probe), but an under-constrained solve — a single
-atomic plane, little total scattering, 23–28 depth layers, and a 14 Å scan window where the lab legs
-use 20 Å. Ladder: S1 scan identity + density → S2 denser → S3 sparse multi-plane (α≥90 only,
-spacing ≳4·δz). Thinning the box is rejected: it changes NL.
+**110 mrad — settled, not reconstructible.** Its 24.5 Å probe outgrows the original 20 Å scan field
+(scan/d90 = 0.8), leaving no positional diversity. Re-run with the field widened to 34 Å — the limit
+the 70 Å box allows — at the same position count (40×40 = **1600**, abTEM excludes the endpoint): the
+lab object is still featureless speckle, in-plane lattice peak/background **1.5** (≫1 needed),
+0.14% of scan-field pixels near zero amplitude, and the Pb kernel diverges. `atomfind_results_20260914_1147`.
+**120 mrad** is not even simulable: its d99 ≈ 105 Å exceeds the 70 Å BIN=1 window.
 
-**S1 worked** (`WIN=20, GRIDSP=3`, all four α, `atomfind_results_20260910_2109`): with the averaging
-extractor, all 8 kernels average 25 atoms, argmax at the crop centre, peak/bg 44–1694. S2/S3 not
-needed. Kernels live at `~/Desktop/thin_ab_af2/psf/psf_{Pb,Ti}_a<A>_vol.npy`.
+**Do not cite `round_depth.png` rows a110/a120** (the older campaign). Their "diamonds" repeat every
+two depth slices exactly — the odd/even-layer ambiguity of unregularised multislice, drawn
+bilinearly — and the aberration-*free* leg fails there too, which C5 cannot explain.
 
-## Results — matched kernels + corrected depth registration (2026-09-11)
-All fixes in (bugs 1–7), S1 kernels, `~/Desktop/thin_ab_af2/out/atomfind_a*`
-(the pre-bug-7 runs are kept in `out_comb_aliased/` for comparison):
+## The experiment as run
 
-| α | dz (Å) | prec | recall bulk Pb / Ti / O | xy-RMS | z-RMS | species confusion |
-|---|---|---|---|---|---|---|
-| 50 | 3.93 | 0.90 | 67 / 43 / 54% | 0.13 Å | 1.20 Å | 17.7% ⚠ unreliable |
-| 70 | 1.97 | **0.98** | **98 / 82 / 75%** | **0.04 Å** | **0.56 Å** | 1.3% |
-| 90 | 1.20 | **0.94** | **95 / 94 / 95%** | **0.03 Å** | **0.37 Å** | 0.0% |
-| 100 | 0.98 | **0.99** | **96 / 94 / 88%** | **0.03 Å** | **0.45 Å** | 3.1% |
-| 110 | 0.81 | — | — | — | — | **RECON FAILED** (see In flight) |
+- **Sample**: `sim/PTO6_STO6_18_18_labyrinthPoscar.vasp`, cut to 5 cells (19.5 Å) with 4 Å of vacuum
+  each side → 27.525 Å box, reconstructed **in full** so surface artefacts land in vacuum.
+- **Probe plan** (`campaign/plan_probe.py` → `round_sweep.tsv`): d90 = 4 Å first, flattest Ronchigram
+  second. Flatness = P–V of the non-defocus aberration, flat ≤ λ/4. Where 4 Å is reachable (≤ 70 mrad)
+  Cs is kept flat — the realistic +1 µm residual if already flat, else the flattest 1 µm step — and
+  **defocus** spreads the probe (smallest reachable 1.2 / 0.8 / 2.2 Å at 30 / 50 / 70). From 90 mrad,
+  4 Å is unreachable and C3 and C1 both fight C5.
 
-a50/a70 are the REVISED (defocus-spread) probes, `thin_ab_af3`; a90/a100 are `thin_ab_af2`, unchanged
-by the revision. The canonical four-α set is assembled as symlinks in `~/Desktop/thin_ab_af_final/`
-(`recon_af_a*_lab_NL*` + `out/atomfind_a*`), which is what both figure scripts are pointed at.
-a70 works for the first time: its old lab recon was degenerate, and the revised probe + the halo crop
-fixed it. a50 also improved slightly on the traditional probe (Pb bulk 57 → 67%).
+  | α | C3 | C1 | d90 | non-defocus P–V | BIN | NL |
+  |---|---|---|---|---|---|---|
+  | 50 | −2 µm | +38 Å | 3.9 Å | 1.14 rad (flat) | 4 | 7 |
+  | 70 | −5 µm | −60 Å | 4.0 Å | 6.23 rad | 4 | 14 |
+  | 90 | −9 µm | −160 Å | 6.6 Å | 30.4 rad | 2 | 23 |
+  | 100 | −11 µm | −238 Å | 11.0 Å | 55.2 rad | 2 | 28 |
 
-Whole-slab recall now matches bulk (a90 94/94/95%), i.e. no surface plane is lost. Figure:
-`figs/2026-W37/atomfind_depth_vs_alpha.png` (log depth axis; hollow = species labels unreliable);
-CSV in `results/2026-W37/`; collator `analysis/collate_atomfind_depth.py`.
+- **Reconstruction**: PtychoShelves GPU LSQ-ML, true probe fixed, Nyquist slices over the full box,
+  `REGLAYER=0`, `BETA_LSQ=0.05`, 200 iterations.
+- **Kernels**: Pb and Ti on a 7×7 grid, 3 Å spacing, one plane at box centre, through the same probe,
+  box, slices and engine settings; 25 interior blobs averaged per kernel after ramp removal.
+- **atomfind**: `thin` preset — scan-field crop (`fov_A=20`), per-atom depth registration
+  (`depth_register="atoms"`), atomic-band trims (4.0–23.5 Å).
 
-**How to frame it.**
-- **Depth error falls with α**: z-RMS 1.17 → 0.37–0.45 Å, always well below δz = λ/α² (7.9 → 2.0 Å)
-  because atomfind fits atom centres. ⚠ Two earlier framings are WRONG and must not be reused:
-  (a) 2026-09-10: "z-RMS flat, α shows only in recall" — an artefact of the data-derived PSF;
-  (b) 2026-09-11 morning: precision 0.76/0.79, xy-RMS 0.15 Å, whole-slab recall ~75% — all
-  artefacts of the one-cell depth-registration alias (bug 7).
-- **The phase volumes resolve depth-dependent polar displacements** (`mep_volumes.png`): at a90/a100
-  each column breaks into one blob per atom and zig-zags ~0.5 Å laterally with depth. That is REAL
-  labyrinth structure — in the GT, atoms within one column wander in-plane by a median 0.24 Å (Pb) /
-  0.18 Å (Ti), up to 0.7–0.8 Å — and each found atom sits **0.03 Å** (under a pixel) from its own GT
-  atom. So the displacements are tracked essentially exactly. At a50 the columns are unbroken
-  streaks. Ties to the px915 found-atom polarisation result.
-- **Matched kernels are worth ~2× in depth error** vs the data-derived PSF (like-for-like, both under
-  the old registration: 0.72→0.41, 0.84→0.46 Å) — the byte-identity rule is not pedantry.
-- **a50: atoms are found in-plane** (precision 0.90, xy-RMS 0.12 Å) **but species are not
-  resolvable in depth**: at 3.93 Å slices the AO/BO₂ planes (1.95 Å apart) merge, so labels swap
-  (confusion 16.6% > atomfind's 5% health threshold). The per-species split is label swapping,
-  not physics. This is the expected "mediocre at low α" end.
-- **a100 behind a90** on O (88 vs 95% bulk) and z-RMS (0.45 vs 0.37 Å), and it SURVIVES the
-  registration fix, so it is not an alias artefact. It matches the probe physics: the aperture
-  area whose rays land within ±2 Å halves from 45% to 25% between 90 and 100 mrad
-  (`ronchigram_evolution.png`). Still one point — a110 tests the trend.
-- **Not yet strictly byte-identical at a50/a90/a100**: kernels at `BETA_LSQ=0.05`, those lab recons
-  at the default 0.1. A step size, not a penalty (far milder than REGLAYER), but it can move a
-  200-iteration result. The driver now pins one BETA_LSQ (0.05) for all legs; close the gap with
-  `ALPHAS="50 90 100" MODES=lab RECON_ONLY=1 bash campaign/run_thin_atomfind.sh`. a70/a110 are clean.
+## Rules that must hold
 
-## IN FLIGHT / TO RUN
-- ~~a50 + a70 re-sim with the revised probes~~ DONE (`atomfind_results_20260911_1300.tgz`): all six
-  legs finished, kernels clean (25 atoms, argmax centred, peak/bg 217/42/580/94), results in the table.
-- **a110 FAILS, and damping is not the fix — the probe is wider than the scan field.** Tried at
-  `BETA_LSQ=0.05` (both grid legs NaN) and `0.02` (`atomfind_results_20260912_1137`: lab + Ti
-  "finished", Pb still NaN). Damping changed nothing that matters: the lab object is speckle with
-  **no lattice** — in-plane peak/background at the 3.9 Å A-site spacing = **1.7** (≫1 required) —
-  0.19% of scan-field pixels sit below |obj| 0.05 (min 3.4e-4; healthy a90/a100 = 0.000%), and the
-  Ti "kernel" extracts as 18 blobs at 1.83 Å spacing with the wrong sign. atomfind: precision 0.22,
-  4% recall, and it crashes the v1-spike baseline on inf/NaN.
+Every wrong number this campaign produced traced back to breaking one of these.
 
-  **Root cause is geometric, not numerical.** scan-extent ÷ probe d90 across the sweep:
-  5.0 (a50) · 5.0 (a70) · 3.0 (a90) · **1.8 (a100)** · **0.8 (a110)** · 0.34 (a120). At 110 mrad the
-  24.5 Å probe exceeds the whole 20 Å scan field, so the scan translates the probe by less than one
-  probe width and there is almost no positional diversity left to reconstruct from. a110 is therefore
-  NOT evidence of the physical depth-resolution break — it is this experiment's fixed 20 Å scan
-  window running out.
+1. **Kernels byte-identical to their lab leg** — everything except the object: slices, box, probe,
+   engine settings, scan window. `PSF_KERNELS.md`.
+2. **`REGLAYER=0` on every leg.** It symmetrizes information between layers, i.e. low-passes depth —
+   the measurement itself. Fix the object or scan, never the operator.
+3. **One `BETA_LSQ` for all legs** — pinned in the driver.
+4. **Scan field larger than the probe** (scan/d90 ≳ 1.5).
+5. **Registration against the right ground truth, in the right frame**: a GT cache built for the
+   simulated geometry (`make_gt_cache --thin-cells N --z-vacuum Z`), the in-plane origin derived from
+   the object size, `depth_register="atoms"` for full-box recons.
+6. **Geometry-coupled constants derived, not typed** — `extract_psf --zdrop` = `round(4 Å / dz)`
+   (1 / 2 / 3 / 4 at 50 / 70 / 90 / 100); trims and `clean_max_atoms` follow the box.
+7. **Prefer the driver to hand-written sbatch lines** — it always passes absolute paths and moves
+   stale output aside.
 
-  **Fix, chosen 2026-09-13 (user): scan a wider field at constant cost.**
-  `ALPHAS=110 WIN=34 STEP=0.85 OVERWRITE=1 bash campaign/run_thin_atomfind.sh` — 41×41 = 1681
-  positions, exactly as before, so BIN=1 memory is unchanged; scan/probe rises 0.8 → **1.39**;
-  overlap is still 96.5% because the probe is huge. The analysis crop stays 20 Å, so the compared
-  region is unchanged and is now fully surrounded by scanned area. The driver now passes
-  `SCAN_WINDOW` to EVERY leg (it previously reached only the grids, leaving the lab on the sim
-  default 20 Å). **WIN is capped near 35 Å**: the box is 70 Å with the scan centred at x = 40, so
-  x_max = 40 + WIN/2 + d90/2 ≤ 70. At WIN = 34 the d90 core ends at 69.2 Å — inside, but the d99
-  tails (51 Å) still wrap ~1% into the x vacuum padding, as they did at WIN = 20. WIN = 40 would
-  push the core itself out of the box. Do NOT reach for REGLAYER.
-  Note `sim/simulate_4dstem.py`'s `[geom]` halo check estimates the exit-wave radius geometrically
-  (`thickness·tanα`) and so IGNORES the aberrated probe size — it will report a comfortable margin
-  at a110 regardless. Trust the numbers above, not that line.
+## Traps we hit — symptom → cause → fix
 
-  **2026-09-13 attempt was INVALID — the wide scan never reached the lab leg** (fixed: `run_sim.slurm`
-  kept `--scan-window` inside `SA_ARG`, which is built only when `SINGLE_ATOM` is set, so a labyrinth
-  sim always used the built-in 20 Å window). The lab leg therefore ran 20 Å at `STEP=0.85` = **576
-  positions** — *less* diversity than the 1681-position run before it — and all three legs NaN'd.
-  The grid legs DID get the 34 Å scan (single-atom mode) and still diverged, so a110's sparse grid
-  looks genuinely hard; the labyrinth leg, the one that matters, has still never been tested with a
-  scan field larger than its probe. Re-run after `git pull`:
-  `ALPHAS=110 WIN=34 STEP=0.85 OVERWRITE=1 bash campaign/run_thin_atomfind.sh`
-  and confirm from the recon log that "Number of probe positions" is **1681**, not 576. If the lab
-  leg diverges with the geometry genuinely applied, a110 is out of reach and the sweep ends at 100.
+| symptom | cause | fix |
+|---|---|---|
+| every recon spun forever on "File corrupt" | sim wrote the true probe only for a *nominal* start; driver passed `PROBE_INITIAL=true`, so the probe symlink dangled | `PROBE_INITIAL=nominal` (`92d1b4b`) |
+| atoms mapped onto wrong sites | `X0/Y0` were the scan-window corner, not the object origin | derived from object size (`889ce2c`) |
+| recall ~2% at 50 mrad | GT cache was the 18-cell 70 Å box, sim was 5 cells | thin GT cache (`889ce2c`) |
+| precision 0.1–0.3 | finder ran over the whole probe halo | crop to scan field, `fov_A` (`fea29ea`) |
+| speckled kernels at 90/100 | under-constrained single-plane solve; a `REGLAYER=0.5` fix was proposed and **rejected** | denser grid, lab scan window (`35c6acb`) |
+| 3 of 8 kernels mis-picked | one-blob extractor, no ramp removal, searched junk edge | average 25 interior blobs (`014d4bf`) |
+| a70 job died in 2 min | relative `SIM_BASE` resolved against MATLAB's `ptycho/` | anchored + input preflight (`014d4bf`) |
+| precision 0.76, xy-RMS 0.15 Å, 11% of atoms outside the slab | comb registration's 0.5 Å column rounding fragmented wandering columns → one-cell alias | per-atom registration (`56e4d78`) |
+| kernels 0.05 vs labs 0.1 step size | `BETA_LSQ` passed per invocation | pinned for all legs (`3e41e55`) |
+| 110 mrad "wide scan" gave 576 positions | `run_sim.slurm` passed `--scan-window` only to single-atom sims | forwarded for any sample (`149c9aa`, `51b90e7`) |
+| probe sizes 20.7 / 26.1 Å at 110 / 120 | figure built probes in a 30 Å box; flatness metric used a running minimum | converged 140 Å box, real metric (`56e4d78`) |
+| Cs enlarged the low-α probes | planner tie-break "least defocus" | defocus-first plan (`7f77ee7`) |
+| tarballs in the group root | pack path built from bare `$SHARE` | `$SHARE/$USER` (`5af792b`) |
+| O columns "duplicated" across both x–z panels | not a bug: in ABO₃ [001] O sits at (½,0) **and** (0,½) | labels name both column types (`24571e3`) |
 
-## Next steps
-0. ~~Check the PX915 report's NL70 registration for the bug-7 alias~~ CHECKED 2026-09-11: NOT
-   affected. On `NL70_coherent` (`atomfind/paper/inputs/NL70_new_vol.npy`) comb OFF = +0.36 Å vs
-   per-atom OFF = +0.22 Å — agree to 0.14 Å, no one-cell alias. The 18-cell columns keep several
-   teeth per fragment and that recon has no in-volume vacuum band; the alias is specific to the
-   thin 5-cell full-box geometry.
-1. a50/a70 (revised probes): pull the tarball, extract kernels (`extract_psf.py ... --zdrop 1` at
-   a50, `2` at a70), run `run_atomfind.py --preset thin --recon <lab h5> --dz 3.932|1.966 --data-dir
-   ~/Desktop/thin_ab_af/gtdata --single-atom-vol .../psf_Pb_a<A>_vol.npy --ti-kernel-vol
-   .../psf_Ti_a<A>_vol.npy --out ~/Desktop/thin_ab_af2/out/atomfind_a<A>`, then re-collate and
-   re-render (`collate_atomfind_depth.py`, `make_mep_volumes_fig.py`).
-2. **a110** (BIN=1, NL=34; heavy — 175G, GROUPING=16, 24 h): tests the break the a100 dip hints at.
-   `ALPHAS=110 bash campaign/run_thin_atomfind.sh` (lab + kernels in one go; the driver now defaults
-   to the validated S1 grid, `WIN=20 GRIDSP=3`). **a120 is probably not simulable**: the planner put
-   its probe at d90 ≈ 47 Å, and the campaign memory records it exceeding even the 70 Å BIN=1 box.
-   Only try it after checking the sim's `[geom]` halo margins on a110.
-3. ~~MEP phase-volume figure~~ DONE: `figs/2026-W37/mep_volumes.png` via
-   `analysis/make_mep_volumes_fig.py --recons <dir> --atomfind <dir>/out --gt <gtdata>` (in-plane +
-   A-site-row and B-site-row x–z per α, equal aspect, GT planes + atomfind atoms). Re-run it when
-   a70/a110 land — α are auto-discovered from `recon_af_a*_lab_NL*`.
-4. Then: non-round aberrations (`nonround_sweep.tsv`, 70 mrad + C56), then a C5-corrected comparison
-   ("Grand ARM 3") — and the blind-from-a-guess probe goal.
+## How to run
 
-## Key facts
-- atomfind run: `run_atomfind.py --preset thin --recon <lab h5> --dz 27.525/NL --data-dir <gtdata>
-  --single-atom-vol <Pb.npy> --ti-kernel-vol <Ti.npy> --out <dir>`. `align.load_object` reads
-  `*_recons.h5` (`reconstruction/object`), `.mat` or `.npy`. Writes `report.json` (per-species
-  recall/`recall_bulk`/`z_rms_A`, precision, xy-RMS) — the collator's input.
-- Driver: `run_thin_atomfind.sh` env — `ALPHAS`, `MODES` (lab/Pb/Ti), `GRIDSP`, `WIN`, `THIN`, `ZVAC`,
-  `RECON_ONLY`, `OVERWRITE`, `BETA_LSQ`, `NITER`. `nl_full()` = Nyquist over the 27.525 Å box.
-- Recon `ptycho/run_synthetic_recon_ML.m` env: NLAYERS, PROBE_START(+2), PROBE_SUPPORT_FFT, GROUPING,
-  NITER, REGLAYER, BETA_LSQ, SIM_BASE, RESTART_DIR.
-- h5: `reconstruction/object` (NL,1,Ny,Nx) complex; `.../probes`; `p/probe_initial`; `p/dx_spec`×1e10
-  = 0.049 Å; `p/positions` (scan-box relative, NOT object frame); `p/illum_sum/illum_sum_0` (object
-  frame — use THIS for the origin). `measurement/` is a broken external link — skip it when walking.
-- Blythe: GPU 3×L40 48GB / 192GB, `--mem` 175G for BIN=1, GROUPING 16@BIN1 / 32@BIN2, none@BIN4.
+**Blythe** (runs are sbatch-only; the user runs them — no SSH from here):
+```bash
+cd /springbrook/share/physics/phucrh/ptyco_baseline/ptyco_pipeline && git pull
+ALPHAS="70 90" bash campaign/run_thin_atomfind.sh                      # sims + lab + Pb/Ti kernels + pack
+ALPHAS=90 MODES=lab RECON_ONLY=1 bash campaign/run_thin_atomfind.sh    # re-recon one leg, reuse sims
+```
+Driver env: `ALPHAS`, `MODES` (lab / Pb / Ti), `RECON_ONLY`, `OVERWRITE`, `THIN`, `ZVAC`, `WIN`,
+`STEP`, `GRIDSP`, `BETA_LSQ`, `NITER`. It reads C3 / C1 / BIN per α from `round_sweep.tsv`, prints
+the job ids and the exact scp line. Tarballs pack to `/springbrook/share/physics/phucrh/`.
+
+**Pulling results** (2FA — one connection with a glob; never nest `ssh $(ssh …)`):
+```bash
+mkdir -p ~/Desktop/<fresh_dir> && cd ~/Desktop/<fresh_dir>
+scp -O 'phucrh@blythe.scrtp.warwick.ac.uk:/springbrook/share/physics/phucrh/atomfind_results_<ts>.tgz' .
+tar xzf atomfind_results_<ts>.tgz        # separately — it gets skipped when chained
+```
+Extract into a **fresh directory**: an older tarball's h5 at the same path would silently stand in
+for a leg that failed. **Triage before analysis** — a COMPLETED job with no `*_recons.h5` means
+MATLAB crashed (grep the log for `contains NaNs`), and check `Number of probe positions` matches
+the intended scan.
+
+**Local analysis** (`~/hyperspy-bundle/bin/python`):
+```bash
+python analysis/atomfind/extract_psf.py <recon_af_a<A>_Pb_NL<NL>> Pb_a<A> --zdrop <round(4/dz)> --out <psf_dir>
+python analysis/atomfind/run_atomfind.py --preset thin --recon <lab *_recons.h5> --dz <27.525/NL> \
+    --data-dir ~/Desktop/thin_ab_af/gtdata --single-atom-vol <Pb.npy> --ti-kernel-vol <Ti.npy> --out <dir>/atomfind_a<A>
+python analysis/collate_atomfind_depth.py --glob '<dir>/atomfind_a*'
+python analysis/make_mep_volumes_fig.py --recons <dir> --atomfind <dir>/out --gt ~/Desktop/thin_ab_af/gtdata \
+    --out aberration_experiment/figs/<week>/mep_volumes.png
+python analysis/make_ronchigram_fig.py
+```
+
+**Data** (local, gitignored):
+- `~/Desktop/thin_ab_af_final/` — the canonical four-α set as symlinks (`recon_af_a*_lab_NL*`,
+  `out/atomfind_a*`); both figure scripts point here.
+- a50 / a70 (revised probes): `~/Desktop/thin_ab_af3/` (kernels in `psf/`). a90 / a100:
+  `~/Desktop/thin_ab_af2/`. a110 attempts: `thin_ab_af4`–`af6`.
+- Thin ground truth: `~/Desktop/thin_ab_af/gtdata/gt_prepared.npz` (5 cells, 4 Å vacuum).
+
+## Conventions
+
+- **Repo** `ptychoshelves-clean` = `origin/main` (github `tristanmccarthy55/ptyco_pipeline`). Commit code
+  and figures, push to `origin/main`. Leave the user's report and atomfind `*.md` / `*.bak_*` alone.
+- **Outputs week-ordered**: `aberration_experiment/figs/<ISO-week>/`, `results/<ISO-week>/`. Keep a
+  coherent figure set in one week's directory if the week rolls over mid-revision.
+- **h5 layout**: `reconstruction/object` (NL, 1, Ny, Nx) complex; `reconstruction/probes`;
+  `p/dx_spec`×1e10 = 0.0492 Å; `p/illum_sum/illum_sum_0` is in the object frame, `p/positions` is not;
+  `measurement/` is a broken external link. **No error history is stored.**
+- **Blythe resources**: 3×L40 48 GB, 192 GB per node. `--mem` 175G at BIN=1, 96G at 2, 48G at 4;
+  GROUPING 16 / 32 / none. Walltime 24 / 10 / 5 h.

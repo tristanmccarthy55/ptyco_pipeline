@@ -1,0 +1,200 @@
+# Next phase — relaxing the assumptions toward publication
+
+Written 2026-09-16 at the close of the round-α campaign. Read `HANDOVER.md` first for the state
+this builds on, and `PSF_KERNELS.md` for the kernel rules every step below must keep.
+
+## Why this phase exists
+
+The four-α result (`HANDOVER.md` § Results) rests on six idealisations, and each one is a referee's
+objection:
+
+| assumption now | what a real experiment has |
+|---|---|
+| probe known exactly | C3/C5 measured by the corrector, **defocus uncertain** |
+| noiseless patterns | finite dose — Poisson counting noise |
+| fully coherent source | chromatic focal spread + finite source size |
+| static lattice | thermal vibration — frozen-phonon TDS |
+| exactly on zone axis | a small residual mistilt |
+| 5-cell (19.5 Å) slab | the full 18-cell (70 Å) labyrinth |
+
+Relax them one at a time, measure what each costs, then run them all together. A result that
+survives the combined configuration is publishable; one that survives only the idealised one is not.
+
+## Ground rules for every step
+
+1. **One relaxation at a time**, compared against the *previous* step as well as the original
+   baseline. Otherwise two effects that cancel look like no effect.
+2. **Probe α points: 70 and 90 mrad.** 70 is where depth first resolves and where the Ronchigram
+   stops being flat; 90 is the best point. Only the final combined configuration re-runs the full
+   50/70/90/100 sweep. This keeps each step to ~6 recons instead of ~12.
+3. **Kernels stay byte-identical to their lab leg.** Every relaxation applied to the labyrinth is
+   applied identically to its Pb/Ti grid legs — same dose, same phonons, same coherence, same tilt,
+   same thickness, and **the same fitted probe** (not the true one). This rule is what made the
+   kernels matched; breaking it confounds every comparison that follows.
+4. **Engine constants do not move**: `REGLAYER=0` on every leg (it low-passes the depth axis), one
+   `BETA_LSQ` for all legs (driver-pinned at 0.05).
+5. **Scan field larger than the probe** (scan / d90 ≳ 1.5). Below ~1 the reconstruction has no
+   positional diversity and returns speckle — that is what ended the sweep at 110 mrad.
+6. **Record the same numbers every time**, appended to one table,
+   `aberration_experiment/results/<week>/relaxation_ladder.csv`: precision; bulk and whole-slab
+   recall per species; xy-RMS; z-RMS; species confusion; false positives by species; and the
+   recovered C1 whenever the probe is fitted. `collate_atomfind_depth.py` already reads all but the
+   last two from `report.json`.
+
+**Baseline to beat (step 0)** — matched kernels, corrected registration, noiseless, known probe:
+
+| α | precision | bulk recall Pb / Ti / O | xy-RMS | z-RMS | confusion | false positives |
+|---|---|---|---|---|---|---|
+| 70 | 0.98 | 98 / 82 / 75% | 0.04 Å | 0.56 Å | 1.3% | 10 of 486 (O 6) |
+| 90 | 0.94 | 95 / 94 / 95% | 0.03 Å | 0.37 Å | 0.0% | 35 of 581 (O 33) |
+
+## The order, and why
+
+Cheap and reconstruction-side first; then simulation-side knobs that already exist; then the ones
+that need new code; the most expensive last. The probe fit leads because it is the assumption most
+specific to the claim, it reuses the existing sims, and every later step reuses its probe model.
+
+### Step 1 — Fix C3 and C5, fit C1 only
+
+**Why constrained.** Free complex-probe fitting failed five times on this thin weak-phase slab
+(grid junk → noise → NaN → NaN → presolve junk). A one-parameter family is far better posed, and
+it is the operator's real situation: C3 and C5 come from the corrector's aberration tableau;
+defocus is the knob that is never quite where you think.
+
+**What exists.** `PROBE_START` for free probe updates (the route that failed). The PtychoShelves
+GPU engine has **no parametric defocus refinement** — only `probe_fourier_shift_search`,
+`estimate_NF_distance` and detector scale/rotation searches. The reconstruction h5 stores **no
+error history** (only `reconstruction/object`, `probes`, two flags); the per-iteration Fourier error
+is printed to the slurm log and nowhere else.
+
+**What to build.**
+1. **Save the error trace** from `run_synthetic_recon_ML.m` (`fdb.score` / the LSQML
+   `fourier_error`) into the output, so an objective can be read without parsing logs.
+2. **A probe writer** — `make_probe.py` or a `--probe-only` mode of `sim/simulate_4dstem.py` —
+   that writes `probe_initial.mat` for (α, C3, C5, C1, BIN) through the sim's own
+   `build_initial_probe`, so the probe grid is guaranteed identical to the data's.
+3. **An outer-loop search over C1**, probe fixed per trial: a coarse grid around the start point at
+   reduced `NITER` (~50), golden-section refinement, then one full 200-iteration recon at the
+   winner. Validate first that the objective actually has its minimum at the true C1 on a
+   known case — don't assume it.
+
+**Start point.** The planned C1 offset by a realistic focus error, ±20–40 Å, trying both signs.
+
+**Accept if** the recovered C1 lands within the width of the objective's minimum of the truth
+(define that width from the curve, not in advance), and the atomfind numbers sit within noise of
+step 0.
+
+**If it fails on the thin slab**, record that and retry after Step 6. The campaign notes flag the
+thin weak-phase slab as intrinsically under-constraining the probe; a thicker sample may be what
+makes it work.
+
+### Step 2 — Shot noise
+
+**What exists.** `sim/add_poisson_noise.py --in-dir <sim>/.. --dose <e/Å²> [--seed N]` — a
+post-process, **no re-simulation**. It writes `<sim_dir>_dose<tag>/01/data_dp.hdf5` with positions,
+probe and metadata symlinked from the noiseless sim. Electrons per pattern = dose × step².
+The PX915 report's four-dose series (`analysis/atomfind/dose_series.py`) is precedent.
+
+**Plan.** A dose ladder at α = 70 and 90: 10⁷ (near-noiseless sanity check) → 10⁶ → 10⁵ → 10⁴ e/Å².
+
+**Watch.** Kernels get the same dose — 25-blob averaging now fights noise, so report kernel
+peak/background at each dose. Check whether the recon's likelihood model suits Poisson data at
+low dose. The `_dose<tag>` directory naming means `RECON_ONLY` must be pointed at the noisy copy.
+
+### Step 3 — Partial coherence of the source
+
+**Why here.** It changes the probe model that Step 1 fits, so validate it before the expensive steps.
+
+**What exists.** On the reconstruction side, `PROBE_MODES` (mixed-state ptychography) and
+`VARIABLE_PROBE`. On the simulation side, **nothing**.
+
+**What to build (sim).**
+- **Temporal first** (cheaper): an incoherent sum of diffraction patterns over a Gaussian spread of
+  defocus, Δ = Cc·ΔE/E. For a cold FEG at 300 kV (ΔE ≈ 0.3–0.4 eV, Cc ≈ 1.2–1.7 mm) that is
+  Δ ≈ 12–23 Å at 1σ; 5–7 quadrature points. Its effect grows with α, so expect 90 to feel it more.
+- **Spatial** second: an incoherent sum over Gaussian-distributed source offsets (demagnified source
+  σ ≈ 0.2–0.4 Å).
+
+**Recon.** `PROBE_MODES` 3–5 to absorb the incoherence, combined with Step 1's C1 fit.
+
+### Step 4 — Phonons (thermal diffuse scattering)
+
+**What exists.** `sim/simulate_4dstem.py --phonons N --phonon-sigma σ --per-species-sigma
+--phonon-seed`; `run_sim.slurm` reads `PHONONS` / `PHONON_SIGMA`. **Not yet forwarded by
+`campaign/run_thin_atomfind.sh`** — add them to `sim_job`'s export.
+
+**Plan.** 8–16 configurations with `--per-species-sigma` (room-temperature RMS for Pb/Sr/Ti/O).
+Simulation cost scales ×N; fine at BIN=4/2.
+
+**Watch.** atomfind scores against mean positions, so xy- and z-RMS now include thermal smear.
+Report the per-species σ alongside as the floor. Kernels get the same phonons: thermal blur is part
+of the matched PSF.
+
+### Step 5 — Small specimen mistilt
+
+**Confirm the magnitude first.** "~2%" most likely means a slope of 0.02 ≈ **20 mrad (1.15°)**,
+which is large for an accidental mistilt (usually ≲ 5 mrad). Over the 19.5 Å slab it shears a column
+~0.4 Å laterally; over 70 Å, ~1.4 Å. Suggested ladder: 2, 5, 10, 20 mrad.
+
+**Why it may help.** Tilt maps depth onto in-plane position along a column, giving the finder a
+second, lateral handle on depth — the columns' atoms separate.
+
+**What exists.** Nothing in the simulation. atomfind's CLEAN runs in **beam-parallel column tubes**
+(`find.py` `clean_tube`, `find_atoms_v3`), and its lattice-aware species typing and guided
+re-detection assume vertical columns.
+
+**What to build.**
+- **sim**: rotate the structure about an in-plane axis before slicing (a physical mistilt), rather
+  than tilting the probe. Build the ground truth from the *same* rotated atoms.
+- **GT cache**: regenerate from the rotated structure.
+- **atomfind**: sheared tubes with their axis along the tilt vector (a column's (x, y) advances by
+  z·tanθ); new config keys for tilt magnitude and azimuth; audit species typing and guided
+  re-detection for the vertical-column assumption.
+- **Kernels**: tilt the grid identically — the PSF itself tilts.
+
+### Step 6 — Thickness: the full 70 Å labyrinth
+
+**What exists.** `sim/PTO6_STO6_18_18_labyrinthPoscar.vasp` — 19,440 atoms, **70.01 Å along the beam
+after orientation = 18 cells**. `build_thin_sample(n_cells)` behind `THIN_CELLS`, so `THIN=18`
+reuses this driver unchanged. The PX915 NL70 pipeline (`NL70_coherent` preset, 70-layer recons)
+proves 70-layer reconstructions run.
+
+**Settings.** `THIN=18 ZVAC=4` → box ≈ 78.3 Å. Nyquist slices over that box: **NL ≈ 20 / 39 / 64 / 80**
+at 50 / 70 / 90 / 100 mrad.
+
+**Watch.**
+- **Walltime**: the thin a100 lab recon (NL 28) took ~7.5 h; NL 80 is ~3× that, so the driver's
+  10 h BIN=2 walltime is too short. Raise `rtime_for`.
+- **Cell spacing**: the driver hard-codes `CELL_Z=3.905` Å, but the structure's is 70.01/18 =
+  3.889 Å — invisible at 5 cells, 0.3 Å of box error at 18. Derive `BOXZ` from the structure.
+- **Ground truth**: regenerate with `make_gt_cache --thin-cells 18 --z-vacuum 4`. Do **not** reuse the
+  packaged NL70 cache — its box and vacuum differ.
+- **Typed constants**: `trim_z_A`, `zmax_show_A` and `clean_max_atoms` (~40 atoms per tube plus
+  margin) are thickness-coupled. Three of this campaign's bugs came from constants typed for one
+  geometry and silently wrong for the next — derive them from the GT and box instead.
+- **Physics**: a thick specimen brings dynamical scattering and channelling, so thin-slab behaviour
+  may not transfer. This is also where to retry Step 1 if it failed on the thin slab.
+
+### Final — the combined configuration, full sweep
+
+Every relaxation on together at 50 / 70 / 90 / 100 mrad (110 is out: its probe outgrows any scan
+field the 70 Å box allows), matched kernels, atomfind with its calibrated error bars. Regenerate the
+publication figures with the same scripts — `collate_atomfind_depth.py`,
+`make_mep_volumes_fig.py`, `make_ronchigram_fig.py` — so the figures and the numbers cannot drift.
+
+## Gaps worth closing along the way
+
+These bit this campaign and will bite again on thicker, tilted, noisier data:
+
+- **atomfind should fail loudly.** Add a self-check for the fraction of found atoms mapped outside
+  the slab — it would have caught the one-unit-cell registration alias instantly. Derive the trim
+  bands, `zmax_show_A` and `clean_max_atoms` from the GT rather than typing them.
+- **`report.json` should store the full `Alignment`** (`mZ`, `X0`, `Y0`, `dx`, `dz`) so figure
+  scripts can map ground truth without re-registering.
+- **The sim's `[geom]` halo check ignores the aberrated probe size** (it uses thickness·tanα) and
+  reports comfortable margins where there are none. Use the probe's d99.
+- **The a90/a100 `BETA_LSQ` inconsistency** (kernels 0.05, labs 0.1) closes itself: every step here
+  re-runs the labs at the pinned 0.05.
+
+Later, after this phase: non-round aberrations (`campaign/nonround_sweep.tsv`, 70 mrad with
+six-fold astigmatism escalated), then a C5-corrected comparison instrument.
