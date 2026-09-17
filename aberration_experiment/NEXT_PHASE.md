@@ -14,7 +14,7 @@ objection:
 | noiseless patterns | finite dose — Poisson counting noise |
 | fully coherent source | chromatic focal spread + finite source size |
 | static lattice | thermal vibration — frozen-phonon TDS |
-| exactly on zone axis | a small residual mistilt |
+| exactly on zone axis | a few degrees off axis |
 | 5-cell (19.5 Å) slab | the full 18-cell (70 Å) labyrinth |
 
 Relax them one at a time, measure what each costs, then run them all together. A result that
@@ -35,7 +35,12 @@ survives the combined configuration is publishable; one that survives only the i
    `BETA_LSQ` for all legs (driver-pinned at 0.05).
 5. **Scan field larger than the probe** (scan / d90 ≳ 1.5). Below ~1 the reconstruction has no
    positional diversity and returns speckle — that is what ended the sweep at 110 mrad.
-6. **Record the same numbers every time**, appended to one table,
+6. **Everything on Blythe lands under `$SHARE/phucrh`** (`/springbrook/share/physics/phucrh/`) —
+   never the group root `$SHARE`, which holds other users' folders. The drivers pack to
+   `$SHARE/$USER` since `5af792b`; any new script, `sbatch --output`, tarball, scratch or sim
+   directory must resolve there too. After each submission, check `ls /springbrook/share/physics/`
+   shows nothing new of ours. (Until 2026-09-15 every tarball leaked into the group root.)
+7. **Record the same numbers every time**, appended to one table,
    `aberration_experiment/results/<week>/relaxation_ladder.csv`: precision; bulk and whole-slab
    recall per species; xy-RMS; z-RMS; species confusion; false positives by species; and the
    recovered C1 whenever the probe is fitted. `collate_atomfind_depth.py` already reads all but the
@@ -130,26 +135,44 @@ Simulation cost scales ×N; fine at BIN=4/2.
 Report the per-species σ alongside as the floor. Kernels get the same phonons: thermal blur is part
 of the matched PSF.
 
-### Step 5 — Small specimen mistilt
+### Step 5 — Specimen tilt, a few degrees off axis
 
-**Confirm the magnitude first.** "~2%" most likely means a slope of 0.02 ≈ **20 mrad (1.15°)**,
-which is large for an accidental mistilt (usually ≲ 5 mrad). Over the 19.5 Å slab it shears a column
-~0.4 Å laterally; over 70 Å, ~1.4 Å. Suggested ladder: 2, 5, 10, 20 mrad.
+**Magnitude (confirmed with the user, 2026-09-17): a few degrees off the zone axis** — not a small
+accidental mistilt. Suggested ladder: 1°, 2°, 3°, 5° (17, 35, 52, 87 mrad). Note that this is the
+same order as the convergence semi-angle itself.
 
-**Why it may help.** Tilt maps depth onto in-plane position along a column, giving the finder a
-second, lateral handle on depth — the columns' atoms separate.
+**Why it may help.** Tilt maps depth onto in-plane position: a column's atoms advance laterally by
+z·tanθ, so the finder gets a second, lateral handle on depth.
+
+**How big the shear is** — lateral offset between a column's entrance and exit atoms, t·tanθ:
+
+| tilt | 5-cell slab (19.5 Å) | 18-cell slab (70 Å) |
+|---|---|---|
+| 1° | 0.34 Å | 1.22 Å |
+| 2° | 0.68 Å | 2.44 Å |
+| 3° | 1.02 Å | 3.67 Å |
+| 5° | 1.71 Å | 6.12 Å |
+
+The nearest distinct columns in [001] projection (A-site to O column) are **~1.95 Å** apart. On the
+thin slab the shear stays below that at every tilt on the ladder, so tilted columns remain separable.
+On the 70 Å slab it passes 1.95 Å at about 2°, and **tilted columns cross their neighbours** in
+projection — the column picture itself breaks down. So validate tilt on the thin slab first, and
+expect Step 5 × Step 6 to need a finder that handles crossing tubes, not just sheared ones.
 
 **What exists.** Nothing in the simulation. atomfind's CLEAN runs in **beam-parallel column tubes**
 (`find.py` `clean_tube`, `find_atoms_v3`), and its lattice-aware species typing and guided
 re-detection assume vertical columns.
 
 **What to build.**
-- **sim**: rotate the structure about an in-plane axis before slicing (a physical mistilt), rather
-  than tilting the probe. Build the ground truth from the *same* rotated atoms.
+- **sim**: rotate the crystal about an in-plane axis — a physical tilt, surfaces tilting with it —
+  rather than tilting the probe. Grow the box to hold it: the rotated slab needs ~W·sinθ of extra
+  height (70 Å × sin 5° ≈ 6.1 Å) plus in-plane padding, and the exit surface shifts laterally by
+  t·tanθ, so re-check that the scan field still sits over material at the exit side. Build the
+  ground truth from the *same* rotated atoms.
 - **GT cache**: regenerate from the rotated structure.
-- **atomfind**: sheared tubes with their axis along the tilt vector (a column's (x, y) advances by
-  z·tanθ); new config keys for tilt magnitude and azimuth; audit species typing and guided
-  re-detection for the vertical-column assumption.
+- **atomfind**: tilted tubes with their axis along the tilt vector; config keys for tilt magnitude
+  and azimuth; audit species typing and guided re-detection, which assume vertical columns; and,
+  for the thick slab past ~2°, a way to separate crossing tubes (e.g. fit neighbouring tubes jointly).
 - **Kernels**: tilt the grid identically — the PSF itself tilts.
 
 ### Step 6 — Thickness: the full 70 Å labyrinth

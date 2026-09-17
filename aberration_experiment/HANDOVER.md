@@ -105,6 +105,9 @@ Every wrong number this campaign produced traced back to breaking one of these.
    (1 / 2 / 3 / 4 at 50 / 70 / 90 / 100); trims and `clean_max_atoms` follow the box.
 7. **Prefer the driver to hand-written sbatch lines** — it always passes absolute paths and moves
    stale output aside.
+8. **Everything on Blythe lands under `$SHARE/phucrh`** — never the group root `$SHARE`
+   (`/springbrook/share/physics/`), which is shared with other users. Tarballs, logs, sims, scratch:
+   all of it. After a submission, `ls /springbrook/share/physics/` should show nothing new of ours.
 
 ## Traps we hit — symptom → cause → fix
 
