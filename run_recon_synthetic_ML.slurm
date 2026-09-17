@@ -51,7 +51,10 @@ if [ -n "${PROBE_C1:-}" ]; then
     [ -n "${PROBE_C3:-}" ] && PW_ARG+=(--c3="${PROBE_C3}")
     [ -n "${PROBE_C5:-}" ] && PW_ARG+=(--c5="${PROBE_C5}")
     echo "PROBE    : trial C1=${PROBE_C1} A  (sim/make_probe.py ${PW_ARG[*]})"
-    "${PYBIN}" "${REPO_DIR}/sim/make_probe.py" "${PW_ARG[@]}" \
+    # In a subshell with the sim's CUDA module (best effort): abtem imports cupy, and the sim env has only
+    # ever run with CUDA/12.6.0 loaded. The subshell keeps that module out of MATLAB's environment.
+    ( module load CUDA/12.6.0 >/dev/null 2>&1 || echo "PROBE    : (CUDA module not loaded; writer runs on CPU anyway)"
+      "${PYBIN}" "${REPO_DIR}/sim/make_probe.py" "${PW_ARG[@]}" ) \
         || { echo "PREFLIGHT FAIL: probe writer failed (see above)" >&2; exit 1; }
 fi
 
