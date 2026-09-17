@@ -250,7 +250,12 @@ function [self, param, p] = load_from_p(param, p)
         mask_dp=abs(fft2(p.probe_initial));
         mask_dp(mask_dp>1.0)=1;
         mask_dp(mask_dp<0.1)=0;
-        self.probe_support_fft = logical(mask_dp);
+        % Stored CENTRED (zero frequency at the array centre), like the default far-field support above.
+        % mask_dp is in unshifted fft2 order, and rescale_inputs resizes the support with crop_pad, which
+        % keeps the array centre: for the presolve engine that kept only frequencies beyond the aperture,
+        % an all-zero mask that erased the probe at probe_change_start and NaN'd the next engine
+        % (0*Inf in the initial probe rescaling). init_solver shifts it back to fft2 order. (2026-09-17)
+        self.probe_support_fft = fftshift(logical(mask_dp));
     else
         self.probe_support_fft = []; 
     end

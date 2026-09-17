@@ -130,6 +130,7 @@ Every wrong number this campaign produced traced back to breaking one of these.
 | probe sizes 20.7 / 26.1 Å at 110 / 120 | figure built probes in a 30 Å box; flatness metric used a running minimum | converged 140 Å box, real metric (`56e4d78`) |
 | Cs enlarged the low-α probes | planner tie-break "least defocus" | defocus-first plan (`7f77ee7`) |
 | tarballs in the group root | pack path built from bare `$SHARE` | `$SHARE/$USER` (`5af792b`) |
+| every aperture-constrained probe fit NaN'd at iteration 1 of the full engine, even with the probe frozen there | `crop_pad` resized the unshifted-FFT TEM aperture mask for the presolve by keeping the array centre: an all-zero mask erased the probe, then 0·Inf in the probe rescaling | mask stored centred, shifted back in `init_solver` (2026-09-17) |
 | O columns "duplicated" across both x–z panels | not a bug: in ABO₃ [001] O sits at (½,0) **and** (0,½) | labels name both column types (`24571e3`) |
 
 ## How to run

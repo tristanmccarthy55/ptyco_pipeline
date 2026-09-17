@@ -136,6 +136,31 @@ only when no h5 was packed; (2) therefore every C1 grid packs its h5s.
 thin weak-phase slab as intrinsically under-constraining the probe; a thicker sample may be what
 makes it work.
 
+### Stage 2.5 — probe update from the corrector's C3/C5 and an offset C1 (the experimentalist's route)
+
+**Why.** An operator would not scan fixed probes: they build the start probe from the corrector tableau
+(C3, C5) and their defocus estimate, then let the probe update refine it. Defocus is the usual free
+parameter. We don't need a C1 number out — the refined probe can feed the kernels wholesale — only
+convergence from a valid start.
+
+**The earlier "failed five times" was mostly a bug (found 2026-09-17).** Every run with the TEM aperture
+constraint (`PROBE_SUPPORT_FFT=1`, rounds v3–v5) NaN'd at iteration 1 of the full engine, including the
+`[40 Inf]` runs that froze the probe there; every run without it finished. Cause: `load_from_p.m` builds the
+aperture mask from `abs(fft2(probe_initial))` in unshifted order, and `rescale_inputs.m` resizes it for the
+presolve with `crop_pad`, which keeps the array centre — pure high frequency. Ported and run on our probes, the
+presolve mask was all zeros at a70 and a90, so the probe was erased at `probe_change_start`, and the full
+engine's initial probe rescaling turned the zero probe into 0·Inf = NaN. Fixed by storing the mask centred and
+shifting it back in `init_solver.m` (both lines inside the TEM branch; nothing else changes): the full-engine
+mask is bit-identical to before and the presolve mask now keeps all of the probe's power. So a constrained
+probe update has never actually run on this data; v1 (no constraint, blind 4 Å start) and v2 (a scalar
+`probe_support_fft` bug) were the other two.
+
+**Runs.** `campaign/run_c1_search.sh` with `PSTART` (presolve release) and optionally `PSTART2` (full engine):
+starts at ±10% and ±20% of the true C1 and at the truth, both variants, plus fixed-probe controls at the same
+starts, NITER 200, α = 70 and 90. `analysis/probe_refit_check.py` reports per run whether the probe survived,
+its shift-invariant overlap with the true probe at the start and the end, the C1 it now looks like, and the
+slab position.
+
 ### Step 2 — Shot noise
 
 **What exists.** `sim/add_poisson_noise.py --in-dir <sim>/.. --dose <e/Å²> [--seed N]` — a

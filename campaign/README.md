@@ -94,7 +94,11 @@ ALPHAS=70 DC1="-60 -50 -40 -30 -20 -10 -10 -8 -6 -4 -2 0 0 0 2 4 6 8 10 10 20 30
 ALPHAS=70 C1="<fit>" MODES="lab Pb Ti" NITER=200 bash campaign/run_c1_search.sh   # final + matched kernels
 DRYRUN=1 ... bash campaign/run_c1_search.sh                               # print the sbatch lines only
 ```
-Env: `ALPHAS`, `DC1` (offsets from the TSV C1) or `C1` (absolute), `MODES`, `NITER` (50), `PACK_H5`
+**Probe update (stage 2.5):** `PSTART=40` releases the probe in the presolve engine, `PSTART2=20` also in the
+full engine, with the aperture constraint on; the trial probe is then only the starting point. Campaign
+defaults to `c1fit`, dirs gain `_ps40[x20]`, and `analysis/probe_refit_check.py` summarises the refined probes.
+
+Env: `ALPHAS`, `DC1` (offsets from the TSV C1) or `C1` (absolute), `MODES`, `NITER` (50), `PSTART`, `PSTART2`, `PSFFT`, `PACK_H5`
 (1; 0 packs sidecars, probes and logs only), `DRYRUN`, `SAVE_EVERY` (= NITER), `BETA_LSQ`, `SIM_ROOT`.
 Tarball: `$SHARE/$USER/c1_results_a<alphas>_n<NITER>_<ts>.tgz`, packing only that submission's recon dirs
 (listed in `logs/c1_pack_*.dirs`), so several submissions can run side by side. Analyse locally:

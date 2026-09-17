@@ -17,6 +17,15 @@
 # probe (NEXT_PHASE rule 3). PACK_H5=0 packs sidecars/logs/probes but not the h5 (a90: 240 MB each).
 # DRYRUN=1 prints every sbatch line and submits nothing. Every path lands under $SHARE/phucrh: recon
 # dirs in the repo, logs in each recon dir, the tarball in $SHARE/$USER.
+#
+# PROBE UPDATE (stage 2.5 -- the experimentalist's route): PSTART=<iter> releases the probe in the
+# presolve engine from that iteration, PSTART2=<iter> also in the full engine, with the TEM aperture
+# constraint on (PSFFT=1, default when PSTART is set). The trial probe is then only the START: C3/C5 from
+# the corrector tableau, C1 from DC1/C1, and the solver refines the whole probe. Campaign defaults to
+# c1fit; dirs gain _ps<PSTART>[x<PSTART2>].
+#   ALPHAS=70 DC1="-12 -6 0 6 12" PSTART=40 NITER=200 bash campaign/run_c1_search.sh
+# The aperture constraint only works since the 2026-09-17 engine fix (load_from_p/init_solver): before
+# it the presolve's mask was all zeros, erasing the probe and NaN-ing the next engine.
 set -euo pipefail
 REPO_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"; cd "${REPO_DIR}"; mkdir -p logs
 TSV="${TSV:-campaign/round_sweep.tsv}"; [ -f "$TSV" ] || { echo "no $TSV" >&2; exit 1; }
@@ -24,7 +33,11 @@ ALPHAS="${ALPHAS:-70 90}"; MODES="${MODES:-lab}"; NITER="${NITER:-50}"
 # one intermediate Niter*.mat per engine (at the end): at BIN 2 each holds a ~230 MB object, and a grid is 25 trials
 SAVE="${SAVE_EVERY:-$NITER}"
 THIN="${THIN:-5}"; ZVAC="${ZVAC:-4}"; BETA_LSQ="${BETA_LSQ:-0.05}"
-PACK_H5="${PACK_H5:-1}"; DRYRUN="${DRYRUN:-0}"; CAMP="${CAMP:-c1}"
+PACK_H5="${PACK_H5:-1}"; DRYRUN="${DRYRUN:-0}"
+PSTART="${PSTART:-}"; PSTART2="${PSTART2:-}"; PSFFT="${PSFFT:-$([ -n "$PSTART" ] && echo 1 || echo 0)}"
+[ -z "$PSTART" ] && [ -n "$PSTART2" ] && { echo "PSTART2 needs PSTART" >&2; exit 1; }
+PS_TAG=""; [ -n "$PSTART" ] && PS_TAG="_ps${PSTART}${PSTART2:+x${PSTART2}}"
+CAMP="${CAMP:-$([ -n "$PSTART" ] && echo c1fit || echo c1)}"
 SIM_ROOT="${SIM_ROOT:-$REPO_DIR}"        # where sim_out_af_a<A>_<mode> live (override for a local dry run)
 CELL_Z=3.905; LAM=0.0196877
 BOXZ=$(awk "BEGIN{printf \"%.3f\", ${THIN}*${CELL_Z}+2*${ZVAC}}")      # full box thickness [A]
@@ -33,12 +46,14 @@ BOXZ=$(awk "BEGIN{printf \"%.3f\", ${THIN}*${CELL_Z}+2*${ZVAC}}")      # full bo
 INPUTS=(data_dp.hdf5 data_position.hdf5 sim_meta.mat aberrations.json probe_initial_true.mat)
 # Tarball name carries alphas, NITER and the second: several submissions pasted together must not share
 # (and overwrite) one tarball.
-TS="$(date +%Y%m%d_%H%M%S)"; TAG="a$(echo ${ALPHAS} | tr ' ' '-')_n${NITER}"
+TS="$(date +%Y%m%d_%H%M%S)"; TAG="a$(echo ${ALPHAS} | tr ' ' '-')_n${NITER}${PS_TAG}"
 PACK="${SHARE:+$SHARE/$USER}"; PACK="${PACK:-$REPO_DIR}/${CAMP}_results_${TAG}_${TS}.tgz"
 DIRS_FILE="${REPO_DIR}/logs/${CAMP}_pack_${TAG}_${TS}.dirs"; RDIRS=()
 [ -n "${DC1:-}" ] || [ -n "${C1:-}" ] || { echo "set DC1 (offsets from the TSV C1) or C1 (absolute values) [A]" >&2; exit 1; }
 [ -n "${DC1:-}" ] && [ -n "${C1:-}" ] && { echo "set DC1 or C1, not both" >&2; exit 1; }
-echo "C1 search: alphas ${ALPHAS}; modes ${MODES}; NITER ${NITER}; full box ${BOXZ} A; ${DC1:+dC1 = ${DC1}}${C1:+C1 = ${C1}}"
+echo "C1 search [${CAMP}]: alphas ${ALPHAS}; modes ${MODES}; NITER ${NITER}; full box ${BOXZ} A; ${DC1:+dC1 = ${DC1}}${C1:+C1 = ${C1}}"
+if [ -n "$PSTART" ]; then echo "  probe UPDATE: presolve from iter ${PSTART}, full engine from ${PSTART2:-never (fixed)}; aperture constraint ${PSFFT}"
+else echo "  probe FIXED at each trial C1"; fi
 
 nl_full(){ awk "BEGIN{n=int(${BOXZ}*2*($1/1000)^2/${LAM}+0.5); if(n<1)n=1; print n}"; }
 mem_for(){ case "$1" in 1) echo 175G;; 2) echo 96G;; *) echo 48G;; esac; }
@@ -46,6 +61,7 @@ grp_for(){ case "$1" in 1) echo 16;;  2) echo 32;; *) echo "";; esac; }
 time_for(){ # $1 bin $2 niter -> HH:MM:SS : 15 min startup + NITER x (presolve+full s/iter) x 2.
             # s/iter from the packed logs: a70 (BIN 4) 0.7+2.2, a90 (BIN 2) 4.3+17.7.
     local s; case "$1" in 1) echo 24:00:00; return;; 2) s=22;; *) s=3;; esac
+    [ -n "$PSTART" ] && s=$(( s * 3 / 2 ))          # probe update adds work per iteration
     local m=$(( 15 + ($2 * s * 2 + 59) / 60 )); printf '%02d:%02d:00' $((m/60)) $((m%60)); }
 
 preflight_sim(){ # $1 aberrations.json $2 alpha $3 c3 $4 c1 -- the sim on disk must be the TSV's probe.
@@ -65,6 +81,9 @@ recon_job(){ # $1 name $2 datadir $3 bin $4 nl $5 c1 $6 c3 $7 c5 -> jobid  (tria
     local name="$1" datadir="$2" bin="$3" nl="$4" c1="$5" c3="$6" c5="$7"
     local rdir="${REPO_DIR}/recon_${CAMP}_${name}_NL${nl}"
     local grp; grp="$(grp_for "$bin")"; local gx=""; [ -n "$grp" ] && gx=",GROUPING=${grp}"
+    if [ -n "$PSTART" ]; then
+        gx="${gx},PROBE_START=${PSTART},PROBE_SUPPORT_FFT=${PSFFT}"; [ -n "$PSTART2" ] && gx="${gx},PROBE_START2=${PSTART2}"
+    fi
     local cmd=(sbatch --parsable --job-name="${CAMP}_${name}" --time="$(time_for "$bin" "$NITER")" --mem="$(mem_for "$bin")"
                --output="${rdir}/slurm_%j.out" --error="${rdir}/slurm_%j.err"
                --export=ALL,NLAYERS="${nl}",SIM_BASE="${rdir}/",REGLAYER=0,PROBE_MODES=1,NITER="${NITER}",SAVE_EVERY="${SAVE}",BETA_LSQ="${BETA_LSQ}",PROBE_C1="${c1}",PROBE_C3="${c3}",PROBE_C5="${c5}"${gx}
@@ -112,7 +131,7 @@ for row in "${PLAN[@]}"; do
         c1s=$(printf '%g' "$c1")
         n=$(( $(printf '%s\n' ${done_list} | grep -cx -- "$c1s" || true) + 1 )); done_list+=" ${c1s}"
         rep=""; [ "$n" -gt 1 ] && rep="_r${n}"
-        name="a${a}_${m}_df${c1s}${rep}_n${NITER}"
+        name="a${a}_${m}_df${c1s}${rep}${PS_TAG}_n${NITER}"
         R=$(recon_job "$name" "$D" "$bin" "$nl" "$c1s" "$c3" "$c5t")
         RIDS+=("$R")
         printf '  %-28s C1=%-7s (dC1 %+g) NL=%-2s bin=%s -> %s\n' "$name" "$c1s" \

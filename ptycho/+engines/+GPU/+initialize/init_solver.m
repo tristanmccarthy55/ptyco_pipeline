@@ -359,8 +359,8 @@ function [self, cache] = init_solver(self,par)
             if i == 1
                 verbose(2,'Using far-field probe support')
             end                      
-        elseif check_option(par,'probe_support_tem') % not shift for TEM aperture, by Zhen Chen
-            modes{i}.probe_support_fft = self.probe_support_fft; 
+        elseif check_option(par,'probe_support_tem') % TEM aperture, by Zhen Chen; stored centred since 2026-09-17
+            modes{i}.probe_support_fft = fftshift(self.probe_support_fft);   % back to fft2 order, as applied
         else 
             modes{i}.probe_support_fft = [];
         end
