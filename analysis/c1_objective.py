@@ -58,12 +58,9 @@ def read_csv_rows(path):
         return list(csv.DictReader(line for line in f if not line.startswith("#")))
 
 
-def slab_profile(stats_path):
-    """(centroid, entrance, exit) depth [A] of the phase-std excess over the vacuum floor; half-max edges."""
-    rows = read_csv_rows(stats_path)
-    z = np.array([float(r["z_A"]) for r in rows]); s = np.array([float(r["phase_std"]) for r in rows])
-    w = np.clip(s - s.min(), 0, None)
-    if w.sum() <= 0:
+def _profile_edges(z, w):
+    """(centroid, entrance, exit) of a non-negative depth profile w(z); edges at half maximum."""
+    if not np.isfinite(w).all() or w.sum() <= 0:
         return np.nan, np.nan, np.nan
     cen = float((z * w).sum() / w.sum())
     half = 0.5 * w.max(); above = np.where(w >= half)[0]
@@ -72,6 +69,46 @@ def slab_profile(stats_path):
             return float(z[i1])
         return float(z[i0] + (half - w[i0]) / (w[i1] - w[i0] + 1e-30) * (z[i1] - z[i0]))
     return cen, cross(above[0] - 1, above[0]), cross(above[-1] + 1, above[-1])
+
+
+def slab_profile(stats_path):
+    """Slab position from the sidecar's RAW per-layer phase std (fallback when no h5 was packed).
+
+    Caution, measured on the a70 smoke test: the raw std is dominated by the phase-ramp gauge (vacuum layer
+    2 raw 0.095 vs 0.025 deramped) and the ramp is not spread evenly (layer 1 carries none), so this
+    centroid is biased. Prefer h5_slab_profile."""
+    rows = read_csv_rows(stats_path)
+    z = np.array([float(r["z_A"]) for r in rows]); s = np.array([float(r["phase_std"]) for r in rows])
+    return _profile_edges(z, np.clip(s - s.min(), 0, None))
+
+
+def h5_slab_profile(h5_path, box_z=None, hp_sigma_A=1.0):
+    """Slab position from the recon h5: per layer, the std over the illuminated field (illum_sum > 0.15 max)
+    of the phase after removing a fitted plane (the ramp gauge) and a Gaussian low-pass of hp_sigma_A
+    (keeps the atomic contrast). The profile minus its minimum is the weight. On the a70 smoke test this
+    puts the slab at 14.39 A against 14.19 A for the 200-iteration known-probe recon (slab centre 13.76 A)."""
+    import h5py
+    from scipy.ndimage import gaussian_filter
+    with h5py.File(h5_path, "r") as f:
+        r = f["reconstruction"]
+        obj = np.asarray(r["object"]).squeeze()
+        il = np.asarray(r["p"]["illum_sum"]["illum_sum_0"])
+        dx = float(np.ravel(r["p"]["dx_spec"])[0]) * 1e10
+    if obj.ndim == 2:
+        obj = obj[None]
+    m = il > 0.15 * il.max()
+    if m.shape != obj.shape[1:]:
+        m = m.T
+    yy, xx = np.mgrid[:obj.shape[1], :obj.shape[2]]
+    A = np.c_[xx[m], yy[m], np.ones(m.sum())]
+    hp = []
+    for l in range(obj.shape[0]):
+        v = np.angle(obj[l]); c, *_ = np.linalg.lstsq(A, v[m], rcond=None)
+        d = v - (c[0] * xx + c[1] * yy + c[2])
+        hp.append((d - gaussian_filter(d, hp_sigma_A / dx))[m].std())
+    hp = np.array(hp); nl = len(hp)
+    z = (np.arange(nl) + 0.5) * ((box_z or 27.525) / nl)
+    return _profile_edges(z, np.clip(hp - hp.min(), 0, None))
 
 
 def load_trials(roots, camp):
@@ -100,8 +137,14 @@ def load_trials(roots, camp):
             else:
                 t.update(c1_sim=np.nan, d90=None, self_check=None)
                 print(f"  NOTE {d}: no probe_initial.json -- truth unknown for this trial")
+            h5 = glob.glob(os.path.join(d, "analysis", "**", "*_recons.h5"), recursive=True)
             ls = glob.glob(os.path.join(d, "analysis", "**", "*_layer_stats.csv"), recursive=True)
-            t["z_centroid"], t["z_entrance"], t["z_exit"] = slab_profile(sorted(ls)[-1]) if ls else (np.nan,) * 3
+            if h5:
+                t["z_centroid"], t["z_entrance"], t["z_exit"] = h5_slab_profile(sorted(h5)[-1]); t["z_source"] = "h5"
+            elif ls:
+                t["z_centroid"], t["z_entrance"], t["z_exit"] = slab_profile(sorted(ls)[-1]); t["z_source"] = "sidecar(raw)"
+            else:
+                t["z_centroid"], t["z_entrance"], t["z_exit"] = (np.nan,) * 3; t["z_source"] = None
             trials.append(t)
     return trials
 
@@ -133,9 +176,8 @@ def noise_sigma(groups):
     if dof >= MIN_REPEAT_DOF:
         return s_rep, f"repeats ({dof} dof)"
     s_d2, n_d2, fine = _sigma_d2(groups)
-    cands = [(x, lab) for x, lab in ((s_rep, f"repeats ({dof} dof)"),
-                                     (s_d2, f"2nd differences ({n_d2} on the {fine:g} A grid; upper bound)"))
-             if np.isfinite(x)]
+    d2_lab = f"2nd differences ({n_d2} on the {fine:g} A grid; upper bound)" if fine is not None else "2nd differences"
+    cands = [(x, lab) for x, lab in ((s_rep, f"repeats ({dof} dof)"), (s_d2, d2_lab)) if np.isfinite(x)]
     if not cands:
         return np.nan, "none (no repeats and no evenly spaced fine run)"
     x, lab = max(cands)
@@ -402,7 +444,7 @@ def main():
 
     rows = sorted(trials, key=lambda t: (t["alpha"], t["mode"], t["niter"], t["c1"], t["rep"]))
     cols = ["alpha", "mode", "niter", "c1", "dc1", "rep", "final_error", "last_iter", "n_rows", "complete", "finite",
-            "self_check", "d90", "z_centroid", "z_entrance", "z_exit", "dir"]
+            "self_check", "d90", "z_centroid", "z_entrance", "z_exit", "z_source", "dir"]
     out_csv = a.out_csv or os.path.join(week_dir("results"), "c1_objective.csv")
     with open(out_csv, "w", newline="") as f:
         w = csv.DictWriter(f, fieldnames=cols); w.writeheader()

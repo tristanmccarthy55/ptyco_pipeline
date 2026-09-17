@@ -117,9 +117,20 @@ the planned grid, truth off-grid: ±4 Å bottom → rms error 1.4–1.9 Å, cove
 10 Å steps from a ±20/±40 Å start, then scanning 2 Å inside the bracket.
 
 **Run order** (agreed 2026-09-17): smoke test at a70 → a70 grid (25 trials at NITER 50, plus 7 at NITER
-200 to check that 50 iterations rank the trials as 200 do) → review → a90 grid (`PACK_H5=0`) plus one
+200 to check that 50 iterations rank the trials as 200 do) → review → a90 grid (h5s packed: the depth-shift
+test needs them, see below) plus one
 a90 known-C1 NITER 200 run, which also re-baselines a90 at `BETA_LSQ` 0.05 → final lab + Pb + Ti at the
 fitted C1 with the same fitted probe → atomfind → `analysis/relaxation_ladder.py --step 1`.
+
+**Smoke test (2026-09-17, job 1284049, a70 at the true C1, NITER 50) — green.** Writer self-check passed on
+Blythe's abTEM 1.0.9; 1600 positions; no NaNs; 20 trace rows as the solver's schedule predicts; error falls
+41.6 → 25.3 and is still falling ~4% per 10 iterations at 50 (hence the NITER 200 ranking check). Against the
+200-iteration known-probe a70 recon on the same data and probe: whole-volume phase correlation 0.93 (0.90–0.96
+in the atomic layers, high-passed, central 18 Å), atomic contrast 75–85% of the 200-iteration value, slab at
+4.9–24.0 Å (true atomic band 4.0–23.5). Two findings: (1) the sidecar's raw per-layer phase std is dominated by
+the phase-ramp gauge (vacuum layer 2: 0.095 raw, 0.025 deramped) and so biases the slab position —
+`c1_objective.py` now measures the slab from the h5 (deramped, 1 Å high-pass) and falls back to the sidecar
+only when no h5 was packed; (2) therefore every C1 grid packs its h5s.
 
 **If it fails on the thin slab**, record that and retry after Step 6. The campaign notes flag the
 thin weak-phase slab as intrinsically under-constraining the probe; a thicker sample may be what
