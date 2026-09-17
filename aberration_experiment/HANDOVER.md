@@ -11,6 +11,10 @@ atomfind with matched kernels. **The round-α campaign is complete**: depth reco
 aperture opens, from 50 to 90 mrad, and 110 mrad is out of reach. The next phase relaxes the
 idealisations one at a time toward a publishable result — see `NEXT_PHASE.md`.
 
+**Step 1 (C1 fit, C3/C5 fixed) — tooling built 2026-09-17, not yet run.** Error-trace sidecar in the
+recon script, in-job probe writer, C1-search driver, objective analysis, relaxation-ladder table (step 0
+seeded). Next: the a70 smoke test. Plan and expectations in `NEXT_PHASE.md` § Step 1.
+
 PI-meeting page (private): https://claude.ai/artifact/6JuRq4kgP8v6FjDC8agcpn
 
 ## Results
@@ -136,6 +140,7 @@ cd /springbrook/share/physics/phucrh/ptyco_baseline/ptyco_pipeline && git pull
 ALPHAS="70 90" bash campaign/run_thin_atomfind.sh                      # sims + lab + Pb/Ti kernels + pack
 ALPHAS=90 MODES=lab RECON_ONLY=1 bash campaign/run_thin_atomfind.sh    # re-recon one leg, reuse sims
 ```
+C1 defocus search (step 1): `campaign/run_c1_search.sh`, usage in `campaign/README.md`.
 Driver env: `ALPHAS`, `MODES` (lab / Pb / Ti), `RECON_ONLY`, `OVERWRITE`, `THIN`, `ZVAC`, `WIN`,
 `STEP`, `GRIDSP`, `BETA_LSQ`, `NITER`. It reads C3 / C1 / BIN per α from `round_sweep.tsv`, prints
 the job ids and the exact scp line. Tarballs pack to `/springbrook/share/physics/phucrh/`.
@@ -177,6 +182,9 @@ python analysis/make_ronchigram_fig.py
   coherent figure set in one week's directory if the week rolls over mid-revision.
 - **h5 layout**: `reconstruction/object` (NL, 1, Ny, Nx) complex; `reconstruction/probes`;
   `p/dx_spec`×1e10 = 0.0492 Å; `p/illum_sum/illum_sum_0` is in the object frame, `p/positions` is not;
-  `measurement/` is a broken external link. **No error history is stored.**
+  `measurement/` is a broken external link. **No error history is stored in the h5, and none is printed
+  to the slurm log.** Since 2026-09-17 `run_synthetic_recon_ML.m` writes it beside the h5 as
+  `<run>_error_trace.csv`, with `<run>_layer_stats.csv` (per-layer phase mean/std); recons before that
+  have neither.
 - **Blythe resources**: 3×L40 48 GB, 192 GB per node. `--mem` 175G at BIN=1, 96G at 2, 48G at 4;
   GROUPING 16 / 32 / none. Walltime 24 / 10 / 5 h.

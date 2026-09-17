@@ -43,8 +43,9 @@ survives the combined configuration is publishable; one that survives only the i
 7. **Record the same numbers every time**, appended to one table,
    `aberration_experiment/results/<week>/relaxation_ladder.csv`: precision; bulk and whole-slab
    recall per species; xy-RMS; z-RMS; species confusion; false positives by species; and the
-   recovered C1 whenever the probe is fitted. `collate_atomfind_depth.py` already reads all but the
-   last two from `report.json`.
+   recovered C1 whenever the probe is fitted. `analysis/relaxation_ladder.py` writes the row (it
+   reuses `collate_atomfind_depth.load_run`; false positives by species are the confusion matrix's
+   `<species>->none` entries). Step 0 is seeded in `results/2026-W38/`.
 
 **Baseline to beat (step 0)** — matched kernels, corrected registration, noiseless, known probe:
 
@@ -69,8 +70,9 @@ defocus is the knob that is never quite where you think.
 **What exists.** `PROBE_START` for free probe updates (the route that failed). The PtychoShelves
 GPU engine has **no parametric defocus refinement** — only `probe_fourier_shift_search`,
 `estimate_NF_distance` and detector scale/rotation searches. The reconstruction h5 stores **no
-error history** (only `reconstruction/object`, `probes`, two flags); the per-iteration Fourier error
-is printed to the slurm log and nowhere else.
+error history** (only `reconstruction/object`, `probes`, two flags). *Correction (2026-09-17):* the
+error is not in the slurm logs either — 0 lines in every packed log. It lived only inside MATLAB
+(`out.error_metric`) and in the unpacked `Niter*.mat`.
 
 **What to build.**
 1. **Save the error trace** from `run_synthetic_recon_ML.m` (`fdb.score` / the LSQML
@@ -88,6 +90,36 @@ is printed to the slurm log and nowhere else.
 **Accept if** the recovered C1 lands within the width of the objective's minimum of the truth
 (define that width from the curve, not in advance), and the atomfind numbers sit within noise of
 step 0.
+
+**As built (2026-09-17)** — all three pieces exist and are tested locally; nothing submitted yet.
+- `ptycho/run_synthetic_recon_ML.m` writes `<run>_error_trace.csv` and `<run>_layer_stats.csv` beside
+  the h5 (after it, in `try/catch`). MATLAB is not available locally, so the smoke test is its test.
+- `sim/make_probe.py` reproduces both packed true probes (overlap 1.000000, max relative difference
+  2.0e-7 at a70 and 2.8e-6 at a90) and self-checks against the truth in every job at the true C1.
+- `campaign/run_c1_search.sh` + `analysis/c1_objective.py` (usage in `campaign/README.md`).
+
+**Two facts that shape the search.**
+- *The probe changes fast with C1.* Overlap of the probe with itself shifted in C1: a70 0.90 / 0.48 /
+  0.18 at 2 / 5 / 10 Å; a90 0.75 / 0.03 at 2 / 5 Å. A 10 Å grid alone can step over the minimum, so
+  the grid is 10 Å coarse plus 2 Å fine across ±10 Å.
+- *Defocus is degenerate with the object's depth.* A focus error and an equal depth shift of the object
+  give the same far-field data, and the full-box recon has 4 Å of vacuum each side to absorb it. Expect a
+  **flat bottom about ±4 Å wide**, with the reconstructed slab moving one-for-one with the trial C1
+  inside it. So C1 is reported as the **centre of the flat bottom with its half-width**, not an argmin.
+  `c1_objective.py` panel (c) tests the one-for-one shift directly.
+
+**Estimator.** Bottom = the run of grid C1 around the minimum within 2σ of the bottom's level (two passes,
+because the minimum of noisy points is biased low). σ comes from repeats at the same C1 (the GPU engine
+reseeds its RNG from the clock, so repeats differ in batch order and layer starts); with fewer than 4
+repeat degrees of freedom it takes the larger of that and the second-difference scatter. Monte Carlo on
+the planned grid, truth off-grid: ±4 Å bottom → rms error 1.4–1.9 Å, coverage 0.82–0.85; ±2 Å → 0.8–1.1 Å,
+0.92–0.93; a sharp minimum → 0.5–0.6 Å, 0.98–0.99. `--blind-start` replays an operator walking downhill in
+10 Å steps from a ±20/±40 Å start, then scanning 2 Å inside the bracket.
+
+**Run order** (agreed 2026-09-17): smoke test at a70 → a70 grid (25 trials at NITER 50, plus 7 at NITER
+200 to check that 50 iterations rank the trials as 200 do) → review → a90 grid (`PACK_H5=0`) plus one
+a90 known-C1 NITER 200 run, which also re-baselines a90 at `BETA_LSQ` 0.05 → final lab + Pb + Ti at the
+fitted C1 with the same fitted probe → atomfind → `analysis/relaxation_ladder.py --step 1`.
 
 **If it fails on the thin slab**, record that and retry after Step 6. The campaign notes flag the
 thin weak-phase slab as intrinsically under-constraining the probe; a thicker sample may be what

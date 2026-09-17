@@ -367,3 +367,44 @@ end
 %%%%%%%%%%%%%%%%%%%%%%%%%%%% run %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 out = core.ptycho_recons(p);
 fprintf('Multislice synthetic reconstruction finished.\n');
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%% sidecars: error trace + layer stats %%%%%%%%%%%%%%%%
+% The GPU engine evaluates the Fourier error (mean over positions) at iterations 1-9, then every
+% 4/8/16/20 and at the last one (engines.GPU.LSQML), and save_to_p hands it back as
+% out.error_metric of the LAST engine -- but it reaches neither the h5 (the copy into
+% p.engines{}.error_metric_final is commented out in ptycho_recons.m and extract4saving strips
+% p.error_metric) nor the log (it is never printed). Write it as a small CSV next to the h5 so an
+% outer loop (the C1 defocus search, aberration_experiment/NEXT_PHASE.md step 1) can read its
+% objective without parsing anything. A second CSV holds the per-layer phase mean/std over the
+% illuminated field: the object's depth profile, cheap enough to ship for every trial. Both run
+% AFTER the h5 is saved and inside try/catch -- a sidecar must never cost a finished recon.
+try
+    sdir = out.save_path{1}; rn = out.run_name;
+    if isfield(out, 'error_metric') && ~isempty(out.error_metric.value)
+        em = out.error_metric;
+        fid = fopen(fullfile(sdir, [rn '_error_trace.csv']), 'w');
+        fprintf(fid, '# %s | err_metric=%s | NITER=%d | probe=%s\n', em.method, em.err_metric, ...
+                Niter(end), p.initial_probe_file);
+        fprintf(fid, 'iteration,fourier_error\n');
+        fprintf(fid, '%d,%.8g\n', [double(em.iteration(:)), double(em.value(:))]');
+        fclose(fid);
+        fprintf('sidecar: %s (%d rows, final Fourier error %.6g)\n', [rn '_error_trace.csv'], ...
+                numel(em.value), em.value(end));
+    else
+        fprintf('sidecar: out.error_metric missing -- error trace NOT written\n');
+    end
+    obj = out.object{1}; il = out.illum_sum{1};          % (Ny,Nx,1,NL) and (Ny,Nx)
+    roi = il > 0.15 * max(il(:));                        % illuminated field (analyze_thin_campaign rule)
+    nlo = size(obj, 4);
+    fid = fopen(fullfile(sdir, [rn '_layer_stats.csv']), 'w');
+    fprintf(fid, '# per-layer object phase over the illuminated ROI (illum_sum > 0.15 max); z_A = layer centre\n');
+    fprintf(fid, 'layer,z_A,phase_mean,phase_std\n');
+    for l = 1:nlo
+        ph = angle(obj(:,:,1,l)); v = double(ph(roi));
+        fprintf(fid, '%d,%.4f,%.6g,%.6g\n', l, (l-0.5)*delta_z, mean(v), std(v));
+    end
+    fclose(fid);
+    fprintf('sidecar: %s (%d layers)\n', [rn '_layer_stats.csv'], nlo);
+catch ME
+    fprintf('sidecar: skipped (%s)\n', ME.message);
+end

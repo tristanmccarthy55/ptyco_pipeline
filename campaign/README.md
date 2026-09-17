@@ -70,6 +70,37 @@ Re-simulate over an existing sweep: add `OVERWRITE=1`.
 (the recon `.h5` keeps object + probe + params). Old raw data is regenerable — reclaim it anytime with
 `find <repo> \( -name data_dp.hdf5 -o -name data_position.hdf5 \) -delete`.
 
+## C1 defocus search — `run_c1_search.sh` (aberration_experiment step 1)
+C3 and C5 fixed at the sim's corrector values; **C1 found by an outer loop over fixed probes**. Each trial
+reconstructs an existing `run_thin_atomfind.sh` sim (`sim_out_af_a<A>_<mode>`, no re-simulation) with a
+probe that differs only in C1, and the objective is the solver's own final Fourier error.
+
+- **Probe**: written *in the job* by `../sim/make_probe.py` (the recon slurm runs it when `PROBE_C1` is
+  set) through the sim's own `build_initial_probe`, geometry from `sim_meta.mat`, C3/C5 from
+  `aberrations.json`. At the sim's own C1 it must reproduce `probe_initial_true.mat` or the job stops
+  before MATLAB (`SELF-CHECK PASS` in the log).
+- **Objective**: `ptycho/run_synthetic_recon_ML.m` writes `<run>_error_trace.csv` (iteration, Fourier
+  error of the full-resolution engine) and `<run>_layer_stats.csv` (per-layer phase mean/std over the
+  illuminated field) beside the h5. Before 2026-09-17 neither the h5 nor the log carried the error.
+- **Preflight**: every (α, mode) is checked before anything is submitted; a sim whose
+  `aberrations.json` disagrees with `round_sweep.tsv` (an older a70 sim had C3 −4 µm, C1 +2 Å) aborts.
+- **Dirs**: `recon_c1_a<A>_<mode>_df<C1>[_rN]_n<NITER>_NL<NL>`; a C1 listed twice runs twice (`_r2`,
+  the noise floor). Engine constants pinned: `REGLAYER=0 BETA_LSQ=0.05 PROBE_MODES=1`.
+
+```bash
+ALPHAS=70 DC1="0" bash campaign/run_c1_search.sh                         # smoke test (true C1)
+ALPHAS=70 DC1="-60 -50 -40 -30 -20 -10 -10 -8 -6 -4 -2 0 0 0 2 4 6 8 10 10 20 30 40 50 60" \
+    NITER=50 bash campaign/run_c1_search.sh                                # objective grid (25 trials)
+ALPHAS=70 C1="<fit>" MODES="lab Pb Ti" NITER=200 bash campaign/run_c1_search.sh   # final + matched kernels
+DRYRUN=1 ... bash campaign/run_c1_search.sh                               # print the sbatch lines only
+```
+Env: `ALPHAS`, `DC1` (offsets from the TSV C1) or `C1` (absolute), `MODES`, `NITER` (50), `PACK_H5`
+(1; 0 packs sidecars, probes and logs only), `DRYRUN`, `SAVE_EVERY` (= NITER), `BETA_LSQ`, `SIM_ROOT`.
+Tarball: `$SHARE/$USER/c1_results_<ts>.tgz`. Analyse locally:
+```bash
+~/hyperspy-bundle/bin/python analysis/c1_objective.py --root ~/Desktop/<fresh dir> --blind-start -40 -20 20 40
+```
+
 ## `.tsv` schema
 TAB-separated; `#`/header/blank lines skipped; the driver reads the **first 9** columns and
 ignores the rest (planner appends d50/d90/d99/note as diagnostics):
