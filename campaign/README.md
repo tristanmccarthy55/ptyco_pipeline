@@ -96,7 +96,8 @@ DRYRUN=1 ... bash campaign/run_c1_search.sh                               # prin
 ```
 Env: `ALPHAS`, `DC1` (offsets from the TSV C1) or `C1` (absolute), `MODES`, `NITER` (50), `PACK_H5`
 (1; 0 packs sidecars, probes and logs only), `DRYRUN`, `SAVE_EVERY` (= NITER), `BETA_LSQ`, `SIM_ROOT`.
-Tarball: `$SHARE/$USER/c1_results_<ts>.tgz`. Analyse locally:
+Tarball: `$SHARE/$USER/c1_results_a<alphas>_n<NITER>_<ts>.tgz`, packing only that submission's recon dirs
+(listed in `logs/c1_pack_*.dirs`), so several submissions can run side by side. Analyse locally:
 ```bash
 ~/hyperspy-bundle/bin/python analysis/c1_objective.py --root ~/Desktop/<fresh dir> --blind-start -40 -20 20 40
 ```

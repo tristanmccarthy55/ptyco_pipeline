@@ -12,6 +12,11 @@
 #
 #   bash campaign/run_thin_atomfind.sh                 # alphas 50 70 90 100 (feasible BIN<=2)
 #   ALPHAS="50 70 90 100 110 120" bash campaign/run_thin_atomfind.sh   # + the heavy BIN=1 break
+#   ALPHAS="70 90" DOSES="1e7 1e6 1e5 1e4" bash campaign/run_thin_atomfind.sh   # relaxation step 2: shot noise
+# DOSES (e/A^2) reuses the existing noiseless sims: per dose and leg a CPU job writes a Poisson copy
+# (sim/add_poisson_noise.py -> sim_out_af_a<A>_<mode>_dose<D>) and the recon runs on it once that job
+# succeeds -- lab AND Pb/Ti kernels at the same dose (NEXT_PHASE rule 3), independent noise per leg
+# (seed = DOSE_SEED + 0/1/2 for lab/Pb/Ti). Recon dirs: recon_af_a<A>_<mode>_dose<D>_NL<NL>.
 # Then (when done): extract each PSF and run atomfind (see the echo at the end).
 set -euo pipefail
 REPO_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"; cd "${REPO_DIR}"; mkdir -p logs
@@ -30,8 +35,15 @@ CELL_Z=3.905; LAM=0.0196877
 BOXZ=$(awk "BEGIN{printf \"%.3f\", ${THIN}*${CELL_Z}+2*${ZVAC}}")      # full box thickness [Å]
 ATOMZ=$(awk "BEGIN{printf \"%.3f\", ${BOXZ}/2}")                        # PSF atom at box centre
 INPUTS=(data_dp.hdf5 data_position.hdf5 sim_meta.mat)
-TS="$(date +%Y%m%d_%H%M)"; PACK="${SHARE:+$SHARE/$USER}"; PACK="${PACK:-$REPO_DIR}/atomfind_results_${TS}.tgz"   # own subdir, not the shared group dir
+DOSES="${DOSES:-}"; DOSE_SEED="${DOSE_SEED:-0}"
+PYBIN="${CONDA_ENV:-${SHARE:-}/phucrh/envs/abtem}/bin/python"
+# Tarball name to the second, tagged by alphas (+doses): submissions pasted together must not share one.
+TS="$(date +%Y%m%d_%H%M%S)"; TAG="a$(echo ${ALPHAS} | tr ' ' '-')${DOSES:+_dose$(echo ${DOSES} | tr ' ' '-')}"
+PACK="${SHARE:+$SHARE/$USER}"; PACK="${PACK:-$REPO_DIR}/atomfind_results_${TAG}_${TS}.tgz"   # own subdir, not the shared group dir
+DIRS_FILE="${REPO_DIR}/logs/af_pack_${TAG}_${TS}.dirs"; : >"${DIRS_FILE}"   # this submission's recon dirs only
 echo "full box ${BOXZ} A (THIN=${THIN} cells + 2x${ZVAC} A vac); PSF atom z=${ATOMZ}; alphas: ${ALPHAS}"
+
+if [ -n "$DOSES" ] && [ ! -x "${PYBIN}" ]; then echo "DOSES set but no abtem env python at ${PYBIN}" >&2; exit 1; fi
 
 nl_full(){ awk "BEGIN{n=int(${BOXZ}*2*($1/1000)^2/${LAM}+0.5); if(n<1)n=1; print n}"; }
 mem_for(){   case "$1" in 1) echo 175G;; 2) echo 96G;; *) echo 48G;; esac; }
@@ -63,9 +75,17 @@ sim_job(){   # $1 dir $2 alpha $3 bin $4 c3 $5 c1 $6 mode(lab|Pb|Ti) -> jobid
     sbatch --parsable --job-name="af_sim_${mode}" --time="$(stime_for "$bin")" \
         --output="logs/af_sim_%j.out" --error="logs/af_sim_%j.err" --export="${exp}" sim/run_sim.slurm
 }
+noise_job(){ # $1 noiseless sim dir $2 noisy out dir $3 dose $4 seed -> jobid  (CPU; streamed, ~minutes)
+    local src="$1" out="$2" dose="$3" seed="$4"
+    [ -x "${PYBIN}" ] || { echo "no abtem env python at ${PYBIN}" >&2; exit 1; }
+    sbatch --parsable --job-name="af_noise" --time=01:00:00 --mem=32G --cpus-per-task=2 \
+        --output="logs/af_noise_%j.out" --error="logs/af_noise_%j.err" \
+        --wrap="'${PYBIN}' '${REPO_DIR}/sim/add_poisson_noise.py' --in-dir '${src}' --out-dir '${out}' --dose ${dose} --seed ${seed}"
+}
 recon_job(){ # $1 name $2 datadir $3 bin $4 nl $5 dep -> jobid  (true probe fixed)
     local name="$1" datadir="$2" bin="$3" nl="$4" dep="$5"
     local rdir="${REPO_DIR}/recon_af_${name}_NL${nl}"; mkdir -p "${rdir}/01"
+    echo "recon_af_${name}_NL${nl}" >>"${DIRS_FILE}"
     # A previous run's output must not survive into this one: if the new run fails, the OLD
     # *_recons.h5 would be packed and analysed as if new. Moved aside, not deleted; pack_results.sh
     # only matches */analysis/*, so an analysis.prev_* dir is never shipped.
@@ -95,6 +115,17 @@ for a in $ALPHAS; do
     line="$(printf 'a%-3s bin=%s NL=%-2s ' "$a" "$bin" "$nl")"
     for m in $MODES; do                       # MODES="Pb Ti" re-does only the PSF kernels
         D="${REPO_DIR}/sim_out_af_a${a}_${m}"
+        if [ -n "$DOSES" ]; then               # step 2: Poisson copies of the EXISTING noiseless sim
+            [ -e "${D}/01/data_dp.hdf5" ] || { echo "  a${a} ${m}: ${D}/01/data_dp.hdf5 missing -- run the noiseless sim first" >&2; exit 1; }
+            case "$m" in lab) so=0;; Pb) so=1;; *) so=2;; esac
+            for dose in $DOSES; do
+                DN="${D}_dose${dose}"
+                N=$(noise_job "$D" "$DN" "$dose" $(( DOSE_SEED + so )))
+                R=$(recon_job "a${a}_${m}_dose${dose}" "$DN" "$bin" "$nl" "$N")
+                RIDS+=("$R"); line+=" ${m}@${dose}=${N}>${R}"
+            done
+            continue
+        fi
         if [ "${RECON_ONLY:-0}" = "1" ]; then  # reuse existing sims; recons run immediately
             [ -e "${D}/01/data_dp.hdf5" ] || { echo "  a${a} ${m}: ${D}/01 missing, skip" >&2; continue; }
             S=""
@@ -108,11 +139,12 @@ for a in $ALPHAS; do
 done
 [ ${#RIDS[@]} -gt 0 ] || { echo "nothing submitted" >&2; exit 1; }
 DEP=$(IFS=:; echo "${RIDS[*]}")
-PJ=$(sbatch --parsable --job-name="af_pack" --time=00:20:00 --mem=8G --dependency="afterany:${DEP}" \
-    --output="logs/af_pack_%j.out" --error="logs/af_pack_%j.err" \
+PJ=$(sbatch --parsable --job-name="af_pack" --time=00:30:00 --mem=8G --dependency="afterany:${DEP}" \
+    --output="logs/af_pack_%j.out" --error="logs/af_pack_%j.err" --export=ALL,PACK_DIRS_FILE="${DIRS_FILE}" \
     --wrap="bash '${REPO_DIR}/campaign/pack_results.sh' af '${PACK}' '${TSV}'")
 echo; echo "pack ${PJ} -> ${PACK}  (recon_af_* .h5 + logs)"
 echo "scp -O 'phucrh@blythe.scrtp.warwick.ac.uk:${PACK}' ~/Desktop/"
+echo "now check the group root stayed clean:  ls /springbrook/share/physics/"
 echo "then per alpha:  python analysis/atomfind/extract_psf.py recon_af_a<A>_Pb_NL<NL> Pb_a<A>   (and Ti)"
 echo "  -> psf_{Pb,Ti}_a<A>_vol.npy ; point config 'thin' single_atom_vol/ti_kernel_vol at them;"
 echo "  atomfind --preset thin --recon recon_af_a<A>_lab_NL<NL>/.../*_recons.h5 --dz \$(bc<<<${BOXZ}/<NL>)"

@@ -77,8 +77,15 @@ def main(argv=None) -> int:
     print(f"[poisson] mean count: {mean_pix:.3g} e/pixel  (peak {gmax:.0f}); "
           f"avg/pixel {'OK' if mean_pix > 1e-4 else 'LOW (<1e-4 — raise dose)'}")
 
-    # link the unchanged inputs so the new dir is a complete, recon-ready dataset
-    for name in ("data_position.hdf5", "probe_initial.mat", "sim_meta.mat"):
+    # link the unchanged inputs so the new dir is a complete, recon-ready dataset. probe_initial_true.mat
+    # and aberrations.json too: the known-probe legs (campaign/run_thin_atomfind.sh) link the true probe,
+    # and the C1 search (campaign/run_c1_search.sh, sim/make_probe.py) reads the aberration tableau.
+    import json
+    (outd / "poisson_noise.json").write_text(json.dumps(dict(
+        dose_e_per_A2=args.dose, scan_step_A=step, electrons_per_pattern=epp, seed=args.seed,
+        mean_count_per_pixel=mean_pix, peak_count=gmax, source=str(ind.resolve())), indent=2))
+    for name in ("data_position.hdf5", "probe_initial.mat", "probe_initial_true.mat", "sim_meta.mat",
+                 "aberrations.json"):
         src = ind / name
         if src.exists():
             dst = outd / name

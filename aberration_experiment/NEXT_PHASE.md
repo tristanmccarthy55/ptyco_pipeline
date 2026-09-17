@@ -134,6 +134,11 @@ The PX915 report's four-dose series (`analysis/atomfind/dose_series.py`) is prec
 
 **Plan.** A dose ladder at α = 70 and 90: 10⁷ (near-noiseless sanity check) → 10⁶ → 10⁵ → 10⁴ e/Å².
 
+**Built (2026-09-17).** `DOSES="..."` on `campaign/run_thin_atomfind.sh`: per α, dose and leg, a CPU job
+writes `sim_out_af_a<A>_<mode>_dose<D>` (independent seeds for lab / Pb / Ti; it also links the true probe
+and `aberrations.json`, and records `poisson_noise.json`), and the known-probe recon runs on it after that
+job succeeds. Same recon settings as step 0, so the 10⁷ rung doubles as the a90 `BETA_LSQ` 0.05 check.
+
 **Watch.** Kernels get the same dose — 25-blob averaging now fights noise, so report kernel
 peak/background at each dose. Check whether the recon's likelihood model suits Poisson data at
 low dose. The `_dose<tag>` directory naming means `RECON_ONLY` must be pointed at the noisy copy.

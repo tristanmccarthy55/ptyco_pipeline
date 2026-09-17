@@ -31,7 +31,11 @@ BOXZ=$(awk "BEGIN{printf \"%.3f\", ${THIN}*${CELL_Z}+2*${ZVAC}}")      # full bo
 # aberrations.json + probe_initial_true.mat are linked for the WRITER (C3/C5 tableau; self-check
 # against the truth when the trial C1 is the true one) -- never as probe_initial.mat.
 INPUTS=(data_dp.hdf5 data_position.hdf5 sim_meta.mat aberrations.json probe_initial_true.mat)
-TS="$(date +%Y%m%d_%H%M)"; PACK="${SHARE:+$SHARE/$USER}"; PACK="${PACK:-$REPO_DIR}/${CAMP}_results_${TS}.tgz"
+# Tarball name carries alphas, NITER and the second: several submissions pasted together must not share
+# (and overwrite) one tarball.
+TS="$(date +%Y%m%d_%H%M%S)"; TAG="a$(echo ${ALPHAS} | tr ' ' '-')_n${NITER}"
+PACK="${SHARE:+$SHARE/$USER}"; PACK="${PACK:-$REPO_DIR}/${CAMP}_results_${TAG}_${TS}.tgz"
+DIRS_FILE="${REPO_DIR}/logs/${CAMP}_pack_${TAG}_${TS}.dirs"; RDIRS=()
 [ -n "${DC1:-}" ] || [ -n "${C1:-}" ] || { echo "set DC1 (offsets from the TSV C1) or C1 (absolute values) [A]" >&2; exit 1; }
 [ -n "${DC1:-}" ] && [ -n "${C1:-}" ] && { echo "set DC1 or C1, not both" >&2; exit 1; }
 echo "C1 search: alphas ${ALPHAS}; modes ${MODES}; NITER ${NITER}; full box ${BOXZ} A; ${DC1:+dC1 = ${DC1}}${C1:+C1 = ${C1}}"
@@ -65,6 +69,7 @@ recon_job(){ # $1 name $2 datadir $3 bin $4 nl $5 c1 $6 c3 $7 c5 -> jobid  (tria
                --output="${rdir}/slurm_%j.out" --error="${rdir}/slurm_%j.err"
                --export=ALL,NLAYERS="${nl}",SIM_BASE="${rdir}/",REGLAYER=0,PROBE_MODES=1,NITER="${NITER}",SAVE_EVERY="${SAVE}",BETA_LSQ="${BETA_LSQ}",PROBE_C1="${c1}",PROBE_C3="${c3}",PROBE_C5="${c5}"${gx}
                run_recon_synthetic_ML.slurm)
+    echo "recon_${CAMP}_${name}_NL${nl}" >>"${DIRS_FILE}.pending"
     if [ "$DRYRUN" = 1 ]; then echo "DRYRUN: ${cmd[*]}" >&2; echo "dry"; return; fi
     mkdir -p "${rdir}/01"
     # A previous run's output must not survive into this one (it would be packed and analysed as new).
@@ -115,10 +120,15 @@ for row in "${PLAN[@]}"; do
     done
 done
 [ ${#RIDS[@]} -gt 0 ] || { echo "nothing submitted" >&2; exit 1; }
-if [ "$DRYRUN" = 1 ]; then echo "DRYRUN: ${#RIDS[@]} jobs would be submitted; pack -> ${PACK}"; exit 0; fi
+if [ "$DRYRUN" = 1 ]; then
+    echo "DRYRUN: ${#RIDS[@]} jobs would be submitted; pack -> ${PACK}; dirs:"; sed 's/^/    /' "${DIRS_FILE}.pending"
+    rm -f "${DIRS_FILE}.pending"; exit 0
+fi
+mv "${DIRS_FILE}.pending" "${DIRS_FILE}"
 DEP=$(IFS=:; echo "${RIDS[*]}")
-PJ=$(sbatch --parsable --job-name="${CAMP}_pack" --time=00:20:00 --mem=8G --dependency="afterany:${DEP}" \
-    --output="logs/${CAMP}_pack_%j.out" --error="logs/${CAMP}_pack_%j.err" --export=ALL,PACK_H5="${PACK_H5}" \
+PJ=$(sbatch --parsable --job-name="${CAMP}_pack" --time=00:30:00 --mem=8G --dependency="afterany:${DEP}" \
+    --output="logs/${CAMP}_pack_%j.out" --error="logs/${CAMP}_pack_%j.err" \
+    --export=ALL,PACK_H5="${PACK_H5}",PACK_DIRS_FILE="${DIRS_FILE}" \
     --wrap="bash '${REPO_DIR}/campaign/pack_results.sh' ${CAMP} '${PACK}' '${TSV}'")
 echo; echo "${#RIDS[@]} recon jobs; pack ${PJ} -> ${PACK}  (PACK_H5=${PACK_H5})"
 echo "scp -O 'phucrh@blythe.scrtp.warwick.ac.uk:${PACK}' ~/Desktop/"

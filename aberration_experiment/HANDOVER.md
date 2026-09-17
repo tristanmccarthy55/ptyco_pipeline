@@ -141,6 +141,9 @@ ALPHAS="70 90" bash campaign/run_thin_atomfind.sh                      # sims + 
 ALPHAS=90 MODES=lab RECON_ONLY=1 bash campaign/run_thin_atomfind.sh    # re-recon one leg, reuse sims
 ```
 C1 defocus search (step 1): `campaign/run_c1_search.sh`, usage in `campaign/README.md`.
+Shot noise (step 2): `ALPHAS="70 90" DOSES="1e7 1e6 1e5 1e4" bash campaign/run_thin_atomfind.sh` — Poisson copies
+of the existing sims (CPU jobs), then lab + Pb + Ti recons on them; dirs `recon_af_a<A>_<mode>_dose<D>_NL<NL>`.
+Every driver now packs only its own submission's recon dirs into a tarball named to the second.
 Driver env: `ALPHAS`, `MODES` (lab / Pb / Ti), `RECON_ONLY`, `OVERWRITE`, `THIN`, `ZVAC`, `WIN`,
 `STEP`, `GRIDSP`, `BETA_LSQ`, `NITER`. It reads C3 / C1 / BIN per α from `round_sweep.tsv`, prints
 the job ids and the exact scp line. Tarballs pack to `/springbrook/share/physics/phucrh/`.
