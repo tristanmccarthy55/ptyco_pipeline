@@ -111,41 +111,47 @@ def h5_slab_profile(h5_path, box_z=None, hp_sigma_A=1.0):
     return _profile_edges(z, np.clip(hp - hp.min(), 0, None))
 
 
-def load_trials(roots, camp):
-    trials = []
+def load_trials(roots, camps):
+    """Trials under `roots`, for each campaign prefix in `camps` (a string or a list)."""
+    trials = []; seen = set()
+    camps = [camps] if isinstance(camps, str) else camps
     for root in roots:
-        for d in sorted(glob.glob(os.path.join(os.path.expanduser(root), "**", f"recon_{camp}_a*"), recursive=True)):
-            m = NAME_RE.match(os.path.basename(d.rstrip("/")))
-            if not m or not os.path.isdir(d):
-                continue
-            t = dict(dir=d, alpha=int(m["alpha"]), mode=m["mode"], c1=float(m["c1"]), rep=int(m["rep"] or 1),
-                     niter=int(m["niter"]), nl=int(m["nl"]))
-            tr = glob.glob(os.path.join(d, "analysis", "**", "*_error_trace.csv"), recursive=True)
-            if not tr:
-                print(f"  MISSING trace: {d} (job failed or sidecar skipped -- check its slurm log)")
-                continue
-            rows = read_csv_rows(sorted(tr)[-1])
-            it = np.array([int(r["iteration"]) for r in rows]); err = np.array([float(r["fourier_error"]) for r in rows])
-            t.update(trace_it=it, trace_err=err, final_error=float(err[np.argmax(it)]), last_iter=int(it.max()),
-                     n_rows=len(it), complete=bool(it.max() == t["niter"]), finite=bool(np.all(np.isfinite(err))))
-            pj = os.path.join(d, "01", "probe_initial.json")
-            if os.path.isfile(pj):
-                info = json.load(open(pj))
-                t.update(c1_sim=float(info["c1_sim_A"]), d90=info.get("d90_A"), self_check=info.get("self_check"))
-                if abs(float(info["c1_A"]) - t["c1"]) > 1e-6:
-                    print(f"  WARNING {d}: probe_initial.json C1 {info['c1_A']} != dir-name C1 {t['c1']}")
-            else:
-                t.update(c1_sim=np.nan, d90=None, self_check=None)
-                print(f"  NOTE {d}: no probe_initial.json -- truth unknown for this trial")
-            h5 = glob.glob(os.path.join(d, "analysis", "**", "*_recons.h5"), recursive=True)
-            ls = glob.glob(os.path.join(d, "analysis", "**", "*_layer_stats.csv"), recursive=True)
-            if h5:
-                t["z_centroid"], t["z_entrance"], t["z_exit"] = h5_slab_profile(sorted(h5)[-1]); t["z_source"] = "h5"
-            elif ls:
-                t["z_centroid"], t["z_entrance"], t["z_exit"] = slab_profile(sorted(ls)[-1]); t["z_source"] = "sidecar(raw)"
-            else:
-                t["z_centroid"], t["z_entrance"], t["z_exit"] = (np.nan,) * 3; t["z_source"] = None
-            trials.append(t)
+        for camp in camps:
+            for d in sorted(glob.glob(os.path.join(os.path.expanduser(root), "**", f"recon_{camp}_a*"), recursive=True)):
+                if d in seen:
+                    continue
+                seen.add(d)
+                m = NAME_RE.match(os.path.basename(d.rstrip("/")))
+                if not m or not os.path.isdir(d):
+                    continue
+                t = dict(dir=d, alpha=int(m["alpha"]), mode=m["mode"], c1=float(m["c1"]), rep=int(m["rep"] or 1),
+                         niter=int(m["niter"]), nl=int(m["nl"]))
+                tr = glob.glob(os.path.join(d, "analysis", "**", "*_error_trace.csv"), recursive=True)
+                if not tr:
+                    print(f"  MISSING trace: {d} (job failed or sidecar skipped -- check its slurm log)")
+                    continue
+                rows = read_csv_rows(sorted(tr)[-1])
+                it = np.array([int(r["iteration"]) for r in rows]); err = np.array([float(r["fourier_error"]) for r in rows])
+                t.update(trace_it=it, trace_err=err, final_error=float(err[np.argmax(it)]), last_iter=int(it.max()),
+                         n_rows=len(it), complete=bool(it.max() == t["niter"]), finite=bool(np.all(np.isfinite(err))))
+                pj = os.path.join(d, "01", "probe_initial.json")
+                if os.path.isfile(pj):
+                    info = json.load(open(pj))
+                    t.update(c1_sim=float(info["c1_sim_A"]), d90=info.get("d90_A"), self_check=info.get("self_check"))
+                    if abs(float(info["c1_A"]) - t["c1"]) > 1e-6:
+                        print(f"  WARNING {d}: probe_initial.json C1 {info['c1_A']} != dir-name C1 {t['c1']}")
+                else:
+                    t.update(c1_sim=np.nan, d90=None, self_check=None)
+                    print(f"  NOTE {d}: no probe_initial.json -- truth unknown for this trial")
+                h5 = glob.glob(os.path.join(d, "analysis", "**", "*_recons.h5"), recursive=True)
+                ls = glob.glob(os.path.join(d, "analysis", "**", "*_layer_stats.csv"), recursive=True)
+                if h5:
+                    t["z_centroid"], t["z_entrance"], t["z_exit"] = h5_slab_profile(sorted(h5)[-1]); t["z_source"] = "h5"
+                elif ls:
+                    t["z_centroid"], t["z_entrance"], t["z_exit"] = slab_profile(sorted(ls)[-1]); t["z_source"] = "sidecar(raw)"
+                else:
+                    t["z_centroid"], t["z_entrance"], t["z_exit"] = (np.nan,) * 3; t["z_source"] = None
+                trials.append(t)
     return trials
 
 
@@ -344,7 +350,8 @@ def make_figure(res, trials, out_png, logy):
 def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--root", nargs="+", required=True, help="extracted tarball dir(s) holding recon_c1_* dirs")
-    ap.add_argument("--camp", default="c1", help="dir prefix recon_<camp>_ (default c1)")
+    ap.add_argument("--camp", nargs="+", default=["c1"],
+                    help="dir prefixes recon_<camp>_ to combine, e.g. --camp c1 c1fine (default c1)")
     ap.add_argument("--k", type=float, default=2.0, help="bottom = error <= min + K*sigma (default 2)")
     ap.add_argument("--niter", type=int, default=None, help="NITER that defines the estimate (default: smallest with the most C1)")
     ap.add_argument("--blind-start", type=float, nargs="*", default=[], help="start offsets from the true C1 to emulate [A]")
@@ -356,7 +363,7 @@ def main():
 
     trials = load_trials(a.root, a.camp)
     if not trials:
-        raise SystemExit(f"no recon_{a.camp}_* trials with an error trace under {a.root}")
+        raise SystemExit(f"no recon_{{{','.join(a.camp)}}}_* trials with an error trace under {a.root}")
     print(f"\n{len(trials)} trials")
     for t in trials:
         flags = [] if t["complete"] and t["finite"] else (["INCOMPLETE"] if not t["complete"] else []) + (["NaN"] if not t["finite"] else [])
