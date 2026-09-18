@@ -15,6 +15,12 @@ physics and the loaders, and then draw only what the claim needs.
 | | claim | inputs |
 |---|---|---|
 | `fig1_probe.py` | past ~70 mrad the Ronchigram stops being flat and the probe grows — conventional imaging is finished in exactly the regime the rest of the paper works in | `campaign/round_sweep.tsv` + `make_ronchigram_fig.py` |
+
+Fig. 1 is a 2×3 image block — Ronchigram over the wrapped aperture phase χ that produces it, at
+three α — beside two line panels: the same phase as a ray displacement ∂W/∂θ (rays landing inside
+±2 Å make a 4 Å probe), and flatness + d90 against α. The images show *what* and the profile shows
+*why*; α is coded by ordered greys there, so the Okabe–Ito colours keep meaning species everywhere.
+
 | `fig2_depth.py` | atom recovery and depth accuracy both keep improving *through* that regime | `out/atomfind_a*/report.json` |
 | `fig3_volumes.py` | at low α a column is one unbroken streak; by 90 mrad it separates into atoms at the right depths, and the blind finder puts them there | `recon_af_a*_lab_NL*/*_recons.h5`, `found_atoms.npy`, GT |
 | `fig4_baselines.py` | on heavy columns any detector works; the matched single-atom kernel wins on the light atoms and on precision — and deconvolving first makes oxygen *worse* | `out/atomfind_a90/report.json` |

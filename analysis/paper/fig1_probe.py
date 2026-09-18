@@ -5,10 +5,12 @@
 ONE CLAIM: past ~70 mrad the Ronchigram is no longer flat and the probe grows, so conventional
 imaging is finished in exactly the regime the rest of the paper works in.
 
-(a-c) simulated Ronchigrams (probe through a thin amorphous film) at 50 / 70 / 100 mrad, each
-      scaled to its own aperture so the shadow structure is comparable;
-(d)   Ronchigram flatness -- peak-to-valley of the aberration phase with its defocus part removed,
-      against the lambda/4 criterion -- and the 90%-enclosed probe diameter, both vs alpha.
+(a-c) one column per alpha: the simulated Ronchigram the operator would see (top) over the
+      wrapped aperture phase chi that produces it (bottom), each carrying its non-defocus P-V;
+(d)   the same phase as a ray displacement, dW/dtheta -- where each part of the aperture throws
+      its rays. Rays landing inside +-2 A make a 4 A probe;
+(e)   Ronchigram flatness against the lambda/4 criterion, and the 90%-enclosed probe diameter,
+      both vs alpha.
 
 Probe parameters and sizes come from campaign/round_sweep.tsv (the planner's own output, so the
 figure cannot drift from what was simulated); the flatness metric comes from plan_probe.py.
@@ -23,6 +25,9 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
 import pubstyle as ps                                                    # noqa: E402
 
+BAND = 2.0                      # +-A: rays landing inside this make a ~4 A probe
+AGREY = ["0.60", "0.34", "0.02"]  # alpha is an ordered variable -> ordered greys, colour left free
+
 
 def _mod(path, name):
     spec = importlib.util.spec_from_file_location(name, path)
@@ -32,7 +37,7 @@ def _mod(path, name):
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--alphas", type=int, nargs=3, default=[50, 70, 100],
-                    help="the three alphas shown as Ronchigrams")
+                    help="the three alphas shown as images")
     ap.add_argument("--out", default=None)
     a = ap.parse_args()
 
@@ -53,14 +58,19 @@ def main():
     al = np.array([r[0] for r in rows]); d90 = np.array([r[1] for r in rows])
     pv = np.array([r[2] for r in rows])
 
-    fig = plt.figure(figsize=(ps.COL2, 2.7))
-    # column 3 is a spacer: panel (d) carries a y-label on each side, which would otherwise
-    # collide with the last Ronchigram
-    gs = fig.add_gridspec(1, 5, width_ratios=[1, 1, 1, 0.34, 1.85], wspace=0.20)
+    fig = plt.figure(figsize=(ps.COL2, 3.15))
+    # column 3 is a spacer: the line panels carry a y-label on each side, which would otherwise
+    # collide with the last image column
+    gs = fig.add_gridspec(2, 5, width_ratios=[1, 1, 1, 0.40, 1.75],
+                          wspace=0.18, hspace=0.30)
 
     rng = np.random.default_rng(7)
     for j, alpha in enumerate(a.alphas):
         C3, C1 = plan[alpha]
+        flat = pv[al == alpha][0]
+        ok = flat <= R.PLAN.FLAT_TOL
+
+        # --- what the operator sees ---------------------------------------------------
         P = R.probe(alpha, C3, C1)
         img, lim = R.ronchigram(P, R.L_BOX, alpha, rng)
         ax = fig.add_subplot(gs[0, j])
@@ -69,25 +79,62 @@ def main():
         th = np.linspace(0, 2 * np.pi, 200)
         ax.plot(alpha * np.cos(th), alpha * np.sin(th), color=ps.YELLOW, lw=0.7, ls=(0, (3, 2)))
         ax.set_title(f"{alpha} mrad", pad=3)
-        ps.panel(ax, "abc"[j], dx=-0.06, dy=1.13)
-        flat = pv[al == alpha][0]
-        ax.set_xlabel(("flat" if flat <= R.PLAN.FLAT_TOL else "not flat") + f"  ({flat:.1f} rad)",
-                      labelpad=2, color=(ps.GREEN if flat <= R.PLAN.FLAT_TOL else ps.GREY))
+        ax.set_anchor("S")
+        ps.panel(ax, "abc"[j], dx=-0.06, dy=1.16)
+        if j == 0:
+            ax.set_ylabel("Ronchigram", labelpad=3)
 
-    axd = fig.add_subplot(gs[0, 4])
+        # --- and the phase behind it --------------------------------------------------
+        n = 240
+        k = np.linspace(-alpha / 1000, alpha / 1000, n)
+        KX, KY = np.meshgrid(k, k); TH = np.hypot(KX, KY)
+        chi = np.ma.masked_where(TH > alpha / 1000, 2 * np.pi / R.LAM * R.W(C3, C1, TH))
+        ax = fig.add_subplot(gs[1, j])
+        ps.imshow_clean(ax, np.angle(np.exp(1j * chi)), cmap="twilight", vmin=-np.pi, vmax=np.pi,
+                        extent=[-alpha, alpha, -alpha, alpha])
+        ax.set_anchor("N")
+        ax.set_xlabel(("flat" if ok else "not flat") + f"  ({flat:.1f} rad)",
+                      labelpad=2, color=(ps.GREEN if ok else ps.GREY))
+        if j == 0:
+            ax.set_ylabel("aperture phase χ\n(wrapped)", labelpad=3)
+
+    # --- (d) the phase as a ray displacement ------------------------------------------
+    axp = fig.add_subplot(gs[0, 4])
+    ymax = 0.0
+    for j, alpha in enumerate(a.alphas):
+        C3, C1 = plan[alpha]
+        t = np.linspace(-alpha / 1000, alpha / 1000, 801)
+        dx = R.ray_dx(C3, C1, t)
+        ymax = max(ymax, np.abs(dx).max())
+        axp.plot(t * 1000, dx, color=AGREY[j], lw=1.2, label=f"{alpha}")
+    axp.axhspan(-BAND, BAND, color=ps.GREEN, alpha=0.15, lw=0)
+    axp.axhline(0, color="0.6", lw=0.5)
+    axp.set_ylim(-1.15 * ymax, 1.15 * ymax)
+    axp.set_xlim(-1.05 * max(a.alphas), 1.05 * max(a.alphas))
+    axp.set_xlabel("aperture angle θ (mrad)", labelpad=2)
+    axp.set_ylabel("ray lands at ∂W/∂θ (Å)")
+    axp.text(0.98, 0.04, f"band: ±{BAND:.0f} Å → 4 Å probe", transform=axp.transAxes,
+             color=ps.GREEN, fontsize=6.5, ha="right", va="bottom")
+    axp.legend(title="α (mrad)", loc="upper left", fontsize=6.5, title_fontsize=6.5,
+               handlelength=1.1, labelspacing=0.25, borderpad=0.15,
+               bbox_to_anchor=(-0.02, 1.06))
+    ps.panel(axp, "d", dx=-0.24, dy=1.06)
+
+    # --- (e) flatness and probe size vs alpha -----------------------------------------
+    axd = fig.add_subplot(gs[1, 4])
     axd.semilogy(al, pv, "-o", color=ps.PURPLE, label="Ronchigram flatness")
     axd.axhline(R.PLAN.FLAT_TOL, color=ps.PURPLE, lw=0.7, ls=":")
-    axd.text(27, R.PLAN.FLAT_TOL * 0.52, "λ/4", color=ps.PURPLE, ha="left", fontsize=7)
-    axd.set_xlabel("convergence semi-angle α (mrad)")
+    axd.text(30, R.PLAN.FLAT_TOL * 0.40, "λ/4", color=ps.PURPLE, ha="left", fontsize=7)
+    axd.set_xlabel("convergence semi-angle α (mrad)", labelpad=2)
     axd.set_ylabel("non-defocus P–V (rad)", color=ps.PURPLE)
     axd.tick_params(axis="y", colors=ps.PURPLE)
     axd.set_ylim(0.1, 400); axd.set_xlim(25, 125)
-    ps.panel(axd, "d", dx=-0.22)
+    ps.panel(axd, "e", dx=-0.24, dy=1.06)
 
     axr = axd.twinx()
     axr.semilogy(al, d90, "-s", color=ps.ORANGE, label="probe diameter")
     axr.axhline(4.0, color=ps.ORANGE, lw=0.7, ls=":")
-    axr.text(123, 4.5, "4 Å target", color=ps.ORANGE, fontsize=7, ha="right")
+    axr.text(123, 4.6, "4 Å target", color=ps.ORANGE, fontsize=7, ha="right")
     axr.set_ylabel("probe d90 (Å)", color=ps.ORANGE)
     axr.tick_params(axis="y", colors=ps.ORANGE)
     axr.set_ylim(0.5, 200)
@@ -95,7 +142,8 @@ def main():
     axr.spines["top"].set_visible(False)
 
     h1, l1 = axd.get_legend_handles_labels(); h2, l2 = axr.get_legend_handles_labels()
-    axd.legend(h1 + h2, l1 + l2, loc="upper left", bbox_to_anchor=(0.02, 1.0))
+    axd.legend(h1 + h2, l1 + l2, loc="upper left", fontsize=6.5, handlelength=1.1,
+               labelspacing=0.25, borderpad=0.15, bbox_to_anchor=(-0.02, 1.06))
 
     ps.save(fig, "fig1_probe", a.out)
 
