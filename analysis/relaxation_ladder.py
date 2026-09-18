@@ -25,6 +25,7 @@ import csv
 import datetime
 import json
 import os
+import re
 import sys
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -39,8 +40,22 @@ COLS = (["step", "label", "alpha", "date", "precision"]
 FP_KEY = {"Pb": "82->none", "Ti": "22->none", "O": "8->none"}
 
 
+def run_alpha(run_dir, row):
+    """Alpha from the atomfind OUT-DIR name when it carries one (atomfind_a90_dose1e5). collate's
+    find_alpha scans the whole recon path, which for a combined tarball (atomfind_results_a70-90_...)
+    matches the tarball's first alpha instead -- it labelled every a90 dose run a70 (2026-09-18)."""
+    m = re.search(r"atomfind_a0*(\d{2,3})", os.path.basename(os.path.abspath(run_dir)))
+    if not m:
+        return row["alpha"]
+    a = int(m.group(1))
+    if row["alpha"] != a:
+        print(f"  NOTE {os.path.basename(run_dir)}: alpha {a} from the out-dir name, not {row['alpha']} from the recon path")
+    return a
+
+
 def ladder_row(run_dir, step, label, note, c1):
     row = load_run(run_dir)
+    row["alpha"] = run_alpha(run_dir, row)
     rp = run_dir if run_dir.endswith(".json") else os.path.join(run_dir, "report.json")
     v3 = json.load(open(rp)).get("finder", {}).get("v3", {})
     cf = v3.get("confusion") or {}
@@ -79,11 +94,12 @@ def main():
     summary = json.load(open(a.c1_summary)) if a.c1_summary else {}
     new = []
     for d in a.atomfind:
-        alpha = load_run(d)["alpha"]
+        d = os.path.expanduser(d)
+        alpha = run_alpha(d, load_run(d))
         c1 = pick_c1(summary, alpha, a.c1_mode, a.c1_niter) if summary else None
         if summary and c1 is None:
             print(f"  WARNING a{alpha}: no C1 estimate in {a.c1_summary} for mode {a.c1_mode}")
-        new.append(ladder_row(os.path.expanduser(d), str(a.step), a.label, a.note, c1))
+        new.append(ladder_row(d, str(a.step), a.label, a.note, c1))
 
     path = a.csv or os.path.join(week_dir("results"), "relaxation_ladder.csv")
     old = list(csv.DictReader(open(path))) if os.path.isfile(path) else []
