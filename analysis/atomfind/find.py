@@ -69,7 +69,13 @@ def track_column(V, r0, c0, cfg):
             c = ci - w + (gx*win).sum()/win.sum()
         path_r[l], path_c[l] = r, c
         rp, cp = int(round(r)), int(round(c))
-        prof[l] = np.clip(V[l, rp-navg:rp+navg+1, cp-navg:cp+navg+1], 0, None).mean()
+        # clamp to the volume: the guard above uses the TRACK window, so a column near the edge (noisy
+        # data seeds them) could still slice an empty profile window here -> NaN -> NNLS "must not
+        # contain infs or NaNs". Identical to the old code whenever the window is fully inside. (2026-09-18)
+        ra, rb = max(rp-navg, 0), min(rp+navg+1, V.shape[1])
+        ca, cb = max(cp-navg, 0), min(cp+navg+1, V.shape[2])
+        win_p = np.clip(V[l, ra:rb, ca:cb], 0, None)
+        prof[l] = win_p.mean() if win_p.size else 0.0
     return path_r, path_c, prof
 
 
