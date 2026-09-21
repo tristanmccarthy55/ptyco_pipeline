@@ -1,7 +1,9 @@
 # Aberration experiment — handover (updated 2026-09-16)
 
 **Read in this order:** this file → **`NEXT_PHASE.md`** (what to do next) → `PSF_KERNELS.md` (the
-kernel rules). Pairs with the `aberration-campaign` auto-memory; overview in `README.md`.
+kernel rules). **Picking the project up cold? `HANDOFF_ANALYSIS.md` is the current front door**: what is
+waiting to be analysed, how to analyse it, the meeting pages to update, and what is left before the
+result is publishable. Pairs with the `aberration-campaign` auto-memory; overview in `README.md`.
 
 ## Where it stands
 

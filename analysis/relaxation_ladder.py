@@ -30,7 +30,7 @@ import sys
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
-from collate_atomfind_depth import SPECIES, load_run, week_dir   # noqa: E402
+from collate_atomfind_depth import SPECIES, load_run   # noqa: E402
 
 COLS = (["step", "label", "alpha", "date", "precision"]
         + [f"{k}_recall" for k in SPECIES] + [f"{k}_recall_bulk" for k in SPECIES]
@@ -105,7 +105,9 @@ def main():
             print(f"  WARNING a{alpha}: no C1 estimate in {a.c1_summary} for mode {a.c1_mode}")
         new.append(ladder_row(d, str(a.step), a.label, a.note, c1, a.alpha))
 
-    path = a.csv or os.path.join(week_dir("results"), "relaxation_ladder.csv")
+    # one cumulative table for the whole phase, NOT a weekly snapshot: rows from different weeks
+    # belong in the same ladder, and a week-scoped path silently split it in two (2026-09-22).
+    path = a.csv or os.path.join(os.path.dirname(HERE), "aberration_experiment", "results", "relaxation_ladder.csv")
     old = list(csv.DictReader(open(path))) if os.path.isfile(path) else []
     keys = {(r["step"], r["label"], str(r["alpha"])) for r in new}
     kept = [r for r in old if (r["step"], r["label"], str(r["alpha"])) not in keys]
