@@ -40,7 +40,7 @@ def find_alpha(report, path):
     return None
 
 
-def load_run(d):
+def load_run(d, alpha_override=None):
     p = d if d.endswith(".json") else os.path.join(d, "report.json")
     if not os.path.isfile(p):
         raise SystemExit(f"no report.json at {p}")
@@ -60,8 +60,10 @@ def load_run(d):
         row[f"{k}_recall"] = sp.get("recall")
         row[f"{k}_recall_bulk"] = sp.get("recall_bulk")
         row[f"{k}_zrms"] = sp.get("z_rms_A")
+    if alpha_override is not None:
+        row["alpha"] = alpha_override
     if row["alpha"] is None:
-        raise SystemExit(f"could not parse alpha from {p} (vol={r.get('vol')!r})")
+        raise SystemExit(f"could not parse alpha from {p} (vol={r.get('vol')!r}); pass --alpha")
     return row
 
 

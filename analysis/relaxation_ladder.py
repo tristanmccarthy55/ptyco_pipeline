@@ -40,10 +40,12 @@ COLS = (["step", "label", "alpha", "date", "precision"]
 FP_KEY = {"Pb": "82->none", "Ti": "22->none", "O": "8->none"}
 
 
-def run_alpha(run_dir, row):
+def run_alpha(run_dir, row, override=None):
     """Alpha from the atomfind OUT-DIR name when it carries one (atomfind_a90_dose1e5). collate's
     find_alpha scans the whole recon path, which for a combined tarball (atomfind_results_a70-90_...)
     matches the tarball's first alpha instead -- it labelled every a90 dose run a70 (2026-09-18)."""
+    if override is not None:
+        return override
     m = re.search(r"atomfind_a0*(\d{2,3})", os.path.basename(os.path.abspath(run_dir)))
     if not m:
         return row["alpha"]
@@ -53,9 +55,9 @@ def run_alpha(run_dir, row):
     return a
 
 
-def ladder_row(run_dir, step, label, note, c1):
-    row = load_run(run_dir)
-    row["alpha"] = run_alpha(run_dir, row)
+def ladder_row(run_dir, step, label, note, c1, alpha=None):
+    row = load_run(run_dir, alpha)
+    row["alpha"] = run_alpha(run_dir, row, alpha)
     rp = run_dir if run_dir.endswith(".json") else os.path.join(run_dir, "report.json")
     v3 = json.load(open(rp)).get("finder", {}).get("v3", {})
     cf = v3.get("confusion") or {}
@@ -87,6 +89,8 @@ def main():
     ap.add_argument("--atomfind", nargs="+", required=True, help="atomfind out dirs (report.json inside)")
     ap.add_argument("--c1-summary", default=None, help="c1_objective_summary.json (fitted-probe steps)")
     ap.add_argument("--c1-mode", default="lab"); ap.add_argument("--c1-niter", type=int, default=None)
+    ap.add_argument("--alpha", type=int, default=None,
+                    help="aperture for legs whose dir name does not carry one (the non-round labels)")
     ap.add_argument("--note", default=None)
     ap.add_argument("--csv", default=None, help="default aberration_experiment/results/<week>/relaxation_ladder.csv")
     a = ap.parse_args()
@@ -95,11 +99,11 @@ def main():
     new = []
     for d in a.atomfind:
         d = os.path.expanduser(d)
-        alpha = run_alpha(d, load_run(d))
+        alpha = run_alpha(d, load_run(d, a.alpha), a.alpha)
         c1 = pick_c1(summary, alpha, a.c1_mode, a.c1_niter) if summary else None
         if summary and c1 is None:
             print(f"  WARNING a{alpha}: no C1 estimate in {a.c1_summary} for mode {a.c1_mode}")
-        new.append(ladder_row(d, str(a.step), a.label, a.note, c1))
+        new.append(ladder_row(d, str(a.step), a.label, a.note, c1, a.alpha))
 
     path = a.csv or os.path.join(week_dir("results"), "relaxation_ladder.csv")
     old = list(csv.DictReader(open(path))) if os.path.isfile(path) else []
