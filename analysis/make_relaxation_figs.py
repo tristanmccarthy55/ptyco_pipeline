@@ -39,11 +39,14 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 REPO = os.path.dirname(HERE)
 sys.path.insert(0, HERE)
 from make_meeting_figs import (S1, S2, S3, INK, INK2, MUTED, GRIDC, SPECIES,   # noqa: E402
-                               style, tag, save, read_csv_rows, read_reports, results_dir)
+                               style, tag, save, read_csv_rows, read_reports, results_dir,
+                               _load_mod, build_probe, aperture_phase, probe_crop)
 
 RELAX = "~/Desktop/relax_0921"
 AF_FINAL = "~/Desktop/thin_ab_af_final"
 BAD = "#c1502a"
+C56_WAVE = 1.004e6      # C56 [A] giving one wave of six-fold astigmatism at the 70 mrad edge
+NR_PROBE_HALF = 8.0     # probe panels are cropped to +-8 A, covering the worst d90 (7.4 A)
 
 
 def dfo_runs(relax):
@@ -257,7 +260,84 @@ def figD_nonround(a):
     return save(fig, "figD_nonround.png")
 
 
-FIGS = {"A": figA_dfo, "B": figB_step1, "C": figC_phonons, "D": figD_nonround}
+
+
+# --------------------------------------------------- fig E: what non-round aberration looks like
+NR_SHOW = ["nr0_round", "nr0p3_C56_0p3w", "nr1_C56_0p6w", "nr2_C56_1p2w", "nr3_C56_2p5w"]
+
+
+def read_nonround_sweep():
+    """The sweep the sims were actually run from: label -> (aberration dict, C1, waves at the edge)."""
+    rows = {}
+    with open(os.path.join(REPO, "campaign", "nonround_sweep.tsv")) as f:
+        rd = csv.DictReader((l for l in f if not l.startswith("#")), delimiter="\t")
+        for r in rd:
+            ab = {"C30": float(r["c3"]), "C50": float(r["c5"])}
+            if r["aber_json"] != "-":
+                ab = json.loads(r["aber_json"])
+            rows[r["label"]] = (ab, float(r["c1"]), ab.get("C56", 0.0) / C56_WAVE)
+    return rows
+
+
+def figE_nonround_probe(a):
+    """The six-fold residual, seen three ways: the Ronchigram the operator would judge focus on,
+    the wavefront across the aperture, and the probe that reaches the sample."""
+    mrf = _load_mod("make_ronchigram_fig", os.path.join(HERE, "make_ronchigram_fig.py"))
+    plan = read_nonround_sweep()
+    rng = np.random.default_rng(3)
+    show = [l for l in NR_SHOW if l in plan]
+    recall = {l: af(a.relax, l) for l in show}
+    base = read_reports(a.af).get(70)
+    if base:
+        recall[show[0]] = base
+
+    fig, axes = plt.subplots(3, len(show), figsize=(13.0, 9.4))
+    for i, lab in enumerate(show):
+        ab, c1, w = plan[lab]
+        P = build_probe(70, ab, c1)
+        d90 = mrf.enclosed(P, 140.0, (0.9,))[0]
+
+        R, hr = mrf.ronchigram(P, 140.0, 70, rng)
+        ax = axes[0, i]
+        ax.imshow(R, cmap="gray", extent=[-hr, hr, -hr, hr], interpolation="bilinear")
+        ax.add_artist(plt.Circle((0, 0), 70, fill=False, color="#ffd24a", lw=1.2, ls=":"))
+        ax.set_xticks([]); ax.set_yticks([]); ax.grid(False)
+        ax.set_title("round probe\n(no six-fold)" if w == 0 else f"six-fold\n{w:.1f} waves",
+                     pad=6, color=INK, fontsize=10.5)
+        if i == 0:
+            ax.set_ylabel("Ronchigram\n(what the operator sees)", fontsize=10, color=INK2)
+
+        ph, hp = aperture_phase(P, 70)
+        ax = axes[1, i]
+        ax.imshow(ph, cmap="twilight_shifted", vmin=-np.pi, vmax=np.pi,
+                  extent=[-hp, hp, -hp, hp], interpolation="bilinear")
+        ax.set_xticks([]); ax.set_yticks([]); ax.grid(False)
+        if i == 0:
+            ax.set_ylabel("aberration across\nthe aperture", fontsize=10, color=INK2)
+
+        I, hI = probe_crop(P, 140.0, NR_PROBE_HALF)
+        ax = axes[2, i]
+        ax.imshow(I ** 0.3, cmap="magma", extent=[-hI, hI, -hI, hI], interpolation="bilinear")
+        ax.set_xticks([]); ax.set_yticks([]); ax.grid(False)
+        ax.plot([-hI + 0.8, -hI + 2.8], [-hI + 1.0] * 2, color="white", lw=2.4, solid_capstyle="butt")
+        if i == 0:
+            ax.text(-hI + 0.8, -hI + 1.7, "2 Å", color="white", fontsize=8.5, va="bottom")
+            ax.set_ylabel("probe at the sample\n(square root of intensity)", fontsize=10, color=INK2)
+        r = recall.get(lab)
+        lines = [f"probe diameter {d90:.1f} Å"]
+        if r:
+            lines.append(f"Pb found {100 * r['Pb']['recall_bulk']:.0f}%")
+        ax.set_xlabel("\n".join(lines), fontsize=9,
+                      color=(S3 if r and r["Pb"]["recall_bulk"] > 0.9 else INK2), labelpad=4)
+
+    fig.suptitle("a   Six-fold astigmatism: the residual a hexapole corrector cannot remove",
+                 x=0.012, ha="left", fontsize=11.5, fontweight="semibold", color=INK)
+    fig.tight_layout(rect=[0, 0, 1, 0.965])
+    return save(fig, "figE_nonround_probe.png")
+
+
+FIGS = {"A": figA_dfo, "B": figB_step1, "C": figC_phonons, "D": figD_nonround,
+        "E": figE_nonround_probe}
 
 
 def main():

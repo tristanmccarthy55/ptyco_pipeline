@@ -140,6 +140,76 @@ def kernel_quality(npy):
     return float(K[l, r, c]), float(K[l, r, c] / bg)
 
 
+def _load_mod(name, path):
+    spec = importlib.util.spec_from_file_location(name, path)
+    m = importlib.util.module_from_spec(spec); spec.loader.exec_module(m)
+    return m
+
+
+def build_probe(alpha, aberrations, c1, L=140.0, N=2048):
+    """Probe on a converged box for any aberration set (round or not). abTEM applies the
+    convention, so nothing here hand-derives the six-fold term."""
+    import abtem
+    return np.asarray(abtem.Probe(energy=300e3, semiangle_cutoff=alpha, extent=L, gpts=N,
+                                  defocus=c1, aberrations=aberrations).build().compute().array)
+
+
+def aperture_phase(P, alpha, L=140.0, keep=1.12):
+    """The wave aberration across the aperture, read back from the probe abTEM built: the phase of
+    its Fourier transform inside the illuminated disc. Returns (wrapped phase, half-width in mrad)."""
+    # ifftshift first: the probe sits at the array centre, and transforming it there puts a half-pixel
+    # phase ramp on every pixel, which displays as a checkerboard rather than the wavefront.
+    F = np.fft.fftshift(np.fft.fft2(np.fft.ifftshift(P)))
+    A = np.abs(F)
+    ph = np.where(A > 0.35 * A.max(), np.angle(F), np.nan)
+    px = LAM / L * 1e3                                   # mrad per pixel
+    h = int(round(keep * alpha / px)); c = P.shape[0] // 2
+    return ph[c - h:c + h, c - h:c + h], h * px
+
+
+def probe_crop(P, L=140.0, half_A=13.0):
+    I = np.abs(P) ** 2
+    cy, cx = np.unravel_index(I.argmax(), I.shape); h = int(half_A / (L / P.shape[0]))
+    return I[cy - h:cy + h, cx - h:cx + h], half_A
+
+
+# ----------------------------------------------------------------- fig 7: what the operator sees
+def fig7_ronchigram(a):
+    """Ronchigram and aperture phase as the aperture opens -- the round sweep, cleaned up: the two
+    rows that carry the story, without the ray-landing profile or the twin-axis probe-size panel."""
+    mrf = _load_mod("make_ronchigram_fig", os.path.join(HERE, "make_ronchigram_fig.py"))
+    plan = {r["alpha"]: r for r in read_round_sweep()}
+    show = [50, 70, 90, 100]
+    rng = np.random.default_rng(3)
+    fig, axes = plt.subplots(2, len(show), figsize=(12.4, 6.6))
+    for i, alpha in enumerate(show):
+        r = plan[alpha]; c3 = r["c3_um"] * 1e4
+        P = build_probe(alpha, {"C30": c3, "C50": 1e7}, r["c1"])
+        R, hr = mrf.ronchigram(P, 140.0, alpha, rng)
+        ax = axes[0, i]
+        ax.imshow(R, cmap="gray", extent=[-hr, hr, -hr, hr], interpolation="bilinear")
+        ax.add_artist(plt.Circle((0, 0), alpha, fill=False, color="#ffd24a", lw=1.2, ls=":"))
+        ax.set_xticks([]); ax.set_yticks([]); ax.grid(False)
+        ax.set_title(f"{alpha} mrad\nC3 {r['c3_um']:+.0f} µm, focus {r['c1']:+.0f} Å",
+                     pad=6, color=INK, fontsize=10.5)
+        if i == 0:
+            ax.set_ylabel("Ronchigram\n(what the operator sees)", fontsize=10, color=INK2)
+        ph, hp = aperture_phase(P, alpha)
+        ax = axes[1, i]
+        ax.imshow(ph, cmap="twilight_shifted", vmin=-np.pi, vmax=np.pi,
+                  extent=[-hp, hp, -hp, hp], interpolation="bilinear")
+        ax.set_xticks([]); ax.set_yticks([]); ax.grid(False)
+        pv = mrf.PLAN.nondefocus_pv(alpha, c3, 1e7)
+        ax.set_xlabel(f"wavefront error {pv:.1f} rad", fontsize=9,
+                      color=(S3 if pv <= np.pi / 2 else INK2), labelpad=4)
+        if i == 0:
+            ax.set_ylabel("aberration across\nthe aperture", fontsize=10, color=INK2)
+    fig.suptitle("a   Opening a corrected aperture: the fringes are the aberration the corrector no longer holds",
+                 x=0.012, ha="left", fontsize=11.5, fontweight="semibold", color=INK)
+    fig.tight_layout(rect=[0, 0, 1, 0.96])
+    return save(fig, "fig7_ronchigram.png")
+
+
 # ----------------------------------------------------------------- fig 1: the probe
 def fig1_probe(args):
     plan = read_round_sweep()
@@ -484,7 +554,8 @@ def fig6_dose(args):
     return save(fig, "fig6_dose.png")
 
 
-FIGS = {1: fig1_probe, 2: fig2_depth, 3: fig3_volume, 4: fig4_c1, 5: fig5_probeupdate, 6: fig6_dose}
+FIGS = {1: fig1_probe, 2: fig2_depth, 3: fig3_volume, 4: fig4_c1, 5: fig5_probeupdate,
+        6: fig6_dose, 7: fig7_ronchigram}
 
 
 def main():
