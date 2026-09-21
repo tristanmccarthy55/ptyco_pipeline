@@ -16,6 +16,9 @@ recon script, in-job probe writer, C1-search driver, objective analysis, relaxat
 seeded). Next: the a70 smoke test. Plan and expectations in `NEXT_PHASE.md` § Step 1.
 
 PI-meeting page (private): https://claude.ai/artifact/6JuRq4kgP8v6FjDC8agcpn
+Results page, 2026-09-21 runs (private): https://claude.ai/artifact/3TfTwcipbbTxG9PGbeEtqi — focus fitted
+end to end, the in-solver focus fit failing, phonons, non-round, the thick slab that diverged; figures by
+`analysis/make_relaxation_figs.py`.
 Group-meeting page, 2026-09-22 (private): https://claude.ai/artifact/NiYCfNo7uFAWFkyUZ5L3SF — the
 six-figure set in `figs/<week>/meeting/`, rebuilt by `analysis/make_meeting_figs.py`; republish that
 same file path to update it rather than creating a second page.
