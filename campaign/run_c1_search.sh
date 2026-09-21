@@ -42,6 +42,10 @@ PSFFT="${PSFFT:-$([ -n "$PSTART" ] && [ "$PDFO" != 1 ] && echo 1 || echo 0)}"
 [ -z "$PSTART" ] && [ -n "$PSTART2" ] && { echo "PSTART2 needs PSTART" >&2; exit 1; }
 # (no `$([ test ] && echo x)` in assignments: a false test fails the substitution and set -e exits the script)
 DFO_TAG=""; [ "$PDFO" = 1 ] && DFO_TAG="dfo"
+OSTART2="${OSTART2:-}"                    # freeze the object in the full engine (inf) while the focus is fitted
+PDFO_CAP="${PDFO_CAP:-}"                  # cap on the focus step [A per iteration]
+[ -n "$OSTART2" ] && DFO_TAG="${DFO_TAG}o${OSTART2}"
+[ -n "$PDFO_CAP" ] && DFO_TAG="${DFO_TAG}c${PDFO_CAP}"
 PS_TAG=""; [ -n "$PSTART" ] && PS_TAG="_ps${PSTART}${PSTART2:+x${PSTART2}}${DFO_TAG}"
 CAMP="${CAMP:-$([ "$PDFO" = 1 ] && echo c1dfo || ([ -n "$PSTART" ] && echo c1fit || echo c1))}"
 SIM_ROOT="${SIM_ROOT:-$REPO_DIR}"        # where sim_out_af_a<A>_<mode> live (override for a local dry run)
@@ -89,6 +93,8 @@ recon_job(){ # $1 name $2 datadir $3 bin $4 nl $5 c1 $6 c3 $7 c5 -> jobid  (tria
     local grp; grp="$(grp_for "$bin")"; local gx=""; [ -n "$grp" ] && gx=",GROUPING=${grp}"
     if [ -n "$PSTART" ]; then
         gx="${gx},PROBE_START=${PSTART},PROBE_SUPPORT_FFT=${PSFFT},PROBE_DEFOCUS_ONLY=${PDFO}"; [ -n "$PSTART2" ] && gx="${gx},PROBE_START2=${PSTART2}"
+        [ -n "$OSTART2" ] && gx="${gx},OBJECT_START2=${OSTART2}"
+        [ -n "$PDFO_CAP" ] && gx="${gx},PROBE_DFO_MAX_STEP=${PDFO_CAP}"
     fi
     local cmd=(sbatch --parsable --job-name="${CAMP}_${name}" --time="$(time_for "$bin" "$NITER")" --mem="$(mem_for "$bin")"
                --output="${rdir}/slurm_%j.out" --error="${rdir}/slurm_%j.err"

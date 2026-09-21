@@ -379,6 +379,13 @@ for  jj = ind_range
                     % exact defocus step: propagate by the LSQ step times the projection coefficient
                     dz = mean(beta_probe(g_ind, layer)) * cache.defocus_coef;
                     if is_method(par, 'MLc'); dz = dz / Nind; end                   % as update_probe normalises
+                    % optional cap [A per iteration]. Measured 2026-09-21: the runaway at a70 is NOT made of
+                    % big steps (median 0.023 A, 3% above 0.5 A) but of many small same-signed ones, so a cap
+                    % slows the drift without curing it -- kept as a knob, not as the fix.
+                    if isfield(par.p, 'probe_defocus_max_step') && par.p.probe_defocus_max_step > 0
+                        cap = par.p.probe_defocus_max_step * 1e-10;
+                        if abs(dz) > cap; dz = sign(dz) * cap; end
+                    end
                     if isfinite(dz) && dz ~= 0
                         self.probe{ll} = ifft2(fft2(self.probe{ll}) .* exp(dz .* cache.defocus_phase));
                         self.probe_defocus_shift = self.probe_defocus_shift + dz;

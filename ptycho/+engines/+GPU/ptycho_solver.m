@@ -342,7 +342,31 @@ for iter =  (1-par.initial_probe_rescaling):par.number_iterations
     if iter == 0; continue; end  % interation 0 is used only to calibrate iinitial probe intensity
 
     if check_option(par.p, 'probe_defocus_only') && iter >= par.probe_change_start && isfield(self, 'probe_defocus_shift')
-        verbose(0, 'defocus-only probe update: cumulative C1 shift %+.3f A', self.probe_defocus_shift * 1e10)
+        % the focus shift alone cannot say whether the fit is wandering along the focus/depth
+        % degeneracy, so log where the SAMPLE sits too: per layer, the mean deviation of the object
+        % from vacuum over the illuminated region, reduced to a depth centroid. If the centroid
+        % tracks the focus one-for-one, probe and object are drifting together along a direction the
+        % data cannot see. Every 10th iteration; diagnostic only, so it can never fail the run.
+        zc = NaN;
+        if mod(iter, 10) == 0
+            try
+                nL = par.Nlayers; w = zeros(1, nL);
+                for lz = 1:nL
+                    O = self.object{1, lz}(cache.object_ROI{:});
+                    w(lz) = Ggather(mean(abs(O(:) - mean(O(:)))));
+                end
+                w = w - min(w);
+                zs = ((1:nL) - 0.5) * (par.delta_z(1) * 1e10);
+                if sum(w) > 0; zc = sum(zs .* w) / sum(w); end
+            catch
+            end
+        end
+        if isfinite(zc)
+            verbose(0, 'defocus-only probe update: cumulative C1 shift %+.3f A | sample depth centroid %.2f A', ...
+                    self.probe_defocus_shift * 1e10, zc)
+        else
+            verbose(0, 'defocus-only probe update: cumulative C1 shift %+.3f A', self.probe_defocus_shift * 1e10)
+        end
     end
     
     if verbose() > 0  && any(~isnan(fourier_error(iter,:)))       

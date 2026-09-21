@@ -4,10 +4,15 @@
 # hexapole-corrector residual (uncancellable by round C1/C3), escalated 0.6->1.2->2.5
 # 2026-09-21: round part moved to the CURRENT a070 balance (C3 -5 um, C1 -60; round_sweep.tsv), so nr0 IS the
 # relaxation ladder's step-0 a70 leg; the C56/C34 magnitudes (waves at 70 mrad) are unchanged.
-# waves, then a combined C56+C34 (4-fold) level. NL=6 (Nyquist of 4A depth res @70mrad).
+# waves, then a combined C56+C34 (4-fold) level. 2026-09-22: 0.6 waves already costs most of the
+# recall (Pb 98% -> 39%), so the ladder below it (0.1-0.45) is where the usable tolerance is. NL=6 (Nyquist of 4A depth res @70mrad).
 # aber_json overrides c3/c5. All BIN=4. Sim slab fixed 0.9 A (run_campaign SLICE default).
 label	alpha	c5	c3	c1	df_perf	bin	nl	aber_json	note
 nr0_round	70	1e7	-5e4	-60	-30	4	6	-	round-only baseline (=round a070)
+nr0p1_C56_0p1w	70	1e7	-5e4	-60	-30	4	6	{"C30":-5e4,"C50":1e7,"C56":100000,"phi56":0}	6-fold astig 0.1 wave (threshold ladder, 2026-09-22)
+nr0p2_C56_0p2w	70	1e7	-5e4	-60	-30	4	6	{"C30":-5e4,"C50":1e7,"C56":201000,"phi56":0}	6-fold astig 0.2 wave (threshold ladder, 2026-09-22)
+nr0p3_C56_0p3w	70	1e7	-5e4	-60	-30	4	6	{"C30":-5e4,"C50":1e7,"C56":301000,"phi56":0}	6-fold astig 0.3 wave (threshold ladder, 2026-09-22)
+nr0p45_C56_0p45w	70	1e7	-5e4	-60	-30	4	6	{"C30":-5e4,"C50":1e7,"C56":452000,"phi56":0}	6-fold astig 0.45 wave (threshold ladder, 2026-09-22)
 nr1_C56_0p6w	70	1e7	-5e4	-60	-30	4	6	{"C30":-5e4,"C50":1e7,"C56":6e5,"phi56":0}	6-fold astig 0.6 wave
 nr2_C56_1p2w	70	1e7	-5e4	-60	-30	4	6	{"C30":-5e4,"C50":1e7,"C56":1.2e6,"phi56":0}	6-fold astig 1.2 wave
 nr3_C56_2p5w	70	1e7	-5e4	-60	-30	4	6	{"C30":-5e4,"C50":1e7,"C56":2.5e6,"phi56":0}	6-fold astig 2.5 wave

@@ -109,7 +109,16 @@ psf_env = getenv('PROBE_SUPPORT_FFT'); probe_support_tem = ~isempty(psf_env) && 
 % the update moves the probe's defocus only (an exact Fresnel propagation per step; engines.GPU.LSQML).
 % Top-level p option like probe_support_tem. The cumulative shift lands in out.probe_defocus_shift [m].
 pdo_env = getenv('PROBE_DEFOCUS_ONLY'); probe_defocus_only = ~isempty(pdo_env) && str2double(pdo_env)==1;
-fprintf('probe_defocus_only = %d\n', probe_defocus_only);
+% Cap on how far the focus may move per iteration [A]; 0/unset = uncapped.
+dcap_env = getenv('PROBE_DFO_MAX_STEP');
+probe_defocus_max_step = 0; if ~isempty(dcap_env); probe_defocus_max_step = str2double(dcap_env); end
+fprintf('probe_defocus_only = %d ; max step = %g A (0 = uncapped)\n', probe_defocus_only, probe_defocus_max_step);
+% OBJECT_START2 freezes the OBJECT in the full-resolution engine (inf = never updated there), so the
+% probe is fitted against the object the presolve already converged. That separates a genuine focus
+% gradient from the focus/depth degeneracy the two share when both are free (2026-09-21).
+os2_env = getenv('OBJECT_START2');
+Nst_object = [1, 1]; if ~isempty(os2_env); Nst_object(2) = str2double(os2_env); end
+fprintf('object_change_start (per engine) = [%g %g]\n', Nst_object(1), Nst_object(2));
 psr_env = getenv('PROBE_SUPPORT_RADIUS');
 if ~isempty(psr_env) && str2double(psr_env)>0; probe_support_radius = str2double(psr_env); else; probe_support_radius = []; end
 fprintf('probe_support_tem = %d ; probe_support_radius = %s\n', probe_support_tem, mat2str(probe_support_radius));
@@ -174,7 +183,7 @@ if do_restart
     restart_obj = fullfile(dd(imax).folder, dd(imax).name);
     fprintf('RESTART: continuing from %s (full-res engine only)\n', restart_obj);
     % collapse the two-engine schedule to the full-resolution (2nd) engine
-    Niter = Niter(end); grouping = grouping(end); Nst_probe = Nst_probe(end);
+    Niter = Niter(end); grouping = grouping(end); Nst_probe = Nst_probe(end); Nst_object = Nst_object(end);
     Npos_st = Npos_st(end); reglayer = reglayer(end); Np_presolve = Np_presolve(end);
     Niter_save_results = Niter_save_results(end); Niter_save_exit_wave = Niter_save_exit_wave(end);
 else
@@ -251,6 +260,7 @@ p.   model_probe   = false;
 % would NOT be seen here, so set it on p directly (see the PROBE_SUPPORT_FFT env block above).
 p.   probe_support_tem = probe_support_tem;
 p.   probe_defocus_only = probe_defocus_only;
+p.   probe_defocus_max_step = probe_defocus_max_step;
 p.   model.probe_is_focused            = true;
 p.   model.probe_central_stop          = true;
 p.   model.probe_diameter              = 170e-6;
@@ -300,7 +310,7 @@ for ieng = 1:length(Niter)
     eng. opt_errmetric       = 'L1';
     eng. grouping            = grouping(ieng);
     eng. probe_modes         = p.probe_modes;
-    eng. object_change_start = 1;
+    eng. object_change_start = Nst_object(min(ieng, end));
     eng. probe_change_start  = Nst_probe(ieng);
 
     eng. reg_mu                       = 0;

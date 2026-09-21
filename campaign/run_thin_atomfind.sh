@@ -55,7 +55,8 @@ TS="$(date +%Y%m%d_%H%M%S)"
 TAG="$([ -n "$LABELS" ] && echo "$(echo ${LABELS} | tr ' ' '-')" || echo "a$(echo ${ALPHAS} | tr ' ' '-')")${DOSES:+_dose$(echo ${DOSES} | tr ' ' '-')}${SFX}"
 PACK="${SHARE:+$SHARE/$USER}"; PACK="${PACK:-$REPO_DIR}/atomfind_results_${TAG}_${TS}.tgz"   # own subdir, not the shared group dir
 DIRS_FILE="${REPO_DIR}/logs/af_pack_${TAG}_${TS}.dirs"; : >"${DIRS_FILE}"   # this submission's recon dirs only
-echo "full box ${BOXZ} A (THIN=${THIN} cells + 2x${ZVAC} A vac); PSF atom z=${ATOMZ}; ${LABELS:+labels: ${LABELS}}${LABELS:-alphas: ${ALPHAS}}${SFX:+; suffix ${SFX}}"
+WHAT="alphas: ${ALPHAS}"; [ -n "$LABELS" ] && WHAT="labels: ${LABELS}"   # ${X:+a}${X:-b} prints BOTH when X is set
+echo "full box ${BOXZ} A (THIN=${THIN} cells + 2x${ZVAC} A vac); PSF atom z=${ATOMZ}; ${WHAT}${SFX:+; suffix ${SFX}}"
 
 if [ -n "$DOSES" ] && [ ! -x "${PYBIN}" ]; then echo "DOSES set but no abtem env python at ${PYBIN}" >&2; exit 1; fi
 
