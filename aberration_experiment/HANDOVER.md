@@ -142,6 +142,9 @@ ALPHAS="70 90" bash campaign/run_thin_atomfind.sh                      # sims + 
 ALPHAS=90 MODES=lab RECON_ONLY=1 bash campaign/run_thin_atomfind.sh    # re-recon one leg, reuse sims
 ```
 C1 defocus search (step 1): `campaign/run_c1_search.sh`, usage in `campaign/README.md`.
+Defocus-only probe update (stage 2.5b, engine option): `... PSTART=40 PSTART2=40 PDFO=1 bash campaign/run_c1_search.sh`.
+Phonons / thick slab / non-round: `PHONONS=16 PER_SPECIES=1`, `THIN=18 CELL_Z=3.889 GROUPING=16 RTIME=20:00:00`,
+`TSV=campaign/nonround_sweep.tsv LABELS=...` on `run_thin_atomfind.sh` (usage in its header).
 Shot noise (step 2): `ALPHAS="70 90" DOSES="1e7 1e6 1e5 1e4" bash campaign/run_thin_atomfind.sh` — Poisson copies
 of the existing sims (CPU jobs), then lab + Pb + Ti recons on them; dirs `recon_af_a<A>_<mode>_dose<D>_NL<NL>`.
 Every driver now packs only its own submission's recon dirs into a tarball named to the second.

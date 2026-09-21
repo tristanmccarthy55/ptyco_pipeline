@@ -34,10 +34,16 @@ ALPHAS="${ALPHAS:-70 90}"; MODES="${MODES:-lab}"; NITER="${NITER:-50}"
 SAVE="${SAVE_EVERY:-$NITER}"
 THIN="${THIN:-5}"; ZVAC="${ZVAC:-4}"; BETA_LSQ="${BETA_LSQ:-0.05}"
 PACK_H5="${PACK_H5:-1}"; DRYRUN="${DRYRUN:-0}"
-PSTART="${PSTART:-}"; PSTART2="${PSTART2:-}"; PSFFT="${PSFFT:-$([ -n "$PSTART" ] && echo 1 || echo 0)}"
+PSTART="${PSTART:-}"; PSTART2="${PSTART2:-}"; PDFO="${PDFO:-0}"
+# PDFO=1: DEFOCUS-ONLY probe update (engine option probe_defocus_only, 2026-09-21): C3/C5 fixed as in the
+# start probe, the update moves defocus alone, so the aperture constraint is redundant (PSFFT default 0).
+[ "$PDFO" = 1 ] && [ -z "$PSTART" ] && { echo "PDFO=1 needs PSTART (when the probe is released)" >&2; exit 1; }
+PSFFT="${PSFFT:-$([ -n "$PSTART" ] && [ "$PDFO" != 1 ] && echo 1 || echo 0)}"
 [ -z "$PSTART" ] && [ -n "$PSTART2" ] && { echo "PSTART2 needs PSTART" >&2; exit 1; }
-PS_TAG=""; [ -n "$PSTART" ] && PS_TAG="_ps${PSTART}${PSTART2:+x${PSTART2}}"
-CAMP="${CAMP:-$([ -n "$PSTART" ] && echo c1fit || echo c1)}"
+# (no `$([ test ] && echo x)` in assignments: a false test fails the substitution and set -e exits the script)
+DFO_TAG=""; [ "$PDFO" = 1 ] && DFO_TAG="dfo"
+PS_TAG=""; [ -n "$PSTART" ] && PS_TAG="_ps${PSTART}${PSTART2:+x${PSTART2}}${DFO_TAG}"
+CAMP="${CAMP:-$([ "$PDFO" = 1 ] && echo c1dfo || ([ -n "$PSTART" ] && echo c1fit || echo c1))}"
 SIM_ROOT="${SIM_ROOT:-$REPO_DIR}"        # where sim_out_af_a<A>_<mode> live (override for a local dry run)
 CELL_Z=3.905; LAM=0.0196877
 BOXZ=$(awk "BEGIN{printf \"%.3f\", ${THIN}*${CELL_Z}+2*${ZVAC}}")      # full box thickness [A]
@@ -52,7 +58,7 @@ DIRS_FILE="${REPO_DIR}/logs/${CAMP}_pack_${TAG}_${TS}.dirs"; RDIRS=()
 [ -n "${DC1:-}" ] || [ -n "${C1:-}" ] || { echo "set DC1 (offsets from the TSV C1) or C1 (absolute values) [A]" >&2; exit 1; }
 [ -n "${DC1:-}" ] && [ -n "${C1:-}" ] && { echo "set DC1 or C1, not both" >&2; exit 1; }
 echo "C1 search [${CAMP}]: alphas ${ALPHAS}; modes ${MODES}; NITER ${NITER}; full box ${BOXZ} A; ${DC1:+dC1 = ${DC1}}${C1:+C1 = ${C1}}"
-if [ -n "$PSTART" ]; then echo "  probe UPDATE: presolve from iter ${PSTART}, full engine from ${PSTART2:-never (fixed)}; aperture constraint ${PSFFT}"
+if [ -n "$PSTART" ]; then echo "  probe UPDATE${DFO_TAG:+ (DEFOCUS ONLY)}: presolve from iter ${PSTART}, full engine from ${PSTART2:-never (fixed)}; aperture constraint ${PSFFT}"
 else echo "  probe FIXED at each trial C1"; fi
 
 nl_full(){ awk "BEGIN{n=int(${BOXZ}*2*($1/1000)^2/${LAM}+0.5); if(n<1)n=1; print n}"; }
@@ -82,7 +88,7 @@ recon_job(){ # $1 name $2 datadir $3 bin $4 nl $5 c1 $6 c3 $7 c5 -> jobid  (tria
     local rdir="${REPO_DIR}/recon_${CAMP}_${name}_NL${nl}"
     local grp; grp="$(grp_for "$bin")"; local gx=""; [ -n "$grp" ] && gx=",GROUPING=${grp}"
     if [ -n "$PSTART" ]; then
-        gx="${gx},PROBE_START=${PSTART},PROBE_SUPPORT_FFT=${PSFFT}"; [ -n "$PSTART2" ] && gx="${gx},PROBE_START2=${PSTART2}"
+        gx="${gx},PROBE_START=${PSTART},PROBE_SUPPORT_FFT=${PSFFT},PROBE_DEFOCUS_ONLY=${PDFO}"; [ -n "$PSTART2" ] && gx="${gx},PROBE_START2=${PSTART2}"
     fi
     local cmd=(sbatch --parsable --job-name="${CAMP}_${name}" --time="$(time_for "$bin" "$NITER")" --mem="$(mem_for "$bin")"
                --output="${rdir}/slurm_%j.out" --error="${rdir}/slurm_%j.err"

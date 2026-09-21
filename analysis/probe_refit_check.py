@@ -32,7 +32,7 @@ import numpy as np
 HERE = os.path.dirname(os.path.abspath(__file__))
 REPO = os.path.dirname(HERE)
 NAME_RE = re.compile(r"recon_(?P<camp>[A-Za-z0-9]+)_a(?P<alpha>\d+)_(?P<mode>lab|Pb|Ti)_df(?P<c1>-?\d+(?:\.\d+)?)"
-                     r"(?:_r(?P<rep>\d+))?(?:_ps(?P<ps>\d+)(?:x(?P<ps2>\d+))?)?_n(?P<niter>\d+)_NL(?P<nl>\d+)$")
+                     r"(?:_r(?P<rep>\d+))?(?:_ps(?P<ps>\d+)(?:x(?P<ps2>\d+))?(?P<dfo>dfo)?)?_n(?P<niter>\d+)_NL(?P<nl>\d+)$")
 
 
 def _load(name, path):
@@ -93,7 +93,8 @@ def main():
                     continue
                 h5 = sorted(glob.glob(os.path.join(d, "analysis", "**", "*_recons.h5"), recursive=True))
                 pj = os.path.join(d, "01", "probe_initial.json")
-                variant = "fixed" if not m["ps"] else f"update {m['ps']}" + (f"+{m['ps2']}" if m["ps2"] else " (presolve only)")
+                variant = "fixed" if not m["ps"] else (("C1-only " if m["dfo"] else "") + f"update {m['ps']}"
+                                                       + (f"+{m['ps2']}" if m["ps2"] else " (presolve only)"))
                 row = dict(alpha=int(m["alpha"]), mode=m["mode"], variant=variant, c1_start=float(m["c1"]),
                            rep=int(m["rep"] or 1), niter=int(m["niter"]), dir=d)
                 log = sorted(glob.glob(os.path.join(d, "slurm_*.out")))
@@ -120,6 +121,9 @@ def main():
                 trace = sorted(glob.glob(os.path.join(d, "analysis", "**", "*_error_trace.csv"), recursive=True))
                 if trace:
                     tr = obj.read_csv_rows(trace[-1]); row["final_error"] = float(tr[-1]["fourier_error"])
+                    for line in open(trace[-1]):                     # the engine's own cumulative defocus shift
+                        if line.startswith("# probe_defocus_shift_A="):
+                            row["engine_dc1"] = float(line.split("=")[1])
                 if alive:
                     row["ov_start"] = shift_invariant_overlap(P0, M.F(truth))
                     row["ov_final"] = shift_invariant_overlap(Pf, M.F(truth))
@@ -135,14 +139,20 @@ def main():
     print(f"{'alpha':>5} {'variant':<26} {'dC1 start':>9} {'status':<10} {'error':>8} {'ov start':>8} {'ov final':>8} "
           f"{'dC1 final':>9} {'ov@C1':>6} {'slab (A)':>12}")
     for r in rows:
-        print(f"{r['alpha']:>5} {r['variant']:<26} {f(r.get('dc1_start'), '+.0f'):>9} {r['status']:<10} "
-              f"{f(r.get('final_error'), '.3f'):>8} {f(r.get('ov_start'), '.3f'):>8} {f(r.get('ov_final'), '.3f'):>8} "
-              f"{f(r.get('dc1_final'), '+.1f'):>9} {f(r.get('ov_best_c1'), '.3f'):>6} "
-              f"{f(r.get('slab_z0'), '.1f'):>5}-{f(r.get('slab_z1'), '.1f'):<5}"
-              + ("  C1 FIT AT GRID EDGE" if r.get("c1_fit_at_edge") else "") + ("  NaN in log" if r.get("nan_in_log") else ""))
+        line = (f"{r['alpha']:>5} {r['variant']:<26} {f(r.get('dc1_start'), '+.0f'):>9} {r['status']:<10} "
+                f"{f(r.get('final_error'), '.3f'):>8} {f(r.get('ov_start'), '.3f'):>8} {f(r.get('ov_final'), '.3f'):>8} "
+                f"{f(r.get('dc1_final'), '+.1f'):>9} {f(r.get('ov_best_c1'), '.3f'):>6} "
+                f"{f(r.get('slab_z0'), '.1f'):>5}-{f(r.get('slab_z1'), '.1f'):<5}")
+        if r.get("engine_dc1") is not None:
+            line += f"  engine says dC1 {r['engine_dc1']:+.1f}"
+        if r.get("c1_fit_at_edge"):
+            line += "  C1 FIT AT GRID EDGE"
+        if r.get("nan_in_log"):
+            line += "  NaN in log"
+        print(line)
     out = a.out_csv or os.path.join(obj.week_dir("results"), "probe_refit.csv")
     cols = ["alpha", "mode", "variant", "niter", "rep", "c1_true", "c1_start", "dc1_start", "status", "nan_in_log",
-            "power_ratio", "final_error", "ov_start", "ov_final", "c1_final", "dc1_final", "ov_best_c1", "c1_fit_at_edge",
+            "power_ratio", "final_error", "ov_start", "ov_final", "c1_final", "dc1_final", "engine_dc1", "ov_best_c1", "c1_fit_at_edge",
             "slab_centroid", "slab_z0", "slab_z1", "dir"]
     with open(out, "w", newline="") as fh:
         w = csv.DictWriter(fh, fieldnames=cols, extrasaction="ignore"); w.writeheader(); w.writerows(rows)

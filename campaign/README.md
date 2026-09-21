@@ -97,6 +97,9 @@ DRYRUN=1 ... bash campaign/run_c1_search.sh                               # prin
 **Probe update (stage 2.5):** `PSTART=40` releases the probe in the presolve engine, `PSTART2=20` also in the
 full engine, with the aperture constraint on; the trial probe is then only the starting point. Campaign
 defaults to `c1fit`, dirs gain `_ps40[x20]`, and `analysis/probe_refit_check.py` summarises the refined probes.
+**Defocus-only update (stage 2.5b):** add `PDFO=1` — the engine option `probe_defocus_only` moves the probe's
+defocus alone (C3/C5 pinned, exact propagation per step); campaign `c1dfo`, dirs `_ps40x40dfo`, the engine's
+own cumulative shift in the error-trace header.
 
 Env: `ALPHAS`, `DC1` (offsets from the TSV C1) or `C1` (absolute), `MODES`, `NITER` (50), `PSTART`, `PSTART2`, `PSFFT`, `PACK_H5`
 (1; 0 packs sidecars, probes and logs only), `DRYRUN`, `SAVE_EVERY` (= NITER), `BETA_LSQ`, `SIM_ROOT`.
@@ -105,6 +108,13 @@ Tarball: `$SHARE/$USER/c1_results_a<alphas>_n<NITER>_<ts>.tgz`, packing only tha
 ```bash
 ~/hyperspy-bundle/bin/python analysis/c1_objective.py --root ~/Desktop/<fresh dir> --blind-start -40 -20 20 40
 ```
+
+## Relaxation legs through the known-probe driver
+`run_thin_atomfind.sh` also runs the later relaxation steps on the same pipeline (usage lines in its header):
+`DOSES` (shot noise, Poisson copies), `PHONONS=16 PER_SPECIES=1` (frozen phonons, dirs `_ph16`),
+`THIN=18 CELL_Z=3.889 GROUPING=16 RTIME=20:00:00` (the 70 Å slab, dirs `_thin18`), and
+`TSV=campaign/nonround_sweep.tsv LABELS="nr1_C56_0p6w ..."` (non-round rows selected by label, dirs named by
+the label). Each submission packs only its own recon dirs into a tarball named after them.
 
 ## `.tsv` schema
 TAB-separated; `#`/header/blank lines skipped; the driver reads the **first 9** columns and

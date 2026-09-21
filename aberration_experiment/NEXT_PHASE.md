@@ -161,6 +161,25 @@ starts, NITER 200, α = 70 and 90. `analysis/probe_refit_check.py` reports per r
 its shift-invariant overlap with the true probe at the start and the end, the C1 it now looks like, and the
 slab position.
 
+**Result (2026-09-18, 24 runs).** The full-pixel update does not recover defocus: started at the truth it
+stays (overlap 0.999); started 6–32 Å away it moves the probe by at most ~1 Å or destroys it (overlap
+0.02–0.04). Four runs diverged after iteration 100 of the full engine. And it can *lower* the error while
+the object collapses into the vacuum (a70, −6 Å start: 14.0 vs 23.7 fixed, slab at 1.9–4.7 Å).
+`results/2026-W38/probe_refit.csv`.
+
+### Stage 2.5b — a one-parameter (defocus-only) probe update inside the engine
+
+The user's point stands: an operator pins C3/C5 and lets the solver fit C1 *with* the object. Built
+2026-09-21 as an engine option, `p.probe_defocus_only` (`PROBE_DEFOCUS_ONLY=1` with `PROBE_START`;
+driver `PDFO=1`, campaign `c1dfo`, dirs `_ps<P>[x<P2>]dfo`). In `engines.GPU.LSQML` the full-pixel probe
+update direction is projected onto dP/dC1 of the current probe, the existing LSQ step machinery gives the
+scalar step, and the step is applied as the exact Fresnel propagation `fft2(P)·exp(dz·iπλk²)` — checked
+against abTEM to 1e-7 including the sign — so the aperture and C3/C5 cannot drift by construction. The
+cumulative shift is printed every iteration (`defocus-only probe update: cumulative C1 shift`), carried
+across the two engines, and written to the error-trace header (`probe_defocus_shift_A`);
+`probe_refit_check.py` prints it beside the C1 it measures from the refined probe. Not testable without
+MATLAB: its first run is its test. Launched at a70 (±6, ±12, 0) and a90 (±16, ±32, 0), NITER 200.
+
 ### Step 2 — Shot noise
 
 **What exists.** `sim/add_poisson_noise.py --in-dir <sim>/.. --dose <e/Å²> [--seed N]` — a
@@ -195,6 +214,15 @@ low dose. The `_dose<tag>` directory naming means `RECON_ONLY` must be pointed a
 
 **Recon.** `PROBE_MODES` 3–5 to absorb the incoherence, combined with Step 1's C1 fit.
 
+### Non-round aberrations (pulled forward from "after this phase", 2026-09-21)
+
+`campaign/nonround_sweep.tsv` re-based on the current a070 balance (C3 −5 µm, C1 −60), so its `nr0`
+row *is* the ladder's step-0 a70 leg; the C56/C34 magnitudes are unchanged (0.6 / 1.2 / 2.5 waves of
+six-fold astigmatism, then 1.2 w six-fold + 1.2 w four-fold). Run through the known-probe pipeline by
+label: `TSV=campaign/nonround_sweep.tsv LABELS="..." bash campaign/run_thin_atomfind.sh`; the row's JSON
+reaches the sim as `ABERRATIONS_JSON`, `aberrations.json` carries the full tableau, and `make_probe.py`
+passes it through unchanged, so the C1 search works on a non-round probe as it is.
+
 ### Step 4 — Phonons (thermal diffuse scattering)
 
 **What exists.** `sim/simulate_4dstem.py --phonons N --phonon-sigma σ --per-species-sigma
@@ -202,7 +230,9 @@ low dose. The `_dose<tag>` directory naming means `RECON_ONLY` must be pointed a
 `campaign/run_thin_atomfind.sh`** — add them to `sim_job`'s export.
 
 **Plan.** 8–16 configurations with `--per-species-sigma` (room-temperature RMS for Pb/Sr/Ti/O).
-Simulation cost scales ×N; fine at BIN=4/2.
+Simulation cost scales ×N; fine at BIN=4/2. **Built 2026-09-21:** `PHONONS=16 PER_SPECIES=1` on
+`run_thin_atomfind.sh` forwards them to every leg (dirs `_ph16`); the noiseless sims took 1–4 min, so ×16
+is under an hour. Launched at α = 70 and 90.
 
 **Watch.** atomfind scores against mean positions, so xy- and z-RMS now include thermal smear.
 Report the per-species σ alongside as the floor. Kernels get the same phonons: thermal blur is part
@@ -256,7 +286,12 @@ reuses this driver unchanged. The PX915 NL70 pipeline (`NL70_coherent` preset, 7
 proves 70-layer reconstructions run.
 
 **Settings.** `THIN=18 ZVAC=4` → box ≈ 78.3 Å. Nyquist slices over that box: **NL ≈ 20 / 39 / 64 / 80**
-at 50 / 70 / 90 / 100 mrad.
+at 50 / 70 / 90 / 100 mrad. *Measured 2026-09-21 by building the slab:* 19,139 atoms, atom span 69.94 Å,
+actual box **77.94 Å**, 87 slices at 0.9 Å; the driver's formula gives 78.29 (CELL_Z 3.905) or 78.00
+(`CELL_Z=3.889`), either way NL = 39 / 64 at 70 / 90. Launched with `THIN=18 CELL_Z=3.889 GROUPING=16
+RTIME=20:00:00` (dirs `_thin18`). Still to do on the analysis side before its atomfind run: a thick GT cache
+(`make_gt_cache --thin-cells 18 --z-vacuum 4`), a `thick` preset (trims, `zmax_show_A`, `clean_max_atoms`
+derived from the 77.94 Å box), and `--dz` from `sim_meta.beam_thickness_A / NL`, not the driver's box.
 
 **Watch.**
 - **Walltime**: the thin a100 lab recon (NL 28) took ~7.5 h; NL 80 is ~3× that, so the driver's

@@ -107,6 +107,22 @@ probe_amp_corr = [0,0];
 beta_probe = ones(self.Npos,par.Nlayers);
 beta_object = ones(self.Npos,par.Nlayers);
 
+% DEFOCUS-ONLY probe update (p.probe_defocus_only; aberration_experiment step 1 / stage 2.5). The
+% operator's situation: C3/C5 known from the corrector, defocus C1 the one free probe parameter. A
+% defocus change of dz is exactly a Fresnel propagation of the probe, fft2(P) .* exp(dz*i*pi*lambda*k^2)
+% (checked against abTEM 1.0.5 to 1e-7, sign included). So the full-pixel probe update direction is
+% projected onto dP/dz and the LSQ step machinery then finds the scalar step; the step is APPLIED as
+% the exact propagation, never as the linear increment, so the aperture and the higher orders are
+% untouched by construction. The cumulative shift self.probe_defocus_shift [m] is exported.
+probe_defocus_only = check_option(par.p, 'probe_defocus_only');
+if probe_defocus_only
+    if ~isfield(self, 'probe_defocus_shift') || isempty(self.probe_defocus_shift); self.probe_defocus_shift = 0; end
+    if ~isfield(cache, 'defocus_phase') || any(size(cache.defocus_phase) ~= self.Np_p)
+        cache.defocus_phase = Garray(defocus_phase_factor(self.Np_p, self.pixel_size, self.lambda));
+    end
+    cache.defocus_coef = 0;
+end
+
 
 %for ML is more useful to get close/overlapping positions
 % use already precalculated indices
@@ -287,6 +303,14 @@ for  jj = ind_range
             if probe_reconstruct || layer > 1
                 [self,m_probe_update, probe_update, cache]  = refine_probe_update(self, obj_proj{llo}, probe_update, chi{ll},layer,ll,p_ind{ll},g_ind, par, cache);
             end
+            if probe_defocus_only && probe_reconstruct && layer == 1 && ll == 1 && numel(m_probe_update) > 1
+                % project the update direction onto dP/dz of the CURRENT probe; the projected direction is
+                % a full-pixel array, so get_optimal_LSQ_step / gradient_projection_solver work unchanged
+                dPdz = ifft2(fft2(self.probe{ll}(:,:,1,1)) .* cache.defocus_phase);
+                cache.defocus_coef = Ggather(real(sum(sum(conj(dPdz) .* mean(m_probe_update, 3)))) ...
+                                     / max(real(sum(sum(abs(dPdz).^2))), 1e-30));      % metres of defocus per unit step (CPU scalar)
+                m_probe_update = cache.defocus_coef .* dPdz;
+            end
             if layer == 1
                 probe_update = [] ; % soft memory clean
             end
@@ -351,7 +375,17 @@ for  jj = ind_range
 
             %%%%%%%%%%%%%%% apply update with the optimal LSQ step %%%%%%%%%%%%%%%%%
             if probe_reconstruct && layer == 1 && ll <= max(par.probe_modes)    % multilayer extension -> update probe only from the first layer
-                self.probe{ll} = update_probe(self.probe{ll}, m_probe_update, par, p_ind{ll}, g_ind, beta_probe, Nind); % finally update also the probe
+                if probe_defocus_only && ll == 1
+                    % exact defocus step: propagate by the LSQ step times the projection coefficient
+                    dz = mean(beta_probe(g_ind, layer)) * cache.defocus_coef;
+                    if is_method(par, 'MLc'); dz = dz / Nind; end                   % as update_probe normalises
+                    if isfinite(dz) && dz ~= 0
+                        self.probe{ll} = ifft2(fft2(self.probe{ll}) .* exp(dz .* cache.defocus_phase));
+                        self.probe_defocus_shift = self.probe_defocus_shift + dz;
+                    end
+                else
+                    self.probe{ll} = update_probe(self.probe{ll}, m_probe_update, par, p_ind{ll}, g_ind, beta_probe, Nind); % finally update also the probe
+                end
             end
 
             if object_reconstruct && is_method(par, 'MLs')
@@ -473,6 +507,16 @@ end
 
 end
 
+
+function ph = defocus_phase_factor(Np, dx, lambda)
+    % i*pi*lambda*|k|^2 in fft2 order (k in 1/m): fft2(P) .* exp(dz*ph) is the probe with its defocus
+    % changed by dz [m], in abTEM's sign convention (verified 2026-09-21 on the a70/a90 probes).
+    dx = dx(:)' .* ones(1, 2);
+    kr = (mod((0:Np(1)-1) + floor(Np(1)/2), Np(1)) - floor(Np(1)/2)) / (Np(1) * dx(1));
+    kc = (mod((0:Np(2)-1) + floor(Np(2)/2), Np(2)) - floor(Np(2)/2)) / (Np(2) * dx(2));
+    [KR, KC] = ndgrid(kr, kc);
+    ph = single(1i * pi * lambda * (KR.^2 + KC.^2));
+end
 
 %% merged CUDA kernels for faster calculations
 

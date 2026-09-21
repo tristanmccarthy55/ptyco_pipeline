@@ -126,7 +126,7 @@ function [self, param, p] = load_from_p(param, p)
 
 
     % load additional reconstructed parameters , otherwise use default 
-    for item = {{'background',[]}, {'intensity_corr',[]}, {'probe_fourier_shift',[]}, {'rotation',0},{'shear',0},{'relative_pixel_scale',1}}
+    for item = {{'background',[]}, {'intensity_corr',[]}, {'probe_fourier_shift',[]}, {'rotation',0},{'shear',0},{'relative_pixel_scale',1}, {'probe_defocus_shift',0}}
         item = item{1}; 
         if isfield(p, item{1}) && ~isempty(p.(item{1}))
             self.(item{1}) = p.(item{1});

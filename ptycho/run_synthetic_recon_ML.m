@@ -105,6 +105,11 @@ fprintf('probe_change_start (per engine) = [%g %g]\n', Nst_probe(1), Nst_probe(2
 % it on. NOTE: this drives p.probe_support_tem — do NOT set eng.probe_support_fft to a scalar (it is
 % a MASK array; a scalar makes the engine crop_pad it to a single centre pixel and zero the probe).
 psf_env = getenv('PROBE_SUPPORT_FFT'); probe_support_tem = ~isempty(psf_env) && str2double(psf_env)==1;
+% DEFOCUS-ONLY probe update (PROBE_DEFOCUS_ONLY=1, with PROBE_START): C3/C5 stay as in probe_initial.mat,
+% the update moves the probe's defocus only (an exact Fresnel propagation per step; engines.GPU.LSQML).
+% Top-level p option like probe_support_tem. The cumulative shift lands in out.probe_defocus_shift [m].
+pdo_env = getenv('PROBE_DEFOCUS_ONLY'); probe_defocus_only = ~isempty(pdo_env) && str2double(pdo_env)==1;
+fprintf('probe_defocus_only = %d\n', probe_defocus_only);
 psr_env = getenv('PROBE_SUPPORT_RADIUS');
 if ~isempty(psr_env) && str2double(psr_env)>0; probe_support_radius = str2double(psr_env); else; probe_support_radius = []; end
 fprintf('probe_support_tem = %d ; probe_support_radius = %s\n', probe_support_tem, mat2str(probe_support_radius));
@@ -245,6 +250,7 @@ p.   model_probe   = false;
 % load_from_p builds the mask from abs(fft2(probe_initial)). eng.* is nested in p.engines{} and
 % would NOT be seen here, so set it on p directly (see the PROBE_SUPPORT_FFT env block above).
 p.   probe_support_tem = probe_support_tem;
+p.   probe_defocus_only = probe_defocus_only;
 p.   model.probe_is_focused            = true;
 p.   model.probe_central_stop          = true;
 p.   model.probe_diameter              = 170e-6;
@@ -385,6 +391,10 @@ try
         fid = fopen(fullfile(sdir, [rn '_error_trace.csv']), 'w');
         fprintf(fid, '# %s | err_metric=%s | NITER=%d | probe=%s\n', em.method, em.err_metric, ...
                 Niter(end), p.initial_probe_file);
+        if isfield(out, 'probe_defocus_shift') && ~isempty(out.probe_defocus_shift)
+            fprintf(fid, '# probe_defocus_shift_A=%.4f\n', out.probe_defocus_shift * 1e10);
+            fprintf('sidecar: cumulative defocus-only probe shift %+.3f A\n', out.probe_defocus_shift * 1e10);
+        end
         fprintf(fid, 'iteration,fourier_error\n');
         fprintf(fid, '%d,%.8g\n', [double(em.iteration(:)), double(em.value(:))]');
         fclose(fid);

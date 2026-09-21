@@ -156,7 +156,7 @@ function p_out = save_to_p(self, param, p, fourier_error)
  
 
     % save additional reconstructed parameters  
-    for item = {'background', 'intensity_corr', 'probe_fourier_shift' }
+    for item = {'background', 'intensity_corr', 'probe_fourier_shift', 'probe_defocus_shift' }
         try
             p_out.(item{1}) = self.(item{1});
         end

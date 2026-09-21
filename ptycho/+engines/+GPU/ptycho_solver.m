@@ -340,6 +340,10 @@ for iter =  (1-par.initial_probe_rescaling):par.number_iterations
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     
     if iter == 0; continue; end  % interation 0 is used only to calibrate iinitial probe intensity
+
+    if check_option(par.p, 'probe_defocus_only') && iter >= par.probe_change_start && isfield(self, 'probe_defocus_shift')
+        verbose(0, 'defocus-only probe update: cumulative C1 shift %+.3f A', self.probe_defocus_shift * 1e10)
+    end
     
     if verbose() > 0  && any(~isnan(fourier_error(iter,:)))       
         switch lower(par.likelihood)

@@ -38,7 +38,7 @@ from collections import defaultdict
 import numpy as np
 
 NAME_RE = re.compile(r"recon_(?P<camp>[A-Za-z0-9]+)_a(?P<alpha>\d+)_(?P<mode>lab|Pb|Ti)_df(?P<c1>-?\d+(?:\.\d+)?)"
-                     r"(?:_r(?P<rep>\d+))?(?P<ps>_ps\d+(?:x\d+)?)?_n(?P<niter>\d+)_NL(?P<nl>\d+)$")
+                     r"(?:_r(?P<rep>\d+))?(?P<ps>_ps\d+(?:x\d+)?(?:dfo)?)?_n(?P<niter>\d+)_NL(?P<nl>\d+)$")
 LAMBDA_A = 0.0196877
 # chart ink + series (dataviz reference palette, light surface)
 SURF, INK, INK2, MUTED, GRID = "#fcfcfb", "#0b0b0b", "#52514e", "#898781", "#e1e0d9"

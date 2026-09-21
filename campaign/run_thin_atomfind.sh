@@ -13,6 +13,15 @@
 #   bash campaign/run_thin_atomfind.sh                 # alphas 50 70 90 100 (feasible BIN<=2)
 #   ALPHAS="50 70 90 100 110 120" bash campaign/run_thin_atomfind.sh   # + the heavy BIN=1 break
 #   ALPHAS="70 90" DOSES="1e7 1e6 1e5 1e4" bash campaign/run_thin_atomfind.sh   # relaxation step 2: shot noise
+#   ALPHAS="70 90" PHONONS=16 PER_SPECIES=1 bash campaign/run_thin_atomfind.sh   # step 4: frozen phonons (sim x16)
+#   ALPHAS="70 90" THIN=18 CELL_Z=3.889 GROUPING=16 RTIME=20:00:00 bash campaign/run_thin_atomfind.sh   # step 6: 70 A slab
+#   TSV=campaign/nonround_sweep.tsv LABELS="nr1_C56_0p6w nr3_C56_2p5w" bash campaign/run_thin_atomfind.sh   # non-round, 70 mrad
+# PHONONS>0 re-simulates every leg over that many frozen-phonon configurations (PHONON_SIGMA scalar, or
+# PER_SPECIES=1 for the tabulated room-temperature Pb/Sr/Ti/O values); dirs gain _ph<N>. LABELS picks
+# rows of the TSV by label instead of alpha, so a non-round row's aber_json (C56, C34, ...) reaches the
+# sim as ABERRATIONS_JSON; dirs are named by the label. CELL_Z is the unit cell the driver's box formula
+# uses (5 cells: 3.905 reproduces the 27.525 A box; 18 cells: the structure's 3.889 gives 78.00 vs the
+# sim's actual 77.94 A). GROUPING / RTIME / STIME override the per-BIN defaults (NL 64 needs the first two).
 # DOSES (e/A^2) reuses the existing noiseless sims: per dose and leg a CPU job writes a Poisson copy
 # (sim/add_poisson_noise.py -> sim_out_af_a<A>_<mode>_dose<D>) and the recon runs on it once that job
 # succeeds -- lab AND Pb/Ti kernels at the same dose (NEXT_PHASE rule 3), independent noise per leg
@@ -31,29 +40,39 @@ THIN="${THIN:-5}"; ZVAC="${ZVAC:-4}"; C5="${C5:-1e7}"; STEP="${STEP:-0.5}"; SLIC
 GRIDSP="${GRIDSP:-3}"; WIN="${WIN:-20}"; NITER="${NITER:-200}"; SAVE="${SAVE_EVERY:-25}"
 MODES="${MODES:-lab Pb Ti}"          # e.g. MODES="Pb Ti" to rebuild only the PSF kernels
 BETA_LSQ="${BETA_LSQ:-0.05}"         # one LSQ step for every leg (lab and kernels must match)
-CELL_Z=3.905; LAM=0.0196877
+CELL_Z="${CELL_Z:-3.905}"; LAM=0.0196877
 BOXZ=$(awk "BEGIN{printf \"%.3f\", ${THIN}*${CELL_Z}+2*${ZVAC}}")      # full box thickness [Å]
 ATOMZ=$(awk "BEGIN{printf \"%.3f\", ${BOXZ}/2}")                        # PSF atom at box centre
 INPUTS=(data_dp.hdf5 data_position.hdf5 sim_meta.mat)
 DOSES="${DOSES:-}"; DOSE_SEED="${DOSE_SEED:-0}"
+PHONONS="${PHONONS:-0}"; PHONON_SIGMA="${PHONON_SIGMA:-0.08}"; PER_SPECIES="${PER_SPECIES:-0}"; PHONON_SEED="${PHONON_SEED:-1}"
+LABELS="${LABELS:-}"                      # non-empty: select TSV rows by label (col 1), not alpha
+SFX=""; [ "$PHONONS" != 0 ] && SFX="_ph${PHONONS}"; [ "$THIN" != 5 ] && SFX="${SFX}_thin${THIN}"   # sim + recon dir suffix
+# (never `VAR=$([ test ] && echo x)`: a false test fails the substitution and set -e exits the script)
 PYBIN="${CONDA_ENV:-${SHARE:-}/phucrh/envs/abtem}/bin/python"
 # Tarball name to the second, tagged by alphas (+doses): submissions pasted together must not share one.
-TS="$(date +%Y%m%d_%H%M%S)"; TAG="a$(echo ${ALPHAS} | tr ' ' '-')${DOSES:+_dose$(echo ${DOSES} | tr ' ' '-')}"
+TS="$(date +%Y%m%d_%H%M%S)"
+TAG="$([ -n "$LABELS" ] && echo "$(echo ${LABELS} | tr ' ' '-')" || echo "a$(echo ${ALPHAS} | tr ' ' '-')")${DOSES:+_dose$(echo ${DOSES} | tr ' ' '-')}${SFX}"
 PACK="${SHARE:+$SHARE/$USER}"; PACK="${PACK:-$REPO_DIR}/atomfind_results_${TAG}_${TS}.tgz"   # own subdir, not the shared group dir
 DIRS_FILE="${REPO_DIR}/logs/af_pack_${TAG}_${TS}.dirs"; : >"${DIRS_FILE}"   # this submission's recon dirs only
-echo "full box ${BOXZ} A (THIN=${THIN} cells + 2x${ZVAC} A vac); PSF atom z=${ATOMZ}; alphas: ${ALPHAS}"
+echo "full box ${BOXZ} A (THIN=${THIN} cells + 2x${ZVAC} A vac); PSF atom z=${ATOMZ}; ${LABELS:+labels: ${LABELS}}${LABELS:-alphas: ${ALPHAS}}${SFX:+; suffix ${SFX}}"
 
 if [ -n "$DOSES" ] && [ ! -x "${PYBIN}" ]; then echo "DOSES set but no abtem env python at ${PYBIN}" >&2; exit 1; fi
 
 nl_full(){ awk "BEGIN{n=int(${BOXZ}*2*($1/1000)^2/${LAM}+0.5); if(n<1)n=1; print n}"; }
 mem_for(){   case "$1" in 1) echo 175G;; 2) echo 96G;; *) echo 48G;; esac; }
-grp_for(){   case "$1" in 1) echo 16;;  2) echo 32;; *) echo "";; esac; }
-rtime_for(){ case "$1" in 1) echo 24:00:00;; 2) echo 10:00:00;; *) echo 05:00:00;; esac; }
-stime_for(){ case "$1" in 1) echo 12:00:00;; 2) echo 05:00:00;; *) echo 03:00:00;; esac; }
+grp_for(){   [ -n "${GROUPING:-}" ] && { echo "$GROUPING"; return; }; case "$1" in 1) echo 16;;  2) echo 32;; *) echo "";; esac; }
+rtime_for(){ [ -n "${RTIME:-}" ] && { echo "$RTIME"; return; }; case "$1" in 1) echo 24:00:00;; 2) echo 10:00:00;; *) echo 05:00:00;; esac; }
+stime_for(){ [ -n "${STIME:-}" ] && { echo "$STIME"; return; }   # phonons multiply the sim time by PHONONS
+             local h; case "$1" in 1) h=12;; 2) h=5;; *) h=3;; esac; [ "$PHONONS" != 0 ] && h=$(( h * 3 )); printf '%02d:00:00' $h; }
 
-sim_job(){   # $1 dir $2 alpha $3 bin $4 c3 $5 c1 $6 mode(lab|Pb|Ti) -> jobid
-    local dir="$1" alpha="$2" bin="$3" c3="$4" c1="$5" mode="$6"
+sim_job(){   # $1 dir $2 alpha $3 bin $4 c3 $5 c1 $6 mode(lab|Pb|Ti) [$7 aber_json] -> jobid
+    local dir="$1" alpha="$2" bin="$3" c3="$4" c1="$5" mode="$6" aj="${7:-}"
     local exp="ALL,JOB_DIR=${dir},SLICE_THICKNESS=${SLICE},SCAN_STEP=${STEP},CONVERGENCE=${alpha}"
+    exp="${exp},PHONONS=${PHONONS},PHONON_SIGMA=${PHONON_SIGMA},PER_SPECIES_SIGMA=${PER_SPECIES},PHONON_SEED=${PHONON_SEED}"
+    # a non-round row's JSON has commas, so it cannot ride in --export's list: run_sim.slurm reads it from
+    # the environment (ALL) instead, as campaign/run_campaign.sh does for its json legs
+    if [ -n "$aj" ] && [ "$aj" != "-" ]; then export ABERRATIONS_JSON="$aj"; else unset ABERRATIONS_JSON; fi
     # PROBE_INITIAL=nominal so the sim emits BOTH probe_initial.mat (nominal) AND
     # probe_initial_true.mat (the true aberrated probe). recon_job symlinks the recon's
     # probe_initial.mat -> probe_initial_true.mat = a KNOWN-probe recon. (PROBE_INITIAL=true
@@ -108,20 +127,28 @@ recon_job(){ # $1 name $2 datadir $3 bin $4 nl $5 dep -> jobid  (true probe fixe
 }
 
 RIDS=()
-for a in $ALPHAS; do
-    read -r c3 c1 bin < <(awk -F'\t' -v A="$a" '$1!~/^#/ && $2==A {print $4"\t"$5"\t"$7}' "$TSV")
-    [ -n "${bin:-}" ] || { echo "  a${a}: not in $TSV, skipping" >&2; continue; }
-    nl=$(nl_full "$a")
-    line="$(printf 'a%-3s bin=%s NL=%-2s ' "$a" "$bin" "$nl")"
+ROWS="$ALPHAS"; [ -n "$LABELS" ] && ROWS="$LABELS"
+for a in $ROWS; do
+    if [ -n "$LABELS" ]; then       # by label: alpha and the full aberration JSON come from the row
+        read -r alpha c3 c1 bin aj < <(awk -F'\t' -v L="$a" '$1!~/^#/ && $1==L {print $2"\t"$4"\t"$5"\t"$7"\t"$9}' "$TSV")
+        [ -n "${bin:-}" ] || { echo "  ${a}: not in $TSV, skipping" >&2; continue; }
+        leg="$a"
+    else
+        read -r c3 c1 bin < <(awk -F'\t' -v A="$a" '$1!~/^#/ && $2==A {print $4"\t"$5"\t"$7}' "$TSV")
+        [ -n "${bin:-}" ] || { echo "  a${a}: not in $TSV, skipping" >&2; continue; }
+        alpha="$a"; aj="-"; leg="a${a}"
+    fi
+    nl=$(nl_full "$alpha")
+    line="$(printf '%-14s bin=%s NL=%-2s ' "${leg}${SFX}" "$bin" "$nl")"
     for m in $MODES; do                       # MODES="Pb Ti" re-does only the PSF kernels
-        D="${REPO_DIR}/sim_out_af_a${a}_${m}"
+        D="${REPO_DIR}/sim_out_af_${leg}_${m}${SFX}"
         if [ -n "$DOSES" ]; then               # step 2: Poisson copies of the EXISTING noiseless sim
             [ -e "${D}/01/data_dp.hdf5" ] || { echo "  a${a} ${m}: ${D}/01/data_dp.hdf5 missing -- run the noiseless sim first" >&2; exit 1; }
             case "$m" in lab) so=0;; Pb) so=1;; *) so=2;; esac
             for dose in $DOSES; do
                 DN="${D}_dose${dose}"
                 N=$(noise_job "$D" "$DN" "$dose" $(( DOSE_SEED + so )))
-                R=$(recon_job "a${a}_${m}_dose${dose}" "$DN" "$bin" "$nl" "$N")
+                R=$(recon_job "${leg}_${m}${SFX}_dose${dose}" "$DN" "$bin" "$nl" "$N")
                 RIDS+=("$R"); line+=" ${m}@${dose}=${N}>${R}"
             done
             continue
@@ -130,9 +157,9 @@ for a in $ALPHAS; do
             [ -e "${D}/01/data_dp.hdf5" ] || { echo "  a${a} ${m}: ${D}/01 missing, skip" >&2; continue; }
             S=""
         else
-            S=$(sim_job "$D" "$a" "$bin" "$c3" "$c1" "$m")
+            S=$(sim_job "$D" "$alpha" "$bin" "$c3" "$c1" "$m" "$aj")
         fi
-        R=$(recon_job "a${a}_${m}" "$D" "$bin" "$nl" "$S")
+        R=$(recon_job "${leg}_${m}${SFX}" "$D" "$bin" "$nl" "$S")
         RIDS+=("$R"); line+=" ${m}=${R}"
     done
     echo "$line"
