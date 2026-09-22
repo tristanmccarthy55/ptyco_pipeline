@@ -37,7 +37,13 @@ THIN="${THIN:-5}"; ZVAC="${ZVAC:-4}"; C5="${C5:-1e7}"; STEP="${STEP:-0.5}"; SLIC
 # the old 14 was a gratuitous difference that also cost the sparse grid its positional diversity.
 # GRIDSP=3 (was 4) gives the denser grid that converges at high alpha. WIN=20 + GRIDSP=3 are the
 # validated S1 settings (2026-09-11, all 8 kernels clean) -- keep every alpha on them for uniformity.
-GRIDSP="${GRIDSP:-3}"; WIN="${WIN:-20}"; NITER="${NITER:-200}"; SAVE="${SAVE_EVERY:-25}"
+GRIDSP="${GRIDSP:-3}"; WIN="${WIN:-20}"; NITER="${NITER:-200}"
+# One save, at the end. The solver wrote a full object copy every 25 iterations by default: ~60 MB a
+# time at NL 14, eight per engine, two engines per leg, and pack_results.sh has never packed one of
+# them. Across the campaign that was 347 GB of checkpoints nobody reads, and on 2026-09-22 it helped
+# fill a 3.9 TiB SHARED share and took down other people's jobs. SAVE_EVERY=<n> if a mid-run object
+# is genuinely wanted.
+SAVE="${SAVE_EVERY:-$NITER}"
 MODES="${MODES:-lab Pb Ti}"          # e.g. MODES="Pb Ti" to rebuild only the PSF kernels
 BETA_LSQ="${BETA_LSQ:-0.05}"         # one LSQ step for every leg (lab and kernels must match)
 CELL_Z="${CELL_Z:-3.905}"; LAM=0.0196877
@@ -134,7 +140,7 @@ recon_job(){ # $1 name $2 datadir $3 bin $4 nl $5 dep -> jobid  (true probe fixe
         run_recon_synthetic_ML.slurm
 }
 
-RIDS=()
+RIDS=(); SIM_DIRS=()          # SIM_DIRS: this submission's own sim dirs, for CLEANDATA
 ROWS="$ALPHAS"; [ -n "$LABELS" ] && ROWS="$LABELS"
 for a in $ROWS; do
     if [ -n "$LABELS" ]; then       # by label: alpha and the full aberration JSON come from the row
@@ -178,16 +184,26 @@ for a in $ROWS; do
             S=$(sim_job "$D" "$alpha" "$bin" "$c3" "$c1" "$m" "$aj")
         fi
         R=$(recon_job "${leg}_${m}${SFX}" "$D" "$bin" "$nl" "$S")
-        RIDS+=("$R"); line+=" ${m}=${R}"
+        RIDS+=("$R"); SIM_DIRS+=("$D"); line+=" ${m}=${R}"
     done
     echo "$line"
 done
 [ ${#RIDS[@]} -gt 0 ] || { echo "nothing submitted" >&2; exit 1; }
 DEP=$(IFS=:; echo "${RIDS[*]}")
+# CLEANDATA=1: once this submission's results are tarred, delete ITS raw 4D data (data_dp/position
+# .hdf5, 0.8 GB a leg at BIN 4 and 3.2 GB at BIN 2). The trade-off is that a later RECON_ONLY re-fit
+# needs a re-simulation, which is minutes at BIN 4. Same flag and same mechanism as run_campaign.sh.
+# Only this submission's own sim dirs are touched, never another run's.
+CLEAN=""
+if [ "${CLEANDATA:-0}" = "1" ]; then
+    for leg_dir in "${SIM_DIRS[@]}"; do
+        CLEAN="${CLEAN} && find '${leg_dir}' \\( -name data_dp.hdf5 -o -name data_position.hdf5 \\) -delete"
+    done
+fi
 PJ=$(sbatch --parsable --job-name="af_pack" --time=00:30:00 --mem=8G --dependency="afterany:${DEP}" \
     --output="logs/af_pack_%j.out" --error="logs/af_pack_%j.err" --export=ALL,PACK_DIRS_FILE="${DIRS_FILE}" \
-    --wrap="bash '${REPO_DIR}/campaign/pack_results.sh' af '${PACK}' '${TSV}'")
-echo; echo "pack ${PJ} -> ${PACK}  (recon_af_* .h5 + logs)"
+    --wrap="bash '${REPO_DIR}/campaign/pack_results.sh' af '${PACK}' '${TSV}'${CLEAN}")
+echo; echo "pack ${PJ} -> ${PACK}  (recon_af_* .h5 + logs)${CLEANDATA:+ then deletes the raw 4D data of this submission}"
 echo "scp -O 'phucrh@blythe.scrtp.warwick.ac.uk:${PACK}' ~/Desktop/"
 echo "now check the group root stayed clean:  ls /springbrook/share/physics/"
 echo "then per alpha:  python analysis/atomfind/extract_psf.py recon_af_a<A>_Pb_NL<NL> Pb_a<A>   (and Ti)"
