@@ -33,7 +33,11 @@ to the **same** URL. One page. Never start another for an update.
 
 ## Where it stands
 
-**The deliverable is a specification, and it is tighter than the ladder that measured it.** At
+**WITHDRAWN 2026-09-22 — read the first row of *Traps* before anything else.** Every non-round reconstruction
+was made with a mis-oriented probe. The six-fold limit below is void; the loader is fixed; the decisive
+re-run is one ten-minute job (step 0 below), then every non-round leg is redone `RECON_ONLY`.
+
+~~**The deliverable is a specification, and it is tighter than the ladder that measured it.**~~ At
 70 mrad, six-fold astigmatism must stay below **0.1 waves** at the aperture edge (C₅₆ < 10 µm) — and
 that is an upper bound, not the tolerance, because 0.1 waves is the smallest residual tested and it
 already fails: lead recall 98 → 80 %, oxygen 75 → 48 %, depth error 0.56 → 0.76 Å, species confusion
@@ -69,6 +73,28 @@ those numbers untouched to two decimal places. Tables in `results/2026-W39/`.
 ---
 
 ## Your job, in order
+
+### 0. First: confirm the fix with one job, then redo every non-round reconstruction
+
+The 0.45-wave lab leg is the most sensitive. Under the old engine it plateaued at a Fourier error of
+71.2 (the round probe reaches 22). Re-reconstruct it alone with the fixed loader:
+
+```bash
+cd /springbrook/share/physics/phucrh/ptyco_baseline/ptyco_pipeline && git pull
+TSV=campaign/nonround_sweep.tsv LABELS=nr0p45_C56_0p45w MODES=lab RECON_ONLY=1 bash campaign/run_thin_atomfind.sh
+```
+Ten minutes. The log must show `custom_data_flip applied to the PROBE`. Read the last line of the
+`*_error_trace.csv` beside the new h5: if it is near 22 the fix is confirmed and the six-fold cost was
+the bug; if it is still near 71 the orientation was not the mechanism and this handoff is wrong about it.
+Then, once confirmed, every non-round leg at 70 mrad, reusing the sims:
+
+```bash
+TSV=campaign/nonround_sweep.tsv RECON_ONLY=1 \
+LABELS="nr0p1_C56_0p1w nr0p2_C56_0p2w nr0p3_C56_0p3w nr0p45_C56_0p45w nr1_C56_0p6w nr2_C56_1p2w nr3_C56_2p5w nr4_C56_C34" \
+  bash campaign/run_thin_atomfind.sh
+```
+The new sweeps of step 1 were submitted under the old engine on 2026-09-22 if they went in before the
+pull; their simulations are good and only their reconstructions need redoing the same way.
 
 ### 1. Submit the next sweep (rows are written and probe-checked; nothing else is blocked on it)
 
@@ -173,6 +199,7 @@ Each cost real time. They are fixed in the code; do not reintroduce them.
 
 | symptom | cause | rule |
 |---|---|---|
+| **every non-round leg reconstructs badly, striped, stuck at a high mismatch, with the probe file exactly right** | `custom_data_flip = [0,0,1]` transposes the diffraction data on load and nothing transposed the probe with it. Both leave the sim in the same axis order. A round probe is its own transpose, so the orientation test (round probe) passed and every round leg was fine; a six-fold probe is rotated 30° (overlap with its transpose 0.95 / 0.82 / 0.69 / 0.57 at 0.1–0.45 waves), two-fold 90°, three-fold 30°; four-fold is the only term unaffected | fixed in `load_from_p.m`: the probe (and its aperture mask) now receive every flip the data does. **All non-round results before 2026-09-22 are void** and must be re-reconstructed `RECON_ONLY` — the simulations are fine |
 | **an aberrated probe looks wrong in the h5** | `reconstruction/p/probe_initial` is stored **transposed** relative to `reconstruction/probes`, which is the one the solver used. A round probe is its own transpose so it never showed; a six-fold probe is not, and the untransposed comparison degrades with the aberration (0.95 / 0.82 / 0.69 / 0.57) | compare against `reconstruction/probes`, or transpose. Verified 2026-09-22: the probe the solver used matches the simulated aberrated probe with overlap **1.000000** on every leg |
 | **a leg passes triage and is still junk** | it reported COMPLETED, wrote an h5 and logged no NaN, but its object is saturated: every layer at 1.5 rad phase std with 3 % of pixels wrapped. The 2026-09-21 thick batch was recorded as 5 of 6 failures; it was **6 of 6** | `analysis/triage_recon.py` — every genuine leg measured, including badly degraded ones, wraps **zero** pixels |
 | a comparison figure's panels differ for no reason | one RNG shared across panels advanced on each call, so every Ronchigram panel drew a *different* amorphous film | `make_ronchigram_fig.ronchigram` seeds per call by default; pass a generator only for deliberately different films |

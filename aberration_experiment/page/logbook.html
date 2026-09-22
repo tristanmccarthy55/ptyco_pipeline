@@ -254,7 +254,7 @@
     <div class="mast-meta">
       <span><b>Checkpoint</b> 2026-09-22</span>
       <span><b>Round-α campaign</b> complete</span>
-      <span><b>Relaxation ladder</b> focus, dose, six-fold measured</span>
+      <span><b>Relaxation ladder</b> focus and shot noise measured; six-fold withdrawn, being redone</span>
       <span><b>On the cluster</b> the 70 Å sample</span>
       <span><b>Written, not run</b> six-fold at 90 / 100 mrad; other orders</span>
     </div>
@@ -525,8 +525,10 @@
         <span>10<sup>7</sup> and 10<sup>6</sup> e/Å² are fine, 10<sup>5</sup> is marginal, 10<sup>4</sup> is gone.</span>
       </li>
       <li>
-        <b>Six-fold astigmatism, the corrector's own residual <span class="verdict" style="color:var(--stop)">very tight limit</span></b>
-        <span>The smallest amount tested already hurts. The tolerance is below the bottom of the ladder.</span>
+        <b>Six-fold astigmatism, the corrector's own residual <span class="verdict" style="color:var(--warn)">withdrawn — being redone</span></b>
+        <span>Every non-round reconstruction to date was made with the probe rotated 30° from the true one, by a
+          convention bug the round probes could not reveal. The limit quoted below is void until the legs are
+          reconstructed again; see 5.4.</span>
       </li>
     </ol>
 
@@ -636,10 +638,14 @@
       each a complete pipeline: its own reconstruction, its own single-atom reference measured through the same
       probe, the finder run blind and scored.
     </p>
-    <div class="spec">
-      <div class="spec-k">The number this produces</div>
-      <p class="spec-v">Six-fold astigmatism below<br><em>0.1 waves</em> at the aperture edge — C<sub>56</sub> &lt; 10 µm at 70 mrad</p>
-      <p>An upper bound, not the tolerance: 0.1 waves is the smallest residual tested and it already costs a fifth of the lead. Where this sits against a real corrector is §6.</p>
+    <div class="call stop">
+      <b>Withdrawn on 2026-09-22, the same day it was written.</b> The "below 0.1 waves" limit that stood here
+      rests on reconstructions that carried a probe-orientation error — the engine transposes the diffraction
+      data on load and did not transpose the probe with it, which a round probe cannot show and a six-fold
+      probe turns into a 30° rotation of the star. The table and figures below are kept as the record of what
+      was measured under that error; none of them is a result. The loader is fixed and the legs are being
+      reconstructed again. What survives of this section is the physics in §6: how fast each term grows with
+      aperture, which does not depend on any reconstruction.
     </div>
     <div class="tablewrap">
       <table>
@@ -676,17 +682,26 @@
   </section>
 
   <section>
-    <h3>5.4 &nbsp;Was the probe right, and did the reconstruction converge?</h3>
+    <h3>5.4 &nbsp;Was the probe right? No — and here is how it was found</h3>
     <p>
-      The reconstructions with six-fold look wrong — striped, apparently unfinished — so this was checked four
-      ways before anything was concluded from them.
+      The reconstructions with six-fold look wrong: striped, and stuck at a mismatch far above the round probe's.
+      The first checks said the probe file was exactly right and the solver had converged, which left a paradox —
+      a known-probe reconstruction should barely notice 0.2 waves of any smooth aberration. The paradox was the
+      clue. The engine applies a detector orientation, <code>custom_data_flip = [0,0,1]</code>, that
+      <em class="term">transposes the diffraction data</em> on load; it was chosen by reconstructing a chiral
+      phantom under all eight orientations, with a round probe. The probe is written by the simulation in the same
+      axis order as the data and was never transposed with it. A round probe is its own transpose, so nothing in
+      the campaign could show it. A six-fold probe is not: the transpose rotates the star by 30°, and the overlap
+      between the probe the engine used and the one the data was made with is 0.95, 0.82, 0.69 and 0.57 up the
+      ladder — a probe error the size of a 1, 4, 5 and 6 Å focus error, which on the focus landscape costs
+      exactly the mismatch those legs plateaued at. The loader now applies every data flip to the probe as well.
+      The four checks that preceded the diagnosis are kept below, because each is still true and together they
+      are what forced it.
     </p>
     <ul>
-      <li><strong>The probe was right.</strong> Rebuilt independently from the aberration tableau and compared with
-        the probe stored inside each finished reconstruction: overlap 1.000000 on every leg. The aberration in
-        the reconstruction is exactly the one asked for. (The file stores the probe twice, and the second copy is
-        transposed — a trap that makes a correct six-fold probe look progressively wrong if the wrong field is
-        read. It is recorded in the handoff.)</li>
+      <li><strong>The probe file was right.</strong> Rebuilt independently from the tableau and compared with the
+        probe stored inside each reconstruction: overlap 1.000000 on every leg. The file said exactly what was
+        asked for. What was wrong was what the engine did with it.</li>
       <li><strong>They converged.</strong> The solver's mismatch falls by under 3 % over the final fifth of the
         iterations. They converged to a worse fit — 22 for the round probe, then 38, 54, 64, 71 up the ladder —
         not to an unfinished one.</li>
@@ -697,8 +712,8 @@
         17.5 Å across, and 0.3 % of the probe lies outside it — the same for the round probe and for 1.2 waves.</li>
     </ul>
     <p>
-      So: right probe, converged, worse fit. A six-fold probe genuinely makes the multislice problem harder to
-      solve. That leaves the question the pictures raise directly — there are still peaks in those panels with no
+      Right file, converged, worse fit, no window effect: the only thing left was the engine's own handling of
+      the probe, and that is where it was. The finder question the pictures raise — there are still peaks in those panels with no
       ring on them, so <strong>is the finder giving up on signal that is there?</strong> Two tests. By eye, below,
       the same slice bare and then with the answer drawn on. By experiment, the finder re-run on the identical
       reconstructions with its quality threshold relaxed, with the clean baseline as control: on the baseline the
@@ -808,7 +823,7 @@
           <tr><td>1</td><td class="wrap">focus unknown</td><td class="wrap"><strong>no real cost</strong>, by an outer search; the in-solver fit is closed</td><td><span class="chip c-ok">measured</span></td></tr>
           <tr><td>2</td><td class="wrap">shot noise</td><td class="wrap">works to 10<sup>5</sup> e/Å²; at 10<sup>4</sup> no single-atom reference can be measured</td><td><span class="chip c-ok">measured</span></td></tr>
           <tr><td>3</td><td class="wrap">thermal vibration</td><td class="wrap">depth error roughly doubles; oxygen recall 10–17 %; not a finder artefact</td><td><span class="chip c-warn">costly</span></td></tr>
-          <tr><td>4</td><td class="wrap">six-fold astigmatism, 70 mrad</td><td class="wrap"><strong>tolerance below 0.1 waves</strong>, the smallest tested</td><td><span class="chip c-ok">measured</span></td></tr>
+          <tr><td>4</td><td class="wrap">six-fold astigmatism, 70 mrad</td><td class="wrap"><strong>withdrawn</strong>: reconstructed with a mis-oriented probe; loader fixed, legs being redone</td><td><span class="chip c-warn">redo</span></td></tr>
           <tr><td>4b</td><td class="wrap">six-fold at 90 and 100 mrad</td><td class="wrap">same waves as the 70 mrad rungs, plus the 10 µm value carried up unchanged</td><td><span class="chip c-open">written</span></td></tr>
           <tr><td>4c</td><td class="wrap">other orders: two-fold, three-fold, three-lobe</td><td class="wrap">at 0.1 and 0.3 waves — does the limit transfer?</td><td><span class="chip c-open">written</span></td></tr>
           <tr><td>4d</td><td class="wrap">the assumed instrument as-is, 70 mrad</td><td class="wrap">C<sub>56</sub> 1 mm: needs binning 1 and a wider scan, ~3 GPU-days, expected to fail on geometry</td><td><span class="chip c-none">optional</span></td></tr>

@@ -409,6 +409,27 @@ function [self, param, p] = load_from_p(param, p)
                 self.diffraction =  permute(self.diffraction, [2,1,3]); 
                 self.mask        =  permute(self.mask, [2,1,3]); 
             end
+            % THE PROBE FOLLOWS THE DATA (2026-09-22). The simulation writes the diffraction patterns
+            % and the probe in the same axis order, so whatever flip the data receives here the probe
+            % must receive too, or the two describe different microscopes. Nothing did this before.
+            % For a ROUND probe it is invisible -- a round probe is its own transpose -- which is why
+            % the orientation test (round probe) passed and every round leg reconstructed cleanly.
+            % For a non-round probe the transpose is a rotation: six-fold by 30 degrees, two-fold by
+            % 90, and every non-round leg before this date ran with that probe error (overlap of the
+            % probe with its transpose 0.95 / 0.82 / 0.69 / 0.57 at 0.1 / 0.2 / 0.3 / 0.45 waves of
+            % six-fold at 70 mrad) and converged to a correspondingly worse fit. The TEM aperture mask
+            % is derived from the probe, so it follows as well.
+            for ii = 1:numel(self.probe)
+                if p.custom_data_flip(1); self.probe{ii} = flipud(self.probe{ii}); end
+                if p.custom_data_flip(2); self.probe{ii} = fliplr(self.probe{ii}); end
+                if p.custom_data_flip(3); self.probe{ii} = permute(self.probe{ii}, [2,1,3,4]); end
+            end
+            if ~isempty(self.probe_support_fft)
+                if p.custom_data_flip(1); self.probe_support_fft = flipud(self.probe_support_fft); end
+                if p.custom_data_flip(2); self.probe_support_fft = fliplr(self.probe_support_fft); end
+                if p.custom_data_flip(3); self.probe_support_fft = permute(self.probe_support_fft, [2,1,3]); end
+            end
+            verbose(0, 'custom_data_flip applied to the PROBE (and its aperture mask) as well as the data');
         end
 
         %     

@@ -133,6 +133,11 @@ def main():
                     # untransposed array makes a perfectly correct probe look progressively wrong as the
                     # aberration grows (0.95 / 0.82 / 0.69 / 0.57 down the C56 ladder, 2026-09-22).
                     P0 = np.asarray(f["reconstruction/p/probe_initial"]).squeeze().astype(np.complex128).T
+                    # Since the loader fix of 2026-09-22 the engine works with the probe TRANSPOSED (it follows
+                    # custom_data_flip), so reconstruction/probes reads back as P.' against the abTEM-built
+                    # model. Round probes are unaffected either way; for a non-round h5 written BEFORE the fix
+                    # this transpose is wrong -- but those runs carried the bug and are being redone.
+                    Pf = Pf.T
                 if Pf.ndim == 3:                         # several probe modes: the first is the dominant one
                     Pf = Pf[..., 0] if Pf.shape[-1] < Pf.shape[0] else Pf[0]
                 key = (row["alpha"], Pf.shape[0], truth)
