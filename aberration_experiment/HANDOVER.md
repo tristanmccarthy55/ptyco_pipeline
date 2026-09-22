@@ -13,6 +13,10 @@ atomfind with matched kernels. **The round-α campaign is complete**: depth reco
 aperture opens, from 50 to 90 mrad, and 110 mrad is out of reach. The next phase relaxes the
 idealisations one at a time toward a publishable result — see `NEXT_PHASE.md`.
 
+**Relaxation ladder: 20 rows, steps 0-4 measured** (`results/relaxation_ladder.csv`). Step 1b (focus fitted
+inside the solver) is closed as a failure and diagnosed; step 5 (the 70 Å slab) was on the cluster at the
+2026-09-22 handoff; steps 6 and 7 need simulation code that does not exist. See `HANDOFF_ANALYSIS.md`.
+
 **Step 1 (C1 fit, C3/C5 fixed) — tooling built 2026-09-17, not yet run.** Error-trace sidecar in the
 recon script, in-job probe writer, C1-search driver, objective analysis, relaxation-ladder table (step 0
 seeded). Next: the a70 smoke test. Plan and expectations in `NEXT_PHASE.md` § Step 1.
@@ -20,6 +24,10 @@ seeded). Next: the a70 smoke test. Plan and expectations in `NEXT_PHASE.md` § S
 **Logbook — the permanent checkpoint record** (private): https://claude.ai/artifact/7ve93UM6yqCmiRcbfNuiJM — what has been done, the numbers, the
 rules, the presentation conventions, and what is waiting. Point a new agent here first. Rebuilt from
 `aberration_experiment/page/logbook.html` by `page/build_page.py`; republish to the same URL.
+**The Six-Fold Tolerance — round two, 2026-09-22** (private): https://claude.ai/artifact/21fr4Y6JqCeaeB6KLMUKGz — the
+specification the campaign exists to produce (six-fold residual below 0.1 waves at 70 mrad, and that is an
+upper bound), the control separating the finder's thresholds from the physics, and the close of the
+in-solver focus fit. Source `page/round_2026-09-22.html`; same build script, same rule about the URL.
 PI-meeting page (private): https://claude.ai/artifact/6JuRq4kgP8v6FjDC8agcpn
 Results page, 2026-09-21 runs (private): https://claude.ai/artifact/3TfTwcipbbTxG9PGbeEtqi — focus fitted
 end to end, the in-solver focus fit failing, phonons, non-round, the thick slab that diverged; figures by
