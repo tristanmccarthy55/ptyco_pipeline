@@ -42,7 +42,10 @@ from make_meeting_figs import (S1, S2, S3, INK, INK2, MUTED, GRIDC, SPECIES,   #
                                style, tag, save, read_csv_rows, read_reports, results_dir,
                                _load_mod, build_probe, aperture_phase, probe_crop)
 
-RELAX = ["~/Desktop/relax_0921", "~/Desktop/relax_0922"]
+# nr_block2 FIRST: it holds the six-fold legs re-reconstructed on the engine that transposes the
+# probe with the data (2026-09-22). af() takes the first root that has a leg, so the corrected
+# reconstruction wins over the pre-fix one of the same name.
+RELAX = ["~/Desktop/nr_block2", "~/Desktop/relax_0921", "~/Desktop/relax_0922"]
 AF_FINAL = "~/Desktop/thin_ab_af_final"
 BAD = "#c1502a"
 _AW = None

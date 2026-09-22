@@ -160,8 +160,9 @@ def recall(af_dir):
 
 
 # ------------------------------------------------------------------ the figures
-NR_ROOT = "~/Desktop/relax_0922/atomfind_results_nr0p1_C56_0p1w-nr0p2_C56_0p2w-nr0p3_C56_0p3w-nr0p45_C56_0p45w_20260921_225614"
-NR_AF = "~/Desktop/relax_0922/analysis_0922"
+# the six-fold legs as re-reconstructed with the probe transposed along with the data
+NR_ROOT = "~/Desktop/nr_block2/atomfind_results_nr0p1_C56_0p1w-nr0p2_C56_0p2w-nr0p3_C56_0p3w-nr0p45_C56_0p45w-nr1_C56_0p6w-nr2_C56_1p2w-nr3_C56_2p5w-nr4_C56_C34_20260922_122756"
+NR_AF = "~/Desktop/nr_block2/analysis_fixed"
 DOSE_ROOT = "~/Desktop/relax_0917/atomfind_results_a70-90_dose1e7-1e6-1e5-1e4_20260917_181903"
 DOSE_AF = "~/Desktop/relax_0917/dose_analysis"
 BASE_RECON = "~/Desktop/thin_ab_af_final/recon_af_a70_lab_NL14"

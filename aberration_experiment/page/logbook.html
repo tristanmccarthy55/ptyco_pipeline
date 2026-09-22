@@ -271,7 +271,7 @@
     <div class="mast-meta">
       <span><b>Checkpoint</b> 2026-09-22</span>
       <span><b>Round-α campaign</b> complete</span>
-      <span><b>Relaxation ladder</b> focus and shot noise measured; six-fold withdrawn, being redone</span>
+      <span><b>Relaxation ladder</b> focus, shot noise and six-fold measured</span>
       <span><b>On the cluster</b> the 70 Å sample</span>
       <span><b>Written, not run</b> six-fold at 90 / 100 mrad; other orders</span>
     </div>
@@ -648,63 +648,95 @@
   </section>
 
   <section>
-    <h3 id="sixfold">5.3 &nbsp;Six-fold astigmatism — no result, and the bug that is the reason</h3>
+    <h3 id="sixfold">5.3 &nbsp;Six-fold astigmatism</h3>
+    <p>
+      A hexapole corrector nulls third-order spherical aberration and leaves six-fold astigmatism behind. No
+      round knob touches it and it grows as the sixth power of the aperture, so it is the residual that decides
+      how far the aperture can be opened. Eight levels were run at 70 mrad, each a complete pipeline: its own
+      reconstruction, its own single-atom reference measured through the same probe, then the finder run blind
+      and scored against the known structure.
+    </p>
     <div class="call stop">
-      <b>Nothing measured under six-fold astigmatism in this campaign is valid.</b> Every non-round
-      reconstruction ever run here — the August 2026 sweep, the escalation of 2026-09-21 and the threshold
-      ladder of 2026-09-22 — used a probe rotated 30° from the one the data was made with. A "tolerance below
-      0.1 waves" was published on this page on 2026-09-22 and withdrawn the same day. The engine is fixed and
-      every leg is being reconstructed again. Until they return, this campaign has <em class="term">no</em>
-      measurement of how much six-fold astigmatism the method tolerates.
+      <b>These numbers were measured twice.</b> The first set, published on 2026-09-22, was made with the probe
+      rotated 30° from the one the data came from, and was withdrawn. Everything below is the second set, on the
+      corrected engine. How that was found is worth reading before the table, because the way it hid is a
+      warning about which number to trust.
     </div>
-    <p>
-      It was caught by eye, not by a check. The reconstructions looked wrong — striped, and stuck at a mismatch
-      far above the round probe's — and a known-probe reconstruction should barely notice 0.2 waves of any smooth
-      aberration. Every test said the probe was right, which is what made it a paradox worth chasing rather than
-      a result worth believing.
-    </p>
-    <p>
-      The engine applies a detector orientation, <code>custom_data_flip = [0,0,1]</code>, which
-      <em class="term">transposes the diffraction data</em> as it loads. That setting was established by
-      reconstructing a chiral phantom under all eight detector orientations — with a round probe. The simulation
-      writes the probe in the same axis order as the data, and nothing transposed the probe to match. <strong>A
-      round probe is its own transpose</strong>, so every round leg of the campaign was correct and no test could
-      expose this. A six-fold probe is not: the transpose rotates the star by 30°. Two-fold is rotated by 90°,
-      three-fold by 30°; four-fold alone is unaffected.
-    </p>
+
     <div class="tablewrap">
       <table>
-        <caption>How badly wrong the probe was, and what it cost. The overlap is between the probe the engine
-          used and the one the data was made with. The equivalent focus error is the defocus that would produce
-          the same overlap; the mismatch it implies is read off the focus landscape in 5.1, and it is what those
-          legs actually plateaued at. The round probe reaches 22.</caption>
-        <thead><tr><th>six-fold</th><th>probe overlap</th><th>as a focus error</th><th>mismatch reached</th></tr></thead>
+        <caption>Six-fold astigmatism at 70 mrad, known probe, no counting noise, static atoms, reconstructed on
+          the corrected engine. Recall is over the interior planes. Confusion is the finder's own species-labelling
+          health check, whose threshold is 5 %. The tinted row is the round-probe baseline.</caption>
+        <thead><tr><th>six-fold</th><th>C<sub>56</sub></th><th>lead</th><th>titanium</th><th>oxygen</th><th>depth error</th><th>confusion</th></tr></thead>
         <tbody>
-          <tr><td>0.10 waves</td><td>0.95</td><td>≈ 1 Å</td><td>38</td></tr>
-          <tr><td>0.20 waves</td><td>0.82</td><td>≈ 4 Å</td><td>54</td></tr>
-          <tr><td>0.30 waves</td><td>0.69</td><td>≈ 5 Å</td><td>64</td></tr>
-          <tr><td>0.45 waves</td><td>0.57</td><td>≈ 6 Å</td><td>71</td></tr>
+          <tr class="ref"><td>none</td><td>—</td><td>98 %</td><td>82 %</td><td>75 %</td><td>0.56 Å</td><td>1.3 %</td></tr>
+          <tr><td>0.10 waves</td><td>10 µm</td><td>90 %</td><td>71 %</td><td>65 %</td><td>0.70 Å</td><td>9.6 % <span class="chip c-warn">failed</span></td></tr>
+          <tr><td>0.20 waves</td><td>20 µm</td><td>76 %</td><td>46 %</td><td>15 %</td><td>0.65 Å</td><td>17.5 % <span class="chip c-stop">failed</span></td></tr>
+          <tr><td>0.30 waves</td><td>30 µm</td><td>62 %</td><td>31 %</td><td>11 %</td><td>0.70 Å</td><td>24.2 % <span class="chip c-stop">failed</span></td></tr>
+          <tr><td>0.45 waves</td><td>45 µm</td><td>56 %</td><td>36 %</td><td>15 %</td><td>0.71 Å</td><td>28.1 % <span class="chip c-stop">failed</span></td></tr>
+          <tr><td>0.60 waves</td><td>60 µm</td><td>65 %</td><td>40 %</td><td>16 %</td><td>0.77 Å</td><td>22.2 % <span class="chip c-stop">failed</span></td></tr>
+          <tr><td>1.20 waves</td><td>0.12 mm</td><td>44 %</td><td>35 %</td><td>12 %</td><td>0.79 Å</td><td>28.8 % <span class="chip c-stop">failed</span></td></tr>
+          <tr><td>2.50 waves</td><td>0.25 mm</td><td>20 %</td><td>18 %</td><td>4 %</td><td>0.88 Å</td><td>38.8 % <span class="chip c-stop">failed</span></td></tr>
         </tbody>
       </table>
     </div>
+
+    <h3>What the table says</h3>
+    <ul>
+      <li><strong>The heavy atoms survive 0.1 waves.</strong> Lead is 90 % against a round-probe 98 %, and depth
+        error 0.70 Å against 0.56. That is a cost, not a collapse.</li>
+      <li><strong>Species labelling does not.</strong> Confusion crosses its 5 % health threshold at the very
+        first level and is 17 % by the second. Where it has failed, the split between lead, titanium and oxygen
+        is label swapping and must not be read as physics.</li>
+      <li><strong>Oxygen falls off a cliff between 0.1 and 0.2 waves</strong>, 65 % to 15 %, while lead only goes
+        90 to 76. The light atoms are the first thing lost.</li>
+      <li><strong>So the usable limit sits between 0.1 and 0.2 waves</strong> if you need species labels, and
+        nearer 0.2 if you only need the heavy lattice. The ladder does not resolve it more finely than that;
+        rungs at 0.02, 0.04 and 0.07 waves are written and waiting on cluster time.</li>
+      <li><strong>Depth error is nearly flat</strong> across the whole ladder, 0.65 to 0.88 Å, because it is
+        measured only on the atoms still being found. Recall is the honest column.</li>
+    </ul>
+
+    <h3>How the error hid, and what it cost to find</h3>
     <p>
-      The four checks that came before the diagnosis were each true, and together they are what forced it: the
-      probe <em class="term">file</em> was right (overlap 1.000000 against an independent rebuild, so the fault
-      was in what the engine did with it); the solver had converged, its mismatch falling under 3 % over the
-      final fifth of its iterations, to a worse fit rather than an unfinished one; the stripes carried the
-      lattice's own periods, 3.9 and 1.97 Å, the same as the round leg's, driven further into the exit vacuum;
-      and the reconstruction window held all but 0.3 % of the probe at every level. Right file, converged, worse
-      fit, no window effect — which left only the engine's own handling of the probe.
+      The engine applies a detector orientation, <code>custom_data_flip = [0,0,1]</code>, which
+      <em class="term">transposes the diffraction data</em> as it loads. That setting was established by
+      reconstructing a chiral phantom under all eight orientations — with a round probe. The simulation writes
+      the probe in the same axis order as the data, and nothing transposed the probe to match. <strong>A round
+      probe is its own transpose</strong>, so every round leg of the campaign was correct and no test in the
+      pipeline could expose this. A six-fold probe is not: the transpose rotates the star by 30°.
     </p>
-    <div class="call ok">
-      <b>The fix.</b> <code>load_from_p.m</code> now applies every flip the data receives to the probe and to
-      its aperture mask, at the same place in the code, so the two cannot diverge again. The simulations were
-      never affected, so every leg re-reconstructs from data already on disk.
+    <div class="call stop">
+      <b>The data residual did not show it, and very nearly sent us the wrong way.</b> Re-running all eight levels
+      with the probe correctly oriented changed the solver's final mismatch by between −0.2 % and +4 %, and on
+      balance made it slightly <em>worse</em> — which read as a refutation. It was not. The same eight
+      reconstructions gained up to 37 points of lead recall. A fixed-probe solve with a free object absorbs a
+      wrong probe into the object: the fit to the data barely moves while the structure it produces is wrong.
+      It is the same degeneracy that defeats the in-solver focus fit in 5.1. <strong>Judge a probe change on the
+      object, never on the residual.</strong>
     </div>
-    <p>
-      What survives of this step is not a tolerance but two things that do not depend on any reconstruction: what
-      six-fold does to the probe, below, and how fast each residual grows with aperture, in §6.
-    </p>
+    <div class="tablewrap">
+      <table>
+        <caption>The same eight reconstructions, before and after the probe was transposed along with the data.
+          The residual is what we first judged it by; recall is what was actually happening.</caption>
+        <thead><tr><th>six-fold</th><th>residual</th><th>lead recall</th><th>depth error</th><th>confusion</th></tr></thead>
+        <tbody>
+          <tr><td>0.10 waves</td><td>37.8 → 37.8</td><td>80 → <strong>90 %</strong></td><td>0.76 → 0.70 Å</td><td>12.4 → 9.6 %</td></tr>
+          <tr><td>0.20 waves</td><td>54.2 → 54.7</td><td>56 → <strong>76 %</strong></td><td>0.82 → 0.65 Å</td><td>28.4 → 17.5 %</td></tr>
+          <tr><td>0.45 waves</td><td>71.2 → 74.0</td><td>31 → <strong>56 %</strong></td><td>0.86 → 0.71 Å</td><td>31.9 → 28.1 %</td></tr>
+          <tr><td>1.20 waves</td><td>75.8 → 77.2</td><td>7 → <strong>44 %</strong></td><td>1.03 → 0.79 Å</td><td>50.0 → 28.8 %</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="call">
+      <b>One thing is still unexplained.</b> Even corrected, the solver's residual climbs steadily with the
+      aberration — 24 for a round probe, 38 at 0.1 waves, 74 at 0.45 — and rotating the probe barely moves it.
+      Something tracks the aberration's magnitude while ignoring its orientation, and we do not yet know what.
+      Two checks are on the cluster: the round control reconstructed from this campaign's own simulation, to
+      confirm the 24 is comparable at all, and the 0.45-wave leg at 28 depth layers instead of 14, to test
+      whether the reconstruction's own slice thickness sets the floor.
+    </div>
   </section>
 
   <section class="wide">
@@ -732,55 +764,29 @@
           beam, stretched along it. Every leg gets its own.</div>
       </figcaption>
     </figure>
-  </section>
-
-  <section>
-    <details class="void">
-      <summary>Withdrawn: the six-fold measurements as they were published on 2026-09-22 — do not cite</summary>
-      <div class="void-body">
-        <p>
-          Kept only so the record shows what was claimed and what it looked like. Every number and every
-          reconstruction here carries the probe-orientation error described above. They are not a measurement of
-          six-fold tolerance; they are a measurement of a 30° probe rotation that grows with the aberration.
-        </p>
-        <div class="tablewrap">
-          <table>
-            <caption>VOID. Six-fold astigmatism at 70 mrad, known probe, no counting noise, static atoms, as
-              published on 2026-09-22.</caption>
-            <thead><tr><th>six-fold</th><th>C<sub>56</sub></th><th>lead found</th><th>titanium</th><th>oxygen</th><th>depth error</th></tr></thead>
-            <tbody>
-              <tr class="ref"><td>none</td><td>—</td><td>98 %</td><td>82 %</td><td>75 %</td><td>0.56 Å</td></tr>
-              <tr><td>0.10 waves</td><td>10 µm</td><td>80 %</td><td>57 %</td><td>48 %</td><td>0.76 Å</td></tr>
-              <tr><td>0.20 waves</td><td>20 µm</td><td>56 %</td><td>28 %</td><td>17 %</td><td>0.82 Å</td></tr>
-              <tr><td>0.45 waves</td><td>45 µm</td><td>31 %</td><td>33 %</td><td>11 %</td><td>0.86 Å</td></tr>
-            </tbody>
-          </table>
-        </div>
-        <figure>
-          <img src="{{FIG_NONROUND}}" alt="Withdrawn: four depth sections through the same row of columns at no six-fold and at 0.10, 0.20 and 0.45 waves.">
-          <figcaption>
-            <span class="fig-name">VOID · fig_nonround.png</span>
-            The striping that spreads across the field as six-fold grows is the signature of the mis-oriented
-            probe, not of the aberration.
-          </figcaption>
-        </figure>
-        <figure>
-          <img src="{{FIG_BLAME}}" alt="Withdrawn: the same depth section three times at 0.20 waves — bare, with true positions, with detections.">
-          <figcaption>
-            <span class="fig-name">VOID · fig_didfinderfail_0p2.png</span>
-            This figure asked whether the reconstruction or the atom finder was at fault. The answer, now, is
-            neither: the probe was wrong.
-          </figcaption>
-        </figure>
-        <p>
-          One result from this block does survive, because it is a control rather than a measurement. Re-running
-          the finder on identical reconstructions with its quality threshold relaxed recovers a large amount of
-          recall on aberrated legs while changing the clean baseline almost not at all — so the finder's cut does
-          discard real atoms when its reference degrades, whatever the cause. On the thermal-vibration legs the
-          same change does nothing whatsoever, which is why the phonon collapse is trusted as physics.
-        </p>
-      </div>
-    </details>
+    <figure>
+      <img src="{{FIG_NONROUND}}" alt="Four depth sections through the same row of columns, at no six-fold and at 0.10, 0.20 and 0.45 waves, true atom positions as dots and detections as rings.">
+      <figcaption>
+        <span class="fig-name">analysis/make_simple_figs.py → figs/2026-W39/simple/fig_nonround.png</span>
+        The same row of columns, the same slice, four probes, on the corrected engine. Dots are where the atoms
+        really are; a ring is an atom the finder reported.
+        <div class="howto"><b>Reading it</b><br>Titanium alternates with apical oxygen every 1.95 Å down each
+          column, so a working reconstruction beads each column into separate blobs. A dot with no ring is a
+          missed atom; a ring with no dot is a spurious one. At 0.10 waves the columns are still beaded and
+          mostly found; by 0.45 the light atoms between them have gone.</div>
+      </figcaption>
+    </figure>
+    <figure>
+      <img src="{{FIG_BLAME}}" alt="The same depth section three times at 0.20 waves of six-fold: bare, with true atom positions, and with the finder's detections added.">
+      <figcaption>
+        <span class="fig-name">analysis/make_simple_figs.py → figs/2026-W39/simple/fig_didfinderfail_0p2.png</span>
+        One level, 0.20 waves, shown three ways so the reconstruction can be judged before the answer is drawn
+        on it.
+        <div class="howto"><b>Reading it</b><br>Judge the left panel on its own first, then see which peaks
+          carried a detection. This is the figure that made the probe error findable: peaks were plainly present
+          that the finder was not reporting, which is what prompted looking at the probe rather than the finder.</div>
+      </figcaption>
+    </figure>
   </section>
 
   <section id="s6">
@@ -876,7 +882,7 @@
           <tr><td>1</td><td class="wrap">focus unknown</td><td class="wrap"><strong>no real cost</strong>, by an outer search; the in-solver fit is closed</td><td><span class="chip c-ok">measured</span></td></tr>
           <tr><td>2</td><td class="wrap">shot noise</td><td class="wrap">works to 10<sup>5</sup> e/Å²; at 10<sup>4</sup> no single-atom reference can be measured</td><td><span class="chip c-ok">measured</span></td></tr>
           <tr><td>3</td><td class="wrap">thermal vibration</td><td class="wrap">depth error roughly doubles; oxygen recall 10–17 %; not a finder artefact</td><td><span class="chip c-warn">costly</span></td></tr>
-          <tr><td>4</td><td class="wrap">six-fold astigmatism, 70 mrad</td><td class="wrap"><strong>withdrawn</strong>: reconstructed with a mis-oriented probe; loader fixed, legs being redone</td><td><span class="chip c-warn">redo</span></td></tr>
+          <tr><td>4</td><td class="wrap">six-fold astigmatism, 70 mrad</td><td class="wrap"><strong>usable limit between 0.1 and 0.2 waves</strong>; species labels fail from 0.1. Remeasured on the corrected engine</td><td><span class="chip c-ok">measured</span></td></tr>
           <tr><td>4b</td><td class="wrap">six-fold at 90 and 100 mrad</td><td class="wrap">same waves as the 70 mrad rungs, plus the 10 µm value carried up unchanged</td><td><span class="chip c-open">written</span></td></tr>
           <tr><td>4c</td><td class="wrap">other orders: two-fold, three-fold, three-lobe</td><td class="wrap">at 0.1 and 0.3 waves — does the limit transfer?</td><td><span class="chip c-open">written</span></td></tr>
           <tr><td>4d</td><td class="wrap">the assumed instrument as-is, 70 mrad</td><td class="wrap">C<sub>56</sub> 1 mm: needs binning 1 and a wider scan, ~3 GPU-days, expected to fail on geometry</td><td><span class="chip c-none">optional</span></td></tr>

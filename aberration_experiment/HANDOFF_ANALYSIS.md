@@ -1,4 +1,4 @@
-# Handoff — the non-round results were wrong; the engine is fixed and the campaign is re-running
+# Handoff — the probe-orientation bug is real and fixed; six-fold is remeasured
 
 Written 2026-09-22, after the round-two analysis. **Read `HANDOVER.md`** for the experiment itself,
 then `NEXT_PHASE.md` for the plan and `PSF_KERNELS.md` for the kernel rules. The two published pages
@@ -33,27 +33,46 @@ to the **same** URL. One page. Never start another for an update.
 
 ## Where it stands
 
-**Two results stand from the 2026-09-22 round, and one does not.**
+**Three results stand from the 2026-09-22 round.**
 
-**Valid — an unknown focus costs nothing.** An outer search over fixed trial probes, reading the solver's own
-mismatch as the objective, puts its minimum on the true focus at both apertures (−2 ± 3 Å at 70 mrad, +2 ± 1 Å
-at 90; the ±2 Å floor is the focus/depth degeneracy and is real). Reconstructing at the fitted focus costs
-nothing measurable: depth error 0.56 → 0.59 Å at 70 mrad, 0.37 → 0.44 at 90. Fifty iterations rank the trials
-as two hundred do, which is what makes it affordable. The tidier alternative — the solver fitting focus as its
-one free probe parameter — is **closed as a failure**: at 90 mrad the focus never moves by 1 Å from starts 32 Å
-out, at 70 mrad it moves the wrong way to about 21 Å below the truth whatever it started from, and neither
-freezing the object nor capping the step changes it.
+**Valid — an unknown focus costs nothing.** An outer search over fixed trial probes puts its minimum on the
+true focus at both apertures (−2 ± 3 Å at 70 mrad, +2 ± 1 Å at 90) and costs nothing measurable: depth error
+0.56 → 0.59 Å at 70 mrad, 0.37 → 0.44 at 90. The in-solver alternative is **closed as a failure**.
 
-**Valid — shot noise behaves.** 10⁷ and 10⁶ e/Å² hold up, 10⁵ works with the light atoms going, and at 10⁴ no
-single-atom reference can be measured from the data at all, so the finder never runs. Numbers in the ladder,
-pictures on the page.
+**Valid — shot noise behaves.** 10⁷ and 10⁶ e/Å² hold, 10⁵ works with the light atoms going, and at 10⁴ no
+single-atom reference can be measured at all, so the finder never runs.
 
-**VOID — everything non-round.** Every reconstruction with a non-round probe ever made in this campaign used a
-probe rotated 30° from the one the data was made with (first row of *Traps*). That covers the August 2026
-sweep, the 2026-09-21 escalation and the 2026-09-22 threshold ladder. A "six-fold tolerance below 0.1 waves"
-was published on 2026-09-22 and withdrawn the same day. **The campaign currently has no measurement of how much
-non-round aberration the method tolerates.** The engine is fixed, the simulations were never affected, and
-every leg is re-reconstructing; see *Your job*.
+**Valid, after being remeasured — six-fold astigmatism.** The usable limit at 70 mrad sits **between 0.1 and
+0.2 waves**: at 0.1 waves lead recall is 90 % against a round-probe 98 % and depth error 0.70 Å against 0.56,
+but species confusion is already 9.6 % against a 5 % health threshold; by 0.2 waves oxygen has gone from 65 %
+to 15 %. Rungs at 0.02, 0.04 and 0.07 waves are written and waiting on cluster time.
+
+### The probe-orientation bug — real, fixed, and a lesson about which number to trust
+
+The engine transposes the diffraction data on load (`custom_data_flip = [0,0,1]`, set by a chiral-phantom test
+run with a **round** probe) and did not transpose the probe with it. A round probe is its own transpose, so
+every round leg was always correct and nothing in the pipeline could expose it; a six-fold probe is rotated
+30°. `load_from_p.m` now applies every data flip to the probe and its aperture mask.
+
+**The data residual does not show it.** Re-running all eight levels with the probe correct changed the
+solver's final mismatch by between −0.2 % and +4 %, on balance slightly *worse* — which reads as a refutation
+and very nearly got the fix reverted. The same eight reconstructions gained up to **37 points** of lead recall,
+with depth error and species confusion improving on every one. A fixed-probe solve with a free object absorbs a
+wrong probe into the object: the fit barely moves while the structure is wrong. It is the same degeneracy that
+defeats the in-solver focus fit. **Judge a probe change on the object, never on the residual.**
+
+| six-fold | residual | lead recall | depth error | confusion |
+|---|---|---|---|---|
+| 0.10 waves | 37.8 → 37.8 | 80 → **90 %** | 0.76 → 0.70 Å | 12.4 → 9.6 % |
+| 0.20 waves | 54.2 → 54.7 | 56 → **76 %** | 0.82 → 0.65 Å | 28.4 → 17.5 % |
+| 0.45 waves | 71.2 → 74.0 | 31 → **56 %** | 0.86 → 0.71 Å | 31.9 → 28.1 % |
+| 1.20 waves | 75.8 → 77.2 | 7 → **44 %** | 1.03 → 0.79 Å | 50.0 → 28.8 % |
+
+**Still unexplained.** Even corrected, the residual climbs with the aberration (24 round, 38 at 0.1 waves, 74
+at 0.45) and ignores the probe's orientation. Two checks were on the cluster when this was written —
+`sacct -j 1288170,1288175`: **A**, `nr0_round` at NL 14, the round control from this campaign's own simulation,
+and **B**, the 0.45-wave leg at NL 28, testing whether the reconstruction's own slice thickness sets the floor.
+Read both from `tail -1 <recon dir>/analysis/*/*/*_error_trace.csv`.
 
 **Still analytic, and unaffected by any of this**: how fast each residual grows with aperture. A term of order
 n grows as α^(n+1), so with the residuals a real hexapole corrector leaves, every non-round term is over
