@@ -264,6 +264,9 @@
       <a href="#s3">3 · What it found</a>
       <a href="#s4">4 · Where it stops</a>
       <a href="#s5">5 · Removing the assumptions</a>
+      <a href="#focus">5.1 · Focus</a>
+      <a href="#shot">5.2 · Shot noise</a>
+      <a href="#sixfold">5.3 · Six-fold</a>
       <a href="#s6">6 · In context</a>
       <a href="#s7">7 · Rules</a>
       <a href="#s8">8 · Presenting it</a>
@@ -518,7 +521,7 @@
           Letting the solver fit focus itself does not work, and is closed.</span>
       </li>
       <li>
-        <b>A finite electron dose <span class="verdict" style="color:var(--ok)">as expected</span></b>
+        <b>Shot noise <span class="verdict" style="color:var(--ok)">as expected</span></b>
         <span>10<sup>7</sup> and 10<sup>6</sup> e/Å² are fine, 10<sup>5</sup> is marginal, 10<sup>4</sup> is gone.</span>
       </li>
       <li>
@@ -527,7 +530,7 @@
       </li>
     </ol>
 
-    <h3>5.1 &nbsp;Focus: the route that works, and the one that does not</h3>
+    <h3 id="focus">5.1 &nbsp;Focus: the route that works, and the one that does not</h3>
     <p>
       In a real experiment the corrector reports its third- and fifth-order terms, but the defocus is never
       quite where you think. <strong>The outer search works.</strong> The same data is reconstructed through a
@@ -586,29 +589,47 @@
   </section>
 
   <section>
-    <h3>5.2 &nbsp;Dose</h3>
+    <h3 id="shot">5.2 &nbsp;Shot noise</h3>
     <p>
-      Poisson noise applied to the same simulated data, so nothing changes but the counting statistics. It came
-      out as expected, and that is worth saying plainly: it is the one step that behaved. At 10<sup>4</sup> e/Å²
-      the failure is not that the finder missed atoms — the single-atom reference could not be measured from
-      that data at all, so the finder was never run.
+      Poisson counting noise applied to the same simulated data at four electron doses, so nothing changes but
+      the statistics. It came out as expected, and that is worth saying plainly: it is the one step that behaved.
+      10<sup>7</sup> and 10<sup>6</sup> e/Å² hold; 10<sup>5</sup> still works but the light atoms start to go;
+      at 10<sup>4</sup> the single-atom reference could not be measured from the data at all, so the finder
+      was never run. The reconstructions are below the table.
     </p>
+    <div class="tablewrap">
+      <table>
+        <caption>Shot noise, known probe, matched single-atom reference at the same dose. Recall over the
+          interior planes. The noiseless baselines are 98 / 82 / 75 % at 70 mrad and 95 / 94 / 95 % at 90.</caption>
+        <thead><tr><th>α (mrad)</th><th>dose (e/Å²)</th><th>lead found</th><th>titanium</th><th>oxygen</th><th>depth error</th></tr></thead>
+        <tbody>
+<tr><td>70</td><td>10<sup>7</sup></td><td>90 %</td><td>81 %</td><td>71 %</td><td>0.77 Å</td></tr>
+<tr><td>70</td><td>10<sup>6</sup></td><td>83 %</td><td>74 %</td><td>74 %</td><td>0.87 Å</td></tr>
+<tr><td>70</td><td>10<sup>5</sup></td><td>73 %</td><td>53 %</td><td>58 %</td><td>0.99 Å</td></tr>
+<tr><td>90</td><td>10<sup>7</sup></td><td>96 %</td><td>92 %</td><td>91 %</td><td>0.63 Å</td></tr>
+<tr><td>90</td><td>10<sup>6</sup></td><td>91 %</td><td>90 %</td><td>84 %</td><td>0.73 Å</td></tr>
+<tr><td>90</td><td>10<sup>5</sup></td><td>72 %</td><td>49 %</td><td>25 %</td><td>0.79 Å</td></tr>
+<tr><td>70</td><td>10<sup>4</sup></td><td colspan="4"><span class="chip c-stop">no single-atom reference could be measured</span> — the finder was never run</td></tr>
+<tr><td>90</td><td>10<sup>4</sup></td><td colspan="4"><span class="chip c-stop">no single-atom reference could be measured</span> — the finder was never run</td></tr>
+        </tbody>
+      </table>
+    </div>
   </section>
 
   <section class="wide">
     <figure>
-      <img src="{{FIG_DOSE}}" alt="Five depth sections through the same row of columns from noiseless to ten to the four electrons per square angstrom, true atoms as dots, detections as rings.">
+      <img src="{{FIG_DOSE}}" alt="Shot noise: five depth sections through the same row of columns from noiseless to ten to the four electrons per square angstrom, true atoms as dots, detections as rings.">
       <figcaption>
         <span class="fig-name">analysis/make_simple_figs.py → figs/2026-W39/simple/fig_dose.png</span>
-        The same row of columns, the same slice, five dose levels. Dots are where the atoms really are; rings are
-        the atoms the finder reported.
+        Shot noise: the same row of columns, the same slice, at 70 mrad, from noiseless down to 10<sup>4</sup> e/Å².
+        Dots are where the atoms really are; rings are the atoms the finder reported.
         <div class="howto"><b>What to look at</b><br>Titanium and apical oxygen alternate every 1.95 Å down each column, so a working reconstruction beads each column. Follow one column across and watch the beads smear. In the last panel the columns are gone.</div>
       </figcaption>
     </figure>
   </section>
 
   <section>
-    <h3>5.3 &nbsp;Six-fold astigmatism</h3>
+    <h3 id="sixfold">5.3 &nbsp;Six-fold astigmatism</h3>
     <p>
       A hexapole corrector nulls third-order spherical aberration and leaves six-fold astigmatism behind. No
       round knob touches it, and it grows as the sixth power of the aperture. Four levels were run at 70 mrad,
@@ -785,7 +806,7 @@
         <tbody>
           <tr class="ref"><td>0</td><td class="wrap">known probe, no noise</td><td class="wrap">depth error 0.56 / 0.37 Å; recall 98/82/75 and 95/94/95 %</td><td><span class="chip c-ok">baseline</span></td></tr>
           <tr><td>1</td><td class="wrap">focus unknown</td><td class="wrap"><strong>no real cost</strong>, by an outer search; the in-solver fit is closed</td><td><span class="chip c-ok">measured</span></td></tr>
-          <tr><td>2</td><td class="wrap">counting noise</td><td class="wrap">works to 10<sup>5</sup> e/Å²; at 10<sup>4</sup> no single-atom reference can be measured</td><td><span class="chip c-ok">measured</span></td></tr>
+          <tr><td>2</td><td class="wrap">shot noise</td><td class="wrap">works to 10<sup>5</sup> e/Å²; at 10<sup>4</sup> no single-atom reference can be measured</td><td><span class="chip c-ok">measured</span></td></tr>
           <tr><td>3</td><td class="wrap">thermal vibration</td><td class="wrap">depth error roughly doubles; oxygen recall 10–17 %; not a finder artefact</td><td><span class="chip c-warn">costly</span></td></tr>
           <tr><td>4</td><td class="wrap">six-fold astigmatism, 70 mrad</td><td class="wrap"><strong>tolerance below 0.1 waves</strong>, the smallest tested</td><td><span class="chip c-ok">measured</span></td></tr>
           <tr><td>4b</td><td class="wrap">six-fold at 90 and 100 mrad</td><td class="wrap">same waves as the 70 mrad rungs, plus the 10 µm value carried up unchanged</td><td><span class="chip c-open">written</span></td></tr>
