@@ -60,7 +60,14 @@ echo "full box ${BOXZ} A (THIN=${THIN} cells + 2x${ZVAC} A vac); PSF atom z=${AT
 
 if [ -n "$DOSES" ] && [ ! -x "${PYBIN}" ]; then echo "DOSES set but no abtem env python at ${PYBIN}" >&2; exit 1; fi
 
-nl_full(){ awk "BEGIN{n=int(${BOXZ}*2*($1/1000)^2/${LAM}+0.5); if(n<1)n=1; print n}"; }
+# NL is Nyquist over the full box for that aperture. NL=<n> overrides it, for ONE purpose: testing
+# whether a leg's residual is limited by the reconstruction's own slice thickness rather than by the
+# physics under test. The sim slices at 0.9 A and the recon at 27.525/NL (1.97 A at NL 14), so the
+# forward models differ by ~2x and the solver can never drive the residual to zero. A leg re-run at
+# double NL that drops sharply was slice-limited; one that does not was not. Dirs carry the NL, so an
+# override cannot overwrite the Nyquist run. (2026-09-22)
+nl_full(){ [ -n "${NL:-}" ] && { echo "$NL"; return; }
+           awk "BEGIN{n=int(${BOXZ}*2*($1/1000)^2/${LAM}+0.5); if(n<1)n=1; print n}"; }
 mem_for(){   case "$1" in 1) echo 175G;; 2) echo 96G;; *) echo 48G;; esac; }
 grp_for(){   [ -n "${GROUPING:-}" ] && { echo "$GROUPING"; return; }; case "$1" in 1) echo 16;;  2) echo 32;; *) echo "";; esac; }
 rtime_for(){ [ -n "${RTIME:-}" ] && { echo "$RTIME"; return; }; case "$1" in 1) echo 24:00:00;; 2) echo 10:00:00;; *) echo 05:00:00;; esac; }
