@@ -10,6 +10,8 @@ Keeping the template and this script in the repo means the next agent can rebuil
 current figures and republish it to the SAME artifact URL, instead of starting a second page.
 
     ~/hyperspy-bundle/bin/python aberration_experiment/page/build_page.py --out <dir>/logbook_built.html
+    ~/hyperspy-bundle/bin/python aberration_experiment/page/build_page.py \\
+        --template aberration_experiment/page/round_2026-09-22.html --out <dir>/round_built.html
 """
 from __future__ import annotations
 import argparse, base64, io, os, sys
@@ -17,16 +19,27 @@ import argparse, base64, io, os, sys
 HERE = os.path.dirname(os.path.abspath(__file__))
 FIGS = os.path.join(os.path.dirname(HERE), "figs")
 
-# placeholder -> figure, newest week that holds each. Order is the order they appear on the page.
-SOURCES = {
-    "FIG_RONCHI":   "2026-W39/ronchigram_evolution.png",
-    "FIG_DEPTH":    "2026-W37/atomfind_depth_vs_alpha.png",
-    "FIG_VOLUMES":  "2026-W37/mep_volumes.png",
-    "FIG_P1":       "2026-W38/paper/fig1_probe.png",
-    "FIG_P2":       "2026-W38/paper/fig2_depth.png",
-    "FIG_P3":       "2026-W38/paper/fig3_volumes.png",
-    "FIG_P4":       "2026-W38/paper/fig4_baselines.png",
+# Per template: placeholder -> figure, in the order they appear on that page. Two pages are built
+# from this one script -- the running logbook and each round's results page -- so a figure is named
+# once and both stay in step with the run outputs.
+SOURCES_BY_TEMPLATE = {
+    "logbook.html": {
+        "FIG_RONCHI":   "2026-W39/ronchigram_evolution.png",
+        "FIG_DEPTH":    "2026-W37/atomfind_depth_vs_alpha.png",
+        "FIG_VOLUMES":  "2026-W37/mep_volumes.png",
+        "FIG_P1":       "2026-W38/paper/fig1_probe.png",
+        "FIG_P2":       "2026-W38/paper/fig2_depth.png",
+        "FIG_P3":       "2026-W38/paper/fig3_volumes.png",
+        "FIG_P4":       "2026-W38/paper/fig4_baselines.png",
+    },
+    "round_2026-09-22.html": {
+        "FIG_PROBE":    "2026-W39/meeting/figE_nonround_probe.png",
+        "FIG_LADDER":   "2026-W39/meeting/figD_nonround.png",
+        "FIG_FOCUS":    "2026-W39/meeting/figA_dfo.png",
+        "FIG_TRAJ":     "2026-W39/meeting/figF_dfo_traj.png",
+    },
 }
+
 MAXW = 1700          # web width; the PDFs in the repo stay the print copies
 PNG_CAP = 420_000    # bytes: above this a figure goes out as JPEG instead
 
@@ -51,8 +64,11 @@ def main():
     a = ap.parse_args()
 
     html = open(a.template).read()
+    name = os.path.basename(a.template)
+    if name not in SOURCES_BY_TEMPLATE:
+        sys.exit(f"no figure list for template {name}; add one to SOURCES_BY_TEMPLATE")
     total = 0
-    for key, rel in SOURCES.items():
+    for key, rel in SOURCES_BY_TEMPLATE[name].items():
         src = os.path.join(FIGS, rel)
         if not os.path.exists(src):
             sys.exit(f"missing figure: {src}")

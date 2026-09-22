@@ -214,6 +214,17 @@ def fig_zaccuracy(methods, cfg, path):
     fig.tight_layout(); fig.savefig(path, dpi=130, bbox_inches="tight"); plt.close(fig)
 
 
+def _recon_layers(path):
+    """Depth-slice count of a reconstruction, from the file itself rather than a driver formula."""
+    path = os.path.expanduser(path)
+    if path.endswith(".npy"):
+        import numpy as _np
+        return int(_np.load(path, mmap_mode="r").shape[0])
+    import h5py
+    with h5py.File(path, "r") as f:
+        return int(f["reconstruction/object"].shape[0])
+
+
 # ---------------------------------------------------------------- main
 def main():
     ap = argparse.ArgumentParser()
@@ -237,6 +248,14 @@ def main():
                     help="depth spacing (A/layer) of that reconstruction; REQUIRED with "
                          "--recon unless it matches the preset (NL70 0.999, NL105 0.666)")
     ap.add_argument("--n-null", type=int, default=400)
+    ap.add_argument("--sim-meta", default=None,
+                    help="the leg's sim_meta.mat. Takes dz = beam_thickness_A / NL (NL read from the "
+                         "reconstruction itself) and DERIVES every depth-coupled constant from the box, "
+                         "instead of trusting the driver's box formula or a typed preset. Use it for any "
+                         "geometry the preset was not written for -- the 18-cell slab above all, whose "
+                         "measured box is 77.935 A against the formula's 78.00. Not combinable with --dz.")
+    ap.add_argument("--z-vacuum", type=float, default=4.0,
+                    help="with --sim-meta: the sim's Z_VACUUM, the vacuum padding each side [A]")
     ap.add_argument("--set", action="append", default=[], metavar="KEY=VALUE",
                     help="override one Config field, repeatable (e.g. --set quality_min_corr=0.35). "
                          "The value is parsed with the type of the preset's current value, so a "
@@ -251,6 +270,21 @@ def main():
         if args.dz is None:
             print(f"[atomfind] WARNING --recon given without --dz; assuming the preset's "
                   f"dz={cfg.dz} A/layer. A wrong dz mis-registers depth and swaps Ti/O labels.")
+    if args.sim_meta:
+        if args.dz:
+            raise SystemExit("--sim-meta sets dz from the simulation; do not also pass --dz")
+        if not args.recon:
+            raise SystemExit("--sim-meta needs --recon: the layer count comes from the reconstruction")
+        from scipy.io import loadmat
+        m = loadmat(os.path.expanduser(args.sim_meta))["meta"]
+        box = float(m["beam_thickness_A"][0, 0].ravel()[0])
+        nl = _recon_layers(args.recon)
+        cfg.dz = box / nl
+        for k, v in config.derive_depth_constants(box, args.z_vacuum).items():
+            setattr(cfg, k, v)
+        print(f"[atomfind] --sim-meta {args.sim_meta}: box {box:.3f} A over {nl} layers -> dz {cfg.dz:.4f} A")
+        print(f"[atomfind]   derived  trim_z_A={cfg.trim_z_A}  zmax_show_A={cfg.zmax_show_A:.3f}  "
+              f"exit_band_z_A={cfg.exit_band_z_A}  clean_max_atoms={cfg.clean_max_atoms}  bulk_z_A={cfg.bulk_z_A}")
     if args.dz: cfg.dz = args.dz
     if args.single_atom_vol: cfg.single_atom_vol = args.single_atom_vol
     if args.ti_kernel_vol: cfg.ti_kernel_vol = args.ti_kernel_vol

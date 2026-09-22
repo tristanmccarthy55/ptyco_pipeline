@@ -233,8 +233,8 @@
     <div class="mast-meta">
       <span><b>Checkpoint</b> 2026-09-22</span>
       <span><b>Round-α campaign</b> complete</span>
-      <span><b>Relaxation ladder</b> 6 of 8 steps measured</span>
-      <span><b>Open now</b> six tarballs awaiting analysis</span>
+      <span><b>Relaxation ladder</b> 20 rows, 6 of 9 steps measured</span>
+      <span><b>Open now</b> thickness, coherence, tilt</span>
     </div>
     <nav class="jump">
       <a href="#s1">1 · The question</a>
@@ -505,8 +505,9 @@
           <tr><td>1b</td><td class="wrap">focus fitted inside the solver</td><td class="wrap">fails — the outer search over trial probes is the working route</td><td><span class="chip c-stop">fails</span></td></tr>
           <tr><td>2</td><td class="wrap">counting noise</td><td class="wrap">works to 10<sup>5</sup> e/Å²; at 10<sup>4</sup> the matched kernel cannot be measured at all</td><td><span class="chip c-ok">measured</span></td></tr>
           <tr><td>3</td><td class="wrap">thermal vibration (phonons)</td><td class="wrap">depth error roughly doubles; oxygen recall 10–17 %; species labels untrustworthy</td><td><span class="chip c-warn">costly</span></td></tr>
-          <tr><td>4</td><td class="wrap">non-round aberration (six-fold)</td><td class="wrap">0.6 waves → lead recall 39 %; 1.2 waves → 7 %. The threshold is below 0.6</td><td><span class="chip c-open">in flight</span></td></tr>
-          <tr><td>5</td><td class="wrap">the full 70 Å sample</td><td class="wrap">diverged at the pinned solver step; retried at half the step size</td><td><span class="chip c-open">in flight</span></td></tr>
+          <tr><td>4</td><td class="wrap">non-round aberration (six-fold)</td><td class="wrap"><strong>tolerance below 0.1 waves</strong> — the smallest residual tested, and it already fails</td><td><span class="chip c-ok">measured</span></td></tr>
+          <tr><td>4b</td><td class="wrap">non-round, other orders</td><td class="wrap">two-fold, three-fold and the fourth-order three-lobe term at the same wave level — does the tolerance transfer?</td><td><span class="chip c-none">not run</span></td></tr>
+          <tr><td>5</td><td class="wrap">the full 70 Å sample</td><td class="wrap">diverged at the pinned solver step; the gentler retry is running now, and the analysis path to read it out is built</td><td><span class="chip c-open">in flight</span></td></tr>
           <tr><td>6</td><td class="wrap">partial coherence</td><td class="wrap">needs simulation code that does not exist yet</td><td><span class="chip c-none">not built</span></td></tr>
           <tr><td>7</td><td class="wrap">specimen tilt (a few degrees)</td><td class="wrap">needs the crystal rotated in the sim and a finder that handles crossing columns</td><td><span class="chip c-none">not built</span></td></tr>
         </tbody>
@@ -538,14 +539,23 @@
   <section id="s6">
     <div class="sec-head"><span class="sec-num">06</span><h2>Checkpoint — 2026-09-22</h2></div>
     <p>
-      Six tarballs from three experiments submitted on 2026-09-22 are the immediate work. Triage each one
-      before analysing it: a job that reports COMPLETED but has no <code>*_recons.h5</code> means MATLAB
-      crashed, and an older run's file at the same path will silently stand in for a leg that failed.
+      <strong>Analysed on 2026-09-22. The results, the specification they produce and the figures are on
+      their own page: <a href="https://claude.ai/artifact/21fr4Y6JqCeaeB6KLMUKGz">The Six-Fold Tolerance</a>.</strong> In short: the six-fold
+      residual a hexapole corrector leaves must be held below <strong>0.1 waves</strong> at the aperture
+      edge — C<sub>56</sub> under 10 µm at 70 mrad — and that is an upper bound rather than the tolerance,
+      because 0.1 waves is the smallest residual tested and it already fails. Fitting focus inside the
+      solver is closed as a route. The ledger below is what was waiting; the state chips now record how
+      each one came out.
+    </p>
+    <p>
+      Triage every tarball before analysing it: a job that reports COMPLETED but has no
+      <code>*_recons.h5</code> means MATLAB crashed, and an older run's file at the same path will
+      silently stand in for a leg that failed.
     </p>
 
     <div class="ledger">
       <div>
-        <span class="lg-t">A — focus fitted with the object frozen</span><span class="chip c-open">to analyse</span>
+        <span class="lg-t">A — focus fitted with the object frozen</span><span class="chip c-stop">answered: no</span>
         <span class="lg-d">Freezes the object in the full-resolution engine so focus is fitted against an
           already-converged object. If the focus now moves toward the truth, the drift was the shared
           focus/depth degeneracy and the fix is to alternate rather than co-optimise — that changes the method
@@ -553,19 +563,19 @@
           it is a clean result; do not spend days on it.</span>
       </div>
       <div>
-        <span class="lg-t">A2 — focus fitted with a capped step</span><span class="chip c-open">to analyse</span>
+        <span class="lg-t">A2 — focus fitted with a capped step</span><span class="chip c-stop">answered: no</span>
         <span class="lg-d">The control that confirms a step cap is <em>not</em> the fix, closing off the
           overshoot explanation for good.</span>
       </div>
       <div>
-        <span class="lg-t">B — the 70 Å sample at half the solver step</span><span class="chip c-open">to analyse</span>
+        <span class="lg-t">B — the 70 Å sample at half the solver step</span><span class="chip c-open">on the cluster</span>
         <span class="lg-d">Thickness is the regime the method exists for, so this is the biggest remaining
           step. Its comparison must be against a thin-slab leg at the <em>same</em> step size, or the result is
           about the step size and not about thickness. If it reconstructs, the analysis to read it out does not
           exist yet — see below.</span>
       </div>
       <div>
-        <span class="lg-t">C — the non-round threshold ladder</span><span class="chip c-open">to analyse</span>
+        <span class="lg-t">C — the non-round threshold ladder</span><span class="chip c-ok">measured</span>
         <span class="lg-d">The most publication-relevant run: 0.1, 0.2, 0.3 and 0.45 waves of six-fold
           astigmatism. Report kernel health (peak, background, peak-to-background) alongside recall — a degraded
           kernel means the <em>reconstruction</em> is failing, not the finder, and that distinction is what made
@@ -592,10 +602,13 @@
 
     <h3>Cheap questions worth answering on the way</h3>
     <ul>
-      <li>Are the phonon and non-round recall collapses partly <em>the finder's thresholds</em>, which were
-        tuned on still atoms and clean wavefronts? Re-running the existing reconstructions with a relaxed
-        quality cut costs nothing on the cluster and separates physics from tuning. Do this before concluding
-        the method fails at room temperature.</li>
+      <li><strong>Answered 2026-09-22.</strong> Are the phonon and non-round recall collapses partly
+        <em>the finder's thresholds</em>, which were tuned on still atoms and clean wavefronts? Re-running
+        the existing reconstructions at a relaxed quality cut: <strong>for non-round, partly</strong> — at
+        0.1 waves lead comes back from 80 to 89 % and oxygen from 48 to 69 %, and the round-probe control
+        barely moves, so the recovery is real rather than the cut inventing atoms. <strong>For phonons, not
+        at all</strong> — the identical change leaves those numbers untouched to two decimal places, so that
+        collapse is the physics.</li>
       <li>False positives rise with dose even at 10<sup>7</sup> e/Å², almost all oxygen — same suspicion, same test.</li>
       <li>α = 90's focus interval is narrower than the search grid (−158 ± 1 Å against a true −160). A 0.5 Å scan
         over ±5 Å would pin it, about 6 GPU-hours — worth it only if a referee would ask.</li>
@@ -753,6 +766,8 @@
       first, then publish back to the same URL.
     </p>
     <ul>
+      <li><a href="https://claude.ai/artifact/21fr4Y6JqCeaeB6KLMUKGz">The Six-Fold Tolerance</a> — the results of 2026-09-22: the tolerance on
+        the corrector's residual, the finder-threshold control, and the close of the in-solver focus fit.</li>
       <li><a href="https://claude.ai/artifact/NiYCfNo7uFAWFkyUZ5L3SF">Depth Past the Corrector</a> — the baseline
         story for a group meeting: probe, depth against aperture, the focus search, dose.</li>
       <li><a href="https://claude.ai/artifact/3TfTwcipbbTxG9PGbeEtqi">Removing the Six Assumptions</a> — the
@@ -766,7 +781,7 @@
 
 <footer class="foot">
   <div class="foot-in"><span>
-    Aperture campaign logbook · checkpoint 2026-09-22 · rebuilt from
+    Aperture campaign logbook · checkpoint 2026-09-22, results linked · rebuilt from
     aberration_experiment/page/logbook.html
   </span></div>
 </footer>

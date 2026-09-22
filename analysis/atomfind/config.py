@@ -320,6 +320,48 @@ class Config:
         return max(3, self.rl_iters // 4)
 
 
+# ------------------------------------------------- geometry-coupled constants, DERIVED not typed
+#: in-column plane spacing of the ABO3 structure along the beam [A] -- A-site to apical O
+PLANE_SPACING_A = 1.95
+
+
+def derive_depth_constants(box_A: float, z_vacuum_A: float = 4.0) -> dict:
+    """@brief The depth-coupled Config fields for a full-box reconstruction of a given geometry.
+
+    Three bugs in the aberration campaign came from constants typed for one slab thickness and
+    silently wrong for the next, so they are computed from the box instead. The rule is read off
+    the validated `thin` preset (box 27.524 A, 4 A of vacuum each side):
+
+      trim_z_A        (vacuum, atom band) -- drop the vacuum at each end, the low edge at the
+                      vacuum thickness and the high edge rounded DOWN to the next half-angstrom
+                      so the trim never eats into the last atomic plane
+      zmax_show_A     the full box
+      exit_band_z_A   half an angstrom inside the top trim: the exit-surface artefacts live above it
+      clean_max_atoms per-tube cap = atoms that fit at the plane spacing, plus two of margin
+
+    On (27.524, 4.0) this returns exactly what `thin` carries: (4.0, 23.5), 27.524, 23.0, 12.
+
+    @param box_A the FULL reconstructed box along the beam, i.e. sim_meta's beam_thickness_A for a
+                 --recon-full-box simulation (77.935 A for the 18-cell slab, 27.524 for 5 cells).
+    @param z_vacuum_A the sim's Z_VACUUM, the vacuum padding each side.
+    """
+    import math
+    hi = math.floor((box_A - z_vacuum_A) * 2.0) / 2.0
+    span = box_A - 2.0 * z_vacuum_A
+    return dict(
+        trim_z_A=(float(z_vacuum_A), float(hi)),
+        zmax_show_A=float(box_A),
+        exit_band_z_A=float(hi - 0.5),
+        clean_max_atoms=int(round(span / PLANE_SPACING_A)) + 2,
+        bulk_z_A=(float(z_vacuum_A + 6.0), float(box_A - z_vacuum_A - 6.0)),
+        # The reversed branch is where the slab would sit if depth ran the other way. `thin` carries
+        # (66, 78) here, inherited from the 70 A geometry: for a 27.5 A box every offset in that
+        # range maps the whole slab outside trim_z_A, so it scores zero and never fires. Derived
+        # from the box it is the physically meaningful mirror of the forward branch.
+        depth_branches=((+1, -8.0, 4.0), (-1, float(box_A - 8.0), float(box_A + 4.0))),
+    )
+
+
 # ---------------------------------------------------------------- presets
 def preset(name: str) -> Config:
     """Named volumes. Add the better data here when it lands; run_atomfind picks by --preset."""
@@ -367,6 +409,18 @@ def preset(name: str) -> Config:
                        zmax_show_A=27.525, trim_z_A=(4.0, 23.5),
                        exit_band_z_A=23.0, clean_max_atoms=12,
                        single_atom_vol=None, single_atom_species=82),
+        # The 18-cell (70 A) slab. Everything that couples to thickness is DERIVED at load time by
+        # derive_depth_constants() from sim_meta's beam_thickness_A -- run_atomfind's --sim-meta does
+        # that, and also sets dz = beam_thickness_A / NL rather than trusting the driver's box formula
+        # (the measured 18-cell box is 77.935 A against the formula's 78.00). The values below are the
+        # 18-cell defaults so the preset is usable without --sim-meta; --sim-meta overrides them.
+        "thick": replace(Config(name="thick",
+                                recon_vol="a70_thin18.npy", dz=1.9983, dose_e_per_A2=None,
+                                dx=0.0492, X0=None, Y0=None,
+                                fov_A=20.0, depth_register="atoms",
+                                convergence_mrad=70.0,
+                                single_atom_vol=None, single_atom_species=82),
+                         **derive_depth_constants(77.935, 4.0)),
     }
     if name not in presets:
         raise KeyError(f"unknown preset {name!r}; have {list(presets)}")
