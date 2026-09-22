@@ -1,16 +1,20 @@
-# Handoff — analyse the 2026-09-22 runs, then finish the ladder
+# Handoff — finish the ladder, and turn two pages into one
 
-Written 2026-09-22 for whoever picks this up next. **Read `HANDOVER.md` first** for the experiment
-itself, then `NEXT_PHASE.md` for the plan, then `PSF_KERNELS.md` for the kernel rules. This file is
-only: what is waiting for you, how to analyse it, and what is left before the result is publishable.
+Written 2026-09-22, evening, for whoever picks this up next. **Read `HANDOVER.md` first** for the
+experiment itself, then `NEXT_PHASE.md` for the plan, then `PSF_KERNELS.md` for the kernel rules.
+This file is only: what exists and what does not, how to analyse it, and what is left before the
+result is publishable.
 
 Your job, in order:
 
-1. **Analyse the six tarballs** from the 2026-09-22 submissions (below). They should be pulled to
-   `~/Desktop/relax_0922/` by the time you start.
-2. **Put the results in front of the group** — update the two pages listed under *Meeting pages*.
-3. **Finish the ladder.** Two relaxations still need simulation code that does not exist, and the
-   combined run has never been attempted. That is the road to publishable.
+1. **Analyse what is in hand** — three experiments finished and are unanalysed (*What you have*).
+2. **Build one page, not two.** The user asked for a single, better artifact in place of the two
+   published now. See *The page*.
+3. **Finish the ladder.** Two relaxations still need simulation code that does not exist, the thick
+   sample has no analysis path, and the combined run has never been attempted. That is the road to
+   publishable.
+
+Nothing here is blocked on the user except cluster submissions and the git push noted at the end.
 
 ---
 
@@ -32,16 +36,45 @@ Your job, in order:
 
 ---
 
-## What is waiting for you
+## What you have, and what you do not
 
-Six tarballs, from three experiments submitted 2026-09-22. Expected names (timestamps will differ):
+### In hand, unanalysed
 
-| experiment | tarball glob | what it answers |
-|---|---|---|
-| **A** focus fitted with the object frozen | `c1dfo_results_a70_n200_ps40x1dfooinf_*` and `..._a90_...` | is the focus-fit runaway the focus/depth degeneracy? |
-| **A2** focus fitted with a capped step | `c1dfo_results_a70_n200_ps40x40dfoc0.05_*` | control: confirms a step cap is *not* the fix |
-| **B** the 70 Å sample, gentler solver step | `atomfind_results_a70_thin18_*`, `atomfind_results_a90_thin18_*` | does the thick sample reconstruct at `BETA_LSQ=0.02`? |
-| **C** non-round threshold ladder | `atomfind_results_nr0p1_C56_0p1w-nr0p2_...-nr0p45_C56_0p45w_*` | **the key number**: how much six-fold astigmatism is tolerable? |
+Four tarballs from the batch submitted 2026-09-21 at 22:56. **Note the stamp**: the jobs went in late
+on the 21st, so the names read `20260921_2256*` and not the 22nd. A glob on the wrong date made them
+look missing and cost a round trip. They are on Blythe under `/springbrook/share/physics/phucrh/`:
+
+| experiment | tarball | size | what it answers |
+|---|---|---|---|
+| **A** focus fitted, object frozen, 70 mrad | `c1dfo_results_a70_n200_ps40x1dfooinf_20260921_225613.tgz` | 314 MB | is the focus-fit runaway the focus/depth degeneracy? |
+| **A** the same at 90 mrad | `c1dfo_results_a90_n200_ps40x1dfooinf_20260921_225613.tgz` | 870 MB | as above, at the aperture that matters most |
+| **A2** capped-step control | `c1dfo_results_a70_n200_ps40x40dfoc0.05_20260921_225613.tgz` | 128 MB | confirms a step cap is *not* the fix |
+| **C** non-round threshold ladder | `atomfind_results_nr0p1_C56_0p1w-…-nr0p45_C56_0p45w_20260921_225614.tgz` | 855 MB | **the key number**: how much six-fold astigmatism is tolerable |
+
+If `~/Desktop/relax_0922/` is empty, hand the user this:
+
+```bash
+mkdir -p ~/Desktop/relax_0922 && cd ~/Desktop/relax_0922
+scp -O phucrh@blythe.scrtp.warwick.ac.uk:'/springbrook/share/physics/phucrh/*_20260921_2256*.tgz' .
+for t in *.tgz; do d="${t%.tgz}"; mkdir -p "$d" && tar xzf "$t" -C "$d"; done
+```
+
+Already on the Mac, and needed for every comparison: `~/Desktop/relax_0921/` (the 2026-09-21 12:32
+batch — phonons, the first non-round rungs at 0.6/1.2/2.5 waves, the first 70 Å attempt, and the
+focus-fit runs with a free object) and `~/Desktop/thin_ab_af_final/` (step 0, the known-probe
+baseline).
+
+### Not in hand
+
+- **Experiment B, the 70 Å sample at `BETA_LSQ=0.02`.** It did not run on 2026-09-22 and was
+  resubmitted the same evening. Read *Experiment B* below before assuming anything about it, and
+  check for `atomfind_results_a70-90_thin18_20260922_*.tgz` rather than trusting this file.
+- **Steps 6 and 7**, partial coherence and specimen tilt. The simulation code does not exist.
+- **An analysis path for the thick sample.** atomfind cannot be pointed at an 18-cell slab as it
+  stands, so even a successful B is not immediately readable. See *Still to build*, item 1.
+- **The combined run.** Never attempted, and it is what makes the result publishable.
+
+What each of those experiments is for, and what a result would mean, follows.
 
 ### A and A2 — the focus fitted inside the solver
 
@@ -82,19 +115,46 @@ act, and it is worth a figure on its own.
 grep -h "defocus-only probe update" <recon dir>/slurm_*.out | tail -20
 ```
 
-### B — the 70 Å sample
+### B — the 70 Å sample (did not run; resubmitted)
 
-The previous attempt diverged in five of six legs (at 90 mrad two thirds through the first pass, at
-70 mrad on entry to the second) with the step size pinned at `BETA_LSQ=0.05`. This retry halves it.
-If it reconstructs, **this is the biggest remaining step**, because thickness is the regime the method
-exists for. Note it needs analysis work that does not exist yet — see *Still to build*.
+The attempt of 2026-09-22 failed before it started, and the failure is worth understanding because it
+will recur otherwise. `sim/run_sim.slurm` refuses to overwrite a finished simulation and exits 1 in
+zero seconds. Those 70 Å simulations were already on disk from the earlier batch, and the only thing
+this run changed was the solver step size, so all six simulation jobs died instantly and the six
+reconstructions queued behind them sat on `DependencyNeverSatisfied` for 90 minutes until they were
+cancelled. The run never needed to simulate anything.
+
+It was resubmitted as reconstruction-only, reusing those simulations:
+
+```bash
+cd /springbrook/share/physics/phucrh/ptyco_baseline/ptyco_pipeline
+RECON_ONLY=1 ALPHAS="70 90" THIN=18 CELL_Z=3.889 GROUPING=16 RTIME=20:00:00 \
+  BETA_LSQ=0.02 bash campaign/run_thin_atomfind.sh
+```
+
+Six reconstructions, 39 layers at 70 mrad and 64 at 90, plus one pack job. Pull with:
+
+```bash
+mkdir -p ~/Desktop/thin18_0922 && cd ~/Desktop/thin18_0922
+scp -O phucrh@blythe.scrtp.warwick.ac.uk:'/springbrook/share/physics/phucrh/atomfind_results_a70-90_thin18_20260922_*.tgz' .
+```
+
+The driver now refuses to submit a simulation whose output already exists, so it fails on the login
+node with both escapes named instead of on the GPU queue. That guard is in an unpushed commit; see
+*State of the repository*.
+
+The previous attempt at `BETA_LSQ=0.05` diverged in five of six legs and is already on the Mac in
+`~/Desktop/relax_0921/`. If this retry reconstructs, **it is the biggest remaining step**, because
+thickness is the regime the method exists for. Remember the rule at the foot of this file: a thick
+result at 0.02 must be compared against a thin leg at 0.02 before anything is concluded about
+thickness.
 
 ### C — the non-round threshold
 
 This is the most publication-relevant run. Six-fold astigmatism is what a hexapole corrector leaves
 behind and round knobs cannot touch. Measured so far at 70 mrad: 0.6 waves takes lead recall from 98%
 to 39%, 1.2 waves to 7%. So the tolerance is somewhere **below** 0.6, and C samples 0.1, 0.2, 0.3 and
-0.45 waves. The output is a specification: *the residual must be under X waves for this to work.*
+0.45 waves. **The data is in hand and unanalysed** — this is the first thing to do. The output is a specification: *the residual must be under X waves for this to work.*
 Quote it with the recall and depth error at each rung, and say plainly if even 0.1 waves hurts.
 
 ---
@@ -168,10 +228,16 @@ of this handoff. Rows are replaced, never duplicated, on `(step, label, alpha)`.
 Two scripts, same house style (`make_relaxation_figs.py` imports its palette and helpers from
 `make_meeting_figs.py`, so extend rather than restyle):
 
-- `analysis/make_meeting_figs.py` — the six baseline figures: probe vs aperture, the depth section
-  with found atoms, accuracy vs aperture, the focus search, the probe-update failure, the dose ladder.
-- `analysis/make_relaxation_figs.py` — figures A–D: focus fitted in the solver, focus fitted vs known
-  probe, phonons, non-round.
+- `analysis/make_meeting_figs.py` — figures 1–7: probe against aperture, the depth section with
+  found atoms, accuracy against aperture, the focus search, the probe-update failure, the dose
+  ladder, and `fig7_ronchigram` (Ronchigram and wavefront as the aperture opens).
+- `analysis/make_relaxation_figs.py` — figures A–E: focus fitted in the solver, focus fitted against
+  known probe, phonons, non-round recall, and `figE_nonround_probe` (Ronchigram, wavefront and probe
+  across the six-fold ladder).
+
+Run one at a time with `--only`, e.g. `--only 7` or `--only E`. Both need
+`~/hyperspy-bundle/bin/python`; the two Ronchigram figures build probes with abTEM and take about a
+minute each.
 
 Both write to `aberration_experiment/figs/<ISO-week>/meeting/`. **Every value is read from the run
 output; nothing is typed into the scripts.** Keep it that way — it is why the pages and the data
@@ -183,26 +249,48 @@ explanation next to each one rather than cramming it into the axes.
 
 ---
 
-## Meeting pages
+## The page — one artifact, not two
 
-Two published artifacts. **Update them, do not make new ones**: pass the URL as `url`, read it first,
-and build your update on what comes back.
+The user's instruction for this round is explicit: **one better page, replacing the two.** Today the
+story is split across two links, which means the focus result is explained twice and the argument
+never lands in one place.
 
-| page | URL | covers |
+| page | URL | covers today |
 |---|---|---|
-| Depth Past the Corrector | `https://claude.ai/artifact/NiYCfNo7uFAWFkyUZ5L3SF` | the baseline story: probe, depth vs aperture, focus search, dose |
-| Removing the Six Assumptions | `https://claude.ai/artifact/3TfTwcipbbTxG9PGbeEtqi` | the 2026-09-21 results: focus end to end, in-solver failure, phonons, non-round, thick slab |
+| Depth Past the Corrector | `https://claude.ai/artifact/NiYCfNo7uFAWFkyUZ5L3SF` | the baseline: what the aperture costs, depth against aperture, the focus search, dose |
+| Removing the Six Assumptions | `https://claude.ai/artifact/3TfTwcipbbTxG9PGbeEtqi` | the 2026-09-21 results: focus end to end, the in-solver failure, phonons, non-round |
+
+Build the single page **on the first URL**, so the link the user has already shared keeps working.
+Read it with the Artifact tool first and publish your update to that same `url`. **Do not delete the
+second page** without asking; leave it and tell the user plainly that it is superseded.
+
+What the combined page must do that neither does now:
+
+- **One spine.** What the method delivers, then each assumption removed in turn, ending on where it
+  breaks and what the specification is. The ladder table is the backbone and every figure hangs off
+  a rung of it.
+- **Lead with the specification, not the chronology.** The publishable sentence has the shape *depth
+  to X Å at Y mrad, provided the six-fold residual stays under Z waves and the dose above W*. X, Y
+  and W are measured; **Z is what experiment C delivers**, so it is the headline of this round.
+- **Say each thing once.** Both pages currently explain the focus result.
+- **Every figure keeps its small "how to read this" note**, one quantity per axis, and no figure
+  carries two scales.
+
+Figures available, all regenerated from run output with nothing typed in:
+`analysis/make_meeting_figs.py` gives 1–6 plus `fig7_ronchigram`; `analysis/make_relaxation_figs.py`
+gives A–D plus `figE_nonround_probe`. The two Ronchigram figures are the strongest openers the study
+has: one shows what opening the aperture costs, the other shows that six-fold astigmatism destroys
+the recall while barely changing the probe diameter, which is the most quotable physical point in the
+campaign.
 
 **Embed figures as base64 data URIs inside the HTML.** Publishing them as separate artifact files and
 referencing them by relative path does not render, even though the files list correctly — this cost a
 round trip on 2026-09-21. Budget: page under 16 MB, base64 inflates by a third.
 
-House style of both pages, which the user approved: dense prose in a reading column, numbered
-sections, wide figure blocks with a small "how to read this" note, a status ledger with state chips,
-and tables with the baseline row tinted. Plain language, professor-level audience, no buzzwords, and
-only claims the user could defend out loud.
-
----
+House style, which the user approved: dense prose in a reading column, numbered sections, wide figure
+blocks with a small "how to read this" note, a status ledger with state chips, tables with the
+baseline row tinted. Plain language, professor-level audience, no buzzwords, and only claims the user
+could defend out loud.
 
 ## Where the ladder stands
 
@@ -212,11 +300,11 @@ From `aberration_experiment/results/relaxation_ladder.csv` (α 70 / α 90 where 
 |---|---|---|
 | 0 | known probe, no noise | depth error 0.56 / 0.37 Å; recall 98/82/75 and 95/94/95 % |
 | 1 | focus unknown, corrector known | **no real cost**: 0.59 / 0.44 Å, recall 97/94/79 and 90/83/86 % |
-| 1b | focus fitted inside the solver | **fails**; experiment A is the diagnosis |
+| 1b | focus fitted inside the solver | **fails**; experiment A is the diagnosis, in hand and unanalysed |
 | 2 | counting noise | works to 10⁵ e/Å²; at 10⁴ the matched kernel cannot be measured at all |
 | 3 | thermal vibration | depth error roughly doubles; oxygen recall 10–17 %; species labels untrustworthy |
-| 4 | non-round aberration | 0.6 waves → lead 39 %; 1.2 waves → 7 %. Experiment C finds the threshold |
-| 5 | the 70 Å sample | diverged at the pinned step; experiment B retries gentler |
+| 4 | non-round aberration | 0.6 waves → lead 39 %; 1.2 waves → 7 %. **Experiment C, 0.1–0.45 waves, is in hand and unanalysed — it is the headline number** |
+| 5 | the 70 Å sample | diverged at the pinned step; the gentler retry is on the cluster, nothing down yet |
 | 6 | partial coherence | **not built** |
 | 7 | specimen tilt | **not built** |
 
@@ -267,6 +355,8 @@ Each of these cost real time. They are fixed in the code; do not reintroduce the
 | every a90 result labelled a70 | aperture parsed from a tarball name containing `a70-90` | `relaxation_ladder.py --alpha` |
 | finder crashes with "array must not contain infs or NaNs" | a column detected at the crop edge averaged an empty window | fixed in `find.py`; verified byte-identical on the published noiseless case |
 | aperture-constrained probe fit NaN'd at iteration 1 of engine 2 | the aperture mask was resized by keeping the array centre, which for an unshifted FFT is pure high frequency, so the presolve mask was all zeros and erased the probe | fixed in `load_from_p.m` / `init_solver.m` |
+| six jobs pending forever on `DependencyNeverSatisfied` | a simulation whose output already existed exited 1 in zero seconds, so every reconstruction behind it could never start | `RECON_ONLY=1` when only the solver changed; the driver now refuses up front |
+| `scp` finds nothing although the jobs finished | the tarball name carries the *submission* timestamp, so a batch sent at 22:56 is stamped the previous day | glob the stable part of the name, never the date |
 | driver exits silently with no message | `VAR=$([ test ] && echo x)` fails the substitution when the test is false, and `set -e` kills the script | use an `if`, never that idiom |
 | kernel quality numbers disagree with the pipeline's | `extract_psf` saves `exp(i·phase)`; take the phase first | see `kernel_quality()` in `make_meeting_figs.py` |
 
@@ -275,3 +365,18 @@ the depth axis, which is the quantity being measured) and **one `BETA_LSQ` for e
 comparison** — which is exactly why experiment B changes it deliberately and only for the thick slab,
 and why its result must be compared against a thin-slab leg at the same step size before anything is
 concluded about thickness.
+
+---
+
+## State of the repository
+
+Two commits sit on `main` locally and are **not pushed**. The user's Mac needs `git push origin main`
+(a previous attempt was blocked by a permission prompt), and Blythe then needs `git pull`:
+
+| commit | why it matters |
+|---|---|
+| `e3f2572` campaign: refuse to submit a sim whose output already exists | stops the failure that killed experiment B |
+| `d7bf927` figs: Ronchigram evolution for the round sweep and the six-fold ladder | `fig7_ronchigram` and `figE_nonround_probe`, both already published |
+
+Ask for the push early. The experiment B rerun above works without it, because it uses a flag that
+already exists on Blythe, but nothing else should be submitted until origin and Blythe agree.
