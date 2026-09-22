@@ -69,10 +69,18 @@ defeats the in-solver focus fit. **Judge a probe change on the object, never on 
 | 1.20 waves | 75.8 → 77.2 | 7 → **44 %** | 1.03 → 0.79 Å | 50.0 → 28.8 % |
 
 **Still unexplained.** Even corrected, the residual climbs with the aberration (24 round, 38 at 0.1 waves, 74
-at 0.45) and ignores the probe's orientation. Two checks were on the cluster when this was written —
-`sacct -j 1288170,1288175`: **A**, `nr0_round` at NL 14, the round control from this campaign's own simulation,
-and **B**, the 0.45-wave leg at NL 28, testing whether the reconstruction's own slice thickness sets the floor.
-Read both from `tail -1 <recon dir>/analysis/*/*/*_error_trace.csv`.
+at 0.45) and ignores the probe's orientation.
+
+**Test B answered, and killed one hypothesis: it is NOT the reconstruction's slice thickness.** The 0.45-wave
+leg re-reconstructed at NL 28 instead of 14 gives **738.9 against 74.0** — ten times worse, not better. At
+70 mrad the depth resolution is λ/α² = 4.02 Å, so NL 14 (1.97 Å slices) is already Nyquist; NL 28 is fourfold
+oversampled against what the data constrains, and with `REGLAYER=0` nothing stabilises the extra freedom. **Do
+not raise NL above Nyquist to chase a residual** — it destabilises the solve. The `NL` override exists for
+diagnosis only.
+
+**Test A has not run.** `nr0_round` needs a simulation first (its raw data was deleted in the storage clear-out)
+and the recon job 1288170 was still PENDING on that dependency. It remains the open question: whether the
+round-probe residual of 24 is even comparable, since it came from a different simulation directory.
 
 **Still analytic, and unaffected by any of this**: how fast each residual grows with aperture. A term of order
 n grows as α^(n+1), so with the residuals a real hexapole corrector leaves, every non-round term is over

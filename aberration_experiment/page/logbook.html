@@ -733,9 +733,11 @@
       <b>One thing is still unexplained.</b> Even corrected, the solver's residual climbs steadily with the
       aberration — 24 for a round probe, 38 at 0.1 waves, 74 at 0.45 — and rotating the probe barely moves it.
       Something tracks the aberration's magnitude while ignoring its orientation, and we do not yet know what.
-      Two checks are on the cluster: the round control reconstructed from this campaign's own simulation, to
-      confirm the 24 is comparable at all, and the 0.45-wave leg at 28 depth layers instead of 14, to test
-      whether the reconstruction's own slice thickness sets the floor.
+      One candidate is ruled out. Re-reconstructing the 0.45-wave leg at 28 depth layers instead of 14 gives a
+      residual of 739 against 74 — ten times worse, not better. At this aperture 14 layers is already the
+      Nyquist sampling of the depth resolution, and the extra freedom destabilises a solve that has no layer
+      regularisation by design. The remaining check is the round control reconstructed from this campaign's own
+      simulation, to establish whether the 24 it is measured against is comparable at all.
     </div>
   </section>
 
