@@ -73,11 +73,13 @@ fi
 # CUDA kernels and caches them (default ~/.cupy); on the over-quota $HOME this throws
 # "Disk quota exceeded" and kills the job. A shared cache on $SHARE is concurrency-safe
 # (cupy uses atomic writes), so all tiles can share it.
+export CUDA_CACHE_PATH="${CUDA_CACHE_PATH:-$SHARE/phucrh/.cache/nv}"   # ~/.nv: the CUDA driver's JIT cache
+export TMPDIR="${TMPDIR:-$SHARE/phucrh/.cache/tmp}"
 export CUPY_CACHE_DIR="${CUPY_CACHE_DIR:-$SHARE/phucrh/.cache/cupy}"
 export XDG_CACHE_HOME="${XDG_CACHE_HOME:-$SHARE/phucrh/.cache/xdg}"
 export MPLCONFIGDIR="${MPLCONFIGDIR:-$SHARE/phucrh/.cache/mpl}"
 export NUMBA_CACHE_DIR="${NUMBA_CACHE_DIR:-$SHARE/phucrh/.cache/numba}"
-mkdir -p "${CUPY_CACHE_DIR}" "${XDG_CACHE_HOME}" "${MPLCONFIGDIR}" "${NUMBA_CACHE_DIR}"
+mkdir -p "${CUDA_CACHE_PATH}" "${TMPDIR}" "${CUPY_CACHE_DIR}" "${XDG_CACHE_HOME}" "${MPLCONFIGDIR}" "${NUMBA_CACHE_DIR}"
 
 # Params (defaults = fast test-campaign values; launcher / --export overrides them)
 SLICE_THICKNESS="${SLICE_THICKNESS:-10}"   # Å  (~7 slices through ~70 Å -> fast)

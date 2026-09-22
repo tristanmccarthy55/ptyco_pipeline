@@ -21,6 +21,30 @@ mkdir -p "${REPO_DIR}/logs"
 module purge
 module load MATLAB/2024b_Update_3
 
+# EVERY cache and scratch path off $HOME. Home is a 2 GB fileset here and a GPU job fills it on its
+# own: the CUDA driver JIT-caches compiled kernels into ~/.nv (1.3 GB by 2026-09-22), and MATLAB adds
+# ~/.matlab, a java.log per run and a crash dump per crash. When it fills, writes fail with EDQUOT
+# and the job dies anywhere at all -- on 2026-09-22 a batch of 30 reconstructions died mid-solve
+# reporting "Disk quota exceeded" against a share path that had no quota on it, which cost most of a
+# day to read correctly. These exports were previously inside the PROBE_C1 branch, so the campaign
+# driver's own jobs (which never set PROBE_C1) ran with none of them.
+export CUDA_CACHE_PATH="${CUDA_CACHE_PATH:-$SHARE/phucrh/.cache/nv}"       # the big one: ~/.nv
+export MATLAB_PREFDIR="${MATLAB_PREFDIR:-$SHARE/phucrh/.cache/matlab}"     # ~/.matlab
+export MATLAB_LOG_DIR="${MATLAB_LOG_DIR:-$SHARE/phucrh/.cache/matlab/log}" # java.log, crash dumps
+export TMPDIR="${TMPDIR:-$SHARE/phucrh/.cache/tmp}"
+export MPLCONFIGDIR="${MPLCONFIGDIR:-$SHARE/phucrh/.cache/mpl}"
+export XDG_CACHE_HOME="${XDG_CACHE_HOME:-$SHARE/phucrh/.cache/xdg}"
+export CUPY_CACHE_DIR="${CUPY_CACHE_DIR:-$SHARE/phucrh/.cache/cupy}"
+export NUMBA_CACHE_DIR="${NUMBA_CACHE_DIR:-$SHARE/phucrh/.cache/numba}"
+mkdir -p "${CUDA_CACHE_PATH}" "${MATLAB_PREFDIR}" "${MATLAB_LOG_DIR}" "${TMPDIR}" \
+         "${MPLCONFIGDIR}" "${XDG_CACHE_HOME}" "${CUPY_CACHE_DIR}" "${NUMBA_CACHE_DIR}"
+# Fail loudly and early if $HOME is already full, rather than 20 minutes into a solve.
+if ! touch "${HOME}/.quota_probe_$$" 2>/dev/null; then
+    echo "ABORT: \$HOME is not writable (quota?). Clear it before submitting -- see mmlsquota." >&2
+    exit 1
+fi
+rm -f "${HOME}/.quota_probe_$$"
+
 SIM_BASE="${SIM_BASE:-${REPO_DIR}/sim_out/}"
 # MATLAB starts in ${PTYCHO_DIR} (-sd below), so a RELATIVE SIM_BASE would resolve against ptycho/,
 # not the directory sbatch was run from -- job 1272524 died that way. Anchor it to the submit dir.
@@ -43,10 +67,7 @@ echo "GPU      : ${CUDA_VISIBLE_DEVICES:-<unset>}"
 if [ -n "${PROBE_C1:-}" ]; then
     CONDA_ENV="${CONDA_ENV:-$SHARE/phucrh/envs/abtem}"; PYBIN="${CONDA_ENV}/bin/python"
     [ -x "${PYBIN}" ] || { echo "PREFLIGHT FAIL: abtem env python not found at ${PYBIN}" >&2; exit 1; }
-    # runtime caches off the over-quota $HOME (same as sim/run_sim.slurm)
-    export MPLCONFIGDIR="${MPLCONFIGDIR:-$SHARE/phucrh/.cache/mpl}" XDG_CACHE_HOME="${XDG_CACHE_HOME:-$SHARE/phucrh/.cache/xdg}"
-    export CUPY_CACHE_DIR="${CUPY_CACHE_DIR:-$SHARE/phucrh/.cache/cupy}" NUMBA_CACHE_DIR="${NUMBA_CACHE_DIR:-$SHARE/phucrh/.cache/numba}"
-    mkdir -p "${MPLCONFIGDIR}" "${XDG_CACHE_HOME}" "${CUPY_CACHE_DIR}" "${NUMBA_CACHE_DIR}"
+    # (caches already redirected off $HOME at the top of this script)
     PW_ARG=(--sim-dir "${SIM_BASE}01" --c1="${PROBE_C1}" --out "${SIM_BASE}01/probe_initial.mat")
     [ -n "${PROBE_C3:-}" ] && PW_ARG+=(--c3="${PROBE_C3}")
     [ -n "${PROBE_C5:-}" ] && PW_ARG+=(--c5="${PROBE_C5}")
