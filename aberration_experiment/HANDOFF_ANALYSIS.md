@@ -264,6 +264,16 @@ Build the single page **on the first URL**, so the link the user has already sha
 Read it with the Artifact tool first and publish your update to that same `url`. **Do not delete the
 second page** without asking; leave it and tell the user plainly that it is superseded.
 
+A **third** page exists and is *not* part of that merge — it is not a meeting page:
+
+| page | URL | what it is |
+|---|---|---|
+| Aperture Campaign Logbook | `https://claude.ai/artifact/7ve93UM6yqCmiRcbfNuiJM` | the permanent checkpoint record — what was done, the numbers, the rules, the figure conventions, what is waiting. **Point a new agent here first.** |
+
+Its source is in the repo (`aberration_experiment/page/logbook.html` + `build_page.py`), so rebuild
+it from the current figures and republish to that same `url` at each checkpoint rather than starting
+a fourth page. The meeting page argues the result; the logbook records the state of the work.
+
 What the combined page must do that neither does now:
 
 - **One spine.** What the method delivers, then each assumption removed in turn, ending on where it
