@@ -152,6 +152,7 @@ Each cost real time. They are fixed in the code; do not reintroduce them.
 
 | symptom | cause | rule |
 |---|---|---|
+| **an aberrated probe looks wrong in the h5** | `reconstruction/p/probe_initial` is stored **transposed** relative to `reconstruction/probes`, which is the one the solver used. A round probe is its own transpose so it never showed; a six-fold probe is not, and the untransposed comparison degrades with the aberration (0.95 / 0.82 / 0.69 / 0.57) | compare against `reconstruction/probes`, or transpose. Verified 2026-09-22: the probe the solver used matches the simulated aberrated probe with overlap **1.000000** on every leg |
 | **a leg passes triage and is still junk** | it reported COMPLETED, wrote an h5 and logged no NaN, but its object is saturated: every layer at 1.5 rad phase std with 3 % of pixels wrapped. The 2026-09-21 thick batch was recorded as 5 of 6 failures; it was **6 of 6** | `analysis/triage_recon.py` — every genuine leg measured, including badly degraded ones, wraps **zero** pixels |
 | a comparison figure's panels differ for no reason | one RNG shared across panels advanced on each call, so every Ronchigram panel drew a *different* amorphous film | `make_ronchigram_fig.ronchigram` seeds per call by default; pass a generator only for deliberately different films |
 | figures missing from a published page | images published as separate files, referenced relatively | embed as base64 data URIs (`page/build_page.py`) |

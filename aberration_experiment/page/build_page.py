@@ -33,10 +33,12 @@ SOURCES_BY_TEMPLATE = {
         "FIG_P4":       "2026-W38/paper/fig4_baselines.png",
     },
     "round_2026-09-22.html": {
-        "FIG_PROBE":    "2026-W39/meeting/figE_nonround_probe.png",
-        "FIG_LADDER":   "2026-W39/meeting/figD_nonround.png",
-        "FIG_FOCUS":    "2026-W39/meeting/figA_dfo.png",
-        "FIG_TRAJ":     "2026-W39/meeting/figF_dfo_traj.png",
+        "FIG_PROBE":    "2026-W39/simple/fig_probe.png",
+        "FIG_FOCUS":    "2026-W39/simple/fig_focus.png",
+        "FIG_DOSE":     "2026-W39/simple/fig_dose.png",
+        "FIG_NONROUND": "2026-W39/simple/fig_nonround.png",
+        "FIG_BLAME":    "2026-W39/simple/fig_didfinderfail_0p2.png",
+        "FIG_PSF":      "2026-W39/simple/fig_psf.png",
     },
 }
 

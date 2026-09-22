@@ -127,7 +127,12 @@ def main():
                 import h5py
                 with h5py.File(h5[-1], "r") as f:
                     Pf = np.asarray(f["reconstruction/probes"]).squeeze().astype(np.complex128)
-                    P0 = np.asarray(f["reconstruction/p/probe_initial"]).squeeze().astype(np.complex128)
+                    # p/probe_initial is stored TRANSPOSED relative to reconstruction/probes (MATLAB
+                    # writes the two through different paths). A round probe is its own transpose, so
+                    # this never mattered for the focus work; a six-fold probe is not, and comparing the
+                    # untransposed array makes a perfectly correct probe look progressively wrong as the
+                    # aberration grows (0.95 / 0.82 / 0.69 / 0.57 down the C56 ladder, 2026-09-22).
+                    P0 = np.asarray(f["reconstruction/p/probe_initial"]).squeeze().astype(np.complex128).T
                 if Pf.ndim == 3:                         # several probe modes: the first is the dominant one
                     Pf = Pf[..., 0] if Pf.shape[-1] < Pf.shape[0] else Pf[0]
                 key = (row["alpha"], Pf.shape[0], truth)
