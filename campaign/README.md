@@ -35,6 +35,11 @@ planes, erasing the depth structure), so only α + NL decide what's recovered. N
 `.tsv`; `SLICE` (sim slab) is the global fine default.
 
 ## Campaign B — non-round sweep (`nonround_sweep.tsv`)
+
+> **Results before 2026-09-22 are void.** The reconstruction engine transposed the diffraction data on load
+> without transposing the probe — no effect for a round probe, a 30° rotation for six-fold. Fixed in
+> `ptycho/+engines/+GPU/+initialize/load_from_p.m`; the legs are being re-reconstructed.
+
 Fixed α = 70 mrad, round part balanced as in A, then **non-round terms added on top, worst first**:
 `C56` (6-fold astigmatism — the hexapole-corrector residual, uncancellable by round C1/C3),
 escalated 0.6 → 1.2 → 2.5 waves, then a combined C56+C34 (4-fold) level. All stay BIN=4.

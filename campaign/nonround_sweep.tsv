@@ -4,8 +4,11 @@
 # hexapole-corrector residual (uncancellable by round C1/C3), escalated 0.6->1.2->2.5
 # 2026-09-21: round part moved to the CURRENT a070 balance (C3 -5 um, C1 -60; round_sweep.tsv), so nr0 IS the
 # relaxation ladder's step-0 a70 leg; the C56/C34 magnitudes (waves at 70 mrad) are unchanged.
-# waves, then a combined C56+C34 (4-fold) level. 2026-09-22: 0.6 waves already costs most of the
-# recall (Pb 98% -> 39%), so the ladder below it (0.1-0.45) is where the usable tolerance is. NL=6 (Nyquist of 4A depth res @70mrad).
+# waves, then a combined C56+C34 (4-fold) level. NL=6 (Nyquist of 4A depth res @70mrad).
+# 2026-09-22, IMPORTANT: every recall figure ever measured from these rows is VOID -- the engine transposed the
+# diffraction data on load and not the probe, a 30-degree rotation for six-fold (invisible for a round probe).
+# Fixed in ptycho/+engines/+GPU/+initialize/load_from_p.m. The rows themselves, and the sims made from them,
+# are correct; only the reconstructions were wrong, and they are being redone RECON_ONLY.
 # aber_json overrides c3/c5. All BIN=4. Sim slab fixed 0.9 A (run_campaign SLICE default).
 label	alpha	c5	c3	c1	df_perf	bin	nl	aber_json	note
 nr0_round	70	1e7	-5e4	-60	-30	4	6	-	round-only baseline (=round a070)

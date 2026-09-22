@@ -216,6 +216,11 @@ low dose. The `_dose<tag>` directory naming means `RECON_ONLY` must be pointed a
 
 ### Non-round aberrations (pulled forward from "after this phase", 2026-09-21)
 
+> **2026-09-22: every non-round result produced before this date is VOID.** The engine transposed the
+> diffraction data on load (`custom_data_flip`) and did not transpose the probe with it, which is invisible for
+> a round probe and a 30° rotation for a six-fold one. Fixed in `load_from_p.m`; all non-round legs are being
+> re-reconstructed `RECON_ONLY`. The plan below stands; the numbers any earlier run produced do not.
+
 `campaign/nonround_sweep.tsv` re-based on the current a070 balance (C3 −5 µm, C1 −60), so its `nr0`
 row *is* the ladder's step-0 a70 leg; the C56/C34 magnitudes are unchanged (0.6 / 1.2 / 2.5 waves of
 six-fold astigmatism, then 1.2 w six-fold + 1.2 w four-fold). Run through the known-probe pipeline by

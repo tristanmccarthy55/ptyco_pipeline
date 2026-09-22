@@ -1,4 +1,4 @@
-# Handoff — the tolerance is below the ladder; bracket it, then finish the relaxations
+# Handoff — the non-round results were wrong; the engine is fixed and the campaign is re-running
 
 Written 2026-09-22, after the round-two analysis. **Read `HANDOVER.md`** for the experiment itself,
 then `NEXT_PHASE.md` for the plan and `PSF_KERNELS.md` for the kernel rules. The two published pages
@@ -33,120 +33,85 @@ to the **same** URL. One page. Never start another for an update.
 
 ## Where it stands
 
-**WITHDRAWN 2026-09-22 — read the first row of *Traps* before anything else.** Every non-round reconstruction
-was made with a mis-oriented probe. The six-fold limit below is void; the loader is fixed; the decisive
-re-run is one ten-minute job (step 0 below), then every non-round leg is redone `RECON_ONLY`.
+**Two results stand from the 2026-09-22 round, and one does not.**
 
-~~**The deliverable is a specification, and it is tighter than the ladder that measured it.**~~ At
-70 mrad, six-fold astigmatism must stay below **0.1 waves** at the aperture edge (C₅₆ < 10 µm) — and
-that is an upper bound, not the tolerance, because 0.1 waves is the smallest residual tested and it
-already fails: lead recall 98 → 80 %, oxygen 75 → 48 %, depth error 0.56 → 0.76 Å, species confusion
-1.3 → 12.4 % against a 5 % health threshold. A real hexapole tableau leaves C₅₆ of order 1 mm, about
-ten waves, so the requirement is ~100× better than as-left, and it tightens with aperture (0.1 waves
-is C₅₆ < 2.2 µm at 90 mrad).
+**Valid — an unknown focus costs nothing.** An outer search over fixed trial probes, reading the solver's own
+mismatch as the objective, puts its minimum on the true focus at both apertures (−2 ± 3 Å at 70 mrad, +2 ± 1 Å
+at 90; the ±2 Å floor is the focus/depth degeneracy and is real). Reconstructing at the fitted focus costs
+nothing measurable: depth error 0.56 → 0.59 Å at 70 mrad, 0.37 → 0.44 at 90. Fifty iterations rank the trials
+as two hundred do, which is what makes it affordable. The tidier alternative — the solver fitting focus as its
+one free probe parameter — is **closed as a failure**: at 90 mrad the focus never moves by 1 Å from starts 32 Å
+out, at 70 mrad it moves the wrong way to about 21 Å below the truth whatever it started from, and neither
+freezing the object nor capping the step changes it.
 
-**Closed this round.** Fitting focus inside the solver: at 90 mrad the focus does not move by 1 Å from
-starts up to 32 Å out, object free or frozen; at 70 mrad it moves but never toward the truth; a
-0.05 Å/iteration cap does not stop the drift. The outer search over trial probes is the permanent
-answer. Say so plainly rather than leaving it open.
+**Valid — shot noise behaves.** 10⁷ and 10⁶ e/Å² hold up, 10⁵ works with the light atoms going, and at 10⁴ no
+single-atom reference can be measured from the data at all, so the finder never runs. Numbers in the ladder,
+pictures on the page.
 
-**Answered this round.** Is the recall collapse the finder's thresholds? For non-round, partly — at
-0.1 waves a relaxed quality cut brings lead back 80 → 89 % and oxygen 48 → 69 %, while the round-probe
-control barely moves, so the recovery is real. For phonons, not at all: the identical change leaves
-those numbers untouched to two decimal places. Tables in `results/2026-W39/`.
+**VOID — everything non-round.** Every reconstruction with a non-round probe ever made in this campaign used a
+probe rotated 30° from the one the data was made with (first row of *Traps*). That covers the August 2026
+sweep, the 2026-09-21 escalation and the 2026-09-22 threshold ladder. A "six-fold tolerance below 0.1 waves"
+was published on 2026-09-22 and withdrawn the same day. **The campaign currently has no measurement of how much
+non-round aberration the method tolerates.** The engine is fixed, the simulations were never affected, and
+every leg is re-reconstructing; see *Your job*.
 
-### Ladder — `aberration_experiment/results/relaxation_ladder.csv`, 20 rows
-
-| step | relaxation | outcome |
-|---|---|---|
-| 0 | known probe, no noise | depth error 0.56 / 0.37 Å; recall 98/82/75 and 95/94/95 % |
-| 1 | focus unknown, corrector known | **no real cost**, via an outer search over trial probes |
-| 1b | focus fitted inside the solver | **fails, and now diagnosed** — closed |
-| 2 | counting noise | works to 10⁵ e/Å²; at 10⁴ the matched kernel cannot be measured |
-| 3 | thermal vibration | depth error roughly doubles; **not a finder artefact** |
-| 4 | non-round (six-fold) | **tolerance below 0.1 waves** — the smallest tested, and it fails |
-| 4b | non-round, other orders | rows written, **not yet run** — the next submission |
-| 5 | the 70 Å sample | running on the cluster now; analysis path built and waiting |
-| 6 | partial coherence | **not built** |
-| 7 | specimen tilt | **not built** |
-
----
+**Still analytic, and unaffected by any of this**: how fast each residual grows with aperture. A term of order
+n grows as α^(n+1), so with the residuals a real hexapole corrector leaves, every non-round term is over
+0.1 waves by 70 mrad and the campaign's own six-fold is ten waves there. `campaign/aberration_waves.py` is the
+one definition of "waves at the edge" and draws the figure. Note that the assumed instrument opened to 70 mrad
+has a 25 Å probe against a 20 Å scan field — the geometry that ended the round sweep at 110 mrad — so it needs
+no simulation to fail.
 
 ## Your job, in order
 
-### 0. First: confirm the fix with one job, then redo every non-round reconstruction
+### 0/1. The campaign is on the cluster (submitted 2026-09-22, after the fix)
 
-The 0.45-wave lab leg is the most sensitive. Under the old engine it plateaued at a Fourier error of
-71.2 (the round probe reaches 22). Re-reconstruct it alone with the fixed loader:
+The queue was cleared and the whole non-round campaign resubmitted against the corrected engine, in four
+blocks. The first is a single job with no dependency, so it reaches a GPU first and reports in about
+fifteen minutes; **if it does not come back near 22, stop and cancel the rest** — the diagnosis is wrong
+and nothing else is worth running.
 
 ```bash
 cd /springbrook/share/physics/phucrh/ptyco_baseline/ptyco_pipeline && git pull
-TSV=campaign/nonround_sweep.tsv LABELS=nr0p45_C56_0p45w MODES=lab RECON_ONLY=1 bash campaign/run_thin_atomfind.sh
-```
-Ten minutes. The log must show `custom_data_flip applied to the PROBE`. Read the last line of the
-`*_error_trace.csv` beside the new h5: if it is near 22 the fix is confirmed and the six-fold cost was
-the bug; if it is still near 71 the orientation was not the mechanism and this handoff is wrong about it.
-Then, once confirmed, every non-round leg at 70 mrad, reusing the sims:
+grep -c "custom_data_flip applied to the PROBE" ptycho/+engines/+GPU/+initialize/load_from_p.m   # must print 1
 
-```bash
+# 1. confirmation: the 0.45-wave leg alone, existing sim, fixed engine. 71.2 before; ~22 = confirmed
+TSV=campaign/nonround_sweep.tsv LABELS=nr0p45_C56_0p45w MODES=lab RECON_ONLY=1 bash campaign/run_thin_atomfind.sh
+
+# 2. every already-simulated non-round leg, reconstructed again: 8 labels x 3 legs, ~10 min each
 TSV=campaign/nonround_sweep.tsv RECON_ONLY=1 \
 LABELS="nr0p1_C56_0p1w nr0p2_C56_0p2w nr0p3_C56_0p3w nr0p45_C56_0p45w nr1_C56_0p6w nr2_C56_1p2w nr3_C56_2p5w nr4_C56_C34" \
   bash campaign/run_thin_atomfind.sh
-```
-The new sweeps of step 1 were submitted under the old engine on 2026-09-22 if they went in before the
-pull; their simulations are good and only their reconstructions need redoing the same way.
 
-### 1. Submit the next sweep (rows are written and probe-checked; nothing else is blocked on it)
-
-Two blocks, in this order. Both go through the known-probe driver by label; every probe was built through
-abTEM from its own row and fits its reconstruction window.
-
-**Block A — 70 mrad, binning 4, 27 reconstructions, ~10 min each.** Three rungs bracket six-fold from
-beneath (0.02, 0.04, 0.07 waves); six put one term per order a hexapole actually leaves (two-fold C12,
-three-fold C23, three-lobe C43) at 0.1 and 0.3 waves, where six-fold is already measured.
-
-```bash
-cd /springbrook/share/physics/phucrh/ptyco_baseline/ptyco_pipeline && git pull
-TSV=campaign/nonround_sweep.tsv \
+# 3. bracketing rungs + the other orders at 70 mrad: sim + recon, 9 labels x 3 legs.
+#    OVERWRITE=1 because the cancelled batch may have left partial sims in those dirs.
+TSV=campaign/nonround_sweep.tsv OVERWRITE=1 \
 LABELS="nr0p02_C56_0p02w nr0p04_C56_0p04w nr0p07_C56_0p07w nrA1_C12_0p1w nrA1_C12_0p3w nrA2_C23_0p1w nrA2_C23_0p3w nrD4_C43_0p1w nrD4_C43_0p3w" \
   bash campaign/run_thin_atomfind.sh
-ls /springbrook/share/physics/        # nothing new of ours in the group root
+
+# 4. six-fold at 90 mrad: sim + recon, 3 labels x 3 legs at BIN 2, ~1 h per recon
+TSV=campaign/nonround_sweep.tsv OVERWRITE=1 LABELS="nr90_C56_0p1w nr90_C56_0p3w nr90_C56_10um" bash campaign/run_thin_atomfind.sh
 ```
-
-**Block B — six-fold at 90 and 100 mrad, binning 2.** The question is whether the limit loosens where the
-probe is already large. Same waves as the measured 70 mrad rungs (0.1 and 0.3), plus the 70 mrad 0.1-wave
-value (C56 = 10 µm) carried up unchanged — the same microscope opened further. 90 mrad first: nine
-reconstructions at about an hour each. The 100 mrad rows cost ~7.5 h per reconstruction (nine of them),
-so fire them only once the 90 mrad result says it is worth it.
-
-```bash
-TSV=campaign/nonround_sweep.tsv LABELS="nr90_C56_0p1w nr90_C56_0p3w nr90_C56_10um" bash campaign/run_thin_atomfind.sh
-# later, if 90 mrad is interesting:
-TSV=campaign/nonround_sweep.tsv LABELS="nr100_C56_0p1w nr100_C56_0p3w nr100_C56_10um" bash campaign/run_thin_atomfind.sh
-```
-
-Pull either block the same way (each submission packs its own tarball, named after its labels):
 ```bash
 mkdir -p ~/Desktop/nr_round3 && cd ~/Desktop/nr_round3
 scp -O 'phucrh@blythe.scrtp.warwick.ac.uk:/springbrook/share/physics/phucrh/atomfind_results_nr*_2026*.tgz' .
 for t in *.tgz; do d="${t%.tgz}"; mkdir -p "$d"; tar xzf "$t" -C "$d"; done
+tail -1 */recon_af_nr0p45_C56_0p45w_lab_NL14/analysis/*/*/*_error_trace.csv
 ```
 
-**Not recommended, but written: `nrARM_a70`**, the instrument the campaign has assumed all along (C56 = 1 mm,
-C12 = 0.5 nm on the planner's round balance) run as-is at 70 mrad. Its probe is 25 Å across (d99 37 Å), so
-it needs binning 1 (`--mem 175G`, 24 h walltime) and a wider scan (`WIN=34`), and even then scan/d90 = 1.4
-— the geometry that ended 110 mrad. Three legs at ~24 h each to confirm a failure the geometry already
-predicts. If it is run: `TSV=campaign/nonround_sweep.tsv LABELS=nrARM_a70 WIN=34 bash campaign/run_thin_atomfind.sh`.
+About twenty GPU-hours over three cards. The 100 mrad rows (`nr100_C56_0p1w nr100_C56_0p3w nr100_C56_10um`)
+are written but cost ~7.5 h per reconstruction; fire them only if 90 mrad is interesting.
 
-Analyse every block exactly as round two did: `analysis/run_0922_atomfind.sh` is the pattern (kernels
-from each rung's own grids, then the blind finder on its lab recon, `--zdrop 2` at NL14, `3` at NL23,
-`4` at NL28), then `analysis/relaxation_ladder.py --step 4 --alpha <A>`, then
-`analysis/make_simple_figs.py`. Triage with `analysis/triage_recon.py` first.
+**Analysing it.** Triage first (`analysis/triage_recon.py`), then `analysis/run_0922_atomfind.sh` is the
+pattern — matched kernels from each leg's own Pb/Ti grids (`--zdrop 2` at NL14, `3` at NL23), then the blind
+finder on its lab recon — then `analysis/relaxation_ladder.py --step 4 --alpha <A>` (it replaces rows on
+`(step, label, alpha)`, so the void rows are overwritten in place), then `analysis/make_simple_figs.py`.
+Delete the `VOID` prefix from a note only when that row has actually been remeasured.
 
-**What the answers look like.** Block A: if 0.1 waves of two-fold costs far less than 0.1 waves of six-fold,
-the tolerance depends on order and the specification is written per term. Block B: if 90 mrad tolerates
-0.3 waves where 70 did not, the limit loosens with aperture and the specification is per aperture in
-waves, not one number; if it does not, C56 at 90 mrad must be under 2.2 µm and at 100 under 1.2 µm.
+**What the answers mean.** If 0.1 waves of two-fold costs far less than 0.1 waves of six-fold, the tolerance
+depends on order and the specification must be written per term. If 90 mrad tolerates what 70 did not, it
+loosens with aperture and the specification is per aperture. If the whole ladder now sits near the round
+baseline, six-fold was never the problem and the earlier collapse was entirely the bug.
 
 ### 2. Read out experiment B when its tarball lands
 

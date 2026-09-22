@@ -108,9 +108,11 @@ def growth_figure(out, alphas=(30, 40, 50, 60, 70, 80, 90, 100), limit=0.1):
     for y, lab, col in ends:
         ax.annotate(lab, (a[-1], 10 ** y), xytext=(5, 0), textcoords="offset points",
                     fontsize=8, color=col, va="center")
-    ax.axhline(limit, color="#00795c", lw=1.8)
-    ax.annotate(f"{limit:g} waves: the six-fold limit measured at 70 mrad", (min(alphas) + 1, limit),
-                xytext=(0, 5), textcoords="offset points", fontsize=9, color="#00795c")
+    # A REFERENCE line, not a measured tolerance. The "below 0.1 waves" figure this line used to carry
+    # was withdrawn on 2026-09-22 (mis-oriented probe); the campaign has no measured limit at present.
+    ax.axhline(limit, color="#898781", lw=1.4, ls=(0, (5, 4)))
+    ax.annotate(f"{limit:g} waves, for scale — no tolerance has been measured", (min(alphas) + 1, limit),
+                xytext=(0, 5), textcoords="offset points", fontsize=9, color="#52514e")
     ax.axvline(30, color="#898781", lw=1, ls=(0, (3, 3)))
     ax.annotate("design aperture", (30.6, 0.012), fontsize=8.5, color="#52514e", ha="left", va="bottom")
     ax.set_yscale("log"); ax.set_ylim(0.01, 500); ax.set_xlim(min(alphas), max(alphas) + 18)
@@ -120,8 +122,9 @@ def growth_figure(out, alphas=(30, 40, 50, 60, 70, 80, 90, 100), limit=0.1):
     ax.set_title("How every non-round residual grows as the corrector is opened past its design aperture",
                  loc="left", fontsize=11, pad=10)
     ax.text(0.01, -0.16, "Blue: what the hardware leaves behind. Grey: what the operator tunes out at the design "
-            "aperture, and which drifts. Red: six-fold, the term measured in this campaign. Values are the "
-            "campaign's own assumed instrument plus published order-of-magnitude residuals, not a measured tableau.",
+            "aperture, and which drifts. Red: six-fold, the term this campaign has been testing. Values are the "
+            "campaign's own assumed instrument plus published order-of-magnitude residuals, not a measured tableau. "
+            "This figure is analytic: it depends on no reconstruction.",
             transform=ax.transAxes, fontsize=8.5, color="#52514e", va="top", wrap=True)
     ax.grid(True, which="both", color="#e1e0d9", lw=0.6)
     fig.tight_layout()
