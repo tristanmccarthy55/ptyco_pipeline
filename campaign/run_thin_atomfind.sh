@@ -158,6 +158,16 @@ for a in $ROWS; do
             [ -e "${D}/01/data_dp.hdf5" ] || { echo "  a${a} ${m}: ${D}/01 missing, skip" >&2; continue; }
             S=""
         else
+            # run_sim.slurm refuses to overwrite a finished sim (exit 1, zero seconds), and every recon
+            # waiting on it is then DependencyNeverSatisfied. On 2026-09-22 the whole 70 A retry died
+            # this way after 90 min in the queue: the sims already existed, only BETA_LSQ had changed.
+            # Catch it here, on the login node, instead of on the GPU.
+            if [ -e "${D}/01/data_dp.hdf5" ] && [ "${OVERWRITE:-0}" != "1" ]; then
+                echo "ERROR: ${D}/01/data_dp.hdf5 already exists -- the sim would be refused and every" >&2
+                echo "       recon left stuck on an unsatisfiable dependency." >&2
+                echo "       Re-running only the solver? RECON_ONLY=1.  Re-simulating? OVERWRITE=1." >&2
+                exit 1
+            fi
             S=$(sim_job "$D" "$alpha" "$bin" "$c3" "$c1" "$m" "$aj")
         fi
         R=$(recon_job "${leg}_${m}${SFX}" "$D" "$bin" "$nl" "$S")
