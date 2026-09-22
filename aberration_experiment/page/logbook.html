@@ -405,7 +405,7 @@
         where each part of the aperture throws its rays. Bottom right: probe size and Ronchigram flatness
         versus aperture.
         <div class="howto">
-          <b>How to read this</b><br>
+          <b>Reading it</b><br>
           The green band in the ray-displacement panel is ±2 Å — rays landing inside it make a 4 Å probe.
           At 50 mrad the whole aperture lands inside it; by 120 mrad the edge rays land 56 Å out. In the
           bottom-right panel the two curves cross what they are each measured against: probe size against the
@@ -477,7 +477,7 @@
         Atoms recovered and depth error against aperture, per species, with the diffraction depth resolution
         δz = λ/α² for reference.
         <div class="howto">
-          <b>How to read this</b><br>
+          <b>Reading it</b><br>
           Hollow markers mean atomfind's species-confusion check failed for that leg — the split between Pb,
           Ti and O there is label swapping, not a physical difference in how well each is found. The depth
           error curve sitting an order of magnitude below δz is expected and is not a claim of super-resolution:
@@ -493,7 +493,7 @@
         The reconstructions themselves: in-plane phase and two depth (x–z) sections per aperture, equal aspect,
         with blind detections drawn as rings over the known atom positions as dots.
         <div class="howto">
-          <b>How to read this</b><br>
+          <b>Reading it</b><br>
           A ring with no dot under it is a spurious atom; a dot with no ring is a miss; a ring offset from its
           dot is a placement error, with the bar through it the calibrated 95 % depth interval. Drawing both
           means a failure mode cannot hide behind a summary statistic. At low aperture a column is one
@@ -567,7 +567,7 @@
         The focus search. Left and middle: the solver's mismatch to the data for each trial focus, 50 and 200
         iterations, with the best fit marked. Right: why the answer has a ±2 Å floor.
         <div class="howto">
-          <b>What to look at</b><br>
+          <b>Reading it</b><br>
           The minimum lands on the true focus: −2 ± 3 Å at 70 mrad, +2 ± 1 Å at 90. The right-hand panel is
           the reason it cannot be sharper — a focus error and an equal shift of the sample in depth give the
           same data, so the bottom of the valley is flat over a few ångström. Fifty iterations rank the trials
@@ -580,7 +580,7 @@
       <figcaption>
         <span class="fig-name">analysis/make_relaxation_figs.py → figs/2026-W39/meeting/figB_step1.png</span>
         What the search costs in the final numbers: the known probe against the fitted focus, at both apertures.
-        <div class="howto"><b>What to look at</b><br>The pairs are the same to within a few points. An unknown focus is not a problem.</div>
+        <div class="howto"><b>Reading it</b><br>The pairs are the same to within a few points. An unknown focus is not a problem.</div>
       </figcaption>
     </figure>
   </section>
@@ -602,7 +602,7 @@
       <figcaption>
         <span class="fig-name">analysis/make_simple_figs.py → figs/2026-W39/simple/fig_focus.png</span>
         Every in-solver focus fit: what it was given against what it ended with.
-        <div class="howto"><b>What to look at</b><br>A working fit lands on the green line. Nothing does. Points on the diagonal did not move at all, which is every run at 90 mrad.</div>
+        <div class="howto"><b>Reading it</b><br>A working fit lands on the green line. Nothing does. Points on the diagonal did not move at all, which is every run at 90 mrad.</div>
       </figcaption>
     </figure>
   </section>
@@ -642,7 +642,7 @@
         <span class="fig-name">analysis/make_simple_figs.py → figs/2026-W39/simple/fig_dose.png</span>
         Shot noise: the same row of columns, the same slice, at 70 mrad, from noiseless down to 10<sup>4</sup> e/Å².
         Dots are where the atoms really are; rings are the atoms the finder reported.
-        <div class="howto"><b>What to look at</b><br>Titanium and apical oxygen alternate every 1.95 Å down each column, so a working reconstruction beads each column. Follow one column across and watch the beads smear. In the last panel the columns are gone.</div>
+        <div class="howto"><b>Reading it</b><br>Titanium and apical oxygen alternate every 1.95 Å down each column, so a working reconstruction beads each column. Follow one column across and watch the beads smear. In the last panel the columns are gone.</div>
       </figcaption>
     </figure>
   </section>
@@ -715,7 +715,7 @@
         The probe as six-fold astigmatism is added. Top: the Ronchigram an operator would tune on, one identical
         patch of film in every panel. Bottom: the probe at the specimen. Pure optics — no reconstruction is
         involved, so the bug above does not touch this figure.
-        <div class="howto"><b>What to look at</b><br>The quoted diameter holds 90 % of the intensity and barely
+        <div class="howto"><b>Reading it</b><br>The quoted diameter holds 90 % of the intensity and barely
           changes: 4.0 Å for the first three. What changes is the six-pointed tail. The Ronchigrams barely change
           either, which is the practical problem — at the microscope there is almost nothing to tune against.
           It is also why a 30° rotation of this probe could sit undetected in the pipeline for months.</div>
@@ -727,7 +727,7 @@
         <span class="fig-name">analysis/make_simple_figs.py → figs/2026-W39/simple/fig_psf.png</span>
         The single-atom reference the finder matches against, measured rather than modelled. This one is from the
         round 70 mrad leg and is unaffected.
-        <div class="howto"><b>What to look at</b><br>A grid of lead atoms is simulated and reconstructed through
+        <div class="howto"><b>Reading it</b><br>A grid of lead atoms is simulated and reconstructed through
           exactly the same probe, box and solver settings as the data, and the blobs averaged. Sharp across the
           beam, stretched along it. Every leg gets its own.</div>
       </figcaption>
@@ -796,14 +796,14 @@
 
   <section class="wide">
     <figure>
-      <img src="{{FIG_GROWTH}}" alt="Waves at the aperture edge against aperture for every non-round term of the assumed instrument, on a logarithmic scale, with a dashed 0.1-wave reference line.">
+      <img src="{{FIG_GROWTH}}" alt="Waves at the aperture edge against aperture for every non-round term of the assumed instrument, on a logarithmic scale.">
       <figcaption>
         <span class="fig-name">campaign/aberration_waves.py --fig → figs/2026-W39/simple/fig_growth.png</span>
         Every non-round residual of the assumed instrument, in waves at the aperture edge, as the aperture opens.
-        <div class="howto"><b>What to look at</b><br>A term of order n grows as the aperture to the power
+        <div class="howto"><b>Reading it</b><br>A term of order n grows as the aperture to the power
           n + 1, so the fifth-order terms are the steepest. The campaign's own six-fold is 0.06 waves at the
-          design aperture, 1.3 waves at 50 mrad and 10 at 70. The dashed line at 0.1 waves is a scale marker
-          only — the measured tolerance that briefly stood there was withdrawn (5.3) and is being remeasured.
+          design aperture, 1.3 waves at 50 mrad and 10 at 70. No tolerance line is drawn: the one that briefly
+          stood here was withdrawn (5.3) and the campaign has no measured limit until the re-run returns.
           Blue lines are what the hardware leaves behind; grey ones the operator tunes out at the design aperture
           and which then drift. The three-lobe term, blue and topmost, is as large as six-fold in a real tableau
           and has never been tested. Nothing in this figure depends on a reconstruction.</div>

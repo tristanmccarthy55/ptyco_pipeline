@@ -81,7 +81,7 @@ ASSUMED_TABLEAU = {
 }
 
 
-def growth_figure(out, alphas=(30, 40, 50, 60, 70, 80, 90, 100), limit=0.1):
+def growth_figure(out, alphas=(30, 40, 50, 60, 70, 80, 90, 100)):
     """Every non-round term of the assumed instrument, in waves at the edge, against aperture."""
     import numpy as np
     import matplotlib
@@ -108,11 +108,8 @@ def growth_figure(out, alphas=(30, 40, 50, 60, 70, 80, 90, 100), limit=0.1):
     for y, lab, col in ends:
         ax.annotate(lab, (a[-1], 10 ** y), xytext=(5, 0), textcoords="offset points",
                     fontsize=8, color=col, va="center")
-    # A REFERENCE line, not a measured tolerance. The "below 0.1 waves" figure this line used to carry
-    # was withdrawn on 2026-09-22 (mis-oriented probe); the campaign has no measured limit at present.
-    ax.axhline(limit, color="#898781", lw=1.4, ls=(0, (5, 4)))
-    ax.annotate(f"{limit:g} waves, for scale — no tolerance has been measured", (min(alphas) + 1, limit),
-                xytext=(0, 5), textcoords="offset points", fontsize=9, color="#52514e")
+    # No tolerance line. The "below 0.1 waves" figure one used to carry was withdrawn on 2026-09-22
+    # (mis-oriented probe) and drawing any horizontal limit here invites it being read as measured.
     ax.axvline(30, color="#898781", lw=1, ls=(0, (3, 3)))
     ax.annotate("design aperture", (30.6, 0.012), fontsize=8.5, color="#52514e", ha="left", va="bottom")
     ax.set_yscale("log"); ax.set_ylim(0.01, 500); ax.set_xlim(min(alphas), max(alphas) + 18)
