@@ -180,12 +180,11 @@ def fig7_ronchigram(a):
     mrf = _load_mod("make_ronchigram_fig", os.path.join(HERE, "make_ronchigram_fig.py"))
     plan = {r["alpha"]: r for r in read_round_sweep()}
     show = [50, 70, 90, 100]
-    rng = np.random.default_rng(3)
     fig, axes = plt.subplots(2, len(show), figsize=(12.4, 6.6))
     for i, alpha in enumerate(show):
         r = plan[alpha]; c3 = r["c3_um"] * 1e4
         P = build_probe(alpha, {"C30": c3, "C50": 1e7}, r["c1"])
-        R, hr = mrf.ronchigram(P, 140.0, alpha, rng)
+        R, hr = mrf.ronchigram(P, 140.0, alpha)
         ax = axes[0, i]
         ax.imshow(R, cmap="gray", extent=[-hr, hr, -hr, hr], interpolation="bilinear")
         ax.add_artist(plt.Circle((0, 0), alpha, fill=False, color="#ffd24a", lw=1.2, ls=":"))

@@ -4,7 +4,8 @@
 @brief Stage 2.5 check: did the probe update, started from the corrector's C3/C5 and an offset C1,
        converge to the true probe? Per trial, from the recon h5 and the in-job probe record.
 
-For every recon_<camp>_a<A>_<mode>_df<C1>[_rN][_ps<P>[x<P2>]]_n<NITER>_NL<NL> dir under the given roots:
+For every recon_<camp>_a<A>_<mode>_df<C1>[_rN][_ps<P>[x<P2>][dfo[o<OS2>][c<cap>]]]_n<NITER>_NL<NL> dir
+under the given roots:
   - probe_alive     final probe finite, with its power not collapsed (ratio to the start probe)
   - ov_start/final  overlap |<P, P_true>| of the start and final probe with the TRUE probe, invariant to a
                     real-space shift and a global phase (a shift is a gauge the object can absorb)
@@ -31,8 +32,11 @@ import numpy as np
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 REPO = os.path.dirname(HERE)
+# The defocus-only tag is dfo[o<OSTART2>][c<cap>] (campaign/run_c1_search.sh): "oinf" = object frozen in the
+# full engine, "c0.05" = focus step capped at 0.05 A/iteration. Both appeared on 2026-09-22.
 NAME_RE = re.compile(r"recon_(?P<camp>[A-Za-z0-9]+)_a(?P<alpha>\d+)_(?P<mode>lab|Pb|Ti)_df(?P<c1>-?\d+(?:\.\d+)?)"
-                     r"(?:_r(?P<rep>\d+))?(?:_ps(?P<ps>\d+)(?:x(?P<ps2>\d+))?(?P<dfo>dfo)?)?_n(?P<niter>\d+)_NL(?P<nl>\d+)$")
+                     r"(?:_r(?P<rep>\d+))?(?:_ps(?P<ps>\d+)(?:x(?P<ps2>\d+))?"
+                     r"(?P<dfo>dfo)?(?:o(?P<os2>[A-Za-z0-9]+))?(?:c(?P<cap>[0-9.]+))?)?_n(?P<niter>\d+)_NL(?P<nl>\d+)$")
 
 
 def _load(name, path):
@@ -76,6 +80,22 @@ class ProbeModel:
         return self.c1_ref + float(best), float(ov[i]), bool(i in (0, len(d) - 1))
 
 
+def variant_label(m):
+    """How the probe was treated, from the directory name. The 2026-09-22 batch added two
+    variants of the defocus-only update: the object frozen in the full engine (OBJECT_START2=inf,
+    tag "oinf") and a cap on the focus step (PROBE_DFO_MAX_STEP, tag "c<cap>")."""
+    if not m["ps"]:
+        return "fixed"
+    kind = "C1-only" if m["dfo"] else "full-pixel"
+    where = f"{m['ps']}" + (f"+{m['ps2']}" if m["ps2"] else " (presolve only)")
+    extra = []
+    if m["os2"]:
+        extra.append("object frozen" if m["os2"].lower().startswith("inf") else f"object from {m['os2']}")
+    if m["cap"]:
+        extra.append(f"step <= {m['cap']} A")
+    return f"{kind} {where}" + (", " + ", ".join(extra) if extra else "")
+
+
 def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--root", nargs="+", required=True)
@@ -93,8 +113,7 @@ def main():
                     continue
                 h5 = sorted(glob.glob(os.path.join(d, "analysis", "**", "*_recons.h5"), recursive=True))
                 pj = os.path.join(d, "01", "probe_initial.json")
-                variant = "fixed" if not m["ps"] else (("C1-only " if m["dfo"] else "") + f"update {m['ps']}"
-                                                       + (f"+{m['ps2']}" if m["ps2"] else " (presolve only)"))
+                variant = variant_label(m)
                 row = dict(alpha=int(m["alpha"]), mode=m["mode"], variant=variant, c1_start=float(m["c1"]),
                            rep=int(m["rep"] or 1), niter=int(m["niter"]), dir=d)
                 log = sorted(glob.glob(os.path.join(d, "slurm_*.out")))
@@ -136,7 +155,7 @@ def main():
         raise SystemExit(f"no recon_{{{','.join(a.camp)}}}_* dirs under {a.root}")
     rows.sort(key=lambda r: (r["alpha"], r["variant"], r["c1_start"], r["rep"]))
     f = lambda v, fmt: "-" if v is None or (isinstance(v, float) and not np.isfinite(v)) else format(v, fmt)
-    print(f"{'alpha':>5} {'variant':<26} {'dC1 start':>9} {'status':<10} {'error':>8} {'ov start':>8} {'ov final':>8} "
+    print(f"{'alpha':>5} {'variant':<34} {'dC1 start':>9} {'status':<10} {'error':>8} {'ov start':>8} {'ov final':>8} "
           f"{'dC1 final':>9} {'ov@C1':>6} {'slab (A)':>12}")
     for r in rows:
         line = (f"{r['alpha']:>5} {r['variant']:<26} {f(r.get('dc1_start'), '+.0f'):>9} {r['status']:<10} "

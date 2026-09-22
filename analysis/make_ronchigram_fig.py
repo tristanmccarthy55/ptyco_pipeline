@@ -117,8 +117,19 @@ def smallest(a):
     return best
 
 
-def ronchigram(P, L, a, rng):
-    """|FT(probe x amorphous film)|^2, cropped to +-1.15 alpha. Film: 0.5 A-correlated weak phase."""
+RONCHI_SEED = 3          # ONE film for every panel of every comparison figure (see below)
+
+
+def ronchigram(P, L, a, rng=None):
+    """|FT(probe x amorphous film)|^2, cropped to +-1.15 alpha. Film: 0.5 A-correlated weak phase.
+
+    rng defaults to a FIXED seed, so every panel of a comparison figure is the same piece of
+    amorphous film and the only thing that differs between panels is the probe. Passing one shared
+    generator across panels (what the figures used to do) advanced it on every call, so each panel
+    showed a different specimen -- a confound in a figure whose entire claim is "only the
+    aberration changed". Pass an explicit Generator only when several DIFFERENT films are wanted.
+    """
+    rng = np.random.default_rng(RONCHI_SEED) if rng is None else rng
     N = P.shape[0]
     g = gaussian_filter(rng.standard_normal((N, N)), 0.5 / (L / N)); g /= g.std()
     R = np.abs(np.fft.fftshift(np.fft.fft2(P * np.exp(0.6j * g))))**2
@@ -130,7 +141,6 @@ def ronchigram(P, L, a, rng):
 def main():
     try: abtem.config.set({"local_diagnostics.progress_bar": False})
     except Exception: pass
-    rng = np.random.default_rng(7)
     fig = plt.figure(figsize=(17, 12.5), constrained_layout=True)
     gs = fig.add_gridspec(4, len(PTS), height_ratios=[1, 1, 1, 1.45])
     d90s, d99s = [], []
@@ -139,7 +149,7 @@ def main():
         P = probe(a, C3, C1)
         d90, d99 = enclosed(P, L_BOX); d90s.append(d90); d99s.append(d99)
 
-        R, lim = ronchigram(P, L_BOX, a, rng)
+        R, lim = ronchigram(P, L_BOX, a)
         ax = fig.add_subplot(gs[0, j])
         ax.imshow(R, cmap="gray", extent=[-lim, lim, -lim, lim], vmax=np.percentile(R, 99.5))
         ax.add_patch(Circle((0, 0), a, fill=False, ec="#ffcc00", lw=0.6, ls="--"))

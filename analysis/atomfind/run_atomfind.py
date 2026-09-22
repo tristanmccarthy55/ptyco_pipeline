@@ -237,6 +237,10 @@ def main():
                     help="depth spacing (A/layer) of that reconstruction; REQUIRED with "
                          "--recon unless it matches the preset (NL70 0.999, NL105 0.666)")
     ap.add_argument("--n-null", type=int, default=400)
+    ap.add_argument("--set", action="append", default=[], metavar="KEY=VALUE",
+                    help="override one Config field, repeatable (e.g. --set quality_min_corr=0.35). "
+                         "The value is parsed with the type of the preset's current value, so a "
+                         "typo in the KEY is an error rather than a silently ignored setting.")
     args = ap.parse_args()
 
     if args.data_dir: config.set_data_dir(args.data_dir)
@@ -252,6 +256,24 @@ def main():
     if args.ti_kernel_vol: cfg.ti_kernel_vol = args.ti_kernel_vol
     if args.dose is not None: cfg.dose_e_per_A2 = args.dose
     if args.out: cfg.out_dir = args.out
+    for kv in args.set:                       # explicit per-run overrides (see --set)
+        k, _, v = kv.partition("=")
+        k = k.strip()
+        if not hasattr(cfg, k):
+            raise SystemExit(f"--set {k}: no such Config field")
+        cur = getattr(cfg, k)
+        if isinstance(cur, bool):
+            val = v.strip().lower() in ("1", "true", "yes", "on")
+        elif isinstance(cur, int) and not isinstance(cur, bool):
+            val = int(v)
+        elif isinstance(cur, float):
+            val = float(v)
+        elif isinstance(cur, (tuple, list)):
+            val = type(cur)(float(x) for x in v.strip("()[] ").split(","))
+        else:
+            val = v
+        setattr(cfg, k, val)
+        print(f"[atomfind] --set {k}: {cur!r} -> {val!r}")
     cfg = cfg.resolve()          # data names -> absolute paths, or a named failure
     os.makedirs(cfg.out_dir, exist_ok=True)
 
