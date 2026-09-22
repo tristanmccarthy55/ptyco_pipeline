@@ -204,6 +204,27 @@
   .call.stop { border-left-color: var(--stop); }
   .call.ok   { border-left-color: var(--ok); }
 
+  /* ---- the one number, and the numbered run of work ---------------------------- */
+  .spec {
+    margin: 22px 0 6px; background: var(--surface); border: 1px solid var(--rule-2);
+    border-left: 4px solid var(--stop); border-radius: 4px; box-shadow: var(--shadow);
+    padding: 20px 22px 18px;
+  }
+  .spec .spec-k { font-family: var(--mono); font-size: 11px; font-weight: 600; letter-spacing: .13em; text-transform: uppercase; color: var(--ink-3); }
+  .spec .spec-v { font-family: var(--mono); font-weight: 600; font-size: clamp(22px, 4.2vw, 31px); line-height: 1.16; letter-spacing: -.01em; color: var(--ink); margin: 9px 0 0; font-variant-numeric: tabular-nums; }
+  .spec .spec-v em { font-style: normal; color: var(--stop); }
+  .spec p { font-family: var(--sans); font-size: 14px; color: var(--ink-2); margin: 12px 0 0; }
+  ol.did { counter-reset: step; list-style: none; padding-left: 0; margin: 20px 0 8px; }
+  ol.did > li { counter-increment: step; position: relative; padding-left: 46px; margin-bottom: 16px; }
+  ol.did > li::before {
+    content: counter(step); position: absolute; left: 0; top: 1px; font-family: var(--mono); font-size: 12px;
+    font-weight: 600; color: var(--accent); border: 1px solid var(--rule-2); border-radius: 50%;
+    width: 28px; height: 28px; display: grid; place-items: center;
+  }
+  ol.did b { font-family: var(--sans); font-size: 15px; display: block; margin-bottom: 2px; }
+  ol.did span { font-family: var(--sans); font-size: 14px; color: var(--ink-2); }
+  .verdict { display: inline-block; font-family: var(--mono); font-size: 11px; font-weight: 500; letter-spacing: .06em; text-transform: uppercase; margin-left: 8px; vertical-align: 2px; }
+
   /* ---- ledger ------------------------------------------------------------------ */
   .ledger { display: grid; gap: 1px; background: var(--rule); border: 1px solid var(--rule); border-radius: 4px; overflow: hidden; margin: 20px 0; }
   .ledger > div { background: var(--surface); padding: 12px 15px; display: grid; grid-template-columns: 1fr auto; gap: 4px 14px; align-items: start; }
@@ -233,16 +254,17 @@
     <div class="mast-meta">
       <span><b>Checkpoint</b> 2026-09-22</span>
       <span><b>Round-α campaign</b> complete</span>
-      <span><b>Relaxation ladder</b> 20 rows, 6 of 9 steps measured</span>
-      <span><b>Open now</b> thickness, coherence, tilt</span>
+      <span><b>Relaxation ladder</b> focus, dose, six-fold measured</span>
+      <span><b>On the cluster</b> the 70 Å sample</span>
+      <span><b>Written, not run</b> six-fold at 90 / 100 mrad; other orders</span>
     </div>
     <nav class="jump">
       <a href="#s1">1 · The question</a>
       <a href="#s2">2 · The instrument</a>
       <a href="#s3">3 · What it found</a>
       <a href="#s4">4 · Where it stops</a>
-      <a href="#s5">5 · Relaxation ladder</a>
-      <a href="#s6">6 · Checkpoint</a>
+      <a href="#s5">5 · Removing the assumptions</a>
+      <a href="#s6">6 · In context</a>
       <a href="#s7">7 · Rules</a>
       <a href="#s8">8 · Presenting it</a>
       <a href="#s9">9 · Where things live</a>
@@ -483,136 +505,298 @@
   </section>
 
   <section id="s5">
-    <div class="sec-head"><span class="sec-num">05</span><h2>The relaxation ladder</h2></div>
+    <div class="sec-head"><span class="sec-num">05</span><h2>Removing the assumptions, one at a time</h2></div>
     <p>
-      The campaign above is idealised: a known probe, no noise, still atoms, a perfectly round wavefront, a thin
-      slab. The ladder removes those assumptions one at a time, each rung measured against the same scoring and
-      written into one cumulative table,
-      <code>aberration_experiment/results/relaxation_ladder.csv</code>. A result that survives the
-      <em class="term">combined</em> configuration is publishable; one that survives only the idealised case is not.
+      Everything above is idealised: the focus known exactly, no counting noise, a perfectly round wavefront.
+      Each step below removes one of those and asks what it costs, shown as the reconstructions themselves
+      with the real atom positions drawn on, so the reader can see what happened rather than be told.
     </p>
+    <ol class="did">
+      <li>
+        <b>An unknown focus <span class="verdict" style="color:var(--ok)">solved, by an outer search</span></b>
+        <span>A ladder of fixed trial probes recovers the focus to 2 Å and costs nothing in the final numbers.
+          Letting the solver fit focus itself does not work, and is closed.</span>
+      </li>
+      <li>
+        <b>A finite electron dose <span class="verdict" style="color:var(--ok)">as expected</span></b>
+        <span>10<sup>7</sup> and 10<sup>6</sup> e/Å² are fine, 10<sup>5</sup> is marginal, 10<sup>4</sup> is gone.</span>
+      </li>
+      <li>
+        <b>Six-fold astigmatism, the corrector's own residual <span class="verdict" style="color:var(--stop)">very tight limit</span></b>
+        <span>The smallest amount tested already hurts. The tolerance is below the bottom of the ladder.</span>
+      </li>
+    </ol>
 
-    <div class="tablewrap">
-      <table>
-        <caption>Ladder state at this checkpoint, α = 70 / α = 90 where both exist. Step 0 is the idealised
-          baseline every other rung is compared against.</caption>
-        <thead>
-          <tr><th>Step</th><th class="wrap">Assumption removed</th><th class="wrap">Outcome</th><th>State</th></tr>
-        </thead>
-        <tbody>
-          <tr class="ref"><td>0</td><td class="wrap">known probe, no noise</td><td class="wrap">depth error 0.56 / 0.37 Å; recall 98/82/75 and 95/94/95 %</td><td><span class="chip c-ok">baseline</span></td></tr>
-          <tr><td>1</td><td class="wrap">focus unknown, corrector known</td><td class="wrap"><strong>no real cost</strong>: 0.59 / 0.44 Å; recall 97/94/79 and 90/83/86 %</td><td><span class="chip c-ok">measured</span></td></tr>
-          <tr><td>1b</td><td class="wrap">focus fitted inside the solver</td><td class="wrap">fails — the outer search over trial probes is the working route</td><td><span class="chip c-stop">fails</span></td></tr>
-          <tr><td>2</td><td class="wrap">counting noise</td><td class="wrap">works to 10<sup>5</sup> e/Å²; at 10<sup>4</sup> the matched kernel cannot be measured at all</td><td><span class="chip c-ok">measured</span></td></tr>
-          <tr><td>3</td><td class="wrap">thermal vibration (phonons)</td><td class="wrap">depth error roughly doubles; oxygen recall 10–17 %; species labels untrustworthy</td><td><span class="chip c-warn">costly</span></td></tr>
-          <tr><td>4</td><td class="wrap">non-round aberration (six-fold)</td><td class="wrap"><strong>tolerance below 0.1 waves</strong> — the smallest residual tested, and it already fails</td><td><span class="chip c-ok">measured</span></td></tr>
-          <tr><td>4b</td><td class="wrap">non-round, other orders</td><td class="wrap">two-fold, three-fold and the fourth-order three-lobe term at the same wave level — does the tolerance transfer?</td><td><span class="chip c-none">not run</span></td></tr>
-          <tr><td>5</td><td class="wrap">the full 70 Å sample</td><td class="wrap">diverged at the pinned solver step; the gentler retry is running now, and the analysis path to read it out is built</td><td><span class="chip c-open">in flight</span></td></tr>
-          <tr><td>6</td><td class="wrap">partial coherence</td><td class="wrap">needs simulation code that does not exist yet</td><td><span class="chip c-none">not built</span></td></tr>
-          <tr><td>7</td><td class="wrap">specimen tilt (a few degrees)</td><td class="wrap">needs the crystal rotated in the sim and a finder that handles crossing columns</td><td><span class="chip c-none">not built</span></td></tr>
-        </tbody>
-      </table>
-    </div>
-
-    <h3>The two results worth arguing about</h3>
+    <h3>5.1 &nbsp;Focus: the route that works, and the one that does not</h3>
     <p>
-      <strong>Focus is recoverable; fitting it inside the solver is not.</strong> An outer search over trial
-      probes, with everything else fixed, recovers the focus to 2 Å and costs essentially nothing in depth
-      error — step 1 is the good news of the ladder. The tidy alternative, letting the solver fit focus as its
-      one free probe parameter, was built into the engine and failed: at 90 mrad it moved the focus by under
-      0.6 Å from starts 32 Å away; at 70 mrad it walked the probe 20–33 Å the <em>wrong</em> way into a
-      reconstruction with mismatch ~260 against ~22 for the best fixed probe. The first diagnosis — overshoot
-      from oversized steps — was checked and is wrong: the median step is 0.023 Å and 54 % of steps are
-      one-signed over 322 iterations, which is a slow steady drift, not overshoot. The live hypothesis is the
-      degeneracy the fixed-probe scan already measured: <strong>probe focus and object depth trade one for
-      one</strong>, so with both free the pair slides along a direction the data cannot see.
-    </p>
-    <p>
-      <strong>Six-fold astigmatism is the number a referee will want.</strong> It is what a hexapole corrector
-      leaves behind and what round knobs cannot touch, so the deliverable is a specification: the residual must
-      be under X waves for this to work. At 70 mrad, 0.6 waves already takes lead recall from 98 % to 39 %, and
-      1.2 waves to 7 % — so the tolerance is somewhere below 0.6, and the ladder run in flight samples 0.1, 0.2,
-      0.3 and 0.45 waves to find it.
+      In a real experiment the corrector reports its third- and fifth-order terms, but the defocus is never
+      quite where you think. <strong>The outer search works.</strong> The same data is reconstructed through a
+      ladder of fixed probes that differ only in defocus, and the solver's own mismatch to the data is read as
+      the objective. Its minimum sits on the true focus at both apertures, and the reconstruction made at the
+      fitted focus loses nothing measurable: depth error 0.56 → 0.59 Å at 70 mrad, 0.37 → 0.44 at 90.
     </p>
   </section>
 
-  <section id="s6">
-    <div class="sec-head"><span class="sec-num">06</span><h2>Checkpoint — 2026-09-22</h2></div>
-    <p>
-      <strong>Analysed on 2026-09-22. The results, the specification they produce and the figures are on
-      their own page: <a href="https://claude.ai/artifact/21fr4Y6JqCeaeB6KLMUKGz">The Six-Fold Tolerance</a>.</strong> In short: the six-fold
-      residual a hexapole corrector leaves must be held below <strong>0.1 waves</strong> at the aperture
-      edge — C<sub>56</sub> under 10 µm at 70 mrad — and that is an upper bound rather than the tolerance,
-      because 0.1 waves is the smallest residual tested and it already fails. Fitting focus inside the
-      solver is closed as a route. The ledger below is what was waiting; the state chips now record how
-      each one came out.
-    </p>
-    <p>
-      Triage every tarball before analysing it: a job that reports COMPLETED but has no
-      <code>*_recons.h5</code> means MATLAB crashed, and an older run's file at the same path will
-      silently stand in for a leg that failed.
-    </p>
+  <section class="wide">
+    <figure>
+      <img src="{{FIG_C1}}" alt="Mismatch to the measured data against the trial probe's focus error at 70 and 90 mrad, with the best fit marked on the true focus; third panel shows the sample's depth shifting one-for-one with the trial focus.">
+      <figcaption>
+        <span class="fig-name">analysis/make_meeting_figs.py → figs/2026-W39/meeting/fig4_c1.png</span>
+        The focus search. Left and middle: the solver's mismatch to the data for each trial focus, 50 and 200
+        iterations, with the best fit marked. Right: why the answer has a ±2 Å floor.
+        <div class="howto">
+          <b>What to look at</b><br>
+          The minimum lands on the true focus: −2 ± 3 Å at 70 mrad, +2 ± 1 Å at 90. The right-hand panel is
+          the reason it cannot be sharper — a focus error and an equal shift of the sample in depth give the
+          same data, so the bottom of the valley is flat over a few ångström. Fifty iterations rank the trials
+          the same way two hundred do, which is what makes the search affordable.
+        </div>
+      </figcaption>
+    </figure>
+    <figure>
+      <img src="{{FIG_STEP1}}" alt="Bars of atoms found per species and of position error, for the known probe and the fitted focus at 70 and 90 mrad. The pairs are nearly equal.">
+      <figcaption>
+        <span class="fig-name">analysis/make_relaxation_figs.py → figs/2026-W39/meeting/figB_step1.png</span>
+        What the search costs in the final numbers: the known probe against the fitted focus, at both apertures.
+        <div class="howto"><b>What to look at</b><br>The pairs are the same to within a few points. An unknown focus is not a problem.</div>
+      </figcaption>
+    </figure>
+  </section>
 
-    <div class="ledger">
-      <div>
-        <span class="lg-t">A — focus fitted with the object frozen</span><span class="chip c-stop">answered: no</span>
-        <span class="lg-d">Freezes the object in the full-resolution engine so focus is fitted against an
-          already-converged object. If the focus now moves toward the truth, the drift was the shared
-          focus/depth degeneracy and the fix is to alternate rather than co-optimise — that changes the method
-          and should be said plainly. If it still drifts, the outer search is the permanent answer. Either way
-          it is a clean result; do not spend days on it.</span>
-      </div>
-      <div>
-        <span class="lg-t">A2 — focus fitted with a capped step</span><span class="chip c-stop">answered: no</span>
-        <span class="lg-d">The control that confirms a step cap is <em>not</em> the fix, closing off the
-          overshoot explanation for good.</span>
-      </div>
-      <div>
-        <span class="lg-t">B — the 70 Å sample at half the solver step</span><span class="chip c-open">on the cluster</span>
-        <span class="lg-d">Thickness is the regime the method exists for, so this is the biggest remaining
-          step. Its comparison must be against a thin-slab leg at the <em>same</em> step size, or the result is
-          about the step size and not about thickness. If it reconstructs, the analysis to read it out does not
-          exist yet — see below.</span>
-      </div>
-      <div>
-        <span class="lg-t">C — the non-round threshold ladder</span><span class="chip c-ok">measured</span>
-        <span class="lg-d">The most publication-relevant run: 0.1, 0.2, 0.3 and 0.45 waves of six-fold
-          astigmatism. Report kernel health (peak, background, peak-to-background) alongside recall — a degraded
-          kernel means the <em>reconstruction</em> is failing, not the finder, and that distinction is what made
-          the earlier non-round result interpretable.</span>
-      </div>
+  <section>
+    <p>
+      <strong>The tidier alternative does not work.</strong> Letting the solver fit focus as its one free probe
+      parameter, while it fits the object, was built into the engine. At 90 mrad the focus never moves, by less
+      than 1 Å from starts 32 Å out. At 70 mrad it moves but goes the wrong way, ending about 21 Å below the
+      true focus whatever it started from. Freezing the object does not fix it; capping the step does not fix
+      it. The reason is the same degeneracy the right-hand panel above measures: with focus and object both
+      free, the pair slides along the direction the data cannot see.
+    </p>
+  </section>
+
+  <section class="wide">
+    <figure>
+      <img src="{{FIG_FOCUS}}" alt="Scatter of focus error after fitting against the focus error given, 22 runs. None lands on zero.">
+      <figcaption>
+        <span class="fig-name">analysis/make_simple_figs.py → figs/2026-W39/simple/fig_focus.png</span>
+        Every in-solver focus fit: what it was given against what it ended with.
+        <div class="howto"><b>What to look at</b><br>A working fit lands on the green line. Nothing does. Points on the diagonal did not move at all, which is every run at 90 mrad.</div>
+      </figcaption>
+    </figure>
+  </section>
+
+  <section>
+    <h3>5.2 &nbsp;Dose</h3>
+    <p>
+      Poisson noise applied to the same simulated data, so nothing changes but the counting statistics. It came
+      out as expected, and that is worth saying plainly: it is the one step that behaved. At 10<sup>4</sup> e/Å²
+      the failure is not that the finder missed atoms — the single-atom reference could not be measured from
+      that data at all, so the finder was never run.
+    </p>
+  </section>
+
+  <section class="wide">
+    <figure>
+      <img src="{{FIG_DOSE}}" alt="Five depth sections through the same row of columns from noiseless to ten to the four electrons per square angstrom, true atoms as dots, detections as rings.">
+      <figcaption>
+        <span class="fig-name">analysis/make_simple_figs.py → figs/2026-W39/simple/fig_dose.png</span>
+        The same row of columns, the same slice, five dose levels. Dots are where the atoms really are; rings are
+        the atoms the finder reported.
+        <div class="howto"><b>What to look at</b><br>Titanium and apical oxygen alternate every 1.95 Å down each column, so a working reconstruction beads each column. Follow one column across and watch the beads smear. In the last panel the columns are gone.</div>
+      </figcaption>
+    </figure>
+  </section>
+
+  <section>
+    <h3>5.3 &nbsp;Six-fold astigmatism</h3>
+    <p>
+      A hexapole corrector nulls third-order spherical aberration and leaves six-fold astigmatism behind. No
+      round knob touches it, and it grows as the sixth power of the aperture. Four levels were run at 70 mrad,
+      each a complete pipeline: its own reconstruction, its own single-atom reference measured through the same
+      probe, the finder run blind and scored.
+    </p>
+    <div class="spec">
+      <div class="spec-k">The number this produces</div>
+      <p class="spec-v">Six-fold astigmatism below<br><em>0.1 waves</em> at the aperture edge — C<sub>56</sub> &lt; 10 µm at 70 mrad</p>
+      <p>An upper bound, not the tolerance: 0.1 waves is the smallest residual tested and it already costs a fifth of the lead. Where this sits against a real corrector is §6.</p>
+    </div>
+    <div class="tablewrap">
+      <table>
+        <caption>Six-fold astigmatism at 70 mrad, known probe, no counting noise, static atoms. Recall over the interior planes. The tinted row is the baseline.</caption>
+        <thead><tr><th>six-fold</th><th>C<sub>56</sub></th><th>lead found</th><th>titanium</th><th>oxygen</th><th>depth error</th></tr></thead>
+        <tbody>
+          <tr class="ref"><td>none</td><td>—</td><td>98 %</td><td>82 %</td><td>75 %</td><td>0.56 Å</td></tr>
+          <tr><td>0.10 waves</td><td>10 µm</td><td>80 %</td><td>57 %</td><td>48 %</td><td>0.76 Å</td></tr>
+          <tr><td>0.20 waves</td><td>20 µm</td><td>56 %</td><td>28 %</td><td>17 %</td><td>0.82 Å</td></tr>
+          <tr><td>0.45 waves</td><td>45 µm</td><td>31 %</td><td>33 %</td><td>11 %</td><td>0.86 Å</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="call"><b>Don't read the depth error as good news.</b> It only creeps from 0.56 to 0.86 Å because it is measured on the atoms still found, and by the last row that is a third of the lead. Recall is the honest column.</div>
+  </section>
+
+  <section class="wide">
+    <figure>
+      <img src="{{FIG_PROBE}}" alt="Ronchigrams over probes for a round probe and six-fold of 0.10, 0.20 and 0.45 waves at 70 mrad.">
+      <figcaption>
+        <span class="fig-name">analysis/make_simple_figs.py → figs/2026-W39/simple/fig_probe.png</span>
+        The probe as six-fold is added. Top: the Ronchigram an operator would tune on, one identical patch of film in every panel. Bottom: the probe at the specimen.
+        <div class="howto"><b>What to look at</b><br>The quoted diameter holds 90 % of the intensity and barely changes: 4.0 Å for the first three. What changes is the six-pointed tail, and that is what wrecks the reconstruction. The Ronchigrams barely change either, which is the practical problem — at the microscope there is almost nothing to see.</div>
+      </figcaption>
+    </figure>
+    <figure>
+      <img src="{{FIG_NONROUND}}" alt="Four depth sections through the same row of columns, at no six-fold and at 0.10, 0.20 and 0.45 waves, true atoms as dots, detections as rings.">
+      <figcaption>
+        <span class="fig-name">analysis/make_simple_figs.py → figs/2026-W39/simple/fig_nonround.png</span>
+        The same row of columns, the same slice, four probes.
+        <div class="howto"><b>What to look at</b><br>A dot with no ring is a missed atom; a ring with no dot is a spurious one. The vertical striping that spreads across the field as six-fold grows is lattice-periodic structure bleeding through depth, and it is what buries the light atoms.</div>
+      </figcaption>
+    </figure>
+  </section>
+
+  <section>
+    <h3>5.4 &nbsp;Was the probe right, and did the reconstruction converge?</h3>
+    <p>
+      The reconstructions with six-fold look wrong — striped, apparently unfinished — so this was checked four
+      ways before anything was concluded from them.
+    </p>
+    <ul>
+      <li><strong>The probe was right.</strong> Rebuilt independently from the aberration tableau and compared with
+        the probe stored inside each finished reconstruction: overlap 1.000000 on every leg. The aberration in
+        the reconstruction is exactly the one asked for. (The file stores the probe twice, and the second copy is
+        transposed — a trap that makes a correct six-fold probe look progressively wrong if the wrong field is
+        read. It is recorded in the handoff.)</li>
+      <li><strong>They converged.</strong> The solver's mismatch falls by under 3 % over the final fifth of the
+        iterations. They converged to a worse fit — 22 for the round probe, then 38, 54, 64, 71 up the ladder —
+        not to an unfinished one.</li>
+      <li><strong>The stripes are not the probe imprinting.</strong> Their periods are the lattice's own, 3.9 and
+        1.97 Å, the same as in the round reconstruction; what six-fold does is drive more of that periodicity into
+        the exit vacuum, where it should not be. That is depth resolution being lost, not a wrong probe.</li>
+      <li><strong>The window is not the mechanism.</strong> At binning 4 the reconstruction's probe window is
+        17.5 Å across, and 0.3 % of the probe lies outside it — the same for the round probe and for 1.2 waves.</li>
+    </ul>
+    <p>
+      So: right probe, converged, worse fit. A six-fold probe genuinely makes the multislice problem harder to
+      solve. That leaves the question the pictures raise directly — there are still peaks in those panels with no
+      ring on them, so <strong>is the finder giving up on signal that is there?</strong> Two tests. By eye, below,
+      the same slice bare and then with the answer drawn on. By experiment, the finder re-run on the identical
+      reconstructions with its quality threshold relaxed, with the clean baseline as control: on the baseline the
+      relaxed cut changes almost nothing, so it does not invent atoms; on the 0.1-wave leg it brings lead back from
+      80 to 89 % and oxygen from 48 to 69 %. So the finder <em class="term">had</em> been discarding real atoms —
+      part of the collapse is ours to fix — but even read that generously 0.1 waves still costs nine points of
+      lead. On the thermal-vibration legs the same change does nothing at all: that one is physics.
+    </p>
+  </section>
+
+  <section class="wide">
+    <figure>
+      <img src="{{FIG_BLAME}}" alt="The same depth section three times at 0.20 waves: bare, with true positions, with detections.">
+      <figcaption>
+        <span class="fig-name">analysis/make_simple_figs.py → figs/2026-W39/simple/fig_didfinderfail_0p2.png</span>
+        One leg, 0.20 waves, shown three ways so the reconstruction can be judged before the answer is drawn on it.
+        <div class="howto"><b>What to look at</b><br>The bright titanium blobs survive and mostly get rings. The oxygen between them has sunk into the striping, and that is where the misses are. It is both: the reconstruction lost the light atoms, and the finder's threshold then discarded some of what was left.</div>
+      </figcaption>
+    </figure>
+    <figure>
+      <img src="{{FIG_PSF}}" alt="A single lead atom's reconstructed response, across and along the beam.">
+      <figcaption>
+        <span class="fig-name">analysis/make_simple_figs.py → figs/2026-W39/simple/fig_psf.png</span>
+        The single-atom reference the finder matches against, measured rather than modelled.
+        <div class="howto"><b>What to look at</b><br>A grid of lead atoms is simulated and reconstructed through exactly the same probe, box and solver settings as the data, and the blobs averaged. Sharp across the beam, stretched along it. Every leg gets its own.</div>
+      </figcaption>
+    </figure>
+  </section>
+
+  <section id="s6">
+    <div class="sec-head"><span class="sec-num">06</span><h2>In context: the instrument we have been assuming</h2></div>
+    <p>
+      The campaign models a hexapole-corrected 300 kV column tuned for 30 mrad and opened past it. Its simulation
+      has always carried one non-round residual, six-fold astigmatism at 1 mm, alongside the fixed C<sub>5</sub>
+      of 1 mm; the only other non-round term ever run is a single combined six-fold-plus-four-fold level. So the
+      first honest question is not "how much six-fold is tolerable" but <strong>which of the terms a real corrector
+      leaves reach waves at these apertures, and how fast</strong>.
+    </p>
+  </section>
+
+  <section class="wide">
+    <figure>
+      <img src="{{FIG_GROWTH}}" alt="Waves at the aperture edge against aperture for every non-round term of the assumed instrument, logarithmic, with the 0.1-wave line.">
+      <figcaption>
+        <span class="fig-name">campaign/aberration_waves.py --fig → figs/2026-W39/simple/fig_growth.png</span>
+        Every non-round residual of the assumed instrument, in waves at the aperture edge, as the aperture opens.
+        <div class="howto"><b>What to look at</b><br>A term of order n grows as the aperture to the power n + 1, so the fifth-order terms are the steepest. At the design aperture the campaign's own six-fold is 0.06 waves, inside the limit; it crosses 0.1 waves at 33 mrad, is 1.3 waves at 50 and 10 at 70. Blue lines are what the hardware leaves behind; grey ones the operator tunes out at the design aperture. The three-lobe term, blue and topmost, is as large as six-fold in a real tableau and has not been tested.</div>
+      </figcaption>
+    </figure>
+  </section>
+
+  <section>
+    <div class="tablewrap">
+      <table>
+        <caption>Waves at the aperture edge for the assumed instrument. Values marked "sim" are the ones the campaign's simulation has always carried; the rest are order-of-magnitude post-tuning residuals from published hexapole-corrector tableaus, not a measured instrument. "Tuned" terms are nulled by the operator at the design aperture and drift; "hardware" terms are what the corrector leaves.</caption>
+        <thead><tr><th>term</th><th class="wrap">aberration</th><th>assumed</th><th>30</th><th>50</th><th>70</th><th>90</th><th>100 mrad</th><th></th></tr></thead>
+        <tbody>
+          <tr><td>C12</td><td class="wrap">two-fold astigmatism A1</td><td>0.50 nm</td><td>0.11</td><td>0.32</td><td>0.62</td><td>1.03</td><td>1.27</td><td><span class="chip c-none">tuned</span></td></tr>
+          <tr><td>C21</td><td class="wrap">coma B2</td><td>30.0 nm</td><td>0.14</td><td>0.63</td><td>1.74</td><td>3.70</td><td>5.08</td><td><span class="chip c-none">tuned</span></td></tr>
+          <tr><td>C23</td><td class="wrap">three-fold astigmatism A2</td><td>30.0 nm</td><td>0.14</td><td>0.63</td><td>1.74</td><td>3.70</td><td>5.08</td><td><span class="chip c-none">tuned</span></td></tr>
+          <tr><td>C32</td><td class="wrap">star S3</td><td>0.5 µm</td><td>0.05</td><td>0.40</td><td>1.52</td><td>4.17</td><td>6.35</td><td><span class="chip c-none">tuned</span></td></tr>
+          <tr><td>C34</td><td class="wrap">four-fold astigmatism A3</td><td>1 µm</td><td>0.10</td><td>0.79</td><td>3.05</td><td>8.33</td><td>13</td><td><span class="chip c-none">tuned</span></td></tr>
+          <tr><td>C41</td><td class="wrap">fourth-order coma B4</td><td>20 µm</td><td>0.05</td><td>0.63</td><td>3.41</td><td>12</td><td>20</td><td><span class="chip c-stop">hardware</span></td></tr>
+          <tr><td>C43</td><td class="wrap">three-lobe D4</td><td>1e+02 µm</td><td>0.25</td><td>3.17</td><td>17</td><td>60</td><td>102</td><td><span class="chip c-stop">hardware</span></td></tr>
+          <tr><td>C45</td><td class="wrap">five-fold astigmatism A4</td><td>50 µm</td><td>0.12</td><td>1.59</td><td>8.54</td><td>30</td><td>51</td><td><span class="chip c-stop">hardware</span></td></tr>
+          <tr><td>C52</td><td class="wrap">fifth-order star S5</td><td>3e+02 µm</td><td>0.02</td><td>0.40</td><td>2.99</td><td>13</td><td>25</td><td><span class="chip c-stop">hardware</span></td></tr>
+          <tr><td>C54</td><td class="wrap">rosette R5</td><td>3e+02 µm</td><td>0.02</td><td>0.40</td><td>2.99</td><td>13</td><td>25</td><td><span class="chip c-stop">hardware</span></td></tr>
+          <tr class="ref"><td>C56</td><td class="wrap">six-fold astigmatism A5</td><td>1e+03 µm</td><td>0.06</td><td>1.32</td><td>9.96</td><td>45</td><td>85</td><td><span class="chip c-stop">hardware</span></td></tr>
+
+        </tbody>
+      </table>
+    </div>
+    <p>
+      Read at the 70 mrad row: with the residuals a real corrector actually leaves, every non-round term is over
+      the 0.1-wave line, and six-fold is ten waves. <strong>The assumed instrument, opened to 70 mrad, has a probe
+      25 Å across</strong> — the tails of a ten-wave six-fold term — against a 20 Å scan field, which is the same
+      geometry that ended the round-aperture sweep at 110 mrad. It does not need a simulation to fail. What the
+      specification says is what would have to be true of the corrector instead:
+    </p>
+    <div class="tablewrap">
+      <table>
+        <caption>The six-fold specification by aperture, if the 70 mrad limit transfers in waves, beside what the assumed 1 mm actually gives.</caption>
+        <thead><tr><th>aperture (mrad)</th><th>C<sub>56</sub> must be under</th><th>the assumed 1 mm, in waves</th></tr></thead>
+        <tbody>
+          <tr><td>30</td><td>1.6e+03 µm</td><td>0.062</td></tr><tr><td>50</td><td>76 µm</td><td>1.3</td></tr><tr><td>70</td><td>10 µm</td><td>10</td></tr><tr><td>90</td><td>2.2 µm</td><td>45</td></tr><tr><td>100</td><td>1.2 µm</td><td>85</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="call stop">
+      <b>Two things this does not yet say.</b> Whether the limit loosens at a wider aperture, where the probe is
+      already large — the intuition that 90 or 100 mrad might cope better — is untested; the physics says the same
+      C<sub>56</sub> is 4.5× more waves at 90 and 8.5× at 100, but the reconstruction's tolerance in waves might
+      not be the same number there. And whether a tolerance quoted in waves transfers between orders is untested:
+      for the same edge phase a term of order n throws the edge ray (n+1)λ/α, 0.56 Å for two-fold against 1.69 Å
+      for six-fold. Both are in the queued runs below. What is needed most, and only the user can supply, is a
+      <strong>measured aberration tableau</strong> from the instrument this is aimed at, to replace the published
+      order-of-magnitude values.
     </div>
 
-    <h3>Still to build, in the order that matters</h3>
-    <ol>
-      <li><strong>Analysis for the thick sample.</strong> A ground-truth cache for the 18-cell slab; a
-        <code>thick</code> preset whose trims and limits are <em>derived from the box</em> rather than typed —
-        three bugs in this campaign came from constants typed for one geometry and silently wrong for the next;
-        and <code>--dz</code> taken from the simulation metadata, not the driver's box formula (the measured
-        18-cell box is 77.94 Å against the formula's 78.00).</li>
-      <li><strong>Partial coherence.</strong> New simulation code: an incoherent sum over a Gaussian spread of
-        focus (a cold FEG at 300 kV gives roughly 12–23 Å at 1σ), then over source position (σ ≈ 0.2–0.4 Å).
-        The reconstruction side can already absorb it through probe modes.</li>
-      <li><strong>Specimen tilt</strong> of a few degrees: the crystal rotated in the simulation, a ground truth
-        built from the <em>same</em> rotated atoms, and a finder that copes with columns crossing in projection —
-        on the 70 Å slab the shear passes the 1.95 Å column spacing at about 2°, so validate on the thin slab first.</li>
-      <li><strong>The combined run</strong>: every surviving relaxation switched on together, across apertures,
-        with matched kernels and the same figure scripts.</li>
-    </ol>
-
-    <h3>Cheap questions worth answering on the way</h3>
-    <ul>
-      <li><strong>Answered 2026-09-22.</strong> Are the phonon and non-round recall collapses partly
-        <em>the finder's thresholds</em>, which were tuned on still atoms and clean wavefronts? Re-running
-        the existing reconstructions at a relaxed quality cut: <strong>for non-round, partly</strong> — at
-        0.1 waves lead comes back from 80 to 89 % and oxygen from 48 to 69 %, and the round-probe control
-        barely moves, so the recovery is real rather than the cut inventing atoms. <strong>For phonons, not
-        at all</strong> — the identical change leaves those numbers untouched to two decimal places, so that
-        collapse is the physics.</li>
-      <li>False positives rise with dose even at 10<sup>7</sup> e/Å², almost all oxygen — same suspicion, same test.</li>
-      <li>α = 90's focus interval is narrower than the search grid (−158 ± 1 Å against a true −160). A 0.5 Å scan
-        over ±5 Å would pin it, about 6 GPU-hours — worth it only if a referee would ask.</li>
-    </ul>
+    <h3>Where the ladder stands</h3>
+    <div class="tablewrap">
+      <table>
+        <caption>One cumulative table, <code>aberration_experiment/results/relaxation_ladder.csv</code>. α = 70 / 90 where both exist.</caption>
+        <thead><tr><th>Step</th><th class="wrap">Assumption removed</th><th class="wrap">Outcome</th><th>State</th></tr></thead>
+        <tbody>
+          <tr class="ref"><td>0</td><td class="wrap">known probe, no noise</td><td class="wrap">depth error 0.56 / 0.37 Å; recall 98/82/75 and 95/94/95 %</td><td><span class="chip c-ok">baseline</span></td></tr>
+          <tr><td>1</td><td class="wrap">focus unknown</td><td class="wrap"><strong>no real cost</strong>, by an outer search; the in-solver fit is closed</td><td><span class="chip c-ok">measured</span></td></tr>
+          <tr><td>2</td><td class="wrap">counting noise</td><td class="wrap">works to 10<sup>5</sup> e/Å²; at 10<sup>4</sup> no single-atom reference can be measured</td><td><span class="chip c-ok">measured</span></td></tr>
+          <tr><td>3</td><td class="wrap">thermal vibration</td><td class="wrap">depth error roughly doubles; oxygen recall 10–17 %; not a finder artefact</td><td><span class="chip c-warn">costly</span></td></tr>
+          <tr><td>4</td><td class="wrap">six-fold astigmatism, 70 mrad</td><td class="wrap"><strong>tolerance below 0.1 waves</strong>, the smallest tested</td><td><span class="chip c-ok">measured</span></td></tr>
+          <tr><td>4b</td><td class="wrap">six-fold at 90 and 100 mrad</td><td class="wrap">same waves as the 70 mrad rungs, plus the 10 µm value carried up unchanged</td><td><span class="chip c-open">written</span></td></tr>
+          <tr><td>4c</td><td class="wrap">other orders: two-fold, three-fold, three-lobe</td><td class="wrap">at 0.1 and 0.3 waves — does the limit transfer?</td><td><span class="chip c-open">written</span></td></tr>
+          <tr><td>4d</td><td class="wrap">the assumed instrument as-is, 70 mrad</td><td class="wrap">C<sub>56</sub> 1 mm: needs binning 1 and a wider scan, ~3 GPU-days, expected to fail on geometry</td><td><span class="chip c-none">optional</span></td></tr>
+          <tr><td>5</td><td class="wrap">the full 70 Å sample</td><td class="wrap">first attempt diverged; the gentler retry is on the cluster; the analysis path is built</td><td><span class="chip c-open">in flight</span></td></tr>
+          <tr><td>6</td><td class="wrap">partial coherence</td><td class="wrap">needs simulation code that does not exist</td><td><span class="chip c-none">not built</span></td></tr>
+          <tr><td>7</td><td class="wrap">specimen tilt</td><td class="wrap">needs the crystal rotated in the simulation and a finder that copes with sheared columns</td><td><span class="chip c-none">not built</span></td></tr>
+        </tbody>
+      </table>
+    </div>
   </section>
 
   <section id="s7">
@@ -762,12 +946,13 @@
 
     <h3>Companion pages</h3>
     <p>
-      Both are rebuilt from the same run data and should be <em>updated</em> rather than replaced — read them
-      first, then publish back to the same URL.
+      This page is the one record and is republished to its own URL at every checkpoint. The pages below are
+      older and are not maintained.
     </p>
     <ul>
-      <li><a href="https://claude.ai/artifact/21fr4Y6JqCeaeB6KLMUKGz">The Six-Fold Tolerance</a> — the results of 2026-09-22: the tolerance on
-        the corrector's residual, the finder-threshold control, and the close of the in-solver focus fit.</li>
+      <li><a href="https://claude.ai/artifact/21fr4Y6JqCeaeB6KLMUKGz">The Six-Fold Tolerance</a> — the first, separate write-up of the
+        2026-09-22 results. <strong>Superseded</strong>: everything on it is now §5 and §6 of this page, which is
+        the one record.</li>
       <li><a href="https://claude.ai/artifact/NiYCfNo7uFAWFkyUZ5L3SF">Depth Past the Corrector</a> — the baseline
         story for a group meeting: probe, depth against aperture, the focus search, dose.</li>
       <li><a href="https://claude.ai/artifact/3TfTwcipbbTxG9PGbeEtqi">Removing the Six Assumptions</a> — the
@@ -781,7 +966,7 @@
 
 <footer class="foot">
   <div class="foot-in"><span>
-    Aperture campaign logbook · checkpoint 2026-09-22, results linked · rebuilt from
+    Aperture campaign logbook · checkpoint 2026-09-22, results in · rebuilt from
     aberration_experiment/page/logbook.html
   </span></div>
 </footer>

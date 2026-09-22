@@ -6,11 +6,11 @@ are the fastest way in:
 
 | page | URL | what it is |
 |---|---|---|
-| **Aperture Campaign Logbook** | `https://claude.ai/artifact/7ve93UM6yqCmiRcbfNuiJM` | the permanent record: the round-α campaign, the rules, the conventions. **Point a new agent here first.** |
-| **The Six-Fold Tolerance** | `https://claude.ai/artifact/21fr4Y6JqCeaeB6KLMUKGz` | round two (2026-09-22): the specification, the finder-threshold control, the close of the in-solver focus fit |
+| **Aperture Campaign Logbook** | `https://claude.ai/artifact/7ve93UM6yqCmiRcbfNuiJM` | **the one record**: the round-α campaign, every relaxation with its pictures, the aperture context, the rules. Point a new agent here first. |
+| The Six-Fold Tolerance | `https://claude.ai/artifact/21fr4Y6JqCeaeB6KLMUKGz` | superseded — folded into the logbook's §5–6 on 2026-09-22; not maintained |
 
-Both are rebuilt from `aberration_experiment/page/*.html` by `page/build_page.py` and republished to
-the **same** URLs. Never start a new page for an update.
+The logbook is rebuilt from `aberration_experiment/page/logbook.html` by `page/build_page.py` and republished
+to the **same** URL. One page. Never start another for an update.
 
 ---
 
@@ -70,12 +70,14 @@ those numbers untouched to two decimal places. Tables in `results/2026-W39/`.
 
 ## Your job, in order
 
-### 1. Submit the next sweep (rows are written and validated; nothing else is blocked on it)
+### 1. Submit the next sweep (rows are written and probe-checked; nothing else is blocked on it)
 
-Nine labels at 70 mrad, BIN 4, 27 reconstructions plus a pack job — about 10 minutes each on three
-GPUs. Three rungs bracket six-fold from beneath (0.02, 0.04, 0.07 waves); six put one term per order
-a hexapole actually leaves (two-fold C12, three-fold C23, three-lobe C43) at 0.1 and 0.3 waves, the
-levels where six-fold is already measured, so the comparison is direct.
+Two blocks, in this order. Both go through the known-probe driver by label; every probe was built through
+abTEM from its own row and fits its reconstruction window.
+
+**Block A — 70 mrad, binning 4, 27 reconstructions, ~10 min each.** Three rungs bracket six-fold from
+beneath (0.02, 0.04, 0.07 waves); six put one term per order a hexapole actually leaves (two-fold C12,
+three-fold C23, three-lobe C43) at 0.1 and 0.3 waves, where six-fold is already measured.
 
 ```bash
 cd /springbrook/share/physics/phucrh/ptyco_baseline/ptyco_pipeline && git pull
@@ -84,22 +86,41 @@ LABELS="nr0p02_C56_0p02w nr0p04_C56_0p04w nr0p07_C56_0p07w nrA1_C12_0p1w nrA1_C1
   bash campaign/run_thin_atomfind.sh
 ls /springbrook/share/physics/        # nothing new of ours in the group root
 ```
+
+**Block B — six-fold at 90 and 100 mrad, binning 2.** The question is whether the limit loosens where the
+probe is already large. Same waves as the measured 70 mrad rungs (0.1 and 0.3), plus the 70 mrad 0.1-wave
+value (C56 = 10 µm) carried up unchanged — the same microscope opened further. 90 mrad first: nine
+reconstructions at about an hour each. The 100 mrad rows cost ~7.5 h per reconstruction (nine of them),
+so fire them only once the 90 mrad result says it is worth it.
+
+```bash
+TSV=campaign/nonround_sweep.tsv LABELS="nr90_C56_0p1w nr90_C56_0p3w nr90_C56_10um" bash campaign/run_thin_atomfind.sh
+# later, if 90 mrad is interesting:
+TSV=campaign/nonround_sweep.tsv LABELS="nr100_C56_0p1w nr100_C56_0p3w nr100_C56_10um" bash campaign/run_thin_atomfind.sh
+```
+
+Pull either block the same way (each submission packs its own tarball, named after its labels):
 ```bash
 mkdir -p ~/Desktop/nr_round3 && cd ~/Desktop/nr_round3
 scp -O 'phucrh@blythe.scrtp.warwick.ac.uk:/springbrook/share/physics/phucrh/atomfind_results_nr*_2026*.tgz' .
 for t in *.tgz; do d="${t%.tgz}"; mkdir -p "$d"; tar xzf "$t" -C "$d"; done
 ```
 
-Analyse exactly as round two did: `analysis/run_0922_atomfind.sh` is the pattern (kernels from each
-rung's own grids, then the blind finder on its lab recon), then `analysis/relaxation_ladder.py
---step 4 --alpha 70`. The figure axis and the coefficients both come from
-`campaign/aberration_waves.py`, so nothing is typed.
+**Not recommended, but written: `nrARM_a70`**, the instrument the campaign has assumed all along (C56 = 1 mm,
+C12 = 0.5 nm on the planner's round balance) run as-is at 70 mrad. Its probe is 25 Å across (d99 37 Å), so
+it needs binning 1 (`--mem 175G`, 24 h walltime) and a wider scan (`WIN=34`), and even then scan/d90 = 1.4
+— the geometry that ended 110 mrad. Three legs at ~24 h each to confirm a failure the geometry already
+predicts. If it is run: `TSV=campaign/nonround_sweep.tsv LABELS=nrARM_a70 WIN=34 bash campaign/run_thin_atomfind.sh`.
 
-**What the answer looks like.** If 0.1 waves of two-fold costs far less than 0.1 waves of six-fold,
-the tolerance depends on order and the specification must be written per term — expected, since for
-the same edge phase a term of order n throws the edge ray by (n+1)λ/θ, 0.56 Å at n = 1 against 1.69 Å
-at n = 5. If they all cost the same, one number in waves covers the whole tableau, which is the more
-useful result and the easier one to publish.
+Analyse every block exactly as round two did: `analysis/run_0922_atomfind.sh` is the pattern (kernels
+from each rung's own grids, then the blind finder on its lab recon, `--zdrop 2` at NL14, `3` at NL23,
+`4` at NL28), then `analysis/relaxation_ladder.py --step 4 --alpha <A>`, then
+`analysis/make_simple_figs.py`. Triage with `analysis/triage_recon.py` first.
+
+**What the answers look like.** Block A: if 0.1 waves of two-fold costs far less than 0.1 waves of six-fold,
+the tolerance depends on order and the specification is written per term. Block B: if 90 mrad tolerates
+0.3 waves where 70 did not, the limit loosens with aperture and the specification is per aperture in
+waves, not one number; if it does not, C56 at 90 mrad must be under 2.2 µm and at 100 under 1.2 µm.
 
 ### 2. Read out experiment B when its tarball lands
 
