@@ -163,7 +163,8 @@ for a in $ROWS; do
                 DN="${D}_dose${dose}"
                 N=$(noise_job "$D" "$DN" "$dose" $(( DOSE_SEED + so )))
                 R=$(recon_job "${leg}_${m}${SFX}_dose${dose}" "$DN" "$bin" "$nl" "$N")
-                RIDS+=("$R"); line+=" ${m}@${dose}=${N}>${R}"
+                RIDS+=("$R"); SIM_DIRS+=("$DN"); line+=" ${m}@${dose}=${N}>${R}"   # $DN, not $D: the
+                # noiseless original is the SOURCE for every other dose in this submission
             done
             continue
         fi
@@ -195,6 +196,11 @@ DEP=$(IFS=:; echo "${RIDS[*]}")
 # needs a re-simulation, which is minutes at BIN 4. Same flag and same mechanism as run_campaign.sh.
 # Only this submission's own sim dirs are touched, never another run's.
 CLEAN=""
+if [ "${CLEANDATA:-0}" = "1" ] && [ "${RECON_ONLY:-0}" = "1" ]; then
+    echo "WARNING: CLEANDATA=1 with RECON_ONLY=1 deletes raw data this submission did not create," >&2
+    echo "         so a later re-fit of these legs needs a re-simulation. Ctrl-C now if unintended." >&2
+    sleep 5
+fi
 if [ "${CLEANDATA:-0}" = "1" ]; then
     for leg_dir in "${SIM_DIRS[@]}"; do
         CLEAN="${CLEAN} && find '${leg_dir}' \\( -name data_dp.hdf5 -o -name data_position.hdf5 \\) -delete"
