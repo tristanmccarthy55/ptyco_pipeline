@@ -82,6 +82,10 @@ stime_for(){ [ -n "${STIME:-}" ] && { echo "$STIME"; return; }   # phonons multi
 
 sim_job(){   # $1 dir $2 alpha $3 bin $4 c3 $5 c1 $6 mode(lab|Pb|Ti) [$7 aber_json] -> jobid
     local dir="$1" alpha="$2" bin="$3" c3="$4" c1="$5" mode="$6" aj="${7:-}"
+    # the job name carries the leg: sacct lists names, not directories, and with every sim in a
+    # nine-label submission called "af_sim_lab" a failure cannot be attributed to a leg. That cost a
+    # round trip on 2026-09-22 working out which simulation a failed recon had been waiting on.
+    local jn="af_sim_$(basename "$dir" | sed 's/^sim_out_af_//')"
     local exp="ALL,JOB_DIR=${dir},SLICE_THICKNESS=${SLICE},SCAN_STEP=${STEP},CONVERGENCE=${alpha}"
     exp="${exp},PHONONS=${PHONONS},PHONON_SIGMA=${PHONON_SIGMA},PER_SPECIES_SIGMA=${PER_SPECIES},PHONON_SEED=${PHONON_SEED}"
     # a non-round row's JSON has commas, so it cannot ride in --export's list: run_sim.slurm reads it from
@@ -105,7 +109,7 @@ sim_job(){   # $1 dir $2 alpha $3 bin $4 c3 $5 c1 $6 mode(lab|Pb|Ti) [$7 aber_js
         lab) exp="${exp},THIN_CELLS=${THIN}";;
         *)   exp="${exp},SINGLE_ATOM=${mode},ATOM_Z=${ATOMZ},GRID_SPACING=${GRIDSP},GRID_BOX_Z=${BOXZ}";;
     esac
-    sbatch --parsable --job-name="af_sim_${mode}" --time="$(stime_for "$bin")" \
+    sbatch --parsable --job-name="${jn}" --time="$(stime_for "$bin")" \
         --output="logs/af_sim_%j.out" --error="logs/af_sim_%j.err" --export="${exp}" sim/run_sim.slurm
 }
 noise_job(){ # $1 noiseless sim dir $2 noisy out dir $3 dose $4 seed -> jobid  (CPU; streamed, ~minutes)
