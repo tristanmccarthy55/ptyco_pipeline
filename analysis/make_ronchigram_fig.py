@@ -9,6 +9,10 @@ aperture edge at 50 mrad, ~1600 rad at 120); the operator retunes Cs (C3) + defo
 (C3, C1) of campaign/round_sweep.tsv -- to keep the PROBE compact (the criterion ptycho needs; it
 recovers the phase itself, so a flat Scherzer chi is not required).
 
+ONE probe-size measure is plotted: d90, the diameter of the circle holding 90% of the probe
+intensity (d50/d99 are computed and printed, but two curves of the same quantity on one axis
+only invited the question "which one is the probe?").
+
 Probe plan (campaign/plan_probe.py, read from round_sweep.tsv): d90 = 4 A first, the flattest
 Ronchigram second. Where 4 A is reachable (30-70 mrad) that is the traditional recipe: Cs flat --
 the realistic +1 um corrector residual at 30, retuned to the flattest step against C5 at 50/70 --
@@ -25,7 +29,7 @@ Bottom:
   left  -- phase-ramp line profile: Delta x(theta) = dW/dtheta, the lateral distance (A) at which
            the ray through aperture angle theta lands. The probe is compact only where rays land
            within ~+-2 A (the 4 A target band).
-  right -- probe d90 and d99 vs alpha (converged 140 A box), the 4 A target, the smallest probe
+  right -- probe size d90 vs alpha (converged 140 A box), the 4 A target, the smallest probe
            reachable at 30-70 mrad, the 70 A BIN=1 probe window, and Ronchigram flatness: the
            NON-defocus aberration P-V across the aperture (plan_probe.nondefocus_pv), flat <= lambda/4.
   Each chi panel carries its non-defocus P-V (green = flat).
@@ -180,15 +184,18 @@ def main():
     axs = fig.add_subplot(gs[3, 4:])
     al = np.array([p[0] for p in PTS])
     small = {a: smallest(a) for a in (30, 50, 70)}
-    axs.semilogy(al, d90s, "s-", color="crimson", label="probe d90 (balanced, as simulated)")
-    axs.semilogy(al, d99s, "^--", color="crimson", alpha=0.55, label="probe d99")
+    axs.semilogy(al, d90s, "s-", color="crimson", label="probe diameter d90 (as simulated)")
     axs.semilogy(list(small), [small[a][0] for a in small], "o", mfc="white", mec="crimson",
-                 label="smallest d90 reachable (30–70 mrad)")
+                 label="smallest reachable (30–70 mrad)")
     axs.axhline(4.0, color="0.3", ls=":", lw=1); axs.text(122, 4.3, "4 Å target", ha="right", fontsize=8)
     axs.axhline(WINDOW_BIN1, color="k", ls="-.", lw=0.9)
     axs.text(84, WINDOW_BIN1 * 1.08, f"BIN=1 probe window {WINDOW_BIN1:.0f} Å", ha="left", fontsize=8)
     axs.set_ylim(0.5, 150); axs.set_xlim(25, 125)
-    axs.set_xlabel("α opened to (mrad)"); axs.set_ylabel("probe diameter (Å, log)")
+    axs.set_xlabel("α opened to (mrad)")
+    axs.set_ylabel("probe diameter d90 (Å, log)")
+    # d90 is quoted everywhere in this campaign, so define it ON the figure
+    axs.text(0.985, 0.03, "d90 = diameter of the circle holding 90% of the probe intensity",
+             transform=axs.transAxes, ha="right", va="bottom", fontsize=8, color="0.25")
     # Ronchigram flatness = the NON-defocus aberration (defocus only changes the shadow magnification
     # uniformly), the quantity the planner optimises. (An "aperture within +-2 A" measure would
     # penalise the intended defocus spreading itself.)
@@ -212,7 +219,8 @@ def main():
              "Probe plan (plan_probe.py): d90 = 4 Å first, flattest Ronchigram second. 30–70 mrad: Cs flat "
              "(realistic +1 µm residual at 30; retuned against C5 at 50/70) and DEFOCUS enlarges the probe to 4 Å — "
              "the traditional recipe. ≥ 90 mrad: 4 Å is unreachable, the probe is the smallest possible, and C3 "
-             "and C1 must both fight C5 (C1 = −160 … −268 Å winds rings from the centre).",
+             "and C1 must both fight C5 (C1 = −160 … −268 Å winds rings from the centre).  "
+             "Probe size is quoted as d90: the diameter of the circle holding 90% of the probe intensity.",
              ha="center", va="top", fontsize=9.5, wrap=True)
     p = os.path.join(week_dir("figs"), "ronchigram_evolution.png")
     fig.savefig(p, dpi=130, bbox_inches="tight"); print("wrote", p)

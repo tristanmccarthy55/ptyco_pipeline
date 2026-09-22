@@ -5,10 +5,14 @@ enough to keep depth resolution as you open the aperture far past a Cs-corrector
 **atomfind** then localise the atoms in depth? Thin PTO/STO slab, 300 keV, PtychoShelves GPU
 LSQ-ML. This folder is the experiment's **home for outputs**; the code lives with the pipeline.
 
+**Start here if you are new**: the logbook, https://claude.ai/artifact/7ve93UM6yqCmiRcbfNuiJM — the permanent checkpoint record
+(what was done, the numbers, the rules, the figure conventions). Source: `page/logbook.html`.
+
 ## Where things live
 - **Sweep driver / planner**: [`../campaign/`](../campaign/) — `plan_probe.py` → `round_sweep.tsv`
   (the C3-coarse + C1-fine balance to a 4 Å probe per α), `run_campaign.sh` (perfect/known/fitprobe
   legs), `run_thin_atomfind.sh` (full-box recons + matched aberrated PSFs for atomfind), `README.md`.
+- **This page's source**: [`page/`](page/) — `logbook.html` + `build_page.py` (figures in as data URIs).
 - **Analysis scripts**: [`../analysis/`](../analysis/) — `analyze_thin_campaign.py` (depth x–z,
   in-plane, probe overlap), `make_ronchigram_fig.py` (the χ / Ronchigram evolution figure),
   `atomfind/` (the finder + its `thin` preset).

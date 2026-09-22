@@ -1,0 +1,772 @@
+<title>Aperture Campaign Logbook</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Serif:ital,wght@0,400;0,500;1,400&display=swap">
+<style>
+  :root {
+    /* neutrals carry a slight blue bias, toward the accent and toward the dark field of a Ronchigram */
+    --paper:    #eef1f5;
+    --surface:  #ffffff;
+    --sunk:     #e4e9ef;
+    --ink:      #131820;
+    --ink-2:    #4d5765;
+    --ink-3:    #6f7b8a;
+    --rule:     #d5dce4;
+    --rule-2:   #c2ccd7;
+    /* the campaign's own figure palette (Okabe-Ito), so page and figures are one system */
+    --accent:   #0072b2;   /* Pb / structural blue */
+    --ok:       #00795c;   /* flat, works, settled */
+    --warn:     #a97400;   /* unreliable, watch it */
+    --stop:     #c2490a;   /* fails, not reachable */
+    --probe:    #a8438a;   /* flatness / probe-phase accent */
+    --tint:     #e8f1f8;   /* tinted reference row */
+    --shadow:   0 1px 2px rgba(19,24,32,.06), 0 6px 18px rgba(19,24,32,.05);
+    --mono: "IBM Plex Mono", ui-monospace, "SF Mono", Menlo, monospace;
+    --sans: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+    --serif: "IBM Plex Serif", Georgia, "Times New Roman", serif;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --paper:   #0c1016;
+      --surface: #141a22;
+      --sunk:    #1b222c;
+      --ink:     #e7edf4;
+      --ink-2:   #a7b3c1;
+      --ink-3:   #7d8a99;
+      --rule:    #26303c;
+      --rule-2:  #32404f;
+      --accent:  #58aee2;
+      --ok:      #43c7a1;
+      --warn:    #e8b13f;
+      --stop:    #ff8348;
+      --probe:   #dd8fc4;
+      --tint:    #16242f;
+      --shadow:  0 1px 2px rgba(0,0,0,.4), 0 8px 24px rgba(0,0,0,.28);
+    }
+  }
+  :root[data-theme="dark"] {
+    --paper:   #0c1016;
+    --surface: #141a22;
+    --sunk:    #1b222c;
+    --ink:     #e7edf4;
+    --ink-2:   #a7b3c1;
+    --ink-3:   #7d8a99;
+    --rule:    #26303c;
+    --rule-2:  #32404f;
+    --accent:  #58aee2;
+    --ok:      #43c7a1;
+    --warn:    #e8b13f;
+    --stop:    #ff8348;
+    --probe:   #dd8fc4;
+    --tint:    #16242f;
+    --shadow:  0 1px 2px rgba(0,0,0,.4), 0 8px 24px rgba(0,0,0,.28);
+  }
+
+  html { scroll-behavior: smooth; }
+  @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
+
+  body {
+    background: var(--paper);
+    color: var(--ink);
+    font-family: var(--serif);
+    font-size: 16.5px;
+    line-height: 1.62;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* ---- masthead --------------------------------------------------------------- */
+  header.mast {
+    border-bottom: 1px solid var(--rule);
+    background: var(--surface);
+    padding-block: 26px 20px;
+  }
+  .mast-in, main, footer.foot > .foot-in {
+    width: min(100% - 32px, 1120px);
+    margin-inline: auto;
+  }
+  /* masthead and footer text sit on the reading column, so the h1 and the prose share a left edge */
+  .mast-col, footer.foot .foot-in > span { display: block; width: min(70ch, 100%); margin-inline: auto; }
+  .eyebrow {
+    font-family: var(--mono); font-size: 11.5px; font-weight: 500;
+    letter-spacing: .13em; text-transform: uppercase; color: var(--ink-3);
+  }
+  h1 {
+    font-family: var(--sans); font-weight: 700; font-size: clamp(30px, 5.2vw, 44px);
+    line-height: 1.06; letter-spacing: -.021em; margin: 8px 0 0; text-wrap: balance;
+  }
+  .standfirst {
+    max-width: 62ch; margin-top: 12px; color: var(--ink-2); font-size: 17px;
+  }
+  .mast-meta {
+    display: flex; flex-wrap: wrap; gap: 8px 22px; margin-top: 18px;
+    font-family: var(--mono); font-size: 12px; color: var(--ink-3);
+  }
+  .mast-meta b { color: var(--ink-2); font-weight: 500; }
+  nav.jump {
+    display: flex; flex-wrap: wrap; gap: 6px 14px; margin-top: 18px;
+    font-family: var(--mono); font-size: 12px;
+  }
+  nav.jump a { color: var(--ink-2); text-decoration: none; border-bottom: 1px solid var(--rule-2); padding-bottom: 1px; }
+  nav.jump a:hover { color: var(--accent); border-color: var(--accent); }
+
+  /* ---- reading column, with wide blocks breaking out --------------------------- */
+  main {
+    display: grid;
+    grid-template-columns: 1fr min(70ch, 100%) 1fr;
+    row-gap: 0;
+    padding-block: 8px 56px;
+  }
+  main > * { grid-column: 2; }
+  main > .wide { grid-column: 1 / -1; }
+
+  section { padding-top: 40px; }
+  .sec-head { display: flex; align-items: baseline; gap: 12px; margin-bottom: 4px; }
+  .sec-num {
+    font-family: var(--mono); font-size: 12px; font-weight: 600; color: var(--accent);
+    letter-spacing: .06em; padding-top: 3px;
+  }
+  h2 {
+    font-family: var(--sans); font-weight: 600; font-size: clamp(21px, 3vw, 27px);
+    letter-spacing: -.014em; line-height: 1.2; margin: 0; text-wrap: balance;
+  }
+  h3 {
+    font-family: var(--sans); font-weight: 600; font-size: 16px; letter-spacing: -.005em;
+    margin: 26px 0 6px; color: var(--ink);
+  }
+  p { margin: 0 0 14px; }
+  p + h3 { margin-top: 24px; }
+  a { color: var(--accent); text-underline-offset: 2px; }
+  strong { font-weight: 600; }
+  em.term { font-style: italic; color: var(--ink-2); }
+  code, .m {
+    font-family: var(--mono); font-size: .855em;
+    background: var(--sunk); padding: 1px 5px; border-radius: 3px;
+    overflow-wrap: anywhere;
+  }
+  ul, ol { margin: 0 0 14px; padding-left: 22px; }
+  li { margin-bottom: 7px; }
+  li::marker { color: var(--ink-3); }
+
+  /* ---- chips ------------------------------------------------------------------- */
+  .chip {
+    display: inline-block; font-family: var(--mono); font-size: 10.5px; font-weight: 500;
+    letter-spacing: .07em; text-transform: uppercase; padding: 2px 7px; border-radius: 3px;
+    border: 1px solid currentColor; white-space: nowrap; vertical-align: 1px;
+  }
+  .c-ok   { color: var(--ok); }
+  .c-warn { color: var(--warn); }
+  .c-stop { color: var(--stop); }
+  .c-open { color: var(--accent); }
+  .c-none { color: var(--ink-3); }
+
+  /* ---- tables ------------------------------------------------------------------ */
+  .tablewrap { overflow-x: auto; margin: 18px 0 8px; }
+  table {
+    border-collapse: collapse; width: 100%; font-family: var(--sans); font-size: 13.5px;
+    font-variant-numeric: tabular-nums;
+  }
+  th, td { text-align: left; padding: 7px 12px 7px 0; border-bottom: 1px solid var(--rule); white-space: nowrap; }
+  th .raw { text-transform: none; letter-spacing: 0; font-size: 12.5px; }
+  th {
+    font-size: 11px; font-weight: 600; letter-spacing: .07em; text-transform: uppercase;
+    color: var(--ink-3); border-bottom-color: var(--rule-2);
+  }
+  td.wrap, th.wrap { white-space: normal; min-width: 22ch; }
+  tr.ref td { background: var(--tint); }
+  tr.ref td:first-child { box-shadow: inset 3px 0 0 var(--accent); padding-left: 9px; }
+  caption {
+    caption-side: bottom; text-align: left; font-family: var(--sans); font-size: 12.5px;
+    color: var(--ink-3); padding-top: 10px; white-space: normal;
+  }
+
+  /* ---- figure blocks ----------------------------------------------------------- */
+  figure {
+    margin: 26px 0 8px; background: var(--surface); border: 1px solid var(--rule);
+    border-radius: 4px; box-shadow: var(--shadow); overflow: hidden;
+  }
+  figure img { display: block; width: 100%; max-width: 100%; height: auto; background: #fff; }
+  figcaption { padding: 14px 18px 16px; border-top: 1px solid var(--rule); font-family: var(--sans); font-size: 13.5px; color: var(--ink-2); }
+  figcaption .fig-name {
+    font-family: var(--mono); font-size: 11.5px; letter-spacing: .01em;
+    color: var(--ink-3); display: block; margin-bottom: 5px; overflow-wrap: anywhere;
+  }
+  .howto {
+    margin-top: 11px; padding-top: 11px; border-top: 1px dashed var(--rule-2);
+    font-size: 13px; color: var(--ink-2);
+  }
+  .howto b { font-family: var(--mono); font-size: 10.5px; letter-spacing: .08em; text-transform: uppercase; color: var(--ink-3); font-weight: 500; }
+
+  /* ---- callout ----------------------------------------------------------------- */
+  .call {
+    margin: 20px 0; padding: 14px 16px; background: var(--surface);
+    border: 1px solid var(--rule); border-left: 3px solid var(--accent); border-radius: 3px;
+    font-family: var(--sans); font-size: 14px; color: var(--ink-2);
+  }
+  .call b { color: var(--ink); font-weight: 600; }
+  .call.stop { border-left-color: var(--stop); }
+  .call.ok   { border-left-color: var(--ok); }
+
+  /* ---- ledger ------------------------------------------------------------------ */
+  .ledger { display: grid; gap: 1px; background: var(--rule); border: 1px solid var(--rule); border-radius: 4px; overflow: hidden; margin: 20px 0; }
+  .ledger > div { background: var(--surface); padding: 12px 15px; display: grid; grid-template-columns: 1fr auto; gap: 4px 14px; align-items: start; }
+  .ledger .lg-t { font-family: var(--sans); font-weight: 600; font-size: 14.5px; }
+  .ledger .lg-d { font-family: var(--sans); font-size: 13.5px; color: var(--ink-2); grid-column: 1 / -1; }
+
+  /* ---- footer ------------------------------------------------------------------ */
+  footer.foot { border-top: 1px solid var(--rule); background: var(--surface); padding-block: 22px 34px; margin-top: 20px; }
+  footer.foot .foot-in { font-family: var(--mono); font-size: 12px; color: var(--ink-3); }
+
+  @media (max-width: 640px) {
+    body { font-size: 16px; }
+    main { grid-template-columns: 0 100% 0; }
+    .ledger > div { grid-template-columns: 1fr; }
+  }
+</style>
+
+<header class="mast">
+  <div class="mast-in"><div class="mast-col">
+    <div class="eyebrow">Aberration campaign · running logbook</div>
+    <h1>Aperture Campaign Logbook</h1>
+    <p class="standfirst">
+      What has been done, what it showed, and what is waiting — for whoever picks the project up next.
+      A Cs-corrected-at-30-mrad instrument, deliberately opened to 100 mrad, reconstructed by multislice
+      electron ptychography and read out atom by atom.
+    </p>
+    <div class="mast-meta">
+      <span><b>Checkpoint</b> 2026-09-22</span>
+      <span><b>Round-α campaign</b> complete</span>
+      <span><b>Relaxation ladder</b> 6 of 8 steps measured</span>
+      <span><b>Open now</b> six tarballs awaiting analysis</span>
+    </div>
+    <nav class="jump">
+      <a href="#s1">1 · The question</a>
+      <a href="#s2">2 · The instrument</a>
+      <a href="#s3">3 · What it found</a>
+      <a href="#s4">4 · Where it stops</a>
+      <a href="#s5">5 · Relaxation ladder</a>
+      <a href="#s6">6 · Checkpoint</a>
+      <a href="#s7">7 · Rules</a>
+      <a href="#s8">8 · Presenting it</a>
+      <a href="#s9">9 · Where things live</a>
+    </nav>
+    </div>
+  </div>
+</header>
+
+<main>
+
+  <section id="s0">
+    <div class="sec-head"><span class="sec-num">00</span><h2>How to use this page</h2></div>
+    <p>
+      This is the permanent record of the aberration campaign: the state of the work at each checkpoint,
+      the numbers it produced, and the conventions the project runs on. It is written to be handed to a
+      new collaborator — or a new agent session — cold. It is not a meeting deck; the meeting pages are
+      linked in §9 and are rebuilt from the same data.
+    </p>
+    <p>
+      Read this page first, then the repo documents in this order:
+      <code>aberration_experiment/HANDOFF_ANALYSIS.md</code> (what is waiting right now),
+      <code>HANDOVER.md</code> (the experiment itself),
+      <code>NEXT_PHASE.md</code> (the plan), and
+      <code>PSF_KERNELS.md</code> (the kernel rules). Where this page and those documents disagree, the
+      repo is current and this page is the checkpoint it was written at.
+    </p>
+    <div class="call">
+      <b>How the project works.</b> The user runs every cluster job — there is no SSH from an agent session.
+      Hand over exact <code>sbatch</code> blocks and wait for the log or the tarball; assume nothing about a
+      job you have not seen finish. Every Blythe path lands under <code>$SHARE/phucrh</code>, never the shared
+      group root. Ship a matching <code>scp -O</code> line with every command block. Local Python is
+      <code>~/hyperspy-bundle/bin/python</code>. Verify against the code or the data before asserting anything:
+      every wrong number this campaign produced came from an assumption that looked right.
+    </div>
+  </section>
+
+  <section id="s1">
+    <div class="sec-head"><span class="sec-num">01</span><h2>The question</h2></div>
+    <p>
+      A spherical-aberration corrector is specified at an aperture. Tuned for 30 mrad, it nulls third order
+      (C<sub>3</sub>, "Cs") but leaves fifth order untouched: C<sub>5</sub> ≈ 1 mm is a fixed residual of the
+      hardware, not a knob. Open the aperture past its specification and C<sub>5</sub>θ<sup>6</sup> explodes —
+      about 8 radians at the aperture edge at 50 mrad, some 1600 at 120. The wavefront stops being flat, the
+      Ronchigram stops having a sweet spot, and conventional imaging is over.
+    </p>
+    <p>
+      Ptychography does not need a flat wavefront. It <em class="term">solves for</em> the phase, so an
+      aberrated probe is a known probe, not a broken one — and depth resolution improves as the square of
+      the aperture, δz = λ/α². The question this campaign answers is whether that trade is real: whether an
+      older, cheaper, already-installed instrument, deliberately opened well past its corrector's spec, can
+      deliver depth resolution that a conventional column cannot.
+    </p>
+    <p>
+      The test object is a 5-cell PbTiO<sub>3</sub>/SrTiO<sub>3</sub> labyrinth slab (19.5 Å of material,
+      4 Å of vacuum each side, 27.525 Å box, reconstructed in full so surface artefacts land in the vacuum).
+      The readout is <strong>atomfind</strong>: it models the reconstructed phase volume as a superposition of
+      single-atom responses and locates atoms in three dimensions, blind, then is scored against the known
+      structure. Depth recovery versus aperture is the measurement.
+    </p>
+  </section>
+
+  <section id="s2">
+    <div class="sec-head"><span class="sec-num">02</span><h2>The instrument as modelled</h2></div>
+    <p>
+      The operator's move, as the aperture opens, is to retune what they can: C<sub>3</sub> and defocus
+      C<sub>1</sub>, against a C<sub>5</sub> they cannot touch. The planner
+      (<code>campaign/plan_probe.py</code> → <code>round_sweep.tsv</code>) reproduces that move with an
+      explicit objective: <strong>a 4 Å probe first, the flattest Ronchigram second</strong>. Probe compactness
+      is the criterion because ptychography recovers the phase itself; flatness is a tiebreak, and a diagnostic
+      of where a conventional instrument would have given up.
+    </p>
+    <p>
+      Up to 70 mrad a 4 Å probe is reachable, so C<sub>3</sub> is held at a realistic residual and
+      <strong>defocus</strong> does the spreading — the traditional recipe. The smallest probe actually
+      reachable there is far smaller than 4 Å (1.21 / 0.83 / 2.22 Å at 30 / 50 / 70 mrad); the probe is
+      deliberately enlarged to the target, not accidentally. From 90 mrad, 4 Å is out of reach: the probe is
+      the smallest it can be and both C<sub>3</sub> and C<sub>1</sub> are fighting C<sub>5</sub>.
+    </p>
+
+    <div class="tablewrap">
+      <table>
+        <caption>The four legs as simulated. Flatness is the peak-to-valley of the non-defocus aberration
+          across the aperture; flat means ≤ λ/4 (π/2 rad). BIN is detector binning, NL the number of
+          reconstructed depth slices (Nyquist for that aperture's δz). α = 90 mrad is the reference leg the
+          later relaxations are run against.</caption>
+        <thead>
+          <tr><th><span class="raw">α</span> (mrad)</th><th>C<sub>3</sub></th><th>C<sub>1</sub></th><th>probe d90</th><th>non-defocus P–V</th><th>BIN</th><th>NL</th><th>slice</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>50</td><td>−2 µm</td><td>+38 Å</td><td>3.9 Å</td><td>1.14 rad <span class="chip c-ok">flat</span></td><td>4</td><td>7</td><td>3.93 Å</td></tr>
+          <tr><td>70</td><td>−5 µm</td><td>−60 Å</td><td>4.0 Å</td><td>6.23 rad</td><td>4</td><td>14</td><td>1.97 Å</td></tr>
+          <tr class="ref"><td>90</td><td>−9 µm</td><td>−160 Å</td><td>6.6 Å</td><td>30.4 rad</td><td>2</td><td>23</td><td>1.20 Å</td></tr>
+          <tr><td>100</td><td>−11 µm</td><td>−238 Å</td><td>11.0 Å</td><td>55.2 rad</td><td>2</td><td>28</td><td>0.98 Å</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="call">
+      <b>What d90 means.</b> Probe size is quoted throughout as <strong>d90</strong>: the diameter of the
+      circle holding 90 % of the probe's intensity. It is an enclosed-intensity measure, not a full width at
+      half maximum — an aberrated probe has a bright core and long tails, and FWHM would flatter it by
+      ignoring exactly the tails that ruin a reconstruction. d50 and d99 are computed alongside and printed,
+      but only one probe-size curve is ever plotted, so a reader is never left asking which one is "the probe".
+      d99 appears in one place only: it sets the detector binning and decides what fits the reconstruction
+      window (§4).
+    </div>
+  </section>
+
+  <section class="wide">
+    <figure>
+      <img src="{{FIG_RONCHI}}" alt="Four-row figure: simulated Ronchigrams, wrapped aperture phase, probe intensity at three to seven apertures, with phase-ramp line profiles and probe size versus aperture.">
+      <figcaption>
+        <span class="fig-name">analysis/make_ronchigram_fig.py → figs/2026-W39/ronchigram_evolution.png</span>
+        The probe, end to end, as the aperture opens from 30 to 120 mrad. Row 1: the Ronchigram an operator
+        would see, probe through a thin amorphous film. Row 2: the wrapped aperture phase χ that produces it,
+        each panel carrying its non-defocus peak-to-valley. Row 3: the probe itself at the specimen, common
+        ±30 Å scale, with its d90 circle. Bottom left: the phase ramp as a ray displacement, Δx = ∂W/∂θ —
+        where each part of the aperture throws its rays. Bottom right: probe size and Ronchigram flatness
+        versus aperture.
+        <div class="howto">
+          <b>How to read this</b><br>
+          The green band in the ray-displacement panel is ±2 Å — rays landing inside it make a 4 Å probe.
+          At 50 mrad the whole aperture lands inside it; by 120 mrad the edge rays land 56 Å out. In the
+          bottom-right panel the two curves cross what they are each measured against: probe size against the
+          4 Å target (dotted), flatness against λ/4. Flatness crosses its limit between 50 and 70 mrad — that
+          is where a conventional instrument is finished — while the probe stays on target to 70 and only then
+          grows. The open circles are the smallest probe reachable at that aperture, so the gap between them
+          and the filled squares at 30–70 mrad is deliberate defocus, not a failure of tuning.
+        </div>
+      </figcaption>
+    </figure>
+  </section>
+
+  <section id="s3">
+    <div class="sec-head"><span class="sec-num">03</span><h2>What the round-α campaign found</h2></div>
+    <p>
+      Four apertures, each with its own matched single-atom kernels, per-atom depth registration, and the
+      analysis cropped to the scan field. Known probe, no counting noise, no thermal motion — the idealised
+      case, which §5 then dismantles one assumption at a time.
+    </p>
+
+    <div class="tablewrap">
+      <table>
+        <caption>Blind atom finding scored against the known structure. Recall is over interior planes;
+          precision is the fraction of detections that are real; confusion is atomfind's own species-labelling
+          health check, whose threshold is 5 %.</caption>
+        <thead>
+          <tr><th><span class="raw">α</span></th><th>precision</th><th>recall Pb / Ti / O</th><th>in-plane RMS</th><th>depth RMS</th><th>confusion</th><th>false positives</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>50</td><td>0.90</td><td>67 / 43 / 54 %</td><td>0.13 Å</td><td>1.20 Å</td><td>17.7 % <span class="chip c-warn">unreliable</span></td><td>34 of 356</td></tr>
+          <tr><td>70</td><td>0.98</td><td>98 / 82 / 75 %</td><td>0.04 Å</td><td>0.56 Å</td><td>1.3 %</td><td>10 of 486</td></tr>
+          <tr class="ref"><td>90</td><td>0.94</td><td>95 / 94 / 95 %</td><td>0.03 Å</td><td>0.37 Å</td><td>0.0 %</td><td>35 of 581</td></tr>
+          <tr><td>100</td><td>0.99</td><td>96 / 94 / 88 %</td><td>0.03 Å</td><td>0.45 Å</td><td>3.1 %</td><td>7 of 519</td></tr>
+          <tr><td>110</td><td colspan="6"><span class="chip c-stop">not reconstructible</span> — see §4</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3>How to read the table</h3>
+    <ul>
+      <li><strong>Depth error falls with aperture</strong> — 1.20 → 0.56 → 0.37 Å — and sits far below the
+        diffraction depth resolution δz = λ/α² (7.9 → 2.0 Å across the same range), because the finder fits
+        atom centres rather than trying to resolve them.</li>
+      <li><strong>In-plane error is 0.03 Å at 90–100 mrad, while the atoms genuinely move.</strong> Columns in
+        this labyrinth wander in-plane by a median 0.24 Å, up to 0.8 Å — the polar displacements the structure
+        exists to show. They are tracked, not averaged away.</li>
+      <li><strong>50 mrad's species split is not physics.</strong> At 3.93 Å slices the AO and BO<sub>2</sub>
+        planes merge and the labels swap: confusion 17.7 %, over the health threshold. The recall numbers on
+        that row are label swapping, and every figure marks them as untrustworthy rather than quietly plotting
+        them.</li>
+      <li><strong>False positives are a benign tail</strong>: almost all oxygen, never titanium at any
+        aperture, scoring lower on atomfind's quality measure (0.56–0.61 against 0.73–0.84 for true
+        detections), and at 50 mrad over half of them sit in the vacuum bands. Separable by a quality or depth
+        cut; deliberately left in so the numbers are not flattered.</li>
+      <li><strong>100 mrad trails 90 on oxygen</strong> (88 % against 95 %) and survives every correction —
+        it tracks the probe growing from 6.6 to 11 Å.</li>
+      <li><strong>Recall keeps climbing past the point where the Ronchigram stops being flat</strong>, which is
+        the headline: the regime that finishes conventional imaging is the regime this method works best in.</li>
+      <li><strong>Matched kernels are worth about 2× in depth error</strong> against a kernel measured from the
+        reconstruction itself.</li>
+    </ul>
+  </section>
+
+  <section class="wide">
+    <figure>
+      <img src="{{FIG_DEPTH}}" alt="Recall and depth error against convergence angle, with hollow markers where species labels are unreliable.">
+      <figcaption>
+        <span class="fig-name">analysis/collate_atomfind_depth.py → figs/2026-W37/atomfind_depth_vs_alpha.png</span>
+        Atoms recovered and depth error against aperture, per species, with the diffraction depth resolution
+        δz = λ/α² for reference.
+        <div class="howto">
+          <b>How to read this</b><br>
+          Hollow markers mean atomfind's species-confusion check failed for that leg — the split between Pb,
+          Ti and O there is label swapping, not a physical difference in how well each is found. The depth
+          error curve sitting an order of magnitude below δz is expected and is not a claim of super-resolution:
+          δz is the width of the response, the plotted number is how well its centre is located.
+        </div>
+      </figcaption>
+    </figure>
+
+    <figure>
+      <img src="{{FIG_VOLUMES}}" alt="Reconstructed phase volumes: in-plane views and depth sections at each aperture, with found atoms as rings over ground-truth atoms as dots.">
+      <figcaption>
+        <span class="fig-name">analysis/make_mep_volumes_fig.py → figs/2026-W37/mep_volumes.png</span>
+        The reconstructions themselves: in-plane phase and two depth (x–z) sections per aperture, equal aspect,
+        with blind detections drawn as rings over the known atom positions as dots.
+        <div class="howto">
+          <b>How to read this</b><br>
+          A ring with no dot under it is a spurious atom; a dot with no ring is a miss; a ring offset from its
+          dot is a placement error, with the bar through it the calibrated 95 % depth interval. Drawing both
+          means a failure mode cannot hide behind a summary statistic. At low aperture a column is one
+          unbroken vertical streak; by 90 mrad it beads into individual atoms at the right depths.
+        </div>
+      </figcaption>
+    </figure>
+  </section>
+
+  <section id="s4">
+    <div class="sec-head"><span class="sec-num">04</span><h2>Where it stops: 110 and 120 mrad</h2></div>
+    <p>
+      <strong>110 mrad is settled as not reconstructible</strong>, and the reason is geometric rather than
+      fundamental. Its probe is 24.5 Å across, which outgrew the original 20 Å scan field — a scan-to-probe
+      ratio of 0.8, leaving no positional diversity for the solve. The leg was re-run with the field widened to
+      34 Å, the most the 70 Å box allows, at the same position count (40 × 40 = 1600). The result stands: the
+      object is featureless speckle, the in-plane lattice peak sits at 1.5 times background where it needs to
+      be far above it, and the lead kernel diverges.
+    </p>
+    <p>
+      <strong>120 mrad is not even simulable</strong> in this geometry: its d99 is about 105 Å, against a
+      70 Å reconstruction window at BIN = 1. The probe does not fit the box.
+    </p>
+    <div class="call stop">
+      <b>Do not cite the older campaign's a110 / a120 depth rows.</b> Their "diamonds" repeat every two depth
+      slices exactly — the odd/even-layer ambiguity of unregularised multislice, drawn bilinearly — and the
+      aberration-<em>free</em> leg fails there too, which C<sub>5</sub> cannot explain.
+    </div>
+  </section>
+
+  <section id="s5">
+    <div class="sec-head"><span class="sec-num">05</span><h2>The relaxation ladder</h2></div>
+    <p>
+      The campaign above is idealised: a known probe, no noise, still atoms, a perfectly round wavefront, a thin
+      slab. The ladder removes those assumptions one at a time, each rung measured against the same scoring and
+      written into one cumulative table,
+      <code>aberration_experiment/results/relaxation_ladder.csv</code>. A result that survives the
+      <em class="term">combined</em> configuration is publishable; one that survives only the idealised case is not.
+    </p>
+
+    <div class="tablewrap">
+      <table>
+        <caption>Ladder state at this checkpoint, α = 70 / α = 90 where both exist. Step 0 is the idealised
+          baseline every other rung is compared against.</caption>
+        <thead>
+          <tr><th>Step</th><th class="wrap">Assumption removed</th><th class="wrap">Outcome</th><th>State</th></tr>
+        </thead>
+        <tbody>
+          <tr class="ref"><td>0</td><td class="wrap">known probe, no noise</td><td class="wrap">depth error 0.56 / 0.37 Å; recall 98/82/75 and 95/94/95 %</td><td><span class="chip c-ok">baseline</span></td></tr>
+          <tr><td>1</td><td class="wrap">focus unknown, corrector known</td><td class="wrap"><strong>no real cost</strong>: 0.59 / 0.44 Å; recall 97/94/79 and 90/83/86 %</td><td><span class="chip c-ok">measured</span></td></tr>
+          <tr><td>1b</td><td class="wrap">focus fitted inside the solver</td><td class="wrap">fails — the outer search over trial probes is the working route</td><td><span class="chip c-stop">fails</span></td></tr>
+          <tr><td>2</td><td class="wrap">counting noise</td><td class="wrap">works to 10<sup>5</sup> e/Å²; at 10<sup>4</sup> the matched kernel cannot be measured at all</td><td><span class="chip c-ok">measured</span></td></tr>
+          <tr><td>3</td><td class="wrap">thermal vibration (phonons)</td><td class="wrap">depth error roughly doubles; oxygen recall 10–17 %; species labels untrustworthy</td><td><span class="chip c-warn">costly</span></td></tr>
+          <tr><td>4</td><td class="wrap">non-round aberration (six-fold)</td><td class="wrap">0.6 waves → lead recall 39 %; 1.2 waves → 7 %. The threshold is below 0.6</td><td><span class="chip c-open">in flight</span></td></tr>
+          <tr><td>5</td><td class="wrap">the full 70 Å sample</td><td class="wrap">diverged at the pinned solver step; retried at half the step size</td><td><span class="chip c-open">in flight</span></td></tr>
+          <tr><td>6</td><td class="wrap">partial coherence</td><td class="wrap">needs simulation code that does not exist yet</td><td><span class="chip c-none">not built</span></td></tr>
+          <tr><td>7</td><td class="wrap">specimen tilt (a few degrees)</td><td class="wrap">needs the crystal rotated in the sim and a finder that handles crossing columns</td><td><span class="chip c-none">not built</span></td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3>The two results worth arguing about</h3>
+    <p>
+      <strong>Focus is recoverable; fitting it inside the solver is not.</strong> An outer search over trial
+      probes, with everything else fixed, recovers the focus to 2 Å and costs essentially nothing in depth
+      error — step 1 is the good news of the ladder. The tidy alternative, letting the solver fit focus as its
+      one free probe parameter, was built into the engine and failed: at 90 mrad it moved the focus by under
+      0.6 Å from starts 32 Å away; at 70 mrad it walked the probe 20–33 Å the <em>wrong</em> way into a
+      reconstruction with mismatch ~260 against ~22 for the best fixed probe. The first diagnosis — overshoot
+      from oversized steps — was checked and is wrong: the median step is 0.023 Å and 54 % of steps are
+      one-signed over 322 iterations, which is a slow steady drift, not overshoot. The live hypothesis is the
+      degeneracy the fixed-probe scan already measured: <strong>probe focus and object depth trade one for
+      one</strong>, so with both free the pair slides along a direction the data cannot see.
+    </p>
+    <p>
+      <strong>Six-fold astigmatism is the number a referee will want.</strong> It is what a hexapole corrector
+      leaves behind and what round knobs cannot touch, so the deliverable is a specification: the residual must
+      be under X waves for this to work. At 70 mrad, 0.6 waves already takes lead recall from 98 % to 39 %, and
+      1.2 waves to 7 % — so the tolerance is somewhere below 0.6, and the ladder run in flight samples 0.1, 0.2,
+      0.3 and 0.45 waves to find it.
+    </p>
+  </section>
+
+  <section id="s6">
+    <div class="sec-head"><span class="sec-num">06</span><h2>Checkpoint — 2026-09-22</h2></div>
+    <p>
+      Six tarballs from three experiments submitted on 2026-09-22 are the immediate work. Triage each one
+      before analysing it: a job that reports COMPLETED but has no <code>*_recons.h5</code> means MATLAB
+      crashed, and an older run's file at the same path will silently stand in for a leg that failed.
+    </p>
+
+    <div class="ledger">
+      <div>
+        <span class="lg-t">A — focus fitted with the object frozen</span><span class="chip c-open">to analyse</span>
+        <span class="lg-d">Freezes the object in the full-resolution engine so focus is fitted against an
+          already-converged object. If the focus now moves toward the truth, the drift was the shared
+          focus/depth degeneracy and the fix is to alternate rather than co-optimise — that changes the method
+          and should be said plainly. If it still drifts, the outer search is the permanent answer. Either way
+          it is a clean result; do not spend days on it.</span>
+      </div>
+      <div>
+        <span class="lg-t">A2 — focus fitted with a capped step</span><span class="chip c-open">to analyse</span>
+        <span class="lg-d">The control that confirms a step cap is <em>not</em> the fix, closing off the
+          overshoot explanation for good.</span>
+      </div>
+      <div>
+        <span class="lg-t">B — the 70 Å sample at half the solver step</span><span class="chip c-open">to analyse</span>
+        <span class="lg-d">Thickness is the regime the method exists for, so this is the biggest remaining
+          step. Its comparison must be against a thin-slab leg at the <em>same</em> step size, or the result is
+          about the step size and not about thickness. If it reconstructs, the analysis to read it out does not
+          exist yet — see below.</span>
+      </div>
+      <div>
+        <span class="lg-t">C — the non-round threshold ladder</span><span class="chip c-open">to analyse</span>
+        <span class="lg-d">The most publication-relevant run: 0.1, 0.2, 0.3 and 0.45 waves of six-fold
+          astigmatism. Report kernel health (peak, background, peak-to-background) alongside recall — a degraded
+          kernel means the <em>reconstruction</em> is failing, not the finder, and that distinction is what made
+          the earlier non-round result interpretable.</span>
+      </div>
+    </div>
+
+    <h3>Still to build, in the order that matters</h3>
+    <ol>
+      <li><strong>Analysis for the thick sample.</strong> A ground-truth cache for the 18-cell slab; a
+        <code>thick</code> preset whose trims and limits are <em>derived from the box</em> rather than typed —
+        three bugs in this campaign came from constants typed for one geometry and silently wrong for the next;
+        and <code>--dz</code> taken from the simulation metadata, not the driver's box formula (the measured
+        18-cell box is 77.94 Å against the formula's 78.00).</li>
+      <li><strong>Partial coherence.</strong> New simulation code: an incoherent sum over a Gaussian spread of
+        focus (a cold FEG at 300 kV gives roughly 12–23 Å at 1σ), then over source position (σ ≈ 0.2–0.4 Å).
+        The reconstruction side can already absorb it through probe modes.</li>
+      <li><strong>Specimen tilt</strong> of a few degrees: the crystal rotated in the simulation, a ground truth
+        built from the <em>same</em> rotated atoms, and a finder that copes with columns crossing in projection —
+        on the 70 Å slab the shear passes the 1.95 Å column spacing at about 2°, so validate on the thin slab first.</li>
+      <li><strong>The combined run</strong>: every surviving relaxation switched on together, across apertures,
+        with matched kernels and the same figure scripts.</li>
+    </ol>
+
+    <h3>Cheap questions worth answering on the way</h3>
+    <ul>
+      <li>Are the phonon and non-round recall collapses partly <em>the finder's thresholds</em>, which were
+        tuned on still atoms and clean wavefronts? Re-running the existing reconstructions with a relaxed
+        quality cut costs nothing on the cluster and separates physics from tuning. Do this before concluding
+        the method fails at room temperature.</li>
+      <li>False positives rise with dose even at 10<sup>7</sup> e/Å², almost all oxygen — same suspicion, same test.</li>
+      <li>α = 90's focus interval is narrower than the search grid (−158 ± 1 Å against a true −160). A 0.5 Å scan
+        over ±5 Å would pin it, about 6 GPU-hours — worth it only if a referee would ask.</li>
+    </ul>
+  </section>
+
+  <section id="s7">
+    <div class="sec-head"><span class="sec-num">07</span><h2>Rules that must hold</h2></div>
+    <p>
+      Every wrong number this campaign produced traced back to breaking one of these. They are not style
+      preferences.
+    </p>
+    <ol>
+      <li><strong>Kernels byte-identical to their lab leg.</strong> Everything except the object: slices, box,
+        probe, engine settings, scan window. A kernel measured under different conditions is measuring the
+        difference.</li>
+      <li><strong>Depth regularisation stays off</strong> (<code>REGLAYER=0</code>) on every leg. It
+        symmetrises information between layers — which is to say it low-passes the depth axis, the quantity
+        being measured. Fix the object or the scan, never the operator.</li>
+      <li><strong>One solver step size for every leg in a comparison</strong>, pinned in the driver.</li>
+      <li><strong>Scan field larger than the probe</strong>, scan-to-d90 ≳ 1.5. This is what 110 mrad
+        violated.</li>
+      <li><strong>Register against the right ground truth, in the right frame</strong>: a cache built for the
+        simulated geometry, the in-plane origin derived from the object size, per-atom depth registration for
+        full-box reconstructions.</li>
+      <li><strong>Geometry-coupled constants derived, not typed.</strong> Trims, drop distances and atom limits
+        all follow the box.</li>
+      <li><strong>Prefer the driver to hand-written sbatch lines</strong> — it passes absolute paths and moves
+        stale output aside. A hand-written relative path killed a job once already.</li>
+      <li><strong>Everything on Blythe lands under <code>$SHARE/phucrh</code></strong>, never the shared group
+        root. After a submission, a listing of the group root should show nothing new.</li>
+    </ol>
+  </section>
+
+  <section id="s8">
+    <div class="sec-head"><span class="sec-num">08</span><h2>Presenting this work</h2></div>
+    <p>
+      Figures exist in three layers, and mixing them is what makes a figure unreadable. <strong>Diagnostics</strong>
+      (<code>analysis/make_ronchigram_fig.py</code>, <code>make_mep_volumes_fig.py</code>,
+      <code>collate_atomfind_depth.py</code>) carry every check needed while working — the figure at the top of
+      this page is one. <strong>Meeting figures</strong> (<code>analysis/make_meeting_figs.py</code>,
+      <code>make_relaxation_figs.py</code>) are one clean figure per result, with a written explanation beside
+      them rather than crammed into the axes. <strong>Manuscript figures</strong>
+      (<code>analysis/paper/</code>) are one claim per figure, drawn at final journal size.
+    </p>
+
+    <h3>Conventions that survived contact</h3>
+    <ul>
+      <li><strong>No value is ever typed into a figure script.</strong> Every number is read from the run
+        outputs — the planner's table, the finder's report, the reconstruction file. This is why the pages, the
+        tables and the data cannot drift apart, and it is worth the extra loader every time.</li>
+      <li><strong>One quantity per axis, and one measure per quantity.</strong> Probe size is d90 and is called
+        "probe diameter"; a second curve of the same quantity only invites the question of which one is real.</li>
+      <li><strong>Say when a number cannot be trusted, in the drawing.</strong> Hollow markers where the species
+        labels fail their health check; the confusion percentage on the table row. A figure that quietly plots
+        an untrustworthy point is worse than one that omits it.</li>
+      <li><strong>Draw the answer next to the guess.</strong> Found atoms as rings over true positions as dots,
+        so misses and spurious detections are visible rather than argued.</li>
+      <li><strong>One colour per species everywhere</strong> (Okabe–Ito, colour-blind safe: lead blue, titanium
+        orange, oxygen green). Ordered variables like aperture get ordered greys, so colour keeps meaning
+        species across every figure in the set.</li>
+      <li><strong>Let the data pick the claim.</strong> The baseline comparison below was first drawn to show the
+        matched kernel beating peak-picking outright. It does not — on the heavy columns plain peak-picking
+        matches it. The figure was rewritten around what is true: oxygen and precision.</li>
+      <li><strong>Plain language, professor-level audience, no buzzwords</strong>, and only claims the user could
+        defend out loud.</li>
+    </ul>
+
+    <h3>The manuscript set</h3>
+    <p>
+      Four figures, one claim each, all generated from the same run outputs and drawn at journal column widths —
+      so they are placed in a manuscript at 100 %, never rescaled.
+    </p>
+  </section>
+
+  <section class="wide">
+    <figure>
+      <img src="{{FIG_P1}}" alt="Ronchigrams over wrapped aperture phase at three apertures, with ray displacement and a flatness and probe-size summary.">
+      <figcaption>
+        <span class="fig-name">Figure 1 · what opening the aperture costs the probe</span>
+        The same physics as the diagnostic figure above, reduced to one claim: past about 70 mrad the Ronchigram
+        is no longer flat and the probe grows, so conventional imaging is finished in exactly the regime the rest
+        of the work operates in. A 2 × 3 image block — what the operator sees, over the phase that causes it —
+        beside the ray displacement that makes the claim mechanical.
+      </figcaption>
+    </figure>
+
+    <figure>
+      <img src="{{FIG_P2}}" alt="Atoms recovered per species and depth error against aperture.">
+      <figcaption>
+        <span class="fig-name">Figure 2 · depth recovery improves as the aperture opens</span>
+        Recall per species and depth error against aperture, with δz = λ/α² for reference. Open symbols mark the
+        aperture where species labels are unreliable.
+      </figcaption>
+    </figure>
+
+    <figure>
+      <img src="{{FIG_P3}}" alt="Depth sections through a row of B-site columns at 50 and 90 mrad, found atoms drawn over true positions.">
+      <figcaption>
+        <span class="fig-name">Figure 3 · the reconstructions, with the answer drawn on</span>
+        Depth sections through a row of B-site columns — titanium alternating with apical oxygen every 1.95 Å
+        down the same column, the hardest depth target in the structure — at two apertures. At 50 mrad the column
+        is one unbroken streak; at 90 it separates into atoms at the right depths.
+      </figcaption>
+    </figure>
+
+    <figure>
+      <img src="{{FIG_P4}}" alt="Atoms recovered per species and precision, for peak-picking baselines and the matched kernel.">
+      <figcaption>
+        <span class="fig-name">Figure 4 · where the matched kernel earns its place</span>
+        All methods run on the same reconstruction. On the heavy columns any reasonable detector works — plain
+        3-D peak-picking matches the matched kernel on lead and titanium. The kernel wins on the light atoms
+        (oxygen 95 % against 73 %) and on precision (0.94 against 0.84). The other half of the result is that
+        deconvolving first — the standard workflow — makes oxygen dramatically <em>worse</em>, not better.
+      </figcaption>
+    </figure>
+  </section>
+
+  <section>
+    <h3>Publishing pages like this one</h3>
+    <p>
+      <strong>Embed figures as base64 data URIs inside the HTML.</strong> Publishing them as separate files and
+      referencing them by relative path does not render, even though the files list correctly — this cost a round
+      trip once and will again. Budget the page under 16 MB; base64 inflates by a third. This page is built by
+      <code>aberration_experiment/page/build_page.py</code> from the template beside it, which is why it can be
+      rebuilt from the current figures and republished <em>to the same URL</em> rather than becoming a second page.
+    </p>
+  </section>
+
+  <section id="s9">
+    <div class="sec-head"><span class="sec-num">09</span><h2>Where things live</h2></div>
+
+    <h3>In the repository</h3>
+    <div class="tablewrap">
+      <table>
+        <thead><tr><th class="wrap">Path</th><th class="wrap">What</th></tr></thead>
+        <tbody>
+          <tr><td class="wrap"><code>aberration_experiment/HANDOFF_ANALYSIS.md</code></td><td class="wrap">the current front door: what is waiting, how to analyse it</td></tr>
+          <tr><td class="wrap"><code>aberration_experiment/HANDOVER.md</code></td><td class="wrap">the experiment, the results, the traps, how to run it</td></tr>
+          <tr><td class="wrap"><code>aberration_experiment/NEXT_PHASE.md</code></td><td class="wrap">the relaxation plan, step by step</td></tr>
+          <tr><td class="wrap"><code>aberration_experiment/PSF_KERNELS.md</code></td><td class="wrap">what a matched kernel requires and why</td></tr>
+          <tr><td class="wrap"><code>aberration_experiment/results/relaxation_ladder.csv</code></td><td class="wrap">one cumulative ladder table, rows replaced not duplicated</td></tr>
+          <tr><td class="wrap"><code>aberration_experiment/figs/&lt;ISO week&gt;/</code></td><td class="wrap">figures, ordered by week</td></tr>
+          <tr><td class="wrap"><code>aberration_experiment/page/</code></td><td class="wrap">this page: template plus its build script</td></tr>
+          <tr><td class="wrap"><code>campaign/</code></td><td class="wrap">the planner and the sweep drivers</td></tr>
+          <tr><td class="wrap"><code>analysis/paper/</code></td><td class="wrap">the manuscript figure set and its shared style</td></tr>
+          <tr><td class="wrap"><code>analysis/atomfind/</code></td><td class="wrap">the finder, its presets and its kernel extraction</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3>Companion pages</h3>
+    <p>
+      Both are rebuilt from the same run data and should be <em>updated</em> rather than replaced — read them
+      first, then publish back to the same URL.
+    </p>
+    <ul>
+      <li><a href="https://claude.ai/artifact/NiYCfNo7uFAWFkyUZ5L3SF">Depth Past the Corrector</a> — the baseline
+        story for a group meeting: probe, depth against aperture, the focus search, dose.</li>
+      <li><a href="https://claude.ai/artifact/3TfTwcipbbTxG9PGbeEtqi">Removing the Six Assumptions</a> — the
+        relaxation results: focus end to end, the in-solver failure, phonons, non-round, the thick slab.</li>
+      <li><a href="https://claude.ai/artifact/6JuRq4kgP8v6FjDC8agcpn">The earlier PI-meeting page</a> — the first
+        showcase of the round-α campaign.</li>
+    </ul>
+  </section>
+
+</main>
+
+<footer class="foot">
+  <div class="foot-in"><span>
+    Aperture campaign logbook · checkpoint 2026-09-22 · rebuilt from
+    aberration_experiment/page/logbook.html
+  </span></div>
+</footer>

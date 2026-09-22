@@ -17,6 +17,9 @@ idealisations one at a time toward a publishable result — see `NEXT_PHASE.md`.
 recon script, in-job probe writer, C1-search driver, objective analysis, relaxation-ladder table (step 0
 seeded). Next: the a70 smoke test. Plan and expectations in `NEXT_PHASE.md` § Step 1.
 
+**Logbook — the permanent checkpoint record** (private): https://claude.ai/artifact/7ve93UM6yqCmiRcbfNuiJM — what has been done, the numbers, the
+rules, the presentation conventions, and what is waiting. Point a new agent here first. Rebuilt from
+`aberration_experiment/page/logbook.html` by `page/build_page.py`; republish to the same URL.
 PI-meeting page (private): https://claude.ai/artifact/6JuRq4kgP8v6FjDC8agcpn
 Results page, 2026-09-21 runs (private): https://claude.ai/artifact/3TfTwcipbbTxG9PGbeEtqi — focus fitted
 end to end, the in-solver focus fit failing, phonons, non-round, the thick slab that diverged; figures by
