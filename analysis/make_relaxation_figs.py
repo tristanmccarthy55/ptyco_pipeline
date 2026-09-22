@@ -45,7 +45,17 @@ from make_meeting_figs import (S1, S2, S3, INK, INK2, MUTED, GRIDC, SPECIES,   #
 RELAX = ["~/Desktop/relax_0921", "~/Desktop/relax_0922"]
 AF_FINAL = "~/Desktop/thin_ab_af_final"
 BAD = "#c1502a"
-C56_WAVE = 1.004e6      # C56 [A] giving one wave of six-fold astigmatism at the 70 mrad edge
+_AW = None
+
+
+def _aw():
+    """campaign/aberration_waves.py -- one definition of "waves at the edge" for every order,
+    shared by the sweep, the figures and the page so they cannot disagree."""
+    global _AW
+    if _AW is None:
+        _AW = _load_mod("aberration_waves", os.path.join(REPO, "campaign", "aberration_waves.py"))
+    return _AW
+
 NR_PROBE_HALF = 8.0     # probe panels are cropped to +-8 A, covering the worst d90 (7.4 A)
 
 
@@ -326,17 +336,26 @@ def nr_kernel(relax, label, el):
     return None
 
 
-def nr_legs(a):
-    """Every six-fold rung that has a finder report, as (waves, label, report), with the round
-    baseline first. The wave figure comes from the sweep TSV the sims were run from, so the axis
-    cannot drift from the aberration that was actually simulated."""
+def nonround_terms(ab):
+    """The non-round terms of an aberration dict: C_nm with m > 0, phi angles excluded."""
+    return sorted(k for k in ab
+                  if len(k) == 3 and k[0] == "C" and k[1:].isdigit() and k[2] != "0")
+
+
+def nr_legs(a, term="C56"):
+    """Every rung carrying ONLY this non-round term, as (waves, label, report), round baseline
+    first. Restricted to a single term on purpose: the sweep also holds rungs for other orders
+    (two-fold, three-fold, three-lobe) and a combined six-fold-plus-four-fold level, and plotting
+    any of those on an axis labelled "six-fold astigmatism" would be a different aberration drawn
+    as if it were this one. The wave figure comes from the sweep TSV the sims were run from, so
+    the axis cannot drift from what was actually simulated."""
     plan = read_nonround_sweep()
     legs = []
     base = read_reports(a.af).get(70)
     if base:
         legs.append((0.0, "nr0_round", base))
     for label, (ab, c1, w) in plan.items():
-        if label == "nr0_round" or "C34" in label:
+        if nonround_terms(ab) != [term]:
             continue
         r = af(a.relax, label)
         if r:
@@ -417,7 +436,13 @@ def read_nonround_sweep():
             ab = {"C30": float(r["c3"]), "C50": float(r["c5"])}
             if r["aber_json"] != "-":
                 ab = json.loads(r["aber_json"])
-            rows[r["label"]] = (ab, float(r["c1"]), ab.get("C56", 0.0) / C56_WAVE)
+            # waves at the aperture edge of the row's LARGEST non-round term, by order, via the
+            # campaign helper -- so a two-fold or three-lobe row reports its own waves and not a
+            # C56 figure that would be zero for it.
+            w = 0.0
+            for t in nonround_terms(ab):
+                w = max(w, abs(float(ab[t])) / _aw().per_wave(t, float(r["alpha"])))
+            rows[r["label"]] = (ab, float(r["c1"]), w)
     return rows
 
 
