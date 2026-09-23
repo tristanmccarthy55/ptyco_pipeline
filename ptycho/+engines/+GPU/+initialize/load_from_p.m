@@ -419,6 +419,9 @@ function [self, param, p] = load_from_p(param, p)
             % probe with its transpose 0.95 / 0.82 / 0.69 / 0.57 at 0.1 / 0.2 / 0.3 / 0.45 waves of
             % six-fold at 70 mrad) and converged to a correspondingly worse fit. The TEM aperture mask
             % is derived from the probe, so it follows as well.
+            % This expects p.probes in the frame of probe_initial.mat, EVERY engine: save_to_p undoes
+            % the flip on the way out (2026-09-23). Before that it did not, so the full engine re-flipped
+            % the presolve's already-flipped probe and ran on the pre-fix orientation.
             for ii = 1:numel(self.probe)
                 if p.custom_data_flip(1); self.probe{ii} = flipud(self.probe{ii}); end
                 if p.custom_data_flip(2); self.probe{ii} = fliplr(self.probe{ii}); end

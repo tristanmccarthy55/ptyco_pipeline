@@ -97,16 +97,24 @@ function p_out = save_to_p(self, param, p, fourier_error)
                 for kk = 1:length(self.reconstruct_ind)
                    p_ind = p_ind + kk*ismember(1:self.Npos,  self.reconstruct_ind{kk})';
                 end
-                p_out.probe_variable.eigen_vec = self.probe{ll}(:,:,:,2) * (prod(sqrt(Np_p))*2*p.renorm);% normalization for consistency with the CPU code
+                p_out.probe_variable.eigen_vec = unflip_probe(self.probe{ll}(:,:,:,2), p) * (prod(sqrt(Np_p))*2*p.renorm);% normalization for consistency with the CPU code
                 p_out.probe_variable.evolution = self.probe_evolution;
             end
         end
     end
-            
-    
+
+
     % normalization for consistency with the CPU code
-    probes = probes * (prod(sqrt(Np_p))*2*p.renorm); 
-    p_out.probes = probes; 
+    probes = probes * (prod(sqrt(Np_p))*2*p.renorm);
+    % THE PROBE LEAVES IN THE FRAME IT CAME IN (2026-09-23). load_from_p flips the probe with the data
+    % (custom_data_flip), so self.probe is in the flipped frame. p.probes must go back in the frame of
+    % probe_initial.mat, because the NEXT engine's load_from_p flips it again. Without this, a two-engine
+    % run (presolve + full) transposed the probe twice: the presolve used the right probe and the full
+    % engine the pre-2026-09-22 one. Invisible for a round probe; for six-fold it is the 30-degree
+    % rotation the 2026-09-22 fix was meant to remove, and every non-round leg since ended on it (their
+    % saved probes are identical to the pre-fix runs', overlap 1.0000 at 0.1 and 0.45 waves).
+    probes = unflip_probe(probes, p);
+    p_out.probes = probes;
    
     
     position_offset = 1+floor((p.object_size-self.Np_p)/2);
@@ -173,5 +181,14 @@ function p_out = save_to_p(self, param, p, fourier_error)
     end
     p_out.error_metric.method = ['GPU-',param.method, ' metric:' , param.likelihood ];
 
-    
+
+end
+
+function x = unflip_probe(x, p)
+    % inverse of the probe flip in load_from_p, which applies flipud, fliplr, transpose in that order;
+    % each is its own inverse, so undo them in reverse
+    if ~(check_option(p, 'custom_data_flip') && any(p.custom_data_flip)); return; end
+    if p.custom_data_flip(3); x = permute(x, [2,1,3:ndims(x)]); end
+    if p.custom_data_flip(2); x = fliplr(x); end
+    if p.custom_data_flip(1); x = flipud(x); end
 end
