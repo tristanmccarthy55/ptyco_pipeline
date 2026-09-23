@@ -271,7 +271,7 @@
     <div class="mast-meta">
       <span><b>Checkpoint</b> 2026-09-22</span>
       <span><b>Round-α campaign</b> complete</span>
-      <span><b>Relaxation ladder</b> focus, shot noise and six-fold measured</span>
+      <span><b>Relaxation ladder</b> focus, shot noise and six-fold measured; the 70 Å sample fails</span>
       <span><b>On the cluster</b> the 70 Å sample</span>
       <span><b>Written, not run</b> six-fold at 90 / 100 mrad; other orders</span>
     </div>
@@ -730,14 +730,16 @@
       </table>
     </div>
     <div class="call">
-      <b>One thing is still unexplained.</b> Even corrected, the solver's residual climbs steadily with the
-      aberration — 24 for a round probe, 38 at 0.1 waves, 74 at 0.45 — and rotating the probe barely moves it.
-      Something tracks the aberration's magnitude while ignoring its orientation, and we do not yet know what.
-      One candidate is ruled out. Re-reconstructing the 0.45-wave leg at 28 depth layers instead of 14 gives a
-      residual of 739 against 74 — ten times worse, not better. At this aperture 14 layers is already the
-      Nyquist sampling of the depth resolution, and the extra freedom destabilises a solve that has no layer
-      regularisation by design. The remaining check is the round control reconstructed from this campaign's own
-      simulation, to establish whether the 24 it is measured against is comparable at all.
+      <b>The residual climb is real, and it is not a measurement artefact.</b> It was worth checking, because
+      every six-fold level had been compared against a round-probe residual of 24 that came from a different
+      simulation directory. Reconstructing the round probe from <em class="term">this</em> campaign's own
+      simulation, through the same driver, gives <strong>22.6</strong> — the baseline was comparable all along.
+      So the fit genuinely gets three times worse by 0.45 waves (22.6 → 37.8 → 74.0) while the reconstruction
+      stays usable to 0.1–0.2 waves. Residual and usability are simply different things here, which is the same
+      lesson as the probe orientation. Two hypotheses are ruled out: it is not the probe's orientation, and it
+      is not the reconstruction's slice thickness — at 28 depth layers instead of 14 the residual is 739 rather
+      than 74, because 14 is already the Nyquist sampling of the depth resolution and the extra freedom
+      destabilises a solve that carries no layer regularisation by design.
     </div>
   </section>
 
@@ -888,7 +890,7 @@
           <tr><td>4b</td><td class="wrap">six-fold at 90 and 100 mrad</td><td class="wrap">same waves as the 70 mrad rungs, plus the 10 µm value carried up unchanged</td><td><span class="chip c-open">written</span></td></tr>
           <tr><td>4c</td><td class="wrap">other orders: two-fold, three-fold, three-lobe</td><td class="wrap">at 0.1 and 0.3 waves — does the limit transfer?</td><td><span class="chip c-open">written</span></td></tr>
           <tr><td>4d</td><td class="wrap">the assumed instrument as-is, 70 mrad</td><td class="wrap">C<sub>56</sub> 1 mm: needs binning 1 and a wider scan, ~3 GPU-days, expected to fail on geometry</td><td><span class="chip c-none">optional</span></td></tr>
-          <tr><td>5</td><td class="wrap">the full 70 Å sample</td><td class="wrap">first attempt diverged; the gentler retry is on the cluster; the analysis path is built</td><td><span class="chip c-open">in flight</span></td></tr>
+          <tr><td>5</td><td class="wrap">the full 70 Å sample</td><td class="wrap"><strong>fails at both solver step sizes.</strong> At 70 mrad the phase saturates across every layer, vacuum included; at 90 mrad the solver dies with NaNs. No atoms recoverable</td><td><span class="chip c-stop">fails</span></td></tr>
           <tr><td>6</td><td class="wrap">partial coherence</td><td class="wrap">needs simulation code that does not exist</td><td><span class="chip c-none">not built</span></td></tr>
           <tr><td>7</td><td class="wrap">specimen tilt</td><td class="wrap">needs the crystal rotated in the simulation and a finder that copes with sheared columns</td><td><span class="chip c-none">not built</span></td></tr>
         </tbody>

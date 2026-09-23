@@ -1,4 +1,4 @@
-# Handoff — the probe-orientation bug is real and fixed; six-fold is remeasured
+# Handoff — six-fold measured, the 70 Å sample fails, the residual question closed
 
 Written 2026-09-22, after the round-two analysis. **Read `HANDOVER.md`** for the experiment itself,
 then `NEXT_PHASE.md` for the plan and `PSF_KERNELS.md` for the kernel rules. The two published pages
@@ -68,19 +68,28 @@ defeats the in-solver focus fit. **Judge a probe change on the object, never on 
 | 0.45 waves | 71.2 → 74.0 | 31 → **56 %** | 0.86 → 0.71 Å | 31.9 → 28.1 % |
 | 1.20 waves | 75.8 → 77.2 | 7 → **44 %** | 1.03 → 0.79 Å | 50.0 → 28.8 % |
 
-**Still unexplained.** Even corrected, the residual climbs with the aberration (24 round, 38 at 0.1 waves, 74
-at 0.45) and ignores the probe's orientation.
+**Closed 2026-09-23 — the residual climb is real, and both hypotheses for it are dead.** Test A: the round
+probe reconstructed from *this* campaign's own simulation through the same driver gives **22.6**, against the
+24.3 from the step-0 leg it had been compared with, so the baseline was comparable all along and the fit
+genuinely gets three times worse by 0.45 waves (22.6 → 37.8 → 74.0). Test B: at NL 28 instead of 14 the
+residual is **738.9**, so it is not slice thickness — NL 14 is already Nyquist for the depth resolution at
+70 mrad and the extra freedom destabilises a solve carrying no layer regularisation. Residual and usability
+are different things here; the ladder rests on recall.
 
-**Test B answered, and killed one hypothesis: it is NOT the reconstruction's slice thickness.** The 0.45-wave
-leg re-reconstructed at NL 28 instead of 14 gives **738.9 against 74.0** — ten times worse, not better. At
-70 mrad the depth resolution is λ/α² = 4.02 Å, so NL 14 (1.97 Å slices) is already Nyquist; NL 28 is fourfold
-oversampled against what the data constrains, and with `REGLAYER=0` nothing stabilises the extra freedom. **Do
-not raise NL above Nyquist to chase a residual** — it destabilises the solve. The `NL` override exists for
-diagnosis only.
+### Step 5 — the 70 Å sample FAILS, at both solver step sizes
 
-**Test A has not run.** `nr0_round` needs a simulation first (its raw data was deleted in the storage clear-out)
-and the recon job 1288170 was still PENDING on that dependency. It remains the open question: whether the
-round-probe residual of 24 is even comparable, since it came from a different simulation directory.
+The most important negative result of the campaign so far, because thickness is the regime the method exists
+for. Two attempts: `BETA_LSQ=0.05` (2026-09-21) and `BETA_LSQ=0.02` (2026-09-22, tarball
+`atomfind_results_a70-90_thin18_20260922_094643.tgz`). Both saturate. At 70 mrad (NL 39) the run completes 200
+iterations and reaches residual 387 with the phase wrapped across every layer, vacuum included — 3 % of pixels
+past π, phase std 1.5 rad, where a genuine leg wraps nothing. At 90 mrad (NL 64) the solver dies with NaNs.
+`triage_recon.py` reports 0 of 6 usable. No atoms, no recall, nothing to put on the ladder but the failure.
+
+Two things to be careful of if this is picked up again. The thin-slab control at the same step size was
+**never run** — there is no `atomfind_results_a70-90_2026*.tgz` without `thin18` on Blythe — so a thick result
+at 0.02 has nothing legitimate to be compared against even if one is obtained. And recon directories
+accumulate slurm logs from every attempt while the driver moves only `analysis/` aside, so
+`grep beta_LSQ slurm_*.out | head -1` reads whichever log the glob returns first: check the job id.
 
 **Still analytic, and unaffected by any of this**: how fast each residual grows with aperture. A term of order
 n grows as α^(n+1), so with the residuals a real hexapole corrector leaves, every non-round term is over
