@@ -145,6 +145,20 @@ if ~isempty(rl_env); reglayer = [str2double(rl_env), str2double(rl_env)]; else; 
 fprintf('regularize_layers (per engine) = [%g %g]\n', reglayer(1), reglayer(2));
 Np_presolve               = [2*floor(Ndpx/4), Ndpx]; % half-Ndp, forced EVEN (the GPU engine
 %   uses even FFT sizes; Ndpx=1426 -> round(/2)=713 is ODD -> 713/712 size clash). 356->178.
+% PRESOLVE_NDP overrides the presolve's detector width. Set it to Ndpx to make the presolve
+% full-resolution, i.e. to remove the downsampling entirely without touching the engine schedule.
+% WHY THIS EXISTS (2026-09-23): the presolve crops the diffraction data to half the collection angle
+% (rescale_inputs.m) and band-limits the probe to match. A non-round aberration of order n scales as
+% theta^(n+1), so halving the angle divides six-fold astigmatism by 64 -- the presolve therefore
+% solves an almost perfectly ROUND problem and hands the full engine an object built on a probe that
+% is not the one being used. That is the leading suspect for the six-fold recall collapse, which is
+% not believed: with an exact fixed probe the solver fits only the object, and the probe's aberration
+% content should not limit the object it can reach.
+pn_env = getenv('PRESOLVE_NDP');
+if ~isempty(pn_env)
+    Np_presolve(1) = 2*floor(str2double(pn_env)/2);       % keep it even
+    fprintf('PRESOLVE_NDP: presolve detector width forced to %d (full Ndpx = %d)\n', Np_presolve(1), Ndpx);
+end
 Niter_save_results        = [50,  50];
 Niter_save_exit_wave      = [200, 200];
 strcustom0                = 'synthetic_ML';

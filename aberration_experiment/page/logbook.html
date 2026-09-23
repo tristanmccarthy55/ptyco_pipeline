@@ -271,7 +271,7 @@
     <div class="mast-meta">
       <span><b>Checkpoint</b> 2026-09-22</span>
       <span><b>Round-α campaign</b> complete</span>
-      <span><b>Relaxation ladder</b> focus, shot noise and six-fold measured; the 70 Å sample fails</span>
+      <span><b>Relaxation ladder</b> focus and shot noise measured; six-fold under investigation; the 70 Å sample fails</span>
       <span><b>On the cluster</b> the 70 Å sample</span>
       <span><b>Written, not run</b> six-fold at 90 / 100 mrad; other orders</span>
     </div>
@@ -729,17 +729,20 @@
         </tbody>
       </table>
     </div>
-    <div class="call">
-      <b>The residual climb is real, and it is not a measurement artefact.</b> It was worth checking, because
-      every six-fold level had been compared against a round-probe residual of 24 that came from a different
-      simulation directory. Reconstructing the round probe from <em class="term">this</em> campaign's own
-      simulation, through the same driver, gives <strong>22.6</strong> — the baseline was comparable all along.
-      So the fit genuinely gets three times worse by 0.45 waves (22.6 → 37.8 → 74.0) while the reconstruction
-      stays usable to 0.1–0.2 waves. Residual and usability are simply different things here, which is the same
-      lesson as the probe orientation. Two hypotheses are ruled out: it is not the probe's orientation, and it
-      is not the reconstruction's slice thickness — at 28 depth layers instead of 14 the residual is 739 rather
-      than 74, because 14 is already the Nyquist sampling of the depth resolution and the extra freedom
-      destabilises a solve that carries no layer regularisation by design.
+    <div class="call stop">
+      <b>These numbers are a symptom, not a specification, and are under investigation.</b> With an exact,
+      known, fixed probe the solver is fitting only the object. A perfect probe is a perfect probe whatever
+      its shape: the aberration is a deterministic part of the forward model and should not limit the object
+      the solve can reach. A 0.1-wave term costing twenty points of lead recall is therefore more likely a
+      defect in this pipeline than a property of the method, and the table above should not be quoted as a
+      tolerance until that is settled. Two things support the suspicion. The same idealised round-probe case
+      gives a residual of 22.6 at 70 mrad but 5.8 at 90, a factor of four between two apertures that should
+      both sit near the model-mismatch floor. And rotating a six-fold probe by 30° moved lead recall by up to
+      37 points while moving the residual by 4 %, so the solve is violently sensitive to the probe in a way
+      the fit does not register. The leading suspect is in the code: the reconstruction's first engine runs at
+      half the collection angle and crops the data to match, which divides a six-fold term by 64 and has it
+      converge an object under an almost perfectly round probe before the full engine ever sees the real one.
+      The next run is a clean reconstruction at 90 mrad with the aberration on the probe.
     </div>
   </section>
 
@@ -886,7 +889,7 @@
           <tr><td>1</td><td class="wrap">focus unknown</td><td class="wrap"><strong>no real cost</strong>, by an outer search; the in-solver fit is closed</td><td><span class="chip c-ok">measured</span></td></tr>
           <tr><td>2</td><td class="wrap">shot noise</td><td class="wrap">works to 10<sup>5</sup> e/Å²; at 10<sup>4</sup> no single-atom reference can be measured</td><td><span class="chip c-ok">measured</span></td></tr>
           <tr><td>3</td><td class="wrap">thermal vibration</td><td class="wrap">depth error roughly doubles; oxygen recall 10–17 %; not a finder artefact</td><td><span class="chip c-warn">costly</span></td></tr>
-          <tr><td>4</td><td class="wrap">six-fold astigmatism, 70 mrad</td><td class="wrap"><strong>usable limit between 0.1 and 0.2 waves</strong>; species labels fail from 0.1. Remeasured on the corrected engine</td><td><span class="chip c-ok">measured</span></td></tr>
+          <tr><td>4</td><td class="wrap">six-fold astigmatism, 70 mrad</td><td class="wrap">lead 98 → 90 → 76 % over 0 → 0.1 → 0.2 waves, but <strong>not believed as a tolerance</strong>: an exact fixed probe should not limit the object. Suspected pipeline defect, under investigation</td><td><span class="chip c-warn">suspect</span></td></tr>
           <tr><td>4b</td><td class="wrap">six-fold at 90 and 100 mrad</td><td class="wrap">same waves as the 70 mrad rungs, plus the 10 µm value carried up unchanged</td><td><span class="chip c-open">written</span></td></tr>
           <tr><td>4c</td><td class="wrap">other orders: two-fold, three-fold, three-lobe</td><td class="wrap">at 0.1 and 0.3 waves — does the limit transfer?</td><td><span class="chip c-open">written</span></td></tr>
           <tr><td>4d</td><td class="wrap">the assumed instrument as-is, 70 mrad</td><td class="wrap">C<sub>56</sub> 1 mm: needs binning 1 and a wider scan, ~3 GPU-days, expected to fail on geometry</td><td><span class="chip c-none">optional</span></td></tr>
