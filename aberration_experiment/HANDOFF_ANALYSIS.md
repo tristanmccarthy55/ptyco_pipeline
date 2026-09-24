@@ -1,4 +1,4 @@
-# Handoff — the CEOS-approx sweep: an older corrector, opened wide, probe known
+# Handoff — the CEOS-approx sweep: an older corrector opened to 80 mrad, probe known
 
 Written 2026-09-24. **Read this whole file before running anything; it is short on purpose.**
 Then `HANDOVER.md` for the experiment, `PSF_KERNELS.md` for the kernel rules.
@@ -34,42 +34,44 @@ Then `HANDOVER.md` for the experiment, `PSF_KERNELS.md` for the kernel rules.
   The small leftovers (oxygen 71 vs 75 %, oxygen false positives 35 → 49 at 90 mrad) are single solves; the
   engine reseeds every run, so they are not separated from run-to-run spread.
 
-## The next job — the CEOS-approx sweep (built 2026-09-24, first submission pending)
+## The next job — the CEOS-approx sweep to 80 mrad (built 2026-09-24, first submission pending)
 
 The question: can an older, widespread hexapole-corrected column still give depth-resolved ptychography by
-**tanking** its aberrations — probe known, aperture opened well past the corrector's 30 mrad design?
-The user chose a **CEOS approximation** (CESCOR-like, the pre-DELTA generation; the target era's GrandARM-class
-columns are 200 kV, the simulation stays at 300 kV). Defined in `campaign/aberration_waves.py` `ceos_tableau`:
+**tanking** its aberrations — probe known, aperture opened far past the corrector's 30 mrad design? The user chose
+a **CEOS approximation** (CESCOR-like, pre-DELTA; the target era's columns are 200 kV, the simulation stays 300 kV).
 
-- round part exactly as the round sweep: C5 = 1 mm fixed, C3/C1 retuned per α by `plan_probe.py`;
-- non-round, all **fixed** (each grows as α^(n+1)), split per CEOS: tuned A1 B2 A2 S3 A3 D4, hardware B4 A4 A5;
-- **A5 = 1.0 mm is CEOS's figure; every other term is unsourced** and set to 0.1 waves at 30 mrad (inside the π/4
-  flatness a corrector is tuned to) — A1 0.44 nm, B2/A2 22 nm, S3/A3 1 µm, D4/B4/A4 40 µm. S5/R5 left out
-  (CEOS names A5, A4, B4 as limiting). One seeded draw of orientations; probe sizes vary < 1 Å across draws.
+**The instrument** (`campaign/aberration_waves.py` `ceos_tableau`): A5 = 1.0 mm (CEOS; consistent with those
+correctors' ~35 mrad usable range, and DCOR/ASCOR, built to beat it, hold < 0.2 mm); parasitic A4 = B4 = 10 µm
+(unsourced central value — A5 must stay the limiting term, which caps them near 27 µm; the first choice, 40 µm,
+broke that); tuned terms at 0.1 waves at the aperture they are tuned at. C5 = 1 mm fixed, as the round sweep.
 
-**The operator fights for probe size, not flatness** (the user's call: only a small, simulable probe matters to a
-known-probe reconstruction). A knob can only cancel an aberration of its own symmetry, so: the tunable A1 A2 S3 A3 D4
-are retuned at each aperture (to the same 0.1-wave accuracy), coma B2 is set against fourth-order coma B4, and C1/C3
-are rebalanced — `plan_probe.py --ceos`, Nelder-Mead on d90. **A5 and A4 have no partner knob and set the floor**:
-A5 alone gives 25 Å at 70 mrad. Fighting shrinks the probe 20–35 % and moves the wall from ~60 to ~65 mrad.
+**The operator fights for probe size, not flatness** (`plan_probe.py --ceos`): A1 A2 S3 A3 D4 retuned at each
+aperture, coma B2 set against B4, C1/C3 rebalanced by Nelder-Mead on d90. A5 and A4 have no same-symmetry knob and
+set the floor (six-fold alone ≈ the whole probe from 70 mrad).
 
-Rows in `campaign/ceos_sweep.tsv`; `ceosopt_a<A>` is the sweep:
+**The geometry that makes 70–80 mrad simulable** (per-row columns `side win step detmax`, read by the driver):
+every leg is a **210 Å cut of the tiled, periodic labyrinth** (`simulate_4dstem --region-side`), centred on the
+same material the 70 Å box put under its scan (all 1171 atoms within 15 Å identical to 1e-14 Å) — bulk crystal all
+round, where the 70 Å box padded the 47.9 Å x-period with 22 Å of vacuum ~10 Å from the scan. Recon window =
+side/BIN from d99; the detector is recorded to ±200 mrad except at 80 mrad, cropped to ±133 (`--detector-max-angle`;
+the potential stays sampled for 200 mrad) so N stays ≤ 1424 px; scan field = 1.5 × d90 at 1600 positions.
 
-| α | round control | `ceosopt` probe d90 / d99 | reconstruction | as built (`ceos_a<A>`, C1/C3 only) |
-|---|---|---|---|---|
-| 40 | BIN 4 | 4.0 / 10.3 Å (4 Å by defocus, as the round rule) | BIN 4 | 5.4 / 12.5 Å |
-| 50 | BIN 4 | 6.4 / 12.8 Å | BIN 4 | 9.8 / 19 Å |
-| 60 | BIN 4 | 14.6 / 25 Å | BIN 2, **WIN=22 STEP=0.55** | 18 / 35 Å |
-| 65 | BIN 4 | 21.1 / 36.5 Å | BIN 1, **WIN=32 STEP=0.8** | — |
-| 70 | — | 29.8 / 50 Å | **not run**: needs a 45 Å scan field, the box allows ~34 | 35 / 63 Å |
+| α | fought d90 / d99 | window (BIN) | detector | scan / step | resource class |
+|---|---|---|---|---|---|
+| 40 | 4.2 / 11.0 Å | 17.5 (12) | ±200 | 20 / 0.5 | BIN-4 |
+| 50 | 4.8 / 10.8 Å | 17.5 (12) | ±200 | 20 / 0.5 | BIN-4 |
+| 60 | 11.6 / 19.6 Å | 35 (6) | ±200 | 20 / 0.5 | BIN-2 |
+| 65 | 17.5 / 27.4 Å | 35 (6) | ±200 | 27 / 0.675 | BIN-2 |
+| 70 | 25.2 / 38.7 Å | 70 (3) | ±200 | 38 / 0.95 | BIN-1 |
+| 75 | 35.4 / 55.1 Å | 70 (3) | ±200 | 54 / 1.35 | BIN-1 |
+| 80 | 49.1 / 75.7 Å | 105 (2) | ±133 | 74 / 1.85 | BIN-1 |
 
-**The wall is the result, not a failure of the sweep.** Past ~65 mrad this instrument's probe outgrows anything
-this sample can host, and the same numbers bound a real experiment: the reconstruction window is λ / detector
-pixel angle, so a 50 Å probe at 70 mrad needs ~1000 detector pixels across against ~200 for the 6 Å probe at 50.
+Round controls `round_a040`…`round_a080` (4 Å probes) share the region geometry at BIN 12.
 
-**Watch on the first logs:** 40 mrad is new ground — NL 4 (6.9 Å slices), `extract_psf --zdrop 1`; the round
-sweep skipped 30 mrad because the bright-field disc filled too little of the detector, and 40 may be marginal.
-And every leg is the first reconstruction on point-sampled data (below).
+**Caveats to carry into the write-up.** 80 mrad needs a detector of ~1400 px across its ±133 mrad — a modern
+large-format camera on an old column. A4/B4 are unsourced (40 µm would give 30 / 56 Å at 70 / 80 mrad). 40 mrad is
+new ground (NL 4). The analysis needs the region GT (`make_gt_cache --region-side 210`, already built at
+`~/Desktop/ceos_region_gt`), `--set scan_center_xy=105,105`, and each leg's `dx` from its h5.
 
 ## Changed 2026-09-23/24 — if the next run breaks, look here first
 

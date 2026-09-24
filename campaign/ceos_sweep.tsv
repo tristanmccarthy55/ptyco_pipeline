@@ -1,30 +1,32 @@
-# CEOS-APPROX SWEEP (2026-09-24): an older hexapole-corrected column -- CEOS CESCOR-like, tuned at 30 mrad -- opened
-# past its design with the probe known. Can a widespread instrument still give depth-resolved ptychography by tanking
-# its aberrations? Tableau: campaign/aberration_waves.py ceos_tableau (A5 = 1.0 mm from CEOS; every other term
-# unsourced, 0.1 waves). C5 = 1 mm fixed throughout, as in the round sweep. aber_json is always generated, never typed.
-# Three kinds of row:
-#   round_a<A>    the controls: the round sweep's own balance (plan_probe.py), 4 A probe, re-simulated because the
-#                 detector model changed (point sampling, 2026-09-24).
-#   ceosopt_a<A>  THE SWEEP. The operator fights for the smallest probe: hardware A5, A4, B4 fixed; A1 A2 S3 A3 D4
-#                 retuned at this aperture to 0.1 waves; C1, C3 and coma B2 (set against B4, the one hardware term a
-#                 knob shares symmetry with) optimised on d90 -- `plan_probe.py --ceos`. Ronchigram flatness ignored.
-#                 4 A where reachable (40 mrad), else the smallest d90. A5 and A4 have no partner knob: they set the
-#                 floor, 25 A at 70 mrad from A5 alone. Rows needing a wider scan say so: pass WIN/STEP per submission.
-#   ceos_a<A>     the operator retunes only C1/C3 and leaves every other term where the 30 mrad tuning put it
-#                 ("as built", the first version of this sweep). Kept as the no-retune comparison.
-# The wall: from ~70 mrad no scan field the 70 A box can host is 1.5x the probe (Rule 4), and a real detector would
-# need ~1000+ px across to hold the Ronchigram. nl is ignored by run_thin_atomfind (Nyquist over the full box).
-label	alpha	c5	c3	c1	df_perf	bin	nl	aber_json	note
-round_a040	40	1e7	10000	-18	-48	4	0	-	round control (d90 4 A), point-sampled detector
-round_a050	50	1e7	-20000	38	-40	4	0	-	round control (d90 4 A), point-sampled detector
-round_a060	60	1e7	-40000	0	-24	4	0	-	round control (d90 4 A), point-sampled detector
-round_a065	65	1e7	-40000	4	-32	4	0	-	round control (d90 4 A), point-sampled detector
-ceosopt_a040	40	10000000.0	-10900.0	36.5	-	4	0	{"C30":-10900.0,"C50":10000000.0,"C12":2.461,"phi12":2.001074,"C21":469.2,"phi21":0.670012,"C23":92.2861,"phi23":0.085815,"C32":3076.2031,"phi32":0.051923,"C34":3076.2031,"phi34":1.277482,"C43":96131.3477,"phi43":1.911671,"C41":405096.7078,"phi41":3.811605,"C45":405096.7078,"phi45":0.916712,"C56":10000000.0,"phi56":0.569283}	CEOS fought (free): d90 4.0 A, d99 10.3 A; B2 -47 nm vs B4; default scan
-ceosopt_a050	50	10000000.0	-21200.0	-4.2	-	4	0	{"C30":-21200.0,"C50":10000000.0,"C12":1.575,"phi12":2.001074,"C21":833.6,"phi21":0.670012,"C23":47.2505,"phi23":0.085815,"C32":1260.0128,"phi32":0.051923,"C34":1260.0128,"phi34":1.277482,"C43":31500.32,"phi43":1.911671,"C41":405096.7078,"phi41":3.811605,"C45":405096.7078,"phi45":0.916712,"C56":10000000.0,"phi56":0.569283}	CEOS fought (floor): d90 6.4 A, d99 12.8 A; B2 -83 nm vs B4; default scan
-ceosopt_a060	60	10000000.0	-24400.0	2.8	-	2	0	{"C30":-24400.0,"C50":10000000.0,"C12":1.0938,"phi12":2.001074,"C21":1180.7,"phi21":0.670012,"C23":27.344,"phi23":0.085815,"C32":607.6451,"phi32":0.051923,"C34":607.6451,"phi34":1.277482,"C43":12659.2721,"phi43":1.911671,"C41":405096.7078,"phi41":3.811605,"C45":405096.7078,"phi45":0.916712,"C56":10000000.0,"phi56":0.569283}	CEOS fought (floor): d90 14.6 A, d99 25.3 A; B2 -118 nm vs B4; RUN WITH WIN=22 STEP=0.55
-ceosopt_a065	65	10000000.0	-26300.0	10.7	-	1	0	{"C30":-26300.0,"C50":10000000.0,"C12":0.932,"phi12":2.001074,"C21":1288.8,"phi21":0.670012,"C23":21.5068,"phi23":0.085815,"C32":441.1655,"phi32":0.051923,"C34":441.1655,"phi34":1.277482,"C43":8483.952,"phi43":1.911671,"C41":405096.7078,"phi41":3.811605,"C45":405096.7078,"phi45":0.916712,"C56":10000000.0,"phi56":0.569283}	CEOS fought (floor): d90 21.1 A, d99 36.5 A; B2 -129 nm vs B4; RUN WITH WIN=32 STEP=0.8
-#ceosopt_a070	70	10000000.0	-50000.0	-55.0	-	1	0	{"C30":-50000.0,"C50":10000000.0,"C12":0.8036,"phi12":2.001074,"C21":1266.1,"phi21":0.670012,"C23":17.2196,"phi23":0.085815,"C32":327.9917,"phi32":0.051923,"C34":327.9917,"phi34":1.277482,"C43":5856.9941,"phi43":1.911671,"C41":405096.7078,"phi41":3.811605,"C45":405096.7078,"phi45":0.916712,"C56":10000000.0,"phi56":0.569283}	NOT RUNNABLE in the 70 A box (scan field > 34 A): CEOS fought (floor): d90 29.8 A, d99 50.3 A; B2 -127 nm vs B4; RUN WITH WIN=45 STEP=1.125
-ceos_a040	40	1e7	10000	-18	-48	4	0	{"C30":10000.0,"C50":10000000.0,"C12":4.375,"phi12":2.001074,"C21":218.7522,"phi21":1.69512,"C23":218.7522,"phi23":0.085815,"C32":9722.321,"phi32":0.051923,"C34":9722.321,"phi34":1.277482,"C43":405096.7078,"phi43":1.911671,"C41":405096.7078,"phi41":3.811605,"C45":405096.7078,"phi45":0.916712,"C56":10000000.0,"phi56":0.569283}	CEOS approx: d90 5.5 A, d99 13 A; 0.5 % outside the 17.5 A window
-ceos_a050	50	1e7	-20000	38	-40	2	0	{"C30":-20000.0,"C50":10000000.0,"C12":4.375,"phi12":2.001074,"C21":218.7522,"phi21":1.69512,"C23":218.7522,"phi23":0.085815,"C32":9722.321,"phi32":0.051923,"C34":9722.321,"phi34":1.277482,"C43":405096.7078,"phi43":1.911671,"C41":405096.7078,"phi41":3.811605,"C45":405096.7078,"phi45":0.916712,"C56":10000000.0,"phi56":0.569283}	CEOS approx: d90 9.8 A, d99 19 A; 0.1 % outside the 35 A window
-ceos_a060	60	1e7	-40000	0	-24	1	0	{"C30":-40000.0,"C50":10000000.0,"C12":4.375,"phi12":2.001074,"C21":218.7522,"phi21":1.69512,"C23":218.7522,"phi23":0.085815,"C32":9722.321,"phi32":0.051923,"C34":9722.321,"phi34":1.277482,"C43":405096.7078,"phi43":1.911671,"C41":405096.7078,"phi41":3.811605,"C45":405096.7078,"phi45":0.916712,"C56":10000000.0,"phi56":0.569283}	CEOS approx: d90 18 A, d99 35 A; RUN WITH WIN=30 STEP=0.75 (scan/d90 1.6)
-#ceos_a070	70	1e7	-50000	-60	-30	1	0	{"C30":-50000.0,"C50":10000000.0,"C12":4.375,"phi12":2.001074,"C21":218.7522,"phi21":1.69512,"C23":218.7522,"phi23":0.085815,"C32":9722.321,"phi32":0.051923,"C34":9722.321,"phi34":1.277482,"C43":405096.7078,"phi43":1.911671,"C41":405096.7078,"phi41":3.811605,"C45":405096.7078,"phi45":0.916712,"C56":10000000.0,"phi56":0.569283}	NOT RUN: d90 35 A, d99 63 A -- no scan field in the 70 A box is 1.5x the probe
+# CEOS-APPROX SWEEP, REGION GEOMETRY (2026-09-24): an older hexapole-corrected column -- CEOS CESCOR-like, tuned at
+# 30 mrad -- opened to 80 mrad with the probe known. Can a widespread instrument still give depth-resolved ptychography
+# by tanking its aberrations? Tableau: campaign/aberration_waves.py ceos_tableau -- A5 = 1.0 mm (CEOS, the limiting
+# residual); parasitic A4 = B4 = 10 um (central: A5 must stay the limiting term, which caps them near 27 um); tuned
+# terms 0.1 waves at the aperture they are tuned at. C5 = 1 mm fixed, as in the round sweep. aber_json is generated.
+#   round_a<A>    controls: the round sweep's own balance (plan_probe.py), 4 A probe, same region geometry.
+#   ceosopt_a<A>  THE SWEEP: the operator fights for the smallest probe (plan_probe.py --ceos): A1 A2 S3 A3 D4 retuned
+#                 at this aperture, coma B2 against B4, C1/C3 rebalanced; A5 and A4 have no partner knob and set the
+#                 floor. Ronchigram flatness ignored. 4 A where reachable, else the smallest d90.
+# GEOMETRY (cols side win step detmax, read per row by run_thin_atomfind.sh): every leg is a 210 A x 210 A cut of the
+# tiled, periodic labyrinth (simulate_4dstem --region-side), centred on the same material the 70 A box put under its
+# scan (checked: all 1171 atoms within 15 A identical to 1e-14 A) -- bulk crystal all round instead of the 70 A box's
+# x-vacuum. The recon window is side/BIN, sized from d99 (17.5 / 35 / 70 / 105 A); the detector is recorded to
+# +-200 mrad unless the 105 A window needs a crop to +-133 mrad (N <= 1424 px, the engine's proven size); the scan
+# field keeps scan/d90 >= 1.5 at 1600 positions. Seam margin >= 30 A beyond scan + d99 at 80 mrad.
+# Analysis: GT = make_gt_cache --thin-cells 5 --z-vacuum 4 --region-side 210; atomfind --set scan_center_xy=105,105
+# and each leg's dx from its h5 (0.0494 A at BIN 12 ... 0.074 A at 80 mrad).
+label	alpha	c5	c3	c1	df_perf	bin	nl	aber_json	note	side	win	step	detmax
+round_a040	40	1e7	10000	-18	-48	12	0	-	round control: d90 4.0 A, d99 11.1 A; window 17.5 A	210	20	0.5	200
+round_a050	50	1e7	-20000	38	-40	12	0	-	round control: d90 3.9 A, d99 8.2 A; window 17.5 A	210	20	0.5	200
+round_a060	60	1e7	-40000	0	-24	12	0	-	round control: d90 3.9 A, d99 6.6 A; window 17.5 A	210	20	0.5	200
+round_a065	65	1e7	-40000	4	-32	12	0	-	round control: d90 4.1 A, d99 6.0 A; window 17.5 A	210	20	0.5	200
+round_a070	70	1e7	-50000	-60	-30	12	0	-	round control: d90 4.0 A, d99 10.3 A; window 17.5 A	210	20	0.5	200
+round_a075	75	1e7	-60000	-80	-28	12	0	-	round control: d90 4.1 A, d99 10.9 A; window 17.5 A	210	20	0.5	200
+round_a080	80	1e7	-70000	-100	-26	12	0	-	round control: d90 4.0 A, d99 11.3 A; window 17.5 A	210	20	0.5	200
+ceosopt_a040	40	10000000.0	-13800.0	-37.5	-	12	0	{"C30":-13800.0,"C50":10000000.0,"C12":2.461,"phi12":2.001074,"C21":3.0,"phi21":0.670012,"C23":92.2861,"phi23":0.085815,"C32":3076.2031,"phi32":0.051923,"C34":3076.2031,"phi34":1.277482,"C43":96131.3477,"phi43":1.911671,"C41":100000.0,"phi41":3.811605,"C45":100000.0,"phi45":0.916712,"C56":10000000.0,"phi56":0.569283}	CEOS fought (free): d90 4.2 A, d99 11.0 A; B2 -0 nm vs B4; window 17.5 A	210	20	0.5	200
+ceosopt_a050	50	10000000.0	-20700.0	1.0	-	12	0	{"C30":-20700.0,"C50":10000000.0,"C12":1.575,"phi12":2.001074,"C21":216.8,"phi21":0.670012,"C23":47.2505,"phi23":0.085815,"C32":1260.0128,"phi32":0.051923,"C34":1260.0128,"phi34":1.277482,"C43":31500.32,"phi43":1.911671,"C41":100000.0,"phi41":3.811605,"C45":100000.0,"phi45":0.916712,"C56":10000000.0,"phi56":0.569283}	CEOS fought (floor): d90 4.8 A, d99 10.8 A; B2 -22 nm vs B4; window 17.5 A	210	20	0.5	200
+ceosopt_a060	60	10000000.0	-21500.0	21.0	-	6	0	{"C30":-21500.0,"C50":10000000.0,"C12":1.0938,"phi12":2.001074,"C21":291.7,"phi21":0.670012,"C23":27.344,"phi23":0.085815,"C32":607.6451,"phi32":0.051923,"C34":607.6451,"phi34":1.277482,"C43":12659.2721,"phi43":1.911671,"C41":100000.0,"phi41":3.811605,"C45":100000.0,"phi45":0.916712,"C56":10000000.0,"phi56":0.569283}	CEOS fought (floor): d90 11.6 A, d99 19.6 A; B2 -29 nm vs B4; window 35 A	210	20	0.5	200
+ceosopt_a065	65	10000000.0	-25600.0	24.1	-	6	0	{"C30":-25600.0,"C50":10000000.0,"C12":0.932,"phi12":2.001074,"C21":340.3,"phi21":0.670012,"C23":21.5068,"phi23":0.085815,"C32":441.1655,"phi32":0.051923,"C34":441.1655,"phi34":1.277482,"C43":8483.952,"phi43":1.911671,"C41":100000.0,"phi41":3.811605,"C45":100000.0,"phi45":0.916712,"C56":10000000.0,"phi56":0.569283}	CEOS fought (floor): d90 17.5 A, d99 27.4 A; B2 -34 nm vs B4; window 35 A	210	27	0.675	200
+ceosopt_a070	70	10000000.0	-35100.0	9.3	-	3	0	{"C30":-35100.0,"C50":10000000.0,"C12":0.8036,"phi12":2.001074,"C21":356.7,"phi21":0.670012,"C23":17.2196,"phi23":0.085815,"C32":327.9917,"phi32":0.051923,"C34":327.9917,"phi34":1.277482,"C43":5856.9941,"phi43":1.911671,"C41":100000.0,"phi41":3.811605,"C45":100000.0,"phi45":0.916712,"C56":10000000.0,"phi56":0.569283}	CEOS fought (floor): d90 25.2 A, d99 38.7 A; B2 -36 nm vs B4; window 70 A	210	38	0.95	200
+ceosopt_a075	75	10000000.0	-36700.0	25.6	-	3	0	{"C30":-36700.0,"C50":10000000.0,"C12":0.7,"phi12":2.001074,"C21":318.3,"phi21":0.670012,"C23":14.0001,"phi23":0.085815,"C32":248.8914,"phi32":0.051923,"C34":248.8914,"phi34":1.277482,"C43":4148.1903,"phi43":1.911671,"C41":100000.0,"phi41":3.811605,"C45":100000.0,"phi45":0.916712,"C56":10000000.0,"phi56":0.569283}	CEOS fought (floor): d90 35.4 A, d99 55.1 A; B2 -32 nm vs B4; window 70 A	210	54	1.35	200
+ceosopt_a080	80	10000000.0	-42000.0	26.4	-	2	0	{"C30":-42000.0,"C50":10000000.0,"C12":0.6152,"phi12":2.001074,"C21":410.6,"phi21":0.670012,"C23":11.5358,"phi23":0.085815,"C32":192.2627,"phi32":0.051923,"C34":192.2627,"phi34":1.277482,"C43":3004.1046,"phi43":1.911671,"C41":100000.0,"phi41":3.811605,"C45":100000.0,"phi45":0.916712,"C56":10000000.0,"phi56":0.569283}	CEOS fought (floor): d90 49.1 A, d99 75.7 A; B2 -41 nm vs B4; window 105 A, detector +-133 mrad	210	74	1.85	133

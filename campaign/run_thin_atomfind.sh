@@ -77,6 +77,12 @@ nl_full(){ [ -n "${NL:-}" ] && { echo "$NL"; return; }
 mem_for(){   case "$1" in 1) echo 175G;; 2) echo 96G;; *) echo 48G;; esac; }
 grp_for(){   [ -n "${GROUPING:-}" ] && { echo "$GROUPING"; return; }; case "$1" in 1) echo 16;;  2) echo 32;; *) echo "";; esac; }
 rtime_for(){ [ -n "${RTIME:-}" ] && { echo "$RTIME"; return; }; case "$1" in 1) echo 24:00:00;; 2) echo 10:00:00;; *) echo 05:00:00;; esac; }
+# [region] rows carry their own box side / scan / recorded angle (cols 11-14 of the tsv: side win step detmax).
+# In a region box BIN no longer says how big a pattern is, so resources follow N = 2 theta_max (side/BIN) / lambda:
+# <= 400 px the BIN-4 class, <= 800 the BIN-2 class, else the BIN-1 class (175G, GROUPING 16, 24 h).
+res_class(){ [ -z "${ROW_SIDE:-}" ] && { echo "$1"; return; }
+             awk -v s="$ROW_SIDE" -v b="$1" -v t="${ROW_DETMAX:-200}" -v l="$LAM" \
+                 'BEGIN{n=2*t/1000*(s/b)/l; print (n<=400)?4:((n<=800)?2:1)}'; }
 stime_for(){ [ -n "${STIME:-}" ] && { echo "$STIME"; return; }   # phonons multiply the sim time by PHONONS
              local h; case "$1" in 1) h=12;; 2) h=5;; *) h=3;; esac; [ "$PHONONS" != 0 ] && h=$(( h * 3 )); printf '%02d:00:00' $h; }
 
@@ -86,7 +92,7 @@ sim_job(){   # $1 dir $2 alpha $3 bin $4 c3 $5 c1 $6 mode(lab|Pb|Ti) [$7 aber_js
     # nine-label submission called "af_sim_lab" a failure cannot be attributed to a leg. That cost a
     # round trip on 2026-09-22 working out which simulation a failed recon had been waiting on.
     local jn="af_sim_$(basename "$dir" | sed 's/^sim_out_af_//')"
-    local exp="ALL,JOB_DIR=${dir},SLICE_THICKNESS=${SLICE},SCAN_STEP=${STEP},CONVERGENCE=${alpha}"
+    local exp="ALL,JOB_DIR=${dir},SLICE_THICKNESS=${SLICE},SCAN_STEP=${ROW_STEP:-$STEP},CONVERGENCE=${alpha}"
     exp="${exp},PHONONS=${PHONONS},PHONON_SIGMA=${PHONON_SIGMA},PER_SPECIES_SIGMA=${PER_SPECIES},PHONON_SEED=${PHONON_SEED}"
     # a non-round row's JSON has commas, so it cannot ride in --export's list: run_sim.slurm reads it from
     # the environment (ALL) instead, as campaign/run_campaign.sh does for its json legs
@@ -104,12 +110,15 @@ sim_job(){   # $1 dir $2 alpha $3 bin $4 c3 $5 c1 $6 mode(lab|Pb|Ti) [$7 aber_js
     # diversity: scan/d90 is 5.0/5.0/3.0/1.8 at a50-a100 but 0.8 at a110, where the 24.5 A probe
     # exceeds the 20 A field -- and that alpha reconstructs as featureless speckle. Widening it is
     # capped by the 70 A box: with the scan centred at x=40, WIN <= ~35 keeps the d90 core inside.
-    exp="${exp},SCAN_WINDOW=${WIN}"
+    exp="${exp},SCAN_WINDOW=${ROW_WIN:-$WIN}"
+    [ -n "${ROW_SIDE:-}" ] && exp="${exp},REGION_SIDE=${ROW_SIDE}"
+    [ -n "${ROW_DETMAX:-}" ] && exp="${exp},DETECTOR_MAX_ANGLE=${ROW_DETMAX}"
     case "$mode" in
         lab) exp="${exp},THIN_CELLS=${THIN}";;
         *)   exp="${exp},SINGLE_ATOM=${mode},ATOM_Z=${ATOMZ},GRID_SPACING=${GRIDSP},GRID_BOX_Z=${BOXZ}";;
     esac
-    sbatch --parsable --job-name="${jn}" --time="$(stime_for "$bin")" \
+    local sb="$bin"; [ -n "${ROW_SIDE:-}" ] && sb=1          # a region box is simulated on a large grid
+    sbatch --parsable --job-name="${jn}" --time="$(stime_for "$sb")" \
         --output="logs/af_sim_%j.out" --error="logs/af_sim_%j.err" --export="${exp}" sim/run_sim.slurm
 }
 noise_job(){ # $1 noiseless sim dir $2 noisy out dir $3 dose $4 seed -> jobid  (CPU; streamed, ~minutes)
@@ -129,7 +138,8 @@ recon_job(){ # $1 name $2 datadir $3 bin $4 nl $5 dep -> jobid  (true probe fixe
     if [ -d "${rdir}/analysis" ]; then mv "${rdir}/analysis" "${rdir}/analysis.prev_$(date +%Y%m%d_%H%M%S)"; fi
     local f; for f in "${INPUTS[@]}"; do ln -sf "${datadir}/01/${f}" "${rdir}/01/${f}"; done
     ln -sf "${datadir}/01/probe_initial_true.mat" "${rdir}/01/probe_initial.mat"     # known aberrated probe
-    local grp; grp="$(grp_for "$bin")"; local gx=""; [ -n "$grp" ] && gx=",GROUPING=${grp}"
+    local cls; cls="$(res_class "$bin")"
+    local grp; grp="$(grp_for "$cls")"; local gx=""; [ -n "$grp" ] && gx=",GROUPING=${grp}"
     # BETA_LSQ is ALWAYS forwarded, one value for every leg: it is an engine setting, so a lab leg
     # and its kernel must share it. (It is a step size, not a penalty, so a mismatch is far milder
     # than REGLAYER's -- but with a fixed NITER it still moves the result, and on 2026-09-11 the
@@ -138,7 +148,7 @@ recon_job(){ # $1 name $2 datadir $3 bin $4 nl $5 dep -> jobid  (true probe fixe
     # information between layers, i.e. low-passes the depth axis. See aberration_experiment/PSF_KERNELS.md.
     gx="${gx},BETA_LSQ=${BETA_LSQ}"
     local dep_arg=(); [ -n "$dep" ] && dep_arg=(--dependency="afterok:${dep}")   # empty dep (RECON_ONLY) -> run now
-    sbatch --parsable --job-name="af_rec_${name}" --time="$(rtime_for "$bin")" --mem="$(mem_for "$bin")" \
+    sbatch --parsable --job-name="af_rec_${name}" --time="$(rtime_for "$cls")" --mem="$(mem_for "$cls")" \
         ${dep_arg[@]+"${dep_arg[@]}"} --output="${rdir}/slurm_%j.out" --error="${rdir}/slurm_%j.err" \
         --export=ALL,NLAYERS="${nl}",SIM_BASE="${rdir}/",REGLAYER=0,PROBE_MODES=1,NITER="${NITER}",SAVE_EVERY="${SAVE}"${gx} \
         run_recon_synthetic_ML.slurm
@@ -148,7 +158,12 @@ RIDS=(); SIM_DIRS=()          # SIM_DIRS: this submission's own sim dirs, for CL
 ROWS="$ALPHAS"; [ -n "$LABELS" ] && ROWS="$LABELS"
 for a in $ROWS; do
     if [ -n "$LABELS" ]; then       # by label: alpha and the full aberration JSON come from the row
-        read -r alpha c3 c1 bin aj < <(awk -F'\t' -v L="$a" '$1!~/^#/ && $1==L {print $2"\t"$4"\t"$5"\t"$7"\t"$9}' "$TSV")
+        read -r alpha c3 c1 bin aj side win step detmax < <(awk -F'\t' -v L="$a" '$1!~/^#/ && $1==L {
+            for (i = 11; i <= 14; i++) if ($i == "") $i = "-"
+            print $2"\t"$4"\t"$5"\t"$7"\t"$9"\t"$11"\t"$12"\t"$13"\t"$14}' "$TSV")
+        ROW_SIDE=""; ROW_WIN=""; ROW_STEP=""; ROW_DETMAX=""     # [region] per-row geometry, "-" = driver default
+        [ "${side:--}" != "-" ] && ROW_SIDE="$side"; [ "${win:--}" != "-" ] && ROW_WIN="$win"
+        [ "${step:--}" != "-" ] && ROW_STEP="$step"; [ "${detmax:--}" != "-" ] && ROW_DETMAX="$detmax"
         [ -n "${bin:-}" ] || { echo "  ${a}: not in $TSV, skipping" >&2; continue; }
         leg="$a"
     else
@@ -158,6 +173,7 @@ for a in $ROWS; do
     fi
     nl=$(nl_full "$alpha")
     line="$(printf '%-14s bin=%s NL=%-2s ' "${leg}${SFX}" "$bin" "$nl")"
+    [ -n "${ROW_SIDE:-}" ] && line+="box=${ROW_SIDE} win=${ROW_WIN:-$WIN} step=${ROW_STEP:-$STEP} det=${ROW_DETMAX:-200} class=$(res_class "$bin") "
     for m in $MODES; do                       # MODES="Pb Ti" re-does only the PSF kernels
         D="${REPO_DIR}/sim_out_af_${leg}_${m}${SFX}"
         if [ -n "$DOSES" ]; then               # step 2: Poisson copies of the EXISTING noiseless sim

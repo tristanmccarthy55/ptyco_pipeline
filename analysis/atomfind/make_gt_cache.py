@@ -19,13 +19,23 @@ import numpy as np
 from . import align, config
 
 
-def build(thin_cells: int = 0, z_vacuum: float = 4.0):
+def build(thin_cells: int = 0, z_vacuum: float = 4.0, region_side: float | None = None):
     """(pos, Z) from the .vasp via the abtem path -- the definition the cache must match.
 
     thin_cells > 0 builds the THIN aberration-campaign slab instead of the full 18-cell box
     (see align._prepare_gt_thin); the two are different structures, so a thin cache must be
     kept out of the package data dir and pointed at with --data-dir.
     """
+    if region_side:
+        # [region] the CEOS sweep's SxS cut of the tiled crystal: taken from the simulator's own builder, so the GT is
+        # the simulated sample by construction (the plain thin slab built this way equals _prepare_gt_thin to 0.0 A).
+        import importlib.util
+        path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "sim", "simulate_4dstem.py")
+        spec = importlib.util.spec_from_file_location("simulate_4dstem", path)
+        sim = importlib.util.module_from_spec(spec); spec.loader.exec_module(sim)
+        sim.Z_VACUUM_A, sim.REGION_SIDE_A = float(z_vacuum), float(region_side)
+        atoms, _ = sim.build_thin_sample(thin_cells)
+        return atoms.positions.copy(), atoms.numbers.copy()
     vasp = config.data_path(config.VASP_NAME, required=True)
     if thin_cells > 0:
         return align._prepare_gt_thin(vasp, thin_cells, z_vacuum)
@@ -44,9 +54,12 @@ def main():
                          "package data dir and pass that dir to atomfind via --data-dir")
     ap.add_argument("--z-vacuum", type=float, default=4.0,
                     help="[thin-ab] vacuum padding each side along the beam (sim Z_VACUUM)")
+    ap.add_argument("--region-side", type=float, default=None,
+                    help="[region] GT for simulate_4dstem --region-side S (with --thin-cells); the scan centre is then "
+                         "(S/2, S/2) -- pass --set scan_center_xy=S/2,S/2 to atomfind")
     a = ap.parse_args()
 
-    pos, Z = build(a.thin_cells, a.z_vacuum)
+    pos, Z = build(a.thin_cells, a.z_vacuum, a.region_side)
     if a.check:
         d = np.load(config.data_path(align.GT_CACHE, required=True))
         assert d["pos"].shape == pos.shape, f"shape {d['pos'].shape} != {pos.shape}"

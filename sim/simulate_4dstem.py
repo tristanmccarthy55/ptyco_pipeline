@@ -63,6 +63,11 @@ BIN_FACTOR              = 4       # NxN detector binning applied to the lazy arr
 # and because its blocks START on the zero-angle pixel it shifts every pattern by (BIN-1)/2 fine pixels,
 # which the object absorbs as the diagonal phase ramp the analysis has been subtracting. BIN 1: identical.
 DETECTOR_SAMPLING       = "point"
+# [region] --detector-max-angle: record the detector only to this angle [mrad] (default: DETECTOR_MAX_ANGLE_MRAD).
+# The potential is still sampled for 200 mrad, so the multislice is unchanged; only the recorded pattern is cropped.
+# A large recon window (box/BIN) needs fine angular pixels, and N = 2 theta_max window / lambda; cropping the
+# collection angle keeps N at a size the engine handles (e.g. 105 A window at +-133 mrad -> 1418 px).
+DETECTOR_RECORD_MRAD    = None
 
 # --- dose ---
 # abTEM flux-normalises each pattern to total ≈ 1, so the per-pixel "photon count"
@@ -81,6 +86,11 @@ SCAN_CENTER_X_A = 40.0
 SCAN_CENTER_Y_A = 20.0
 SCAN_WINDOW_A   = 20.0
 SCAN_STEP_A     = 0.1
+# [region] --region-side S: the sample is an S x S cut from the tiled (periodic) crystal, centred on the material
+# point the standard box puts under (SCAN_CENTER_X_A, SCAN_CENTER_Y_A); the scan then sits at the box centre.
+# Lets a large probe (and the scan field it needs) sit in bulk crystal instead of the 70 A box's x-vacuum.
+MATERIAL_SCAN_CENTRE = (SCAN_CENTER_X_A, SCAN_CENTER_Y_A)
+REGION_SIDE_A   = None
 
 # --- thermal diffuse scattering (frozen phonons) ---
 # OFF by default (coherent) so sim_out/ stays the validated coherent baseline. When
@@ -193,7 +203,7 @@ def build_single_atom(element="Pb", z=37.0):
     production, so Ndpx / d_alpha / dx and the axial propagation all match. Pair with a
     small --scan-window for a fast, cheap PSF (the kernel is local, window-invariant)."""
     from ase import Atoms
-    side, box_z = 70.008, GRID_BOX_Z
+    side, box_z = (REGION_SIDE_A or 70.008), GRID_BOX_Z
     atoms = Atoms(element, positions=[(SCAN_CENTER_X_A, SCAN_CENTER_Y_A, z)],
                   cell=[side, side, box_z], pbc=True)
     print(f"[atoms] SINGLE {element} (Z={atoms.get_atomic_numbers()[0]}) at "
@@ -209,7 +219,7 @@ def build_atom_grid(element="Pb", spacing=4.0, z=37.0):
     isolated (one plane) -> extract/average the central blobs for the PSF (its axial tail
     is neighbour-free, unlike a data-derived blob from the stacked labyrinth columns)."""
     from ase import Atoms
-    side, box_z = 70.008, GRID_BOX_Z
+    side, box_z = (REGION_SIDE_A or 70.008), GRID_BOX_Z
     half = SCAN_WINDOW_A / 2.0 - 1.0                 # 1 Å margin inside the scanned window
     xs = np.arange(SCAN_CENTER_X_A - half, SCAN_CENTER_X_A + half + 1e-6, spacing)
     ys = np.arange(SCAN_CENTER_Y_A - half, SCAN_CENTER_Y_A + half + 1e-6, spacing)
@@ -320,6 +330,29 @@ def load_and_prepare_atoms():
     return atoms, float(bx)
 
 
+def _cut_region(crystal, shift_xy):
+    """[region] A square REGION_SIDE_A x REGION_SIDE_A in-plane cut from the infinite labyrinth, centred on the
+    material point the standard sample puts under its scan centre -- so the scan sees the same atoms, now with bulk
+    crystal all round instead of the 22 A x-vacuum the 70 A square box pads its 47.9 A x-period with. The cell is
+    periodic in-plane (POSCAR pbc), so tiling it is the crystal itself; the cut's edges meet as a seam at the box
+    boundary, which the probe must not reach (sweep rows keep scan + d99 well inside REGION_SIDE_A).
+    shift_xy: the in-plane shift the standard build applies (squaring + centring), recovered exactly."""
+    S = float(REGION_SIDE_A)
+    Lx, Ly, Lz = crystal.cell.lengths()
+    cx = (MATERIAL_SCAN_CENTRE[0] - shift_xy[0]) % Lx     # the crystal point under the standard scan centre
+    cy = (MATERIAL_SCAN_CENTRE[1] - shift_xy[1]) % Ly
+    nx, ny = int(np.ceil(S / Lx)) + 2, int(np.ceil(S / Ly)) + 2
+    t = crystal.repeat((nx, ny, 1))
+    t.positions[:, 0] += S / 2 - (cx + (nx // 2) * Lx)
+    t.positions[:, 1] += S / 2 - (cy + (ny // 2) * Ly)
+    p = t.positions
+    t = t[(p[:, 0] >= 0) & (p[:, 0] < S) & (p[:, 1] >= 0) & (p[:, 1] < S)]
+    t.set_cell([S, S, Lz]); t.pbc = True
+    print(f"[region] {S:.1f} x {S:.1f} A cut from the tiled crystal ({nx} x {ny} periods of {Lx:.3f} x {Ly:.3f} A); "
+          f"crystal point ({cx:.3f}, {cy:.3f}) under the scan centre ({S/2:.1f}, {S/2:.1f})")
+    return t
+
+
 def build_thin_sample(n_cells, cell_z=3.905):
     """[thin-ab] Thin PTO/STO slab for a fast, well-conditioned ptycho test. Same orient +
     square-pad as load_and_prepare_atoms, then crop the beam (z) axis to a central slab
@@ -329,8 +362,11 @@ def build_thin_sample(n_cells, cell_z=3.905):
     atoms = abtem.orthogonalize_cell(atoms)
     Lx, Ly, _ = atoms.cell.lengths()
     side = max(Lx, Ly)
+    crystal = atoms.copy()
     atoms.cell[0, 0] = side; atoms.cell[1, 1] = side
     atoms.center(axis=0); atoms.center(axis=1)
+    if REGION_SIDE_A:
+        atoms = _cut_region(crystal, atoms.positions[0, :2] - crystal.positions[0, :2])
     thick = n_cells * cell_z
     z = atoms.get_positions()[:, 2]; zc = 0.5 * (z.min() + z.max())
     atoms = atoms[np.abs(z - zc) <= thick / 2.0]          # central slab (ASE boolean index)
@@ -514,7 +550,7 @@ def run_scan_binned(probe, atoms, scan):
     (build that config's potential, scan, bin, accumulate the incoherent average), so
     peak memory is that of a single coherent sim regardless of phonon count — the fix
     for the 16-config OOM. Same total work as the ensemble path; just memory-bounded."""
-    detector = abtem.PixelatedDetector(max_angle=DETECTOR_MAX_ANGLE_MRAD)
+    detector = abtem.PixelatedDetector(max_angle=DETECTOR_RECORD_MRAD or DETECTOR_MAX_ANGLE_MRAD)
     if N_PHONONS and N_PHONONS > 0:
         sigmas = PHONON_SIGMA_BY_SPECIES if PER_SPECIES_SIGMA else PHONON_SIGMA_A
         print(f"[phonons] {N_PHONONS} configs, sigma={sigmas} Å "
@@ -676,6 +712,8 @@ def write_driver_geometry(n_b: int, box_a: float, beam_thickness_a: float,
         "box_A": float(box_a),
         "bin_factor": int(BIN_FACTOR),
         "detector_sampling": DETECTOR_SAMPLING,
+        "region_side_A": float(REGION_SIDE_A or 0.0),
+        "detector_record_mrad": float(DETECTOR_RECORD_MRAD or DETECTOR_MAX_ANGLE_MRAD),
         "beam_thickness_A": float(beam_thickness_a),
         "convergence_mrad": float(CONVERGENCE_MRAD),
         "overfocus_A": float(OVERFOCUS_A),
@@ -703,7 +741,7 @@ def write_driver_geometry(n_b: int, box_a: float, beam_thickness_a: float,
 # MAIN
 # ======================================================================
 def main(argv=None) -> int:
-    global DEVICE, SLICE_THICKNESS_A, SCAN_STEP_A, DOSE_E, N_PHONONS, PHONON_SIGMA_A, PER_SPECIES_SIGMA, PHONON_SEED, SCAN_WINDOW_A, ABERRATED, PROBE_INITIAL_ABERRATED, BIN_FACTOR, DETECTOR_SAMPLING, CONVERGENCE_MRAD, DEFOCUS_A, NOMINAL_DEFOCUS_A, ABERRATIONS, RECON_FULL_BOX, Z_VACUUM_A, GRID_BOX_Z
+    global DEVICE, SLICE_THICKNESS_A, SCAN_STEP_A, DOSE_E, N_PHONONS, PHONON_SIGMA_A, PER_SPECIES_SIGMA, PHONON_SEED, SCAN_WINDOW_A, ABERRATED, PROBE_INITIAL_ABERRATED, BIN_FACTOR, DETECTOR_SAMPLING, REGION_SIDE_A, DETECTOR_RECORD_MRAD, SCAN_CENTER_X_A, SCAN_CENTER_Y_A, CONVERGENCE_MRAD, DEFOCUS_A, NOMINAL_DEFOCUS_A, ABERRATIONS, RECON_FULL_BOX, Z_VACUUM_A, GRID_BOX_Z
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--test", action="store_true",
                     help="Tiny 3x3 scan for fast local shape/geometry validation.")
@@ -763,6 +801,10 @@ def main(argv=None) -> int:
                          "The aberrated run needs BIN=1 (1424 px / full 70 Å window): the "
                          "delocalised 5th-order probe fills the box — finer k-sampling, cf. "
                          "Nguyen et al. Fig 3B.")
+    ap.add_argument("--region-side", type=float, default=None,
+                    help="[region] sample = an SxS A cut from the tiled crystal, centred on the standard scan centre's material; the scan moves to the box centre. Grid/single-atom legs take the same box side.")
+    ap.add_argument("--detector-max-angle", type=float, default=None,
+                    help="[region] record the detector only to this angle [mrad]; the potential stays sampled for 200 mrad.")
     ap.add_argument("--detector-sampling", default=DETECTOR_SAMPLING, choices=["point", "sum"],
                     help="reduce the fine detector to the recon grid by POINT sampling every BIN-th pixel "
                          "(default; what the recon models) or by the old 4x4 intensity SUM (reproduces "
@@ -814,6 +856,10 @@ def main(argv=None) -> int:
     PROBE_INITIAL_ABERRATED = (args.probe_initial == "true")
     BIN_FACTOR = args.bin_factor
     DETECTOR_SAMPLING = args.detector_sampling
+    REGION_SIDE_A = args.region_side
+    DETECTOR_RECORD_MRAD = args.detector_max_angle
+    if REGION_SIDE_A:                                         # the scan sits at the centre of the cut
+        SCAN_CENTER_X_A = SCAN_CENTER_Y_A = REGION_SIDE_A / 2.0
     CONVERGENCE_MRAD = args.convergence
     DEFOCUS_A = args.defocus                                  # [thin-ab] None -> -OVERFOCUS_A
     NOMINAL_DEFOCUS_A = args.probe_defocus                    # [campaign] nominal start-probe defocus

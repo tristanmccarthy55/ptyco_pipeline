@@ -156,6 +156,22 @@ def plan(alphas, C5, target, thick, out):
                 f.write(line + "\n")
     print("wrote", out)
 
+REGION_SIDE = 210.0       # [region] every CEOS-sweep leg: a 210 A cut of the tiled crystal (simulate_4dstem --region-side)
+MAX_NDP = 1424            # the largest pattern the engine has run (BIN 1 of the 70 A box); a crop keeps N at or below it
+
+
+def region_geometry(d90, d99, side=REGION_SIDE):
+    """(bin, window, detmax, win, step, runnable) for a probe in a SIDE-A region box. Window from d99 on the old
+    thresholds (17.5 / 35 / 70 A windows held d99 < 15 / 31 / 62), plus 105; bin = side / window; the detector is
+    recorded to +-200 mrad unless the window needs a crop to keep N <= MAX_NDP; the scan field keeps scan/d90 >= 1.5
+    (Rule 4) at 1600 positions; runnable while scan + d99 leaves >= 10 A to the seam on each side."""
+    window = next(w for w, lim in ((17.5, 15), (35.0, 31), (70.0, 62), (105.0, 93), (side, 1e9)) if d99 < lim)
+    binf = int(round(side / window))
+    detmax = min(200, int(MAX_NDP * LAM / (2 * window) * 1e3))
+    win = max(20, int(np.ceil(1.5 * d90)))
+    return binf, window, detmax, win, win / 40, (win + d99 + 20 <= side)
+
+
 def plan_ceos(alphas, C5, target, out):
     """[CEOS-approx sweep] The operator fights for the smallest probe on the CEOS-approx column
     (aberration_waves.ceos_tableau). Hardware A5, A4, B4 fixed; the tunable A1 A2 S3 A3 D4 retuned at this aperture
@@ -180,7 +196,7 @@ def plan_ceos(alphas, C5, target, out):
     rows = []
     for a in alphas:
         th = a / 1000.0
-        ext = 90.0 if a <= 60 else 150.0                       # holds the probe; Nyquist >= 1.55 alpha below
+        ext = 90.0 if a <= 60 else (160.0 if a <= 70 else 220.0)   # holds the probe; Nyquist >= 1.55 alpha below
         n = int(np.ceil(ext / (LAM / (2 * 1.55 * th)) / 64) * 64)
         f = lambda x: sizes(probe(a, x[0], x[1], x[2], ext, n), ext)[2]
         c3_edge = round(-C5 * th ** 2 / 1e4) * 1e4             # the round ray-edge cancel, as plan() starts from
@@ -201,18 +217,18 @@ def plan_ceos(alphas, C5, target, out):
             regime = "free"
         C1 = round(C1, 1); C3 = round(C3, -2); B2 = round(B2, 1)
         ab = aw.ceos_tableau(C3, C5, alpha=a, b2=B2)
-        _, d50, d90, d99 = sizes(probe(a, C1, C3, B2, 140.0, 2400), 140.0)
-        binf = 4 if d99 < 15 else (2 if d99 < 31 else 1)
-        win = max(20, int(np.ceil(1.5 * d90)))
+        _, d50, d90, d99 = sizes(probe(a, C1, C3, B2, 220.0, 3584), 220.0)
+        binf, window, detmax, win, step, ok = region_geometry(d90, d99)
         note = (f"CEOS fought ({regime}): d90 {d90:.1f} A, d99 {d99:.1f} A; B2 {B2 / 10:+.0f} nm vs B4; "
-                + ("default scan" if win == 20 else f"RUN WITH WIN={win} STEP={win / 40:g}"))
-        if win > 34:
-            note = "NOT RUNNABLE in the 70 A box (scan field > 34 A): " + note
+                f"window {window:g} A" + ("" if detmax == 200 else f", detector +-{detmax} mrad"))
+        if not ok:
+            note = f"NOT RUNNABLE in a {REGION_SIDE:g} A box (scan {win} + d99 {d99:.0f} A): " + note
         rows.append(dict(label="ceosopt_a%03d" % a, alpha=a, c5=C5, c3=C3, c1=C1, df_perf="-", bin=binf, nl=0,
-                         aber_json=json.dumps(ab, separators=(",", ":")), note=note))
+                         aber_json=json.dumps(ab, separators=(",", ":")), note=note,
+                         side=f"{REGION_SIDE:g}", win=win, step=f"{step:g}", detmax=detmax))
         print(f"  alpha={a:3d}  C1={C1:+6.1f}A  C3={C3 / 1e4:+5.2f}um  B2={B2 / 10:+6.1f}nm  d90={d90:.1f} "
-              f"d99={d99:.1f}  BIN={binf}  WIN={win}  [{regime}]", flush=True)
-    cols = ["label", "alpha", "c5", "c3", "c1", "df_perf", "bin", "nl", "aber_json", "note"]
+              f"d99={d99:.1f}  window={window:g} BIN={binf} det={detmax}  WIN={win} STEP={step:g}  [{regime}]", flush=True)
+    cols = ["label", "alpha", "c5", "c3", "c1", "df_perf", "bin", "nl", "aber_json", "note", "side", "win", "step", "detmax"]
     with open(out, "w") as fh:
         fh.write("\t".join(cols) + "\n")
         for r in rows:

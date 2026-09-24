@@ -88,14 +88,19 @@ ASSUMED_TABLEAU = {
 #: THE CEOS-APPROX INSTRUMENT (2026-09-24, the user's choice): an older, widespread hexapole-corrected column --
 #: CEOS CESCOR-like, the pre-DELTA generation -- tuned at a 30 mrad design aperture and opened past it with the
 #: probe known ("tanking" the aberrations). Split per CEOS: operator-tuned A1 B2 A2 S3 A3 D4; hardware A4, B4
-#: (parasitic) and A5 (intrinsic). A5 = 1.0 mm is CEOS's figure. No other term has a sourced value, so each sits
-#: at CEOS_DESIGN_WAVES at the design aperture, inside the pi/4 (0.125-wave) flatness a corrector is tuned to --
-#: which lands on the usual orders of magnitude (A1 0.44 nm, B2/A2 22 nm, S3/A3 1 um, D4/B4/A4 40 um). All are
-#: FIXED as the aperture opens (each grows as alpha^(n+1)); only the round C1/C3 are retuned, by the planner.
+#: (parasitic) and A5 (intrinsic). A5 = 1.0 mm is CEOS's figure (and consistent: it reaches the pi/4 tuning limit at
+#: ~34 mrad at 300 kV, ~35 at 200 kV -- the range these correctors were used to; DCOR/ASCOR, built to beat it, hold
+#: |A5| < 0.2 mm). No other term has a sourced value. Tuned terms sit at CEOS_DESIGN_WAVES at the aperture they were
+#: tuned at (A1 0.44 nm, B2/A2 22 nm, S3/A3 1 um, D4 40 um at 30 mrad). Parasitic A4, B4: CEOS names A5 as THE
+#: limiting residual of an aligned corrector, so A4/B4 must reach pi/4 no sooner than A5 does (~34 mrad), i.e.
+#: <= ~27 um; CEOS_PARASITIC_A = 10 um is the central value (2026-09-24; 40 um, the first choice, was the worst an
+#: in-spec column could be -- 0.1 waves at 30 mrad -- and broke that ordering). Hardware terms are FIXED as the
+#: aperture opens (each grows as alpha^(n+1)).
 #: S5/R5 (C52/C54) are left out: CEOS names A5, A4, B4 as the limiting residuals. Orientations are one seeded
 #: uniform draw per term (the angle of an m-fold term is only defined modulo 2pi/m); probe sizes vary < 1 A across
 #: draws. The simulation energy stays 300 keV (the campaign's), though the target era's column is 200 keV.
 CEOS_DESIGN_MRAD, CEOS_DESIGN_WAVES, CEOS_A5_A, CEOS_SEED = 30.0, 0.1, 1.0e7, 0
+CEOS_PARASITIC_A = 1.0e5        # A4, B4 = 10 um (central; see above)
 CEOS_TUNED = ["C12", "C21", "C23", "C32", "C34", "C43"]
 CEOS_HARDWARE = ["C41", "C45", "C56"]
 
@@ -114,7 +119,9 @@ def ceos_tableau(c3: float, c5: float = 1.0e7, alpha: float | None = None, b2: f
     for t in CEOS_TUNED + CEOS_HARDWARE:
         if t == "C56":
             v = CEOS_A5_A
-        elif t in CEOS_HARDWARE or alpha is None:
+        elif t in CEOS_HARDWARE:
+            v = CEOS_PARASITIC_A
+        elif alpha is None:
             v = CEOS_DESIGN_WAVES * per_wave(t, CEOS_DESIGN_MRAD)
         else:
             v = CEOS_DESIGN_WAVES * per_wave(t, alpha)

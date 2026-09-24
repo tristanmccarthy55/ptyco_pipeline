@@ -124,6 +124,9 @@ BIN_ARG=(); [ -n "${BIN_FACTOR:-}" ] && BIN_ARG=(--bin-factor "${BIN_FACTOR}")
 # DETECTOR_SAMPLING=sum reproduces sims made before 2026-09-23 (4x4 intensity sum); unset = point
 # sampling, the simulator default and what the recon models. See DETECTOR_SAMPLING in simulate_4dstem.py.
 DS_ARG=(); [ -n "${DETECTOR_SAMPLING:-}" ] && DS_ARG=(--detector-sampling "${DETECTOR_SAMPLING}")
+# [region] REGION_SIDE: sample = an SxS A cut of the tiled crystal; DETECTOR_MAX_ANGLE: record only to this angle
+[ -n "${REGION_SIDE:-}" ] && DS_ARG+=(--region-side "${REGION_SIDE}")
+[ -n "${DETECTOR_MAX_ANGLE:-}" ] && DS_ARG+=(--detector-max-angle "${DETECTOR_MAX_ANGLE}")
 CONV_ARG=(); [ -n "${CONVERGENCE:-}" ] && CONV_ARG=(--convergence "${CONVERGENCE}")
 
 # per-species RMS thermal displacements (Pb/Sr/Ti/O) instead of one sigma for all
