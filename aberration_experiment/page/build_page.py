@@ -32,8 +32,6 @@ SOURCES_BY_TEMPLATE = {
         "FIG_FOCUS":    "2026-W39/simple/fig_focus.png",
         "FIG_DOSE":     "2026-W39/simple/fig_dose.png",
         "FIG_PROBE":    "2026-W39/simple/fig_probe.png",
-        "FIG_NONROUND": "2026-W39/simple/fig_nonround.png",
-        "FIG_BLAME":    "2026-W39/simple/fig_didfinderfail_0p2.png",
         "FIG_PSF":      "2026-W39/simple/fig_psf.png",
         "FIG_GROWTH":   "2026-W39/simple/fig_growth.png",
         "FIG_P1":       "2026-W38/paper/fig1_probe.png",

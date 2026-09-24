@@ -147,13 +147,11 @@ Np_presolve               = [2*floor(Ndpx/4), Ndpx]; % half-Ndp, forced EVEN (th
 %   uses even FFT sizes; Ndpx=1426 -> round(/2)=713 is ODD -> 713/712 size clash). 356->178.
 % PRESOLVE_NDP overrides the presolve's detector width. Set it to Ndpx to make the presolve
 % full-resolution, i.e. to remove the downsampling entirely without touching the engine schedule.
-% WHY THIS EXISTS (2026-09-23): the presolve crops the diffraction data to half the collection angle
-% (rescale_inputs.m) and band-limits the probe to match. A non-round aberration of order n scales as
-% theta^(n+1), so halving the angle divides six-fold astigmatism by 64 -- the presolve therefore
-% solves an almost perfectly ROUND problem and hands the full engine an object built on a probe that
-% is not the one being used. That is the leading suspect for the six-fold recall collapse, which is
-% not believed: with an exact fixed probe the solver fits only the object, and the probe's aberration
-% content should not limit the object it can reach.
+% Added 2026-09-23 to test whether the half-width presolve caused the six-fold recall collapse. It did
+% not, and could not: the presolve crops the DETECTOR (collection angle) to +-100 mrad (178 px x 1.1249
+% mrad/px at a70/BIN4), which keeps the whole 70 or 90 mrad probe aperture and every aberration on it.
+% Measured: residual 73.4 against 74.0 and no better object. The collapse was the probe orientation
+% bug in save_to_p.m (40d28a3). Default stays half-width; this is a diagnostic knob.
 pn_env = getenv('PRESOLVE_NDP');
 if ~isempty(pn_env)
     Np_presolve(1) = 2*floor(str2double(pn_env)/2);       % keep it even

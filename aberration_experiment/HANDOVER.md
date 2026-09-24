@@ -1,4 +1,4 @@
-# Aberration experiment — handover (updated 2026-09-16)
+# Aberration experiment — handover (updated 2026-09-24)
 
 **Read in this order:** this file → **`NEXT_PHASE.md`** (what to do next) → `PSF_KERNELS.md` (the
 kernel rules). **Picking the project up cold? `HANDOFF_ANALYSIS.md` is the current front door**: what is
@@ -13,29 +13,29 @@ atomfind with matched kernels. **The round-α campaign is complete**: depth reco
 aperture opens, from 50 to 90 mrad, and 110 mrad is out of reach. The next phase relaxes the
 idealisations one at a time toward a publishable result — see `NEXT_PHASE.md`.
 
-**Relaxation ladder: 20 rows. Steps 0–3 measured; step 4 (non-round) VOID** — every non-round reconstruction
-in this campaign used a probe rotated 30° from the truth (see `HANDOFF_ANALYSIS.md` *Traps*, first row). The
-simulations are fine and the legs are being reconstructed again on the fixed engine.
+**Relaxation ladder: 18 rows** (`results/relaxation_ladder.csv`, one cumulative table). Steps 0–3 measured
+(baseline, focus by outer search, shot noise, phonons). **Step 4: a known non-round probe costs nothing** —
+six-fold at 0.1 and 0.45 waves at 70 mrad, and 0.1 / 0.3 / 0.45 waves at 90 mrad, reconstruct like the round leg
+(2026-09-24, fixed engine; numbers in `HANDOFF_ANALYSIS.md`). Every non-round number before 2026-09-23 was wrong
+through two probe-orientation bugs, both fixed; those rows were removed. Step 5 (the 70 Å slab) fails. Steps 6–7
+(coherence, tilt) need simulation code that does not exist. **Next job: a representative non-round microscope on
+the round sweep** — blocked on choosing the corrector class; see `HANDOFF_ANALYSIS.md`.
 
-**Relaxation ladder: 20 rows, steps 0-4 measured** (`results/relaxation_ladder.csv`). Step 1b (focus fitted
-inside the solver) is closed as a failure and diagnosed; step 5 (the 70 Å slab) was on the cluster at the
-2026-09-22 handoff; steps 6 and 7 need simulation code that does not exist. See `HANDOFF_ANALYSIS.md`.
-
-**Step 1 (C1 fit, C3/C5 fixed) — tooling built 2026-09-17, not yet run.** Error-trace sidecar in the
-recon script, in-job probe writer, C1-search driver, objective analysis, relaxation-ladder table (step 0
-seeded). Next: the a70 smoke test. Plan and expectations in `NEXT_PHASE.md` § Step 1.
+**Detector model changed 2026-09-24**: the simulator now point-samples the detector at the reconstruction's k-grid
+instead of summing 4×4 blocks (`DETECTOR_SAMPLING`). Every row above was made on the summed detector.
 
 **Logbook — the permanent checkpoint record** (private): https://claude.ai/artifact/7ve93UM6yqCmiRcbfNuiJM — what has been done, the numbers, the
 rules, the presentation conventions, and what is waiting. Point a new agent here first. Rebuilt from
 `aberration_experiment/page/logbook.html` by `page/build_page.py`; republish to the same URL.
 *The Six-Fold Tolerance* (https://claude.ai/artifact/21fr4Y6JqCeaeB6KLMUKGz) is **superseded and its headline
 was wrong** — it published a "six-fold residual below 0.1 waves" limit on 2026-09-22 that was withdrawn the
-same day when the probe-orientation bug was found. Its content is folded into the logbook's §5–6. Do not cite
-it; it is left online only so the link does not rot.
+same day when the probe-orientation bug was found; on the fixed engine a known six-fold probe costs nothing up
+to the 0.45 waves measured. Its content is folded into the logbook's §5–6. Do not cite it; it is left online
+only so the link does not rot.
 PI-meeting page (private): https://claude.ai/artifact/6JuRq4kgP8v6FjDC8agcpn
 Results page, 2026-09-21 runs (private): https://claude.ai/artifact/3TfTwcipbbTxG9PGbeEtqi — focus fitted
 end to end, the in-solver focus fit failing, phonons, non-round, the thick slab that diverged; figures by
-`analysis/make_relaxation_figs.py`.
+`analysis/make_relaxation_figs.py`. **Its non-round numbers are wrong** (probe-orientation bugs); the rest stands.
 Group-meeting page, 2026-09-22 (private): https://claude.ai/artifact/NiYCfNo7uFAWFkyUZ5L3SF — the
 six-figure set in `figs/<week>/meeting/`, rebuilt by `analysis/make_meeting_figs.py`; republish that
 same file path to update it rather than creating a second page.
@@ -155,6 +155,8 @@ Every wrong number this campaign produced traced back to breaking one of these.
 | tarballs in the group root | pack path built from bare `$SHARE` | `$SHARE/$USER` (`5af792b`) |
 | every aperture-constrained probe fit NaN'd at iteration 1 of the full engine, even with the probe frozen there | `crop_pad` resized the unshifted-FFT TEM aperture mask for the presolve by keeping the array centre: an all-zero mask erased the probe, then 0·Inf in the probe rescaling | mask stored centred, shifted back in `init_solver` (2026-09-17) |
 | O columns "duplicated" across both x–z panels | not a bug: in ABO₃ [001] O sits at (½,0) **and** (0,½) | labels name both column types (`24571e3`) |
+| a non-round leg recovers badly with the probe KNOWN; a fix to the probe's orientation moves recall but not the residual | the probe followed the data's transpose only in the presolve: `save_to_p` handed the full engine the flipped probe and its `load_from_p` flipped it back. Invisible for a round probe | `save_to_p` returns the probe in `probe_initial.mat`'s frame (`40d28a3`, 2026-09-23); 0.45-wave six-fold 74.0 → 25.5, Pb 56 → 98 % |
+| round residual floors 22.6 (a70) vs 5.8 (a90), and a diagonal phase ramp in every fixed-probe object | the sim summed 4×4 detector pixels (a pixel-integrating detector the engine does not model) in blocks that start on the zero-angle pixel, shifting every pattern by (BIN−1)/2 fine px | point-sample at the recon k-grid, the default since 2026-09-24; `DETECTOR_SAMPLING=sum` reproduces old sims |
 
 ## How to run
 

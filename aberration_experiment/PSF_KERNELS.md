@@ -38,6 +38,9 @@ puts one element on a 2-D grid at a **single depth plane**, through the same abe
 box as the lab recon. `analysis/atomfind/extract_psf.py` removes the phase-ramp gauge, finds
 the grid atoms in the interior of the scan field and **averages** them →
 `psf_<el>_a<α>_vol.npy`, loaded by atomfind via `--single-atom-vol` / `--ti-kernel-vol`.
+(The ramp's cause was found on 2026-09-24: the simulator summed 4×4 detector pixels in blocks starting on the
+zero-angle pixel, displacing every pattern by (BIN−1)/2 fine px. Point-sampled sims should carry almost none;
+the removal stays, harmless, and is still needed for every kernel made before then.)
 (Before 2026-09-11 it cropped one blob; `--single` still does, for reproducing old kernels.)
 
 ## What went wrong

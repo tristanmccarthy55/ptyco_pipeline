@@ -8,7 +8,8 @@ system PSF. So this finds the grid atoms in the interior of the scan field and A
 grid exists precisely so the same response is measured many times, and N blobs cut the noise by
 ~sqrt(N) without touching the reconstruction operator (the kernel stays byte-identical to the lab
 recon; see aberration_experiment/PSF_KERNELS.md). Before averaging it removes the in-plane phase
-ramp that fixed-probe recons carry -- a gauge, not part of the response -- with the same model as
+ramp that fixed-probe recons carry -- not part of the response; on sims made before 2026-09-24 it is the
+summed detector's half-block offset (simulate_4dstem.py DETECTOR_SAMPLING) -- with the same model as
 analyze_thin_campaign.crop_phase (one plane fitted to the depth-summed phase, spread evenly over
 the layers). The result is written as a complex volume in the NL70_new_vol.npy format, with the
 atom as the single positive phase maximum, so psf.empirical_psf() (angle -> argmax -> crop)

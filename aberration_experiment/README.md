@@ -24,14 +24,13 @@ LSQ-ML. This folder is the experiment's **home for outputs**; the code lives wit
 - **Big raw data stays out of git** (see `.gitignore`): recon `*.tgz` tarballs and multi-GB
   volumes live on Blythe (`$SHARE`) and are pulled to a scratch dir when analysed, not committed.
 
-## Status / key findings so far
-- **Known/calibrated probe works**: `ab_known ≈ perfect` across α (a50–a100) — aberrated wide-aperture
-  data is fully usable if the probe is known; depth structure sharpens with α (δz = λ/α²).
-- **Blind probe retrieval is hard** on this thin weak-phase slab (grid-junk → noise → NaN across
-  fixes; presolve-only fit under test). Real fix is likely a vacuum/edge scan.
-- **Where it breaks** (`figs/2026-W37/ronchigram_evolution.png`): C5 = 1 mm is a fixed corrector
-  residual; retuning Cs(C3)+C1 holds the probe ~4 Å to **70 mrad**, then it grows (6.6/11/24.5/~60 Å at
-  90/100/110/120). Probe compactness — not a flat Scherzer χ — is the C3-selection criterion (ptycho
-  recovers the phase).
-- **atomfind**: interface fix (full-box recon) + matched aberrated PSFs built; sweep pending →
-  depth-localisation-vs-α (expected real only ≥~100 mrad).
+## Status / key findings (2026-09-24)
+- **Known probe, round aberrations: works.** Depth error falls as the aperture opens (0.56 → 0.37 Å from 70 to
+  90 mrad with matched kernels); 110 mrad is out of reach because its probe outgrows the scan field.
+- **Known probe, non-round aberrations: costs nothing.** Six-fold astigmatism at 0.45 waves reconstructs like the
+  round leg at 70 and 90 mrad (ladder step 4), once two probe-orientation bugs in the engine were fixed.
+- **Focus** is recovered at no cost by an outer search; **shot noise** holds to 10⁵ e/Å²; **phonons** are costly;
+  **the 70 Å sample** fails. Blind probe retrieval (probe updated by the solver) does not work on this thin slab.
+- **Next**: a representative non-round corrector tableau on the round sweep. With a hexapole corrector's
+  six-fold A5 ≈ 1 mm the probe outgrows the simulation box from 70 mrad, so the corrector class is the open choice.
+- Front door with the details and what changed recently: `HANDOFF_ANALYSIS.md`.

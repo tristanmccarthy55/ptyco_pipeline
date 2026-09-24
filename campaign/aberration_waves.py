@@ -63,9 +63,13 @@ def tableau_waves(ab: dict, alpha_mrad: float) -> dict:
 
 
 #: The instrument the campaign assumes -- sim/simulate_4dstem.py's ABERRATIONS ("a real JEOL ARM, hexapole
-#: corrector, corrected to 3rd order, measured to 5th") -- plus order-of-magnitude post-tuning residuals
-#: from published hexapole-corrector tableaus for the terms the sim leaves out. "tuned" = the operator
-#: nulls it at the design aperture and it drifts; "hardware" = it is what the corrector leaves behind.
+#: corrector, corrected to 3rd order, measured to 5th") -- plus order-of-magnitude residuals for the terms the
+#: sim leaves out. "tuned" = the operator nulls it at the design aperture and it drifts; "hardware" = what the
+#: corrector leaves behind. The split follows CEOS for its CESCOR hexapole probe corrector: adjustable C1, A1,
+#: B2, A2, C3, S3, A3, D4, C5; limiting A5 (intrinsic) and A4, B4 (parasitic) -- ceos-gmbh.de, CESCOR page.
+#: SOURCED VALUE: A5 = 1.0 mm (CEOS, residual aberrations of hexapole-type correctors). The others are
+#: UNSOURCED orders of magnitude from an earlier session; do not quote them as a measured tableau.
+#: (2026-09-24: D4 was filed as "hardware" at 100 um -- it is adjustable, and at 100 um it dominated the probe.)
 ASSUMED_TABLEAU = {
     "C12": (5.0,  "two-fold astigmatism A1",  "tuned",    "sim: 0.5 nm residual"),
     "C21": (3e2,  "coma B2",                  "tuned",    "typical ~30 nm"),
@@ -73,11 +77,11 @@ ASSUMED_TABLEAU = {
     "C32": (5e3,  "star S3",                  "tuned",    "typical ~0.5 um"),
     "C34": (1e4,  "four-fold astigmatism A3", "tuned",    "typical ~1 um"),
     "C41": (2e5,  "fourth-order coma B4",     "hardware", "typical ~20 um"),
-    "C43": (1e6,  "three-lobe D4",            "hardware", "typical ~100 um; the known 4th-order hexapole residual"),
+    "C43": (1e6,  "three-lobe D4",            "tuned",    "unsourced ~100 um; ADJUSTABLE on a CESCOR (CEOS)"),
     "C45": (5e5,  "five-fold astigmatism A4", "hardware", "typical ~50 um"),
     "C52": (3e6,  "fifth-order star S5",      "hardware", "typical ~0.3 mm"),
     "C54": (3e6,  "rosette R5",               "hardware", "typical ~0.3 mm"),
-    "C56": (1e7,  "six-fold astigmatism A5",  "hardware", "sim: 1 mm, the hexapole signature"),
+    "C56": (1e7,  "six-fold astigmatism A5",  "hardware", "1.0 mm: CEOS, hexapole-type corrector"),
 }
 
 
@@ -119,8 +123,8 @@ def growth_figure(out, alphas=(30, 40, 50, 60, 70, 80, 90, 100)):
     ax.set_title("How every non-round residual grows as the corrector is opened past its design aperture",
                  loc="left", fontsize=11, pad=10)
     ax.text(0.01, -0.16, "Blue: what the hardware leaves behind. Grey: what the operator tunes out at the design "
-            "aperture, and which drifts. Red: six-fold, the term this campaign has been testing. Values are the "
-            "campaign's own assumed instrument plus published order-of-magnitude residuals, not a measured tableau. "
+            "aperture, and which drifts (split per CEOS for a hexapole probe corrector). Red: six-fold, 1 mm, the one "
+            "sourced value (CEOS); the rest are unsourced orders of magnitude, not a measured tableau. "
             "This figure is analytic: it depends on no reconstruction.",
             transform=ax.transAxes, fontsize=8.5, color="#52514e", va="top", wrap=True)
     ax.grid(True, which="both", color="#e1e0d9", lw=0.6)

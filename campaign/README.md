@@ -36,9 +36,10 @@ planes, erasing the depth structure), so only α + NL decide what's recovered. N
 
 ## Campaign B — non-round sweep (`nonround_sweep.tsv`)
 
-> **Results before 2026-09-22 are void.** The reconstruction engine transposed the diffraction data on load
-> without transposing the probe — no effect for a round probe, a 30° rotation for six-fold. Fixed in
-> `ptycho/+engines/+GPU/+initialize/load_from_p.m`; the legs are being re-reconstructed.
+> **Results before 2026-09-23 are wrong; a known non-round probe costs nothing.** The engine did not transpose
+> the probe with the data (fixed 2026-09-22, `load_from_p.m`), and the fix reached only the presolve because
+> `save_to_p.m` handed the full engine a flipped probe it flipped back (fixed 2026-09-23, `40d28a3`). On the
+> fixed engine six-fold at 0.45 waves reconstructs like round at 70 and 90 mrad (ladder step 4).
 
 Fixed α = 70 mrad, round part balanced as in A, then **non-round terms added on top, worst first**:
 `C56` (6-fold astigmatism — the hexapole-corrector residual, uncancellable by round C1/C3),

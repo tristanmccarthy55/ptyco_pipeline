@@ -42,9 +42,11 @@ from make_meeting_figs import (S1, S2, S3, INK, INK2, MUTED, GRIDC, SPECIES,   #
                                style, tag, save, read_csv_rows, read_reports, results_dir,
                                _load_mod, build_probe, aperture_phase, probe_crop)
 
-# nr_block2 FIRST: it holds the six-fold legs re-reconstructed on the engine that transposes the
-# probe with the data (2026-09-22). af() takes the first root that has a leg, so the corrected
-# reconstruction wins over the pre-fix one of the same name.
+# WARNING (2026-09-24): every NON-ROUND leg under these roots is wrong. relax_0921/0922 predate the
+# probe-orientation fix, and nr_block2's "fixed" legs ran their full engine on the flipped-back probe
+# (save_to_p.m, fixed 40d28a3). Do not rebuild figD_nonround from them. The correctly reconstructed six-fold
+# legs (70 mrad 0.1/0.45 w, 90 mrad 0.1/0.3/0.45 w) have finder reports in ~/Desktop/sixfold_0923_analysis;
+# the other rungs have not been re-run. The round/focus/dose/phonon legs here are unaffected.
 RELAX = ["~/Desktop/nr_block2", "~/Desktop/relax_0921", "~/Desktop/relax_0922"]
 AF_FINAL = "~/Desktop/thin_ab_af_final"
 BAD = "#c1502a"

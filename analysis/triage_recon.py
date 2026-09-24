@@ -14,12 +14,14 @@ separation is total rather than marginal:
 
     leg                                   |phase|>3 rad     phase std
     thin a70 / a90 lab (published)            0.0000      0.12 / 0.03
-    six-fold 0.45 waves (badly degraded,
-      but a real reconstruction)              0.0000           0.13
+    six-fold 0.45 waves (mis-oriented probe,
+      badly degraded but not saturated)       0.0000           0.13
     70 A a70 Ti (saturated)                   0.0314           1.53
 
-A real reconstruction, however poor, wraps NO pixels. Any wrapping at all is the flag; the phase
-standard deviation is quoted beside it as the size of the failure.
+A real reconstruction wraps almost nothing: the round a70 control has 41 pixels over 3 rad (5e-6), the
+fixed six-fold legs 2e-5 and 5e-5, all on the edge of the illuminated field, where it is poorly
+constrained. Saturation is two to three orders above that, so WRAP_FRAC_MAX = 1e-4 separates them; the
+phase standard deviation is quoted beside it as the size of the failure.
 
     ~/hyperspy-bundle/bin/python analysis/triage_recon.py --root ~/Desktop/thin18_0922 --box 77.9347
     ~/hyperspy-bundle/bin/python analysis/triage_recon.py --root ~/Desktop/relax_0922
@@ -34,7 +36,7 @@ import re
 import numpy as np
 
 WRAP_RAD = 3.0        # |phase| above this is as good as wrapped against pi
-WRAP_FRAC_MAX = 1e-4  # a real reconstruction wraps nothing; this is slack, not a tolerance
+WRAP_FRAC_MAX = 1e-4  # genuine legs measured at <= 5e-5 (edge pixels), saturated at 3e-2
 STD_MAX = 0.5         # rad: an order of magnitude above the worst genuine leg measured
 
 

@@ -269,11 +269,10 @@
       electron ptychography and read out atom by atom.
     </p>
     <div class="mast-meta">
-      <span><b>Checkpoint</b> 2026-09-22</span>
+      <span><b>Checkpoint</b> 2026-09-24</span>
       <span><b>Round-α campaign</b> complete</span>
-      <span><b>Relaxation ladder</b> focus and shot noise measured; six-fold under investigation; the 70 Å sample fails</span>
-      <span><b>On the cluster</b> the 70 Å sample</span>
-      <span><b>Written, not run</b> six-fold at 90 / 100 mrad; other orders</span>
+      <span><b>Relaxation ladder</b> focus, shot noise and phonons measured; a known non-round probe costs nothing; the 70 Å sample fails</span>
+      <span><b>Next</b> a representative non-round tableau across the round sweep — corrector class to choose</span>
     </div>
     <nav class="jump">
       <a href="#s1">1 · The question</a>
@@ -283,7 +282,7 @@
       <a href="#s5">5 · Removing the assumptions</a>
       <a href="#focus">5.1 · Focus</a>
       <a href="#shot">5.2 · Shot noise</a>
-      <a href="#sixfold">5.3 · Six-fold</a>
+      <a href="#sixfold">5.3 · Non-round</a>
       <a href="#s6">6 · In context</a>
       <a href="#s7">7 · Rules</a>
       <a href="#s8">8 · Presenting it</a>
@@ -542,10 +541,10 @@
         <span>10<sup>7</sup> and 10<sup>6</sup> e/Å² are fine, 10<sup>5</sup> is marginal, 10<sup>4</sup> is gone.</span>
       </li>
       <li>
-        <b>Six-fold astigmatism, the corrector's own residual <span class="verdict" style="color:var(--warn)">withdrawn — being redone</span></b>
-        <span>Every non-round reconstruction to date was made with the probe rotated 30° from the true one, by a
-          convention bug the round probes could not reveal. The limit quoted below is void until the legs are
-          reconstructed again; see 5.4.</span>
+        <b>A non-round probe, known <span class="verdict" style="color:var(--ok)">costs nothing</span></b>
+        <span>Six-fold at up to 0.45 waves reconstructs like the round probe at 70 and 90 mrad, once two
+          engine bugs in how the probe was oriented were fixed. What limits a wider aperture is the probe's
+          size, not the aberrations as such; see 5.3 and §6.</span>
       </li>
     </ol>
 
@@ -648,102 +647,89 @@
   </section>
 
   <section>
-    <h3 id="sixfold">5.3 &nbsp;Six-fold astigmatism</h3>
+    <h3 id="sixfold">5.3 &nbsp;Non-round aberrations, probe known</h3>
     <p>
       A hexapole corrector nulls third-order spherical aberration and leaves six-fold astigmatism behind. No
-      round knob touches it and it grows as the sixth power of the aperture, so it is the residual that decides
-      how far the aperture can be opened. Eight levels were run at 70 mrad, each a complete pipeline: its own
-      reconstruction, its own single-atom reference measured through the same probe, then the finder run blind
-      and scored against the known structure.
+      round knob touches it and it grows as the sixth power of the aperture. The question here is narrower than
+      "how much can a microscope tolerate": with the probe <em>known</em>, does a non-round aberration limit the
+      object the reconstruction can reach? Each level is a complete pipeline: its own reconstruction, its own
+      single-atom references measured through the same probe, then the finder run blind and scored against the
+      known structure.
     </p>
-    <div class="call stop">
-      <b>These numbers were measured twice.</b> The first set, published on 2026-09-22, was made with the probe
-      rotated 30° from the one the data came from, and was withdrawn. Everything below is the second set, on the
-      corrected engine. How that was found is worth reading before the table, because the way it hid is a
-      warning about which number to trust.
+    <div class="call ok">
+      <b>Settled on 2026-09-24: a known non-round probe costs nothing.</b> Six-fold at 0.45 waves reconstructs
+      like the round leg at 70 and at 90 mrad. The six-fold "tolerance" this page published on 2026-09-22, and the
+      table that replaced it, came from two engine bugs described below; both are fixed and those numbers are gone.
     </div>
 
     <div class="tablewrap">
       <table>
-        <caption>Six-fold astigmatism at 70 mrad, known probe, no counting noise, static atoms, reconstructed on
-          the corrected engine. Recall is over the interior planes. Confusion is the finder's own species-labelling
-          health check, whose threshold is 5 %. The tinted row is the round-probe baseline.</caption>
-        <thead><tr><th>six-fold</th><th>C<sub>56</sub></th><th>lead</th><th>titanium</th><th>oxygen</th><th>depth error</th><th>confusion</th></tr></thead>
+        <caption>Six-fold astigmatism, known probe, no counting noise, static atoms, fixed engine, lab leg and
+          matched references re-simulated together. Recall is over the interior planes. Confusion is the finder's
+          species-labelling health check (threshold 5 %). Tinted rows are the round-probe baselines.</caption>
+        <thead><tr><th>aperture</th><th>six-fold</th><th>residual</th><th>lead</th><th>titanium</th><th>oxygen</th><th>depth error</th><th>confusion</th></tr></thead>
         <tbody>
-          <tr class="ref"><td>none</td><td>—</td><td>98 %</td><td>82 %</td><td>75 %</td><td>0.56 Å</td><td>1.3 %</td></tr>
-          <tr><td>0.10 waves</td><td>10 µm</td><td>90 %</td><td>71 %</td><td>65 %</td><td>0.70 Å</td><td>9.6 % <span class="chip c-warn">failed</span></td></tr>
-          <tr><td>0.20 waves</td><td>20 µm</td><td>76 %</td><td>46 %</td><td>15 %</td><td>0.65 Å</td><td>17.5 % <span class="chip c-stop">failed</span></td></tr>
-          <tr><td>0.30 waves</td><td>30 µm</td><td>62 %</td><td>31 %</td><td>11 %</td><td>0.70 Å</td><td>24.2 % <span class="chip c-stop">failed</span></td></tr>
-          <tr><td>0.45 waves</td><td>45 µm</td><td>56 %</td><td>36 %</td><td>15 %</td><td>0.71 Å</td><td>28.1 % <span class="chip c-stop">failed</span></td></tr>
-          <tr><td>0.60 waves</td><td>60 µm</td><td>65 %</td><td>40 %</td><td>16 %</td><td>0.77 Å</td><td>22.2 % <span class="chip c-stop">failed</span></td></tr>
-          <tr><td>1.20 waves</td><td>0.12 mm</td><td>44 %</td><td>35 %</td><td>12 %</td><td>0.79 Å</td><td>28.8 % <span class="chip c-stop">failed</span></td></tr>
-          <tr><td>2.50 waves</td><td>0.25 mm</td><td>20 %</td><td>18 %</td><td>4 %</td><td>0.88 Å</td><td>38.8 % <span class="chip c-stop">failed</span></td></tr>
+          <tr class="ref"><td>70 mrad</td><td>none</td><td>22.6</td><td>98 %</td><td>82 %</td><td>75 %</td><td>0.56 Å</td><td>1.3 %</td></tr>
+          <tr><td>70 mrad</td><td>0.10 waves</td><td>24.5</td><td>98 %</td><td>82 %</td><td>76 %</td><td>0.55 Å</td><td>1.3 %</td></tr>
+          <tr><td>70 mrad</td><td>0.45 waves</td><td>25.5</td><td>98 %</td><td>82 %</td><td>71 %</td><td>0.60 Å</td><td>1.9 %</td></tr>
+          <tr class="ref"><td>90 mrad</td><td>none</td><td>5.8</td><td>95 %</td><td>94 %</td><td>95 %</td><td>0.37 Å</td><td>0.0 %</td></tr>
+          <tr><td>90 mrad</td><td>0.10 waves</td><td>5.8</td><td>93 %</td><td>94 %</td><td>94 %</td><td>0.38 Å</td><td>0.0 %</td></tr>
+          <tr><td>90 mrad</td><td>0.30 waves</td><td>5.7</td><td>95 %</td><td>94 %</td><td>95 %</td><td>0.38 Å</td><td>0.0 %</td></tr>
+          <tr><td>90 mrad</td><td>0.45 waves</td><td>5.6</td><td>96 %</td><td>94 %</td><td>95 %</td><td>0.39 Å</td><td>0.4 %</td></tr>
         </tbody>
       </table>
     </div>
 
     <h3>What the table says</h3>
     <ul>
-      <li><strong>The heavy atoms survive 0.1 waves.</strong> Lead is 90 % against a round-probe 98 %, and depth
-        error 0.70 Å against 0.56. That is a cost, not a collapse.</li>
-      <li><strong>Species labelling does not.</strong> Confusion crosses its 5 % health threshold at the very
-        first level and is 17 % by the second. Where it has failed, the split between lead, titanium and oxygen
-        is label swapping and must not be read as physics.</li>
-      <li><strong>Oxygen falls off a cliff between 0.1 and 0.2 waves</strong>, 65 % to 15 %, while lead only goes
-        90 to 76. The light atoms are the first thing lost.</li>
-      <li><strong>So the usable limit sits between 0.1 and 0.2 waves</strong> if you need species labels, and
-        nearer 0.2 if you only need the heavy lattice. The ladder does not resolve it more finely than that;
-        rungs at 0.02, 0.04 and 0.07 waves are written and waiting on cluster time.</li>
-      <li><strong>Depth error is nearly flat</strong> across the whole ladder, 0.65 to 0.88 Å, because it is
-        measured only on the atoms still being found. Recall is the honest column.</li>
+      <li><strong>Every column matches the round leg</strong> to within what one reconstruction varies by. The
+        objects agree layer by layer with the round control at a correlation of 0.98 (70 mrad, 0.45 waves) and
+        0.99 or better at 90 mrad.</li>
+      <li><strong>The small leftovers are not yet separated from noise</strong>: oxygen 71 against 75 % at
+        0.45 waves and 70 mrad, and oxygen false positives rising 35 → 44 → 49 at 90 mrad. Each is a single solve and
+        the solver reseeds every run; sizing run-to-run spread needs four or more repeats.</li>
+      <li><strong>So the aberrations limit the probe, not the object.</strong> What stops a wider aperture is the
+        probe outgrowing the box and the scan field, which is §6.</li>
     </ul>
 
-    <h3>How the error hid, and what it cost to find</h3>
+    <h3>Two bugs, and how they hid</h3>
     <p>
       The engine applies a detector orientation, <code>custom_data_flip = [0,0,1]</code>, which
-      <em class="term">transposes the diffraction data</em> as it loads. That setting was established by
-      reconstructing a chiral phantom under all eight orientations — with a round probe. The simulation writes
-      the probe in the same axis order as the data, and nothing transposed the probe to match. <strong>A round
-      probe is its own transpose</strong>, so every round leg of the campaign was correct and no test in the
-      pipeline could expose this. A six-fold probe is not: the transpose rotates the star by 30°.
+      <em class="term">transposes the diffraction data</em> as it loads; it was chosen by reconstructing a chiral
+      phantom under all eight orientations, with a round probe. The simulation writes the probe in the same axis
+      order as the data, and nothing transposed the probe to match. <strong>A round probe is its own
+      transpose</strong>, so every round leg was right and no test could expose it. For six-fold the transpose is a
+      30° rotation. That was fixed on 2026-09-22 in <code>load_from_p.m</code>.
+    </p>
+    <p>
+      The fix reached only half the solve. The reconstruction runs two engines, a half-resolution presolve and
+      the full engine, and at the end of the presolve <code>save_to_p.m</code> handed the probe on still
+      transposed; the full engine's loader transposed it again, back to the original error. The probes the
+      "fixed" runs saved are identical to the pre-fix runs' (overlap 1.0000). Fixed on 2026-09-23 (<code>40d28a3</code>):
+      the probe now leaves every engine in the frame it arrived in.
     </p>
     <div class="call stop">
-      <b>The data residual did not show it, and very nearly sent us the wrong way.</b> Re-running all eight levels
-      with the probe correctly oriented changed the solver's final mismatch by between −0.2 % and +4 %, and on
-      balance made it slightly <em>worse</em> — which read as a refutation. It was not. The same eight
-      reconstructions gained up to 37 points of lead recall. A fixed-probe solve with a free object absorbs a
-      wrong probe into the object: the fit to the data barely moves while the structure it produces is wrong.
-      It is the same degeneracy that defeats the in-solver focus fit in 5.1. <strong>Judge a probe change on the
-      object, never on the residual.</strong>
+      <b>Why the first fix looked like it had half worked.</b> It raised lead recall on every level (the presolve's
+      object was now right and seeded the full engine) but left the final residual where it was (37.8 → 37.8 at
+      0.1 waves, 71 → 74 at 0.45), because the residual is the full engine's and the full engine had not changed.
+      That was read as a free object absorbing a wrong probe. It was not: once the probe was right in both engines
+      the residual fell from 74.0 to 25.5 and lead recall rose from 56 to 98 %. The rule to judge a probe change on
+      the object stands (the in-solver focus fit in 5.1 lowered its error while the object collapsed), but this
+      episode is not evidence for it. The other suspect at the time, the presolve's half-width crop, was tested and
+      cleared: it crops the <em>detector</em> to ±100 mrad, which keeps the whole probe aperture, and a full-width
+      presolve gave 73.4 against 74.0.
     </div>
-    <div class="tablewrap">
-      <table>
-        <caption>The same eight reconstructions, before and after the probe was transposed along with the data.
-          The residual is what we first judged it by; recall is what was actually happening.</caption>
-        <thead><tr><th>six-fold</th><th>residual</th><th>lead recall</th><th>depth error</th><th>confusion</th></tr></thead>
-        <tbody>
-          <tr><td>0.10 waves</td><td>37.8 → 37.8</td><td>80 → <strong>90 %</strong></td><td>0.76 → 0.70 Å</td><td>12.4 → 9.6 %</td></tr>
-          <tr><td>0.20 waves</td><td>54.2 → 54.7</td><td>56 → <strong>76 %</strong></td><td>0.82 → 0.65 Å</td><td>28.4 → 17.5 %</td></tr>
-          <tr><td>0.45 waves</td><td>71.2 → 74.0</td><td>31 → <strong>56 %</strong></td><td>0.86 → 0.71 Å</td><td>31.9 → 28.1 %</td></tr>
-          <tr><td>1.20 waves</td><td>75.8 → 77.2</td><td>7 → <strong>44 %</strong></td><td>1.03 → 0.79 Å</td><td>50.0 → 28.8 %</td></tr>
-        </tbody>
-      </table>
-    </div>
-    <div class="call stop">
-      <b>These numbers are a symptom, not a specification, and are under investigation.</b> With an exact,
-      known, fixed probe the solver is fitting only the object. A perfect probe is a perfect probe whatever
-      its shape: the aberration is a deterministic part of the forward model and should not limit the object
-      the solve can reach. A 0.1-wave term costing twenty points of lead recall is therefore more likely a
-      defect in this pipeline than a property of the method, and the table above should not be quoted as a
-      tolerance until that is settled. Two things support the suspicion. The same idealised round-probe case
-      gives a residual of 22.6 at 70 mrad but 5.8 at 90, a factor of four between two apertures that should
-      both sit near the model-mismatch floor. And rotating a six-fold probe by 30° moved lead recall by up to
-      37 points while moving the residual by 4 %, so the solve is violently sensitive to the probe in a way
-      the fit does not register. The leading suspect is in the code: the reconstruction's first engine runs at
-      half the collection angle and crops the data to match, which divides a six-fold term by 64 and has it
-      converge an object under an almost perfectly round probe before the full engine ever sees the real one.
-      The next run is a clean reconstruction at 90 mrad with the aberration on the probe.
-    </div>
+
+    <h3>The residual floor, and the diagonal ramp</h3>
+    <p>
+      The round legs sit at a residual of 22.6 at 70 mrad but 5.8 at 90. The cause is in the simulation: it summed
+      4×4 blocks of detector pixels, a pixel-integrating detector the engine does not model. Computed from the
+      simulator's own exit waves, that alone gives 20.2 at 70 mrad (binning 4) and 5.3 at 90 (binning 2), and it does
+      not grow with six-fold. The blocks also start on the zero-angle pixel, so every pattern was displaced by
+      (binning − 1)/2 fine pixels, which the object absorbs as the diagonal phase ramp analysis has been
+      subtracting (measured 0.129 against 0.135 rad/Å predicted at 70 mrad). From 2026-09-24 the simulation
+      samples the detector at the reconstruction's own points instead; no reconstruction has run on it yet.
+    </p>
   </section>
 
   <section class="wide">
@@ -753,7 +739,7 @@
         <span class="fig-name">analysis/make_simple_figs.py → figs/2026-W39/simple/fig_probe.png</span>
         The probe as six-fold astigmatism is added. Top: the Ronchigram an operator would tune on, one identical
         patch of film in every panel. Bottom: the probe at the specimen. Pure optics — no reconstruction is
-        involved, so the bug above does not touch this figure.
+        involved, so neither bug below touches this figure.
         <div class="howto"><b>Reading it</b><br>The quoted diameter holds 90 % of the intensity and barely
           changes: 4.0 Å for the first three. What changes is the six-pointed tail. The Ronchigrams barely change
           either, which is the practical problem — at the microscope there is almost nothing to tune against.
@@ -771,39 +757,15 @@
           beam, stretched along it. Every leg gets its own.</div>
       </figcaption>
     </figure>
-    <figure>
-      <img src="{{FIG_NONROUND}}" alt="Four depth sections through the same row of columns, at no six-fold and at 0.10, 0.20 and 0.45 waves, true atom positions as dots and detections as rings.">
-      <figcaption>
-        <span class="fig-name">analysis/make_simple_figs.py → figs/2026-W39/simple/fig_nonround.png</span>
-        The same row of columns, the same slice, four probes, on the corrected engine. Dots are where the atoms
-        really are; a ring is an atom the finder reported.
-        <div class="howto"><b>Reading it</b><br>Titanium alternates with apical oxygen every 1.95 Å down each
-          column, so a working reconstruction beads each column into separate blobs. A dot with no ring is a
-          missed atom; a ring with no dot is a spurious one. At 0.10 waves the columns are still beaded and
-          mostly found; by 0.45 the light atoms between them have gone.</div>
-      </figcaption>
-    </figure>
-    <figure>
-      <img src="{{FIG_BLAME}}" alt="The same depth section three times at 0.20 waves of six-fold: bare, with true atom positions, and with the finder's detections added.">
-      <figcaption>
-        <span class="fig-name">analysis/make_simple_figs.py → figs/2026-W39/simple/fig_didfinderfail_0p2.png</span>
-        One level, 0.20 waves, shown three ways so the reconstruction can be judged before the answer is drawn
-        on it.
-        <div class="howto"><b>Reading it</b><br>Judge the left panel on its own first, then see which peaks
-          carried a detection. This is the figure that made the probe error findable: peaks were plainly present
-          that the finder was not reporting, which is what prompted looking at the probe rather than the finder.</div>
-      </figcaption>
-    </figure>
   </section>
 
   <section id="s6">
     <div class="sec-head"><span class="sec-num">06</span><h2>In context: the instrument we have been assuming</h2></div>
     <p>
-      The campaign models a hexapole-corrected 300 kV column tuned for 30 mrad and opened past it. Its simulation
-      has always carried one non-round residual, six-fold astigmatism at 1 mm, alongside the fixed C<sub>5</sub>
-      of 1 mm; the only other non-round term ever run is a single combined six-fold-plus-four-fold level. So the
-      first honest question is not "how much six-fold is tolerable" but <strong>which of the terms a real corrector
-      leaves reach waves at these apertures, and how fast</strong>.
+      The campaign models a hexapole-corrected 300 kV column tuned for 30 mrad and opened past it. §5.3 shows that
+      with the probe known the aberrations do not limit the object; they limit the <strong>size of the probe</strong>,
+      and the probe has to fit the 70 Å simulation box and a scan field of at most ~34 Å. So the question is which
+      terms a real corrector leaves, how large, and how fast they grow as the aperture opens.
     </p>
   </section>
 
@@ -813,13 +775,11 @@
       <figcaption>
         <span class="fig-name">campaign/aberration_waves.py --fig → figs/2026-W39/simple/fig_growth.png</span>
         Every non-round residual of the assumed instrument, in waves at the aperture edge, as the aperture opens.
-        <div class="howto"><b>Reading it</b><br>A term of order n grows as the aperture to the power
-          n + 1, so the fifth-order terms are the steepest. The campaign's own six-fold is 0.06 waves at the
-          design aperture, 1.3 waves at 50 mrad and 10 at 70. No tolerance line is drawn: the one that briefly
-          stood here was withdrawn (5.3) and the campaign has no measured limit until the re-run returns.
-          Blue lines are what the hardware leaves behind; grey ones the operator tunes out at the design aperture
-          and which then drift. The three-lobe term, blue and topmost, is as large as six-fold in a real tableau
-          and has never been tested. Nothing in this figure depends on a reconstruction.</div>
+        <div class="howto"><b>Reading it</b><br>A term of order n grows as the aperture to the power n + 1, so the
+          fifth-order terms are the steepest. Six-fold at 1 mm is 0.06 waves at the design aperture, 1.3 at 50 mrad
+          and 10 at 70. Blue lines are what the hardware leaves; grey ones the operator tunes out at the design
+          aperture and which then drift. Three-lobe was drawn as hardware until 2026-09-24; CEOS lists it as
+          adjustable on their hexapole probe corrector. Nothing here depends on a reconstruction.</div>
       </figcaption>
     </figure>
   </section>
@@ -827,7 +787,10 @@
   <section>
     <div class="tablewrap">
       <table>
-        <caption>Waves at the aperture edge for the assumed instrument. Values marked "sim" are the ones the campaign's simulation has always carried; the rest are order-of-magnitude post-tuning residuals from published hexapole-corrector tableaus, not a measured instrument. "Tuned" terms are nulled by the operator at the design aperture and drift; "hardware" terms are what the corrector leaves.</caption>
+        <caption>Waves at the aperture edge for the assumed instrument. Sourced: six-fold A5 = 1.0 mm (CEOS, for
+          hexapole-type correctors) and which terms are adjustable (CEOS: C1, A1, B2, A2, C3, S3, A3, D4, C5; limiting
+          A5 intrinsic, A4 and B4 parasitic). Every other value is an unsourced order of magnitude, not a measured
+          tableau.</caption>
         <thead><tr><th>term</th><th class="wrap">aberration</th><th>assumed</th><th>30</th><th>50</th><th>70</th><th>90</th><th>100 mrad</th><th></th></tr></thead>
         <tbody>
           <tr><td>C12</td><td class="wrap">two-fold astigmatism A1</td><td>0.50 nm</td><td>0.11</td><td>0.32</td><td>0.62</td><td>1.03</td><td>1.27</td><td><span class="chip c-none">tuned</span></td></tr>
@@ -836,7 +799,7 @@
           <tr><td>C32</td><td class="wrap">star S3</td><td>0.5 µm</td><td>0.05</td><td>0.40</td><td>1.52</td><td>4.17</td><td>6.35</td><td><span class="chip c-none">tuned</span></td></tr>
           <tr><td>C34</td><td class="wrap">four-fold astigmatism A3</td><td>1 µm</td><td>0.10</td><td>0.79</td><td>3.05</td><td>8.33</td><td>13</td><td><span class="chip c-none">tuned</span></td></tr>
           <tr><td>C41</td><td class="wrap">fourth-order coma B4</td><td>20 µm</td><td>0.05</td><td>0.63</td><td>3.41</td><td>12</td><td>20</td><td><span class="chip c-stop">hardware</span></td></tr>
-          <tr><td>C43</td><td class="wrap">three-lobe D4</td><td>1e+02 µm</td><td>0.25</td><td>3.17</td><td>17</td><td>60</td><td>102</td><td><span class="chip c-stop">hardware</span></td></tr>
+          <tr><td>C43</td><td class="wrap">three-lobe D4</td><td>1e+02 µm</td><td>0.25</td><td>3.17</td><td>17</td><td>60</td><td>102</td><td><span class="chip c-none">tuned</span></td></tr>
           <tr><td>C45</td><td class="wrap">five-fold astigmatism A4</td><td>50 µm</td><td>0.12</td><td>1.59</td><td>8.54</td><td>30</td><td>51</td><td><span class="chip c-stop">hardware</span></td></tr>
           <tr><td>C52</td><td class="wrap">fifth-order star S5</td><td>3e+02 µm</td><td>0.02</td><td>0.40</td><td>2.99</td><td>13</td><td>25</td><td><span class="chip c-stop">hardware</span></td></tr>
           <tr><td>C54</td><td class="wrap">rosette R5</td><td>3e+02 µm</td><td>0.02</td><td>0.40</td><td>2.99</td><td>13</td><td>25</td><td><span class="chip c-stop">hardware</span></td></tr>
@@ -845,19 +808,31 @@
         </tbody>
       </table>
     </div>
-    <p>
-      Read at the 70 mrad row: with the residuals a real corrector actually leaves, every non-round term is over
-      the 0.1-wave line, and six-fold is ten waves. <strong>The assumed instrument, opened to 70 mrad, has a probe
-      25 Å across</strong> — the tails of a ten-wave six-fold term — against a 20 Å scan field, which is the same
-      geometry that ended the round-aperture sweep at 110 mrad. It does not need a simulation to fail. What the
-      specification says is what would have to be true of the corrector instead:
-    </p>
     <div class="tablewrap">
       <table>
-        <caption>Unit conversion, not a specification. What one wave of six-fold at the edge costs in
-          C<sub>56</sub> at each aperture, and how many waves the assumed 1 mm therefore amounts to. Both
-          columns are analytic. Once a tolerance is measured, dividing the middle column by it gives the
-          specification; the campaign does not currently have that number.</caption>
+        <caption>What that tableau does to the probe, with the round balance of the round-α sweep unchanged. d90 and
+          d99 are the diameters holding 90 and 99 % of the intensity, in a converged 140 Å window.</caption>
+        <thead><tr><th>aperture (mrad)</th><th>round only</th><th>+ the full tableau</th><th class="wrap">largest terms (waves)</th></tr></thead>
+        <tbody>
+          <tr><td>50</td><td>3.9 / 8.2 Å</td><td>11 / 21 Å</td><td class="wrap">three-lobe 3.2, five-fold 1.6, six-fold 1.3</td></tr>
+          <tr><td>70</td><td>4.0 / 10 Å</td><td>45 / 79 Å</td><td class="wrap">three-lobe 17, six-fold 10, five-fold 8.5</td></tr>
+          <tr><td>90</td><td>6.5 / 16 Å</td><td>120 / 168 Å</td><td class="wrap">three-lobe 60, six-fold 45, five-fold 30</td></tr>
+          <tr><td>100</td><td>11 / 26 Å</td><td>133 / 173 Å</td><td class="wrap">three-lobe 100, six-fold 85, five-fold 51</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="call stop">
+      <b>What is open: which corrector.</b> From 70 mrad this tableau's probe is larger than any field the
+      simulation can scan, and six-fold alone at the CEOS 1 mm is ten waves there, so a Cs-only hexapole instrument
+      cannot be opened far past 50 mrad even with its probe known. Other corrector classes leave much less: DCOR/ASCOR
+      six-fold of 0.03–0.4 mm, and JEOL's fifth-order DELTA corrector aberration-free to about 70 mrad at 300 kV.
+      Four-fold A4 and B4 have no sourced value here. Which class to model is the next decision; a measured tableau
+      from the instrument this is aimed at would settle it.
+    </div>
+    <div class="tablewrap">
+      <table>
+        <caption>Unit conversion, analytic: what one wave of six-fold at the edge is in C<sub>56</sub> at each
+          aperture, and what the assumed 1 mm amounts to.</caption>
         <thead><tr><th>aperture (mrad)</th><th>C<sub>56</sub> for one wave at the edge</th><th>the assumed 1 mm, in waves</th></tr></thead>
         <tbody>
           <tr><td>30</td><td>1.6 × 10<sup>4</sup> µm</td><td>0.06</td></tr>
@@ -868,31 +843,19 @@
         </tbody>
       </table>
     </div>
-    <div class="call stop">
-      <b>What is still unknown, now that the six-fold ladder is void.</b> The tolerance itself, at any aperture:
-      the re-reconstructed legs will give the 70 mrad figure. Whether it loosens at a wider aperture, where the
-      probe is already large — the same C<sub>56</sub> is 4.5× more waves at 90 mrad and 8.5× at 100, and the
-      runs at those apertures are queued. And whether a tolerance quoted in waves transfers between orders at
-      all: for the same edge phase a term of order n throws the edge ray (n+1)λ/α, which is 0.56 Å for two-fold
-      against 1.69 Å for six-fold, and two-fold, three-fold and three-lobe are queued to test it. What would help
-      most, and only you can supply, is a <strong>measured aberration tableau</strong> from the instrument this is
-      aimed at, to replace the published order-of-magnitude values above.
-    </div>
 
     <h3>Where the ladder stands</h3>
     <div class="tablewrap">
       <table>
-        <caption>One cumulative table, <code>aberration_experiment/results/relaxation_ladder.csv</code>. α = 70 / 90 where both exist.</caption>
+        <caption>One cumulative table, <code>aberration_experiment/results/relaxation_ladder.csv</code>. α = 70 / 90 where both exist. Every row so far was simulated with the summed detector (§5.3).</caption>
         <thead><tr><th>Step</th><th class="wrap">Assumption removed</th><th class="wrap">Outcome</th><th>State</th></tr></thead>
         <tbody>
           <tr class="ref"><td>0</td><td class="wrap">known probe, no noise</td><td class="wrap">depth error 0.56 / 0.37 Å; recall 98/82/75 and 95/94/95 %</td><td><span class="chip c-ok">baseline</span></td></tr>
           <tr><td>1</td><td class="wrap">focus unknown</td><td class="wrap"><strong>no real cost</strong>, by an outer search; the in-solver fit is closed</td><td><span class="chip c-ok">measured</span></td></tr>
           <tr><td>2</td><td class="wrap">shot noise</td><td class="wrap">works to 10<sup>5</sup> e/Å²; at 10<sup>4</sup> no single-atom reference can be measured</td><td><span class="chip c-ok">measured</span></td></tr>
           <tr><td>3</td><td class="wrap">thermal vibration</td><td class="wrap">depth error roughly doubles; oxygen recall 10–17 %; not a finder artefact</td><td><span class="chip c-warn">costly</span></td></tr>
-          <tr><td>4</td><td class="wrap">six-fold astigmatism, 70 mrad</td><td class="wrap">lead 98 → 90 → 76 % over 0 → 0.1 → 0.2 waves, but <strong>not believed as a tolerance</strong>: an exact fixed probe should not limit the object. Suspected pipeline defect, under investigation</td><td><span class="chip c-warn">suspect</span></td></tr>
-          <tr><td>4b</td><td class="wrap">six-fold at 90 and 100 mrad</td><td class="wrap">same waves as the 70 mrad rungs, plus the 10 µm value carried up unchanged</td><td><span class="chip c-open">written</span></td></tr>
-          <tr><td>4c</td><td class="wrap">other orders: two-fold, three-fold, three-lobe</td><td class="wrap">at 0.1 and 0.3 waves — does the limit transfer?</td><td><span class="chip c-open">written</span></td></tr>
-          <tr><td>4d</td><td class="wrap">the assumed instrument as-is, 70 mrad</td><td class="wrap">C<sub>56</sub> 1 mm: needs binning 1 and a wider scan, ~3 GPU-days, expected to fail on geometry</td><td><span class="chip c-none">optional</span></td></tr>
+          <tr><td>4</td><td class="wrap">non-round probe, known (six-fold, 70 and 90 mrad)</td><td class="wrap"><strong>no cost</strong> at 0.1–0.45 waves: every column matches the round leg</td><td><span class="chip c-ok">measured</span></td></tr>
+          <tr><td>4b</td><td class="wrap">a representative non-round tableau across the round sweep</td><td class="wrap">waiting on the choice of corrector (above)</td><td><span class="chip c-open">next</span></td></tr>
           <tr><td>5</td><td class="wrap">the full 70 Å sample</td><td class="wrap"><strong>fails at both solver step sizes.</strong> At 70 mrad the phase saturates across every layer, vacuum included; at 90 mrad the solver dies with NaNs. No atoms recoverable</td><td><span class="chip c-stop">fails</span></td></tr>
           <tr><td>6</td><td class="wrap">partial coherence</td><td class="wrap">needs simulation code that does not exist</td><td><span class="chip c-none">not built</span></td></tr>
           <tr><td>7</td><td class="wrap">specimen tilt</td><td class="wrap">needs the crystal rotated in the simulation and a finder that copes with sheared columns</td><td><span class="chip c-none">not built</span></td></tr>
@@ -1053,12 +1016,13 @@
     </p>
     <ul>
       <li><a href="https://claude.ai/artifact/21fr4Y6JqCeaeB6KLMUKGz">The Six-Fold Tolerance</a> — the first, separate write-up of the
-        2026-09-22 results. <strong>Superseded</strong>: everything on it is now §5 and §6 of this page, which is
-        the one record.</li>
+        2026-09-22 results. <strong>Superseded and wrong</strong>: its six-fold limit came from the engine bugs in 5.3; a
+        known six-fold probe costs nothing. This page is the one record.</li>
       <li><a href="https://claude.ai/artifact/NiYCfNo7uFAWFkyUZ5L3SF">Depth Past the Corrector</a> — the baseline
         story for a group meeting: probe, depth against aperture, the focus search, dose.</li>
       <li><a href="https://claude.ai/artifact/3TfTwcipbbTxG9PGbeEtqi">Removing the Six Assumptions</a> — the
-        relaxation results: focus end to end, the in-solver failure, phonons, non-round, the thick slab.</li>
+        relaxation results: focus end to end, the in-solver failure, phonons, non-round, the thick slab. <strong>Its
+        non-round numbers are wrong</strong> (5.3); the rest stands.</li>
       <li><a href="https://claude.ai/artifact/6JuRq4kgP8v6FjDC8agcpn">The earlier PI-meeting page</a> — the first
         showcase of the round-α campaign.</li>
     </ul>
@@ -1068,7 +1032,7 @@
 
 <footer class="foot">
   <div class="foot-in"><span>
-    Aperture campaign logbook · checkpoint 2026-09-22, results in · rebuilt from
+    Aperture campaign logbook · checkpoint 2026-09-24 · rebuilt from
     aberration_experiment/page/logbook.html
   </span></div>
 </footer>

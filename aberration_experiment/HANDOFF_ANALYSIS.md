@@ -1,116 +1,123 @@
-# Handoff — one job: a solid 90 mrad reconstruction with aberrations on the probe
+# Handoff — next job: a representative non-round microscope on the round sweep
 
-Written 2026-09-23. **Read this whole file before running anything; it is short on purpose.**
+Written 2026-09-24. **Read this whole file before running anything; it is short on purpose.**
 Then `HANDOVER.md` for the experiment, `PSF_KERNELS.md` for the kernel rules.
 
 ---
 
-## The job
+## Where it stands
 
-Get a **good reconstruction at 90 mrad with six-fold astigmatism on the probe**, by reading the code and
-fixing what is wrong with it. Nothing else. Do not extend the ladder, do not build tooling, do not write
-pages. The sweep rows already exist (`nr90_C56_0p1w`, `nr90_C56_0p3w`, `nr90_C56_10um` in
-`campaign/nonround_sweep.tsv`) and their simulations need regenerating after a storage clear-out.
+- **Round-α campaign: complete.** Known probe, 50–100 mrad, depth error falls with aperture; 110 mrad is
+  not reconstructible (its probe outgrows the scan field). `HANDOVER.md` has the table.
+- **Relaxation ladder** — one cumulative table, `results/relaxation_ladder.csv`, 18 rows:
 
-## Why: the six-fold numbers are not believed, and should not be
+  | step | assumption removed | outcome |
+  |---|---|---|
+  | 0 | — (known probe, noiseless) | a70 98/82/75 % Pb/Ti/O, depth error 0.56 Å; a90 95/94/95 %, 0.37 Å |
+  | 1 | focus unknown | no cost, by an outer search over fixed trial probes; the in-solver fit is closed |
+  | 2 | shot noise | holds to 10⁵ e/Å²; at 10⁴ no single-atom reference can be measured |
+  | 3 | thermal vibration | costly: depth error roughly doubles, oxygen recall 10–17 % |
+  | 4 | known non-round probe (six-fold) | **no cost** — see below |
+  | 5 | the 70 Å sample | fails at both solver step sizes |
 
-**The physics.** The probe is exact, known, and held fixed. The solver is therefore fitting only the object.
-A perfect probe is a perfect probe whatever its shape: the aberration is a known, deterministic part of the
-forward model, and it should not limit the object the solver can reach. A 0.1-wave six-fold term costing
-twenty points of lead recall is not a property of ptychography. It is a defect in this pipeline.
+- **A known non-round probe costs nothing** (2026-09-24, fixed engine, lab + fresh matched kernels):
 
-**What is on record, as a symptom rather than a result.** At 70 mrad, known probe, noiseless, static atoms,
-after the probe-orientation fix:
+  | leg | residual | Pb / Ti / O bulk recall | depth error |
+  |---|---|---|---|
+  | 70 mrad round | 22.6 | 98 / 82 / 75 % | 0.56 Å |
+  | 70 mrad six-fold 0.1 waves | 24.5 | 98 / 82 / 76 % | 0.55 Å |
+  | 70 mrad six-fold 0.45 waves | 25.5 | 98 / 82 / 71 % | 0.60 Å |
+  | 90 mrad round | 5.8 | 95 / 94 / 95 % | 0.37 Å |
+  | 90 mrad six-fold 0.1 / 0.3 / 0.45 waves | 5.8 / 5.7 / 5.6 | 93–96 / 94 / 94–95 % | 0.38–0.39 Å |
 
-| six-fold | lead | titanium | oxygen | residual |
-|---|---|---|---|---|
-| none | 98 % | 82 % | 75 % | 22.6 |
-| 0.10 waves | 90 % | 71 % | 65 % | 37.8 |
-| 0.20 waves | 76 % | 46 % | 15 % | 54.7 |
-| 0.45 waves | 56 % | 36 % | 15 % | 74.0 |
+  Objects correlate with the round control layer by layer at 0.98 (70 mrad, 0.45 waves) and ≥ 0.99 (90 mrad).
+  The small leftovers (oxygen 71 vs 75 %, oxygen false positives 35 → 49 at 90 mrad) are single solves; the
+  engine reseeds every run, so they are not separated from run-to-run spread.
 
-`results/relaxation_ladder.csv` step 4. **Do not quote these as a tolerance.** They are what the pipeline
-currently produces, and the pipeline is under suspicion.
+## The next job
 
-**Two corroborating oddities.** The same idealised round-probe case gives residual 22.6 at 70 mrad but 5.8 at
-90 mrad — a factor of four between two apertures that should both be near the model-mismatch floor. And
-rotating a six-fold probe by 30° changed lead recall by up to 37 points while changing the residual by 4 %,
-so the solve is violently sensitive to the probe in a way the data residual does not register.
+Put a **representative non-round corrector tableau on the round sweep**: the same round balance per aperture
+(`campaign/round_sweep.tsv`: C5 = 1 mm fixed, C3 and C1 retuned), plus every non-negligible non-round residual,
+held fixed so that each grows as α^(n+1). The result wanted is the round sweep's — atomfind improving with α —
+for a realistic probe.
 
-## Leading suspect — the presolve solves a different problem
+**Blocked on one decision: which corrector.** The magnitudes decide whether the sweep can exist at all:
 
-`ptycho/run_synthetic_recon_ML.m` runs two engines. The first has
-`Np_presolve = 2*floor(Ndpx/4)`, half the detector width. `+engines/+GPU/+initialize/rescale_inputs.m`
-then **crops the diffraction data** to that size and band-limits the probe to match.
+| α (mrad) | probe d90 / d99, round only | + the campaign's `ASSUMED_TABLEAU` | largest terms (waves at the edge) |
+|---|---|---|---|
+| 50 | 3.9 / 8.2 Å | 11 / 21 Å | three-lobe 3.2, five-fold 1.6, six-fold 1.3 |
+| 70 | 4.0 / 10.3 Å | 45 / 79 Å | three-lobe 17, six-fold 10, five-fold 8.5 |
+| 90 | 6.5 / 16 Å | 120 / 168 Å | three-lobe 60, six-fold 45, five-fold 30 |
+| 100 | 11 / 26 Å | 133 / 173 Å | three-lobe 100, six-fold 85, five-fold 51 |
 
-A non-round aberration of order *n* scales as θ^(n+1). Halving the collection angle divides six-fold
-astigmatism by **2⁶ = 64**. So the presolve solves an almost perfectly round problem, converges an object
-under that assumption, and hands it to the full engine, which then has to reconcile it with a probe that has
-a strong six-fold term. That is exactly the shape of the observed failure: worse with more aberration,
-insensitive to the residual, and absent for round probes.
+The box is 70 Å and the scan field at most ~34 Å, so that tableau is unsimulable from 70 mrad up. What is
+sourced, and what is not:
 
-**Test it first, it is one job.** `PRESOLVE_NDP` (added 2026-09-23) forces the presolve's detector width;
-set it to the full `Ndpx` and the downsampling disappears without touching the engine schedule. `Ndpx` is
-356 at BIN 4 and 712 at BIN 2 — the recon log prints it as `sim_meta: Ndpx=...`.
+- **CEOS, CESCOR hexapole probe corrector** (ceos-gmbh.de): operator-adjustable C1, A1, B2, A2, C3, S3, A3,
+  **D4**, C5; limiting **A5 (intrinsic) and A4, B4 (parasitic)**. The tableau had D4 (three-lobe) filed as
+  hardware at 100 µm; it is adjustable. Corrected in `campaign/aberration_waves.py`.
+- **A5 = 1.0 mm** — CEOS's figure for hexapole-type correctors. 10 waves at 70 mrad on its own.
+- **DCOR/ASCOR**: A5 0.03–0.4 mm (Ultramicroscopy 2019, "On the residual six-fold astigmatism in DCOR/ASCOR").
+  **JEOL DELTA** (fifth-order corrector): aberration-free illumination to ~70 mrad at 300 kV.
+- **A4, B4**: no sourced typical value yet. Every other value in `ASSUMED_TABLEAU` is an unsourced order of
+  magnitude. A measured tableau from the target instrument would replace all of them.
 
-```bash
-cd /springbrook/share/physics/phucrh/ptyco_baseline/ptyco_pipeline && git pull
-# 0.45-wave leg, existing simulation, presolve at full resolution instead of half
-PRESOLVE_NDP=356 TSV=campaign/nonround_sweep.tsv LABELS=nr0p45_C56_0p45w MODES=lab \
-  RECON_ONLY=1 SAVE_EVERY=200 bash campaign/run_thin_atomfind.sh
-```
-The log must print `PRESOLVE_NDP: presolve detector width forced to 356`. Compare against the recorded 74.0,
-and then — more importantly — compare the **object**, not the residual (see Traps).
+So a Cs-only hexapole instrument cannot be opened past ~50 mrad even with the probe known — a real result in
+itself — and a sweep to 100 mrad needs an A5-corrected class of corrector. That choice is the user's.
 
-## Other things worth checking in the code, in rough order
+**Whatever is chosen, re-simulate the round controls in the same submission**: the detector model changed
+(below), so every existing ladder row is on the old summed detector and is not a like-for-like baseline.
 
-1. **Does 90 mrad show it at all?** BIN 2, 712 px, a 35 Å probe window instead of 17.5 Å. If six-fold costs
-   nothing there, the problem is BIN 4 / 70 mrad conditioning, not the aberration. This is the job above.
-2. **Probe window vs probe extent at BIN 4.** The reconstruction's real-space probe window is `box/BIN` =
-   17.5 Å. A six-fold probe throws intensity into star arms; anything outside the window aliases back onto
-   the object. Measured d99 is 10.5 Å at 0.45 waves so it nominally fits, but the *exit wave* after 27.5 Å of
-   material is wider than the probe and nobody has checked that.
-3. **Whether the full engine alone converges**, starting from a flat object rather than the presolve's.
-4. **`grouping`** is `[64, 32]`; the LSQ update batches patterns, and a strongly structured probe may need
-   smaller batches.
+## Changed 2026-09-23/24 — if the next run breaks, look here first
+
+1. **Engine, `save_to_p.m` (`40d28a3`).** The probe now leaves each engine in the frame of `probe_initial.mat`,
+   so each engine transposes it exactly once (`custom_data_flip`). Before, the full engine re-flipped the
+   presolve's already-flipped probe. Round probes are unaffected (a round probe is its own transpose).
+   Signature of the old bug: the full engine's first-iteration error far above the round leg's (98 vs 41).
+2. **Simulator, detector sampling.** `sim/simulate_4dstem.py` now point-samples the fine detector at the
+   reconstruction's own k-grid (every BIN-th pixel from the zero-angle pixel) instead of summing 4×4 blocks.
+   The sum is a pixel-integrating detector the engine does not model; on its own it produced a residual floor
+   of 20.2 at 70 mrad / BIN 4 and 5.3 at 90 / BIN 2 (recorded floors 22.6 and 5.8 — the "factor of four"), and
+   because its blocks start on the zero-angle pixel it displaced every pattern by (BIN−1)/2 fine pixels (checked:
+   −0.375 coarse px), which the object absorbed as the diagonal phase ramp analysis has been subtracting.
+   **Expect** lower residual floors, `extract_psf` reporting almost no ramp (was ~0.28 rad at 70 mrad, ~0.055 at
+   90), and `detector_sampling: point` in `sim_meta.mat`. **To reproduce old data:** `DETECTOR_SAMPLING=sum`.
+   BIN 1 is identical either way. Never reconstructed yet — the first run on it is the test.
+3. **`PRESOLVE_NDP`** stays as a diagnostic knob only. The presolve crops the *detector* to ±100 mrad, which
+   keeps the whole probe aperture; forcing it to full width gave 73.4 against 74.0 and no better object.
 
 ## What is solid — do not re-litigate
 
-- **Focus.** An outer search over fixed trial probes recovers it and costs nothing (depth error 0.56 → 0.59 Å
-  at 70 mrad). Fitting focus *inside* the solver fails and is closed.
-- **Shot noise.** 10⁷ and 10⁶ e/Å² hold, 10⁵ works with the light atoms going, 10⁴ produces no measurable
-  single-atom reference so the finder never runs.
-- **The probe-orientation bug was real and the fix is right.** The engine transposes the diffraction data on
-  load (`custom_data_flip = [0,0,1]`) and did not transpose the probe with it — invisible for a round probe,
-  a 30° rotation for six-fold. `load_from_p.m` now flips the probe and its aperture mask with the data.
-  Verified on objects: lead recall rose on all eight levels, mean +17.5 points.
-- **The 70 Å sample fails**, at solver step 0.05 and 0.02. Phase saturates across every layer including the
-  vacuum at 70 mrad; NaNs at 90 mrad. Separate problem, the user is picking it up later.
-- **Aperture scaling** (`campaign/aberration_waves.py`) is analytic and depends on no reconstruction.
+- **Focus**: an outer search over fixed trial probes recovers it at no cost. The in-solver fit is closed.
+- **Shot noise**: 10⁷ and 10⁶ e/Å² hold, 10⁵ works with the light atoms going, 10⁴ fails.
+- **Known non-round probe**: no cost at 0.45 waves of six-fold at 70 and 90 mrad (table above).
+- **The 70 Å sample fails** at solver steps 0.05 and 0.02. Separate problem, picked up later.
+- **Aperture scaling** (`campaign/aberration_waves.py`) is analytic.
 
 ## How this project works
 
-- **The user runs every cluster job.** No SSH. Give exact `sbatch` blocks; assume nothing until you see a log.
+- **The user runs every cluster job.** No SSH. Give exact blocks; assume nothing until you see a log.
 - **Everything lands under `$SHARE/phucrh`**, never the group root. Ship a matching `scp -O` line with every
-  block, globbing the stable part of the tarball name, `tar` on its own line into a fresh directory.
-- **The share is 3.9 TiB and shared with the department.** Submit with `CLEANDATA=1`. `SAVE_EVERY` now
-  defaults to one save at the end. Check quota with `mmlsquota --block-size auto`, never `df`.
+  block, globbing the stable part of the tarball name — or the exact name when an older tarball shares its stem —
+  with `tar` on its own line into a fresh directory. The user's `tar` step has twice not run; check before triage.
+- **The share is 3.9 TiB and shared with the department.** Submit with `CLEANDATA=1`. Check quota with
+  `mmlsquota --block-size auto`, never `df`.
 - Local Python is `~/hyperspy-bundle/bin/python`. Commit code, figures and results; leave the user's report
   and `analysis/atomfind/*.md` alone.
 - The published record is one page, https://claude.ai/artifact/7ve93UM6yqCmiRcbfNuiJM, rebuilt from
-  `aberration_experiment/page/logbook.html` by `page/build_page.py` and republished to that same URL.
+  `page/logbook.html` by `page/build_page.py` and republished to that same URL.
 
 ## Traps
 
 | symptom | cause | rule |
 |---|---|---|
-| **a probe change barely moves the residual, so it looks irrelevant** | a fixed-probe solve with a free object absorbs a wrong probe into the object: the fit hardly moves while the structure is wrong. Flipping the probe changed the residual 4 % and lead recall 37 points | **judge a probe change on the object, never on the residual.** This nearly caused a correct fix to be reverted |
-| a leg passes triage and is still junk | it reported COMPLETED, wrote an h5 and logged no NaN, but the phase is saturated | `analysis/triage_recon.py` — a genuine leg wraps **zero** pixels; any wrapping at all is the flag |
-| GPU jobs die anywhere with "Disk quota exceeded", naming a path that has no quota | `$HOME` is a 2 GB fileset and the CUDA JIT cache `~/.nv` fills it | both slurm scripts redirect every cache off `$HOME` and the recon aborts early if `$HOME` is unwritable |
-| grepping a recon's slurm log reads the wrong run | recon dirs keep logs from every attempt; the driver moves only `analysis/` aside | check the job id, not the glob order |
-| raising NL to chase a residual makes it worse | NL is Nyquist for the depth resolution; more layers with `REGLAYER=0` destabilises the solve (NL 28 gave 739 against 74 at NL 14) | leave NL alone; the `NL` override is for diagnosis |
-| a comparison figure's panels differ for no reason | one RNG shared across panels | `make_ronchigram_fig.ronchigram` seeds per call |
-| six jobs pending on `DependencyNeverSatisfied` | a simulation whose output exists exits 1 in zero seconds | `RECON_ONLY=1` when only the solver changed |
+| a fix to how the probe is loaded changes recall but not the final residual | the fix reached only the presolve: `save_to_p` handed the full engine the flipped probe and it flipped it back (fixed `40d28a3`). The final residual is the full engine's | check the saved probe and the full engine's first-iteration error, not just recall. Once the probe was right in both engines the residual fell 74 → 25.5 |
+| a probe or focus change lowers the residual while the object degrades | a free object can absorb some probe error (the in-solver focus fit ended at a lower error with the object collapsed) | judge a probe change on the object as well as the residual |
+| a leg passes triage and is still junk | it reported COMPLETED, wrote an h5 and logged no NaN, but the phase is saturated | `analysis/triage_recon.py`: genuine legs wrap ≤ 5×10⁻⁵ of pixels (edge of the illuminated field), saturated ones ~3×10⁻² |
+| GPU jobs die with "Disk quota exceeded" naming a path with no quota | `$HOME` is 2 GB and the CUDA JIT cache `~/.nv` fills it | both slurm scripts redirect every cache off `$HOME` |
+| grepping a recon's slurm log reads the wrong run | recon dirs keep logs from every attempt | check the job id, not the glob order |
+| raising NL to chase a residual makes it worse | NL is Nyquist; more layers with `REGLAYER=0` destabilises the solve (NL 28 gave 739 against 74 at NL 14) | leave NL alone |
+| six jobs pending on `DependencyNeverSatisfied` | a simulation whose output exists exits 1 in zero seconds | `RECON_ONLY=1` when only the solver changed, `OVERWRITE=1` to re-simulate |
 | `scp` finds nothing although jobs finished | the tarball name carries the submission timestamp | glob the stable part, never the date |
 
 **Two rules that are physics, not plumbing:** `REGLAYER=0` on every leg (it low-passes the depth axis, which
@@ -118,6 +125,6 @@ is the measurement), and one `BETA_LSQ` for every leg in a comparison.
 
 ## State
 
-`origin/main` plus whatever is unpushed locally — check `git log origin/main..HEAD`. Blythe needs `git pull`.
-Raw simulation data was deleted in the storage clear-out, so any leg not currently on disk needs
-re-simulating (about two hours of GPU at BIN 4 for a nine-label block).
+`origin/main`; Blythe needs `git pull`. Raw simulation data is deleted after packing (`CLEANDATA=1`), so any leg
+not on disk needs re-simulating. The fixed-engine six-fold analysis is in `~/Desktop/sixfold_0923_analysis`
+(kernels in `psf/`, one `atomfind_<label>/` per leg), tarballs in `~/Desktop/sixfold_0923_a70` and `_a90`.
