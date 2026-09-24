@@ -232,6 +232,5 @@ PJ=$(sbatch --parsable --job-name="af_pack" --time=00:30:00 --mem=8G --dependenc
 echo; echo "pack ${PJ} -> ${PACK}  (recon_af_* .h5 + logs)${CLEANDATA:+ then deletes the raw 4D data of this submission}"
 echo "scp -O 'phucrh@blythe.scrtp.warwick.ac.uk:${PACK}' ~/Desktop/"
 echo "now check the group root stayed clean:  ls /springbrook/share/physics/"
-echo "then per alpha:  python analysis/atomfind/extract_psf.py recon_af_a<A>_Pb_NL<NL> Pb_a<A>   (and Ti)"
-echo "  -> psf_{Pb,Ti}_a<A>_vol.npy ; point config 'thin' single_atom_vol/ti_kernel_vol at them;"
-echo "  atomfind --preset thin --recon recon_af_a<A>_lab_NL<NL>/.../*_recons.h5 --dz \$(bc<<<${BOXZ}/<NL>)"
+echo "then analyse ON BLYTHE (kernels + atomfind + summary.csv, geometry read from each leg):"
+echo "  LABELS=\"<labels>\" DEP=${PJ} GT_REGION=<box side, region rows> | GT=<gt dir> bash campaign/run_analysis.sh"
