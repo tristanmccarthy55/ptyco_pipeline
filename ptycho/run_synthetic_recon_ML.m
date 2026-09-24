@@ -152,6 +152,18 @@ Np_presolve               = [2*floor(Ndpx/4), Ndpx]; % half-Ndp, forced EVEN (th
 % mrad/px at a70/BIN4), which keeps the whole 70 or 90 mrad probe aperture and every aberration on it.
 % Measured: residual 73.4 against 74.0 and no better object. The collapse was the probe orientation
 % bug in save_to_p.m (40d28a3). Default stays half-width; this is a diagnostic knob.
+% THE PRESOLVE MUST NOT CLIP THE PROBE APERTURE (2026-09-24). Half the detector width is +-100 mrad on a
+% +-200 mrad detector, beyond every aperture run to date. A recorded detector cropped for a large window
+% (simulate_4dstem --detector-max-angle, e.g. +-133 mrad at 80 mrad) would leave +-66 mrad and cut the
+% probe's own 80 mrad aperture -- the presolve would then fit an object under a truncated probe. Where the
+% half-width presolve would cut inside the aperture it is widened to 1.2 alpha. No leg run before this date
+% is affected (all had presolve >= alpha). PRESOLVE_NDP below still overrides.
+alpha_mrad = double(meta.convergence_mrad);
+if Np_presolve(1)/2 * d_alpha*1e3 < alpha_mrad
+    Np_presolve(1) = min(Ndpx, 2*ceil(1.2*alpha_mrad / (d_alpha*1e3)));
+    fprintf('presolve widened to %d px (+-%.0f mrad) so it keeps the %.0f mrad aperture\n', ...
+            Np_presolve(1), Np_presolve(1)/2*d_alpha*1e3, alpha_mrad);
+end
 pn_env = getenv('PRESOLVE_NDP');
 if ~isempty(pn_env)
     Np_presolve(1) = 2*floor(str2double(pn_env)/2);       % keep it even

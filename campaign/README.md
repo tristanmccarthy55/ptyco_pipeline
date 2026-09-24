@@ -122,6 +122,30 @@ Tarball: `$SHARE/$USER/c1_results_a<alphas>_n<NITER>_<ts>.tgz`, packing only tha
 `TSV=campaign/nonround_sweep.tsv LABELS="nr1_C56_0p6w ..."` (non-round rows selected by label, dirs named by
 the label). Each submission packs only its own recon dirs into a tarball named after them.
 
+## Campaign C — CEOS-approx sweep to 80 mrad (`ceos_sweep.tsv`, 2026-09-24)
+
+An older hexapole corrector (CEOS CESCOR-like) opened past its 30 mrad design with the probe known. Every piece is
+opt-in and leaves the older campaigns' behaviour unchanged:
+
+| piece | where | what |
+|---|---|---|
+| tableau | `aberration_waves.py` `ceos_tableau`, `--ceos-json <C3>` | A5 1 mm (CEOS), A4/B4 10 µm, tuned terms 0.1 waves |
+| fought probe | `plan_probe.py --ceos --alphas ... --out f.tsv` | C1, C3, B2-vs-B4 optimised on d90; `region_geometry()` sizes each row |
+| region sample | `simulate_4dstem.py --region-side S` | an S×S cut of the tiled crystal, centred on the standard scan's material |
+| detector crop | `simulate_4dstem.py --detector-max-angle T` | record only to ±T mrad (potential still sampled for 200) |
+| per-row geometry | `ceos_sweep.tsv` cols 11–14 `side win step detmax` | read by `run_thin_atomfind.sh`; resources sized from the pattern size |
+| presolve guard | `ptycho/run_synthetic_recon_ML.m` | widens the presolve to 1.2α where half width would clip the aperture |
+| region GT | `analysis/atomfind/make_gt_cache.py --region-side S` | GT from the simulator's own builder |
+| analysis | `analysis/analyse_sweep.py`; on Blythe `campaign/run_analysis.sh` | triage → kernels → atomfind → `summary.csv`, all geometry read from the legs |
+
+```bash
+CLEANDATA=1 TSV=campaign/ceos_sweep.tsv LABELS="ceosopt_a070 ceosopt_a080" PACK_H5=0 bash campaign/run_thin_atomfind.sh
+LABELS="ceosopt_a070 ceosopt_a080" GT_REGION=210 DEP=<pack job> bash campaign/run_analysis.sh
+```
+Budget (measured from the 110 mrad BIN-1 legs, ~7 h at 1426 px / 34 layers): a ~1420 px leg at 14–18 layers takes
+3–4.5 h; raw data ~13 GB per BIN-1-class leg, deleted by `CLEANDATA` after packing; `PACK_H5=0` keeps the ~1 GB h5s
+on the share for `run_analysis.sh`.
+
 ## `.tsv` schema
 TAB-separated; `#`/header/blank lines skipped; the driver reads the **first 9** columns and
 ignores the rest (planner appends d50/d90/d99/note as diagnostics):
@@ -131,6 +155,9 @@ label  alpha  c5  c3  c1  df_perf  bin  nl  aber_json
 `c3/c1/c5` round knobs [Å]; `df_perf` aberration-free 4 Å reference defocus [Å]; `bin` from the
 planner (probe size → real-space window); `nl` recon layers (Nyquist of λ/α² depth res); `aber_json`
 `-` = round-only (use c3/c5), else a full abTEM Cnm/phi dict that **overrides** c3/c5 (non-round).
+
+Optional columns 11–14 (`side win step detmax`, `ceos_sweep.tsv`): the row's region box side [Å], scan field
+[Å], scan step [Å] and recorded detector angle [mrad]; `-` or absent = the driver's defaults.
 
 ## Results / analysis
 Each `*_recons.h5` holds the object volume (`reconstruction/object`, **NL×1×753×753** — NL varies

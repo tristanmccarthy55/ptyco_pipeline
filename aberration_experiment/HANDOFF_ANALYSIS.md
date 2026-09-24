@@ -68,6 +68,15 @@ the potential stays sampled for 200 mrad) so N stays ≤ 1424 px; scan field = 1
 
 Round controls `round_a040`…`round_a080` (4 Å probes) share the region geometry at BIN 12.
 
+**Preflight (2026-09-24).** Driver dry-run with a stub `sbatch`: every submission carries its region, window, step
+and detector angle, with resources sized from the pattern size. Found and fixed: at 80 mrad the half-width presolve
+of a ±133 mrad detector would keep ±66 mrad and clip the probe's own 80 mrad aperture; `run_synthetic_recon_ML.m` now
+widens any presolve that would clip the aperture to 1.2α (80 mrad: 1024 px, ±96 mrad; no earlier leg affected).
+Budget, from the 110 mrad BIN-1 logs (~7 h at 1426 px, 34 layers): the ~1420 px legs take 3–4.5 h against a 24 h
+request (48 h cap); raw data peaks ~160 GB and `CLEANDATA` removes it; the heavy block runs `PACK_H5=0` and is
+analysed on Blythe by `campaign/run_analysis.sh` (`analysis/analyse_sweep.py`, validated locally: it reproduces the
+six-fold numbers exactly).
+
 **Caveats to carry into the write-up.** 80 mrad needs a detector of ~1400 px across its ±133 mrad — a modern
 large-format camera on an old column. A4/B4 are unsourced (40 µm would give 30 / 56 Å at 70 / 80 mrad). 40 mrad is
 new ground (NL 4). The analysis needs the region GT (`make_gt_cache --region-side 210`, already built at
