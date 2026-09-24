@@ -91,6 +91,7 @@ SCAN_STEP_A     = 0.1
 # Lets a large probe (and the scan field it needs) sit in bulk crystal instead of the 70 A box's x-vacuum.
 MATERIAL_SCAN_CENTRE = (SCAN_CENTER_X_A, SCAN_CENTER_Y_A)
 REGION_SIDE_A   = None
+SCAN_BATCH      = 8        # [region] probe positions per GPU batch (the potential is built once)
 
 # --- thermal diffuse scattering (frozen phonons) ---
 # OFF by default (coherent) so sim_out/ stays the validated coherent baseline. When
@@ -545,11 +546,47 @@ def _scan_one_config(probe, potential, scan, detector):
     return arr, n_b, n_u, n_c
 
 
+def _scan_one_config_batched(probe, potential, scan, detector):
+    """[region] _scan_one_config for large boxes: same output, bounded GPU memory.
+
+    abTEM's lazy scan rebuilds every potential slice inside every chunk of positions and runs chunks on several
+    dask threads at once. On the 70 A box that is cheap; on a 210 A region (6358^2 grid, 323 MB per complex slice)
+    it put 49 GB on a 48 GB L40 and every sim died (2026-09-24). Here the potential is built ONCE, positions go
+    through SCAN_BATCH at a time on one thread, and each batch is reduced to the recon grid before the next:
+    GPU memory = the potential (5 GB) + one batch; host memory = one batch of fine patterns + the reduced result."""
+    import dask
+    positions = np.asarray(scan.get_positions()).reshape(-1, 2)     # y-fastest, the order the lazy path returns
+    with dask.config.set(scheduler="synchronous"):
+        pot = potential.build(lazy=False)
+        out, n_b, n_u, n_c = None, None, None, None
+        for i in range(0, len(positions), SCAN_BATCH):
+            meas = probe.scan(pot, scan=abtem.CustomScan(positions[i:i + SCAN_BATCH]), detectors=detector, lazy=False)
+            a = meas.array
+            if hasattr(a, "compute"): a = a.compute()          # a dask array, if abTEM left it lazy
+            if hasattr(a, "get"): a = a.get()                  # a CuPy array, if the detector kept it on the GPU
+            a = np.asarray(a, dtype=np.float64).reshape(-1, *a.shape[-2:])
+            if out is None:
+                n_u = int(a.shape[-1])
+                s, n_c = _crop_center_to_multiple(n_u, BIN_FACTOR)
+                n_b = n_c // BIN_FACTOR
+                out = np.empty((len(positions), n_b, n_b), dtype=np.float64)
+            crop = a[:, s:s + n_c, s:s + n_c]
+            if DETECTOR_SAMPLING == "point":
+                red = crop[:, ::BIN_FACTOR, ::BIN_FACTOR] * float(BIN_FACTOR ** 2)
+            else:
+                red = crop.reshape(-1, n_b, BIN_FACTOR, n_b, BIN_FACTOR).sum(axis=(2, 4))
+            out[i:i + len(a)] = red
+            if i == 0 or (i // SCAN_BATCH) % 25 == 0:
+                print(f"[scan] positions {i + len(a)}/{len(positions)}", flush=True)
+    return out, n_b, n_u, n_c
+
+
 def run_scan_binned(probe, atoms, scan):
     """Scan -> binned (M, N_b, N_b). Frozen phonons are processed ONE CONFIG AT A TIME
     (build that config's potential, scan, bin, accumulate the incoherent average), so
     peak memory is that of a single coherent sim regardless of phonon count — the fix
     for the 16-config OOM. Same total work as the ensemble path; just memory-bounded."""
+    scan_one = _scan_one_config_batched if REGION_SIDE_A else _scan_one_config   # [region] bounded GPU memory
     detector = abtem.PixelatedDetector(max_angle=DETECTOR_RECORD_MRAD or DETECTOR_MAX_ANGLE_MRAD)
     if N_PHONONS and N_PHONONS > 0:
         sigmas = PHONON_SIGMA_BY_SPECIES if PER_SPECIES_SIGMA else PHONON_SIGMA_A
@@ -560,14 +597,14 @@ def run_scan_binned(probe, atoms, scan):
                                            sigmas=sigmas, seed=PHONON_SEED))
         acc = None
         for i, cfg in enumerate(configs):
-            arr_i, n_b, n_u, n_c = _scan_one_config(
+            arr_i, n_b, n_u, n_c = scan_one(
                 probe, build_potential(cfg, announce=(i == 0)), scan, detector)
             acc = arr_i if acc is None else acc + arr_i
             print(f"[phonons] config {i+1}/{N_PHONONS} done")
         arr = (acc / N_PHONONS).astype(np.float32)
     else:
         print("[phonons] OFF (coherent — no TDS)")
-        arr_i, n_b, n_u, n_c = _scan_one_config(
+        arr_i, n_b, n_u, n_c = scan_one(
             probe, build_potential(atoms, announce=True), scan, detector)
         arr = arr_i.astype(np.float32)
     print(f"[bin] detector {n_u} -> crop {n_c} -> {BIN_FACTOR}×{BIN_FACTOR} "
