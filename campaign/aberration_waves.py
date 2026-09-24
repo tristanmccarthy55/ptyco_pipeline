@@ -100,14 +100,29 @@ CEOS_TUNED = ["C12", "C21", "C23", "C32", "C34", "C43"]
 CEOS_HARDWARE = ["C41", "C45", "C56"]
 
 
-def ceos_tableau(c3: float, c5: float = 1.0e7) -> dict:
-    """abTEM aberration dict: the round part (C30, C50) plus the CEOS-approx non-round residuals."""
+def ceos_tableau(c3: float, c5: float = 1.0e7, alpha: float | None = None, b2: float | None = None) -> dict:
+    """abTEM aberration dict: the round part (C30, C50) plus the CEOS-approx non-round residuals.
+
+    alpha=None: the tuned terms as left at the 30 mrad design aperture -- the operator opens the aperture and
+    retunes only C1/C3 ("as built"). alpha given: the operator retunes every tunable term AT that aperture, to the
+    same accuracy (CEOS_DESIGN_WAVES at alpha), and b2 [A, signed] sets coma B2 against fourth-order coma B4, the
+    one hardware term a knob shares symmetry with (negative = opposed). A5 and A4 have no such partner: no knob
+    touches them, so they set the probe's floor. Angles are drawn in a fixed order, so every variant shares them."""
     import numpy as np
     rng = np.random.default_rng(CEOS_SEED)
     ab = {"C30": float(c3), "C50": float(c5)}
     for t in CEOS_TUNED + CEOS_HARDWARE:
-        ab[t] = CEOS_A5_A if t == "C56" else round(CEOS_DESIGN_WAVES * per_wave(t, CEOS_DESIGN_MRAD), 4)
+        if t == "C56":
+            v = CEOS_A5_A
+        elif t in CEOS_HARDWARE or alpha is None:
+            v = CEOS_DESIGN_WAVES * per_wave(t, CEOS_DESIGN_MRAD)
+        else:
+            v = CEOS_DESIGN_WAVES * per_wave(t, alpha)
+        ab[t] = round(v, 4)
         ab["phi" + t[1:]] = round(float(rng.uniform(0, 2 * np.pi)) / int(t[2]), 6)
+    if b2 is not None:
+        ab["C21"] = round(abs(float(b2)), 4)
+        ab["phi21"] = round((ab["phi41"] + (np.pi if b2 < 0 else 0.0)) % (2 * np.pi), 6)
     return ab
 
 

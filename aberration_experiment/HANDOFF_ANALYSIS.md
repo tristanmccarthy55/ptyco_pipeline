@@ -47,19 +47,25 @@ columns are 200 kV, the simulation stays at 300 kV). Defined in `campaign/aberra
   flatness a corrector is tuned to) — A1 0.44 nm, B2/A2 22 nm, S3/A3 1 µm, D4/B4/A4 40 µm. S5/R5 left out
   (CEOS names A5, A4, B4 as limiting). One seeded draw of orientations; probe sizes vary < 1 Å across draws.
 
-Rows in `campaign/ceos_sweep.tsv` — a round control and a CEOS leg per aperture, all re-simulated on the
-point-sampled detector:
+**The operator fights for probe size, not flatness** (the user's call: only a small, simulable probe matters to a
+known-probe reconstruction). A knob can only cancel an aberration of its own symmetry, so: the tunable A1 A2 S3 A3 D4
+are retuned at each aperture (to the same 0.1-wave accuracy), coma B2 is set against fourth-order coma B4, and C1/C3
+are rebalanced — `plan_probe.py --ceos`, Nelder-Mead on d90. **A5 and A4 have no partner knob and set the floor**:
+A5 alone gives 25 Å at 70 mrad. Fighting shrinks the probe 20–35 % and moves the wall from ~60 to ~65 mrad.
 
-| α | round control | CEOS probe d90 / d99 | CEOS leg |
-|---|---|---|---|
-| 40 | BIN 4 | 5.4 / 12.5 Å | BIN 4 |
-| 50 | BIN 4 | 9.8 / 19 Å | BIN 2 |
-| 60 | BIN 4 | 18 / 35 Å | BIN 1, **WIN=30 STEP=0.75** (own submission; 1600 positions, the 110 mrad precedent) |
-| 70 | — | 35 / 63 Å | **not run**: a scan field 1.5× the probe does not fit the 70 Å box (max ~34 Å) |
+Rows in `campaign/ceos_sweep.tsv`; `ceosopt_a<A>` is the sweep:
 
-**The wall is the result, not a failure of the sweep.** From 70 mrad this instrument's probe outgrows anything
+| α | round control | `ceosopt` probe d90 / d99 | reconstruction | as built (`ceos_a<A>`, C1/C3 only) |
+|---|---|---|---|---|
+| 40 | BIN 4 | 4.0 / 10.3 Å (4 Å by defocus, as the round rule) | BIN 4 | 5.4 / 12.5 Å |
+| 50 | BIN 4 | 6.4 / 12.8 Å | BIN 4 | 9.8 / 19 Å |
+| 60 | BIN 4 | 14.6 / 25 Å | BIN 2, **WIN=22 STEP=0.55** | 18 / 35 Å |
+| 65 | BIN 4 | 21.1 / 36.5 Å | BIN 1, **WIN=32 STEP=0.8** | — |
+| 70 | — | 29.8 / 50 Å | **not run**: needs a 45 Å scan field, the box allows ~34 | 35 / 63 Å |
+
+**The wall is the result, not a failure of the sweep.** Past ~65 mrad this instrument's probe outgrows anything
 this sample can host, and the same numbers bound a real experiment: the reconstruction window is λ / detector
-pixel angle, so a 63 Å probe at 70 mrad needs ~1200 detector pixels across against ~250 for the 10 Å probe at 50.
+pixel angle, so a 50 Å probe at 70 mrad needs ~1000 detector pixels across against ~200 for the 6 Å probe at 50.
 
 **Watch on the first logs:** 40 mrad is new ground — NL 4 (6.9 Å slices), `extract_psf --zdrop 1`; the round
 sweep skipped 30 mrad because the bright-field disc filled too little of the detector, and 40 may be marginal.

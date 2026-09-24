@@ -156,6 +156,70 @@ def plan(alphas, C5, target, thick, out):
                 f.write(line + "\n")
     print("wrote", out)
 
+def plan_ceos(alphas, C5, target, out):
+    """[CEOS-approx sweep] The operator fights for the smallest probe on the CEOS-approx column
+    (aberration_waves.ceos_tableau). Hardware A5, A4, B4 fixed; the tunable A1 A2 S3 A3 D4 retuned at this aperture
+    to the tableau's accuracy; C1, C3 and coma B2 -- the one knob sharing a hardware term's symmetry (B4) -- set by
+    Nelder-Mead on d90 from two starts. Ronchigram flatness is ignored: only probe size matters to a known-probe
+    reconstruction. Same two regimes as plan(): if 4 A is reachable, defocus alone spreads the probe to TARGET
+    (the round sweep's rule, so a low-alpha leg stays comparable with its round control); otherwise the smallest
+    d90 wins (FLOOR). Writes rows in the sweep-tsv layout; bin from d99 as plan() does, win = the scan field that
+    keeps scan/d90 >= 1.5 (Rule 4), to be passed as WIN (with STEP = win/40 for 1600 positions)."""
+    import abtem, importlib.util, json, os
+    from scipy.optimize import minimize
+    try: abtem.config.set({"local_diagnostics.progress_bar": False})
+    except Exception: pass
+    spec = importlib.util.spec_from_file_location("aw", os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                                                                      "aberration_waves.py"))
+    aw = importlib.util.module_from_spec(spec); spec.loader.exec_module(aw)
+    C41 = aw.ceos_tableau(0.0)["C41"]
+
+    def probe(a, c1, c3, b2, ext, n):
+        return np.asarray(abtem.Probe(energy=300e3, semiangle_cutoff=a, extent=ext, gpts=n, defocus=c1,
+                                      aberrations=aw.ceos_tableau(c3, C5, alpha=a, b2=b2)).build().compute().array)
+    rows = []
+    for a in alphas:
+        th = a / 1000.0
+        ext = 90.0 if a <= 60 else 150.0                       # holds the probe; Nyquist >= 1.55 alpha below
+        n = int(np.ceil(ext / (LAM / (2 * 1.55 * th)) / 64) * 64)
+        f = lambda x: sizes(probe(a, x[0], x[1], x[2], ext, n), ext)[2]
+        c3_edge = round(-C5 * th ** 2 / 1e4) * 1e4             # the round ray-edge cancel, as plan() starts from
+        best = None
+        for x0 in ([0.0, c3_edge, -0.8 * C41 * th ** 2], [30.0, c3_edge + 1e4, -1.2 * C41 * th ** 2]):
+            simplex = [x0] + [[x0[j] + ([30.0, 1.5e4, 300.0][j] if j == i else 0) for j in range(3)] for i in range(3)]
+            r = minimize(f, x0, method="Nelder-Mead",
+                         options=dict(initial_simplex=simplex, maxfev=120, xatol=1, fatol=0.05))
+            if best is None or r.fun < best.fun:
+                best = r
+        C1, C3, B2 = (float(v) for v in best.x)
+        regime = "floor"
+        if best.fun < target - 0.3:                            # FREE: 4 A reachable -> defocus spreads to target
+            grid = np.arange(C1 - 260, C1 + 261, 10.0)
+            for _pass in range(2):
+                d = [abs(f([c, C3, B2]) - target) for c in grid]
+                C1 = float(grid[int(np.argmin(d))]); grid = np.arange(C1 - 8, C1 + 9, 2.0)
+            regime = "free"
+        C1 = round(C1, 1); C3 = round(C3, -2); B2 = round(B2, 1)
+        ab = aw.ceos_tableau(C3, C5, alpha=a, b2=B2)
+        _, d50, d90, d99 = sizes(probe(a, C1, C3, B2, 140.0, 2400), 140.0)
+        binf = 4 if d99 < 15 else (2 if d99 < 31 else 1)
+        win = max(20, int(np.ceil(1.5 * d90)))
+        note = (f"CEOS fought ({regime}): d90 {d90:.1f} A, d99 {d99:.1f} A; B2 {B2 / 10:+.0f} nm vs B4; "
+                + ("default scan" if win == 20 else f"RUN WITH WIN={win} STEP={win / 40:g}"))
+        if win > 34:
+            note = "NOT RUNNABLE in the 70 A box (scan field > 34 A): " + note
+        rows.append(dict(label="ceosopt_a%03d" % a, alpha=a, c5=C5, c3=C3, c1=C1, df_perf="-", bin=binf, nl=0,
+                         aber_json=json.dumps(ab, separators=(",", ":")), note=note))
+        print(f"  alpha={a:3d}  C1={C1:+6.1f}A  C3={C3 / 1e4:+5.2f}um  B2={B2 / 10:+6.1f}nm  d90={d90:.1f} "
+              f"d99={d99:.1f}  BIN={binf}  WIN={win}  [{regime}]", flush=True)
+    cols = ["label", "alpha", "c5", "c3", "c1", "df_perf", "bin", "nl", "aber_json", "note"]
+    with open(out, "w") as fh:
+        fh.write("\t".join(cols) + "\n")
+        for r in rows:
+            fh.write(("#" if r["note"].startswith("NOT RUNNABLE") else "") + "\t".join(str(r[c]) for c in cols) + "\n")
+    print("wrote", out)
+
+
 if __name__ == "__main__":
     ap = argparse.ArgumentParser()
     ap.add_argument("--alphas", type=int, nargs="+", default=[30,50,70,90,100,110,120])
@@ -163,7 +227,14 @@ if __name__ == "__main__":
     ap.add_argument("--target", type=float, default=4.0)      # d90 Å
     ap.add_argument("--thick", type=float, default=11.715)    # slab beam thickness [Å] (3 cells) for NL
     ap.add_argument("--out", default=None)
+    ap.add_argument("--ceos", action="store_true",
+                    help="plan the CEOS-approx 'fought' legs (plan_ceos) instead of the round sweep; needs --out")
     a = ap.parse_args()
+    if a.ceos:
+        if not a.out:
+            ap.error("--ceos needs --out (it writes rows for campaign/ceos_sweep.tsv, not round_sweep.tsv)")
+        plan_ceos(a.alphas, a.c5, a.target, a.out)
+        raise SystemExit(0)
     import os
     out = a.out or os.path.join(os.path.dirname(__file__), "round_sweep.tsv")
     print(f"planning C5={a.c5:.3g} A target d90={a.target} A thick={a.thick} A alphas={a.alphas}")
