@@ -1,4 +1,4 @@
-# Handoff — next job: a representative non-round microscope on the round sweep
+# Handoff — the CEOS-approx sweep: an older corrector, opened wide, probe known
 
 Written 2026-09-24. **Read this whole file before running anything; it is short on purpose.**
 Then `HANDOVER.md` for the experiment, `PSF_KERNELS.md` for the kernel rules.
@@ -34,39 +34,36 @@ Then `HANDOVER.md` for the experiment, `PSF_KERNELS.md` for the kernel rules.
   The small leftovers (oxygen 71 vs 75 %, oxygen false positives 35 → 49 at 90 mrad) are single solves; the
   engine reseeds every run, so they are not separated from run-to-run spread.
 
-## The next job
+## The next job — the CEOS-approx sweep (built 2026-09-24, first submission pending)
 
-Put a **representative non-round corrector tableau on the round sweep**: the same round balance per aperture
-(`campaign/round_sweep.tsv`: C5 = 1 mm fixed, C3 and C1 retuned), plus every non-negligible non-round residual,
-held fixed so that each grows as α^(n+1). The result wanted is the round sweep's — atomfind improving with α —
-for a realistic probe.
+The question: can an older, widespread hexapole-corrected column still give depth-resolved ptychography by
+**tanking** its aberrations — probe known, aperture opened well past the corrector's 30 mrad design?
+The user chose a **CEOS approximation** (CESCOR-like, the pre-DELTA generation; the target era's GrandARM-class
+columns are 200 kV, the simulation stays at 300 kV). Defined in `campaign/aberration_waves.py` `ceos_tableau`:
 
-**Blocked on one decision: which corrector.** The magnitudes decide whether the sweep can exist at all:
+- round part exactly as the round sweep: C5 = 1 mm fixed, C3/C1 retuned per α by `plan_probe.py`;
+- non-round, all **fixed** (each grows as α^(n+1)), split per CEOS: tuned A1 B2 A2 S3 A3 D4, hardware B4 A4 A5;
+- **A5 = 1.0 mm is CEOS's figure; every other term is unsourced** and set to 0.1 waves at 30 mrad (inside the π/4
+  flatness a corrector is tuned to) — A1 0.44 nm, B2/A2 22 nm, S3/A3 1 µm, D4/B4/A4 40 µm. S5/R5 left out
+  (CEOS names A5, A4, B4 as limiting). One seeded draw of orientations; probe sizes vary < 1 Å across draws.
 
-| α (mrad) | probe d90 / d99, round only | + the campaign's `ASSUMED_TABLEAU` | largest terms (waves at the edge) |
+Rows in `campaign/ceos_sweep.tsv` — a round control and a CEOS leg per aperture, all re-simulated on the
+point-sampled detector:
+
+| α | round control | CEOS probe d90 / d99 | CEOS leg |
 |---|---|---|---|
-| 50 | 3.9 / 8.2 Å | 11 / 21 Å | three-lobe 3.2, five-fold 1.6, six-fold 1.3 |
-| 70 | 4.0 / 10.3 Å | 45 / 79 Å | three-lobe 17, six-fold 10, five-fold 8.5 |
-| 90 | 6.5 / 16 Å | 120 / 168 Å | three-lobe 60, six-fold 45, five-fold 30 |
-| 100 | 11 / 26 Å | 133 / 173 Å | three-lobe 100, six-fold 85, five-fold 51 |
+| 40 | BIN 4 | 5.4 / 12.5 Å | BIN 4 |
+| 50 | BIN 4 | 9.8 / 19 Å | BIN 2 |
+| 60 | BIN 4 | 18 / 35 Å | BIN 1, **WIN=30 STEP=0.75** (own submission; 1600 positions, the 110 mrad precedent) |
+| 70 | — | 35 / 63 Å | **not run**: a scan field 1.5× the probe does not fit the 70 Å box (max ~34 Å) |
 
-The box is 70 Å and the scan field at most ~34 Å, so that tableau is unsimulable from 70 mrad up. What is
-sourced, and what is not:
+**The wall is the result, not a failure of the sweep.** From 70 mrad this instrument's probe outgrows anything
+this sample can host, and the same numbers bound a real experiment: the reconstruction window is λ / detector
+pixel angle, so a 63 Å probe at 70 mrad needs ~1200 detector pixels across against ~250 for the 10 Å probe at 50.
 
-- **CEOS, CESCOR hexapole probe corrector** (ceos-gmbh.de): operator-adjustable C1, A1, B2, A2, C3, S3, A3,
-  **D4**, C5; limiting **A5 (intrinsic) and A4, B4 (parasitic)**. The tableau had D4 (three-lobe) filed as
-  hardware at 100 µm; it is adjustable. Corrected in `campaign/aberration_waves.py`.
-- **A5 = 1.0 mm** — CEOS's figure for hexapole-type correctors. 10 waves at 70 mrad on its own.
-- **DCOR/ASCOR**: A5 0.03–0.4 mm (Ultramicroscopy 2019, "On the residual six-fold astigmatism in DCOR/ASCOR").
-  **JEOL DELTA** (fifth-order corrector): aberration-free illumination to ~70 mrad at 300 kV.
-- **A4, B4**: no sourced typical value yet. Every other value in `ASSUMED_TABLEAU` is an unsourced order of
-  magnitude. A measured tableau from the target instrument would replace all of them.
-
-So a Cs-only hexapole instrument cannot be opened past ~50 mrad even with the probe known — a real result in
-itself — and a sweep to 100 mrad needs an A5-corrected class of corrector. That choice is the user's.
-
-**Whatever is chosen, re-simulate the round controls in the same submission**: the detector model changed
-(below), so every existing ladder row is on the old summed detector and is not a like-for-like baseline.
+**Watch on the first logs:** 40 mrad is new ground — NL 4 (6.9 Å slices), `extract_psf --zdrop 1`; the round
+sweep skipped 30 mrad because the bright-field disc filled too little of the detector, and 40 may be marginal.
+And every leg is the first reconstruction on point-sampled data (below).
 
 ## Changed 2026-09-23/24 — if the next run breaks, look here first
 

@@ -85,6 +85,32 @@ ASSUMED_TABLEAU = {
 }
 
 
+#: THE CEOS-APPROX INSTRUMENT (2026-09-24, the user's choice): an older, widespread hexapole-corrected column --
+#: CEOS CESCOR-like, the pre-DELTA generation -- tuned at a 30 mrad design aperture and opened past it with the
+#: probe known ("tanking" the aberrations). Split per CEOS: operator-tuned A1 B2 A2 S3 A3 D4; hardware A4, B4
+#: (parasitic) and A5 (intrinsic). A5 = 1.0 mm is CEOS's figure. No other term has a sourced value, so each sits
+#: at CEOS_DESIGN_WAVES at the design aperture, inside the pi/4 (0.125-wave) flatness a corrector is tuned to --
+#: which lands on the usual orders of magnitude (A1 0.44 nm, B2/A2 22 nm, S3/A3 1 um, D4/B4/A4 40 um). All are
+#: FIXED as the aperture opens (each grows as alpha^(n+1)); only the round C1/C3 are retuned, by the planner.
+#: S5/R5 (C52/C54) are left out: CEOS names A5, A4, B4 as the limiting residuals. Orientations are one seeded
+#: uniform draw per term (the angle of an m-fold term is only defined modulo 2pi/m); probe sizes vary < 1 A across
+#: draws. The simulation energy stays 300 keV (the campaign's), though the target era's column is 200 keV.
+CEOS_DESIGN_MRAD, CEOS_DESIGN_WAVES, CEOS_A5_A, CEOS_SEED = 30.0, 0.1, 1.0e7, 0
+CEOS_TUNED = ["C12", "C21", "C23", "C32", "C34", "C43"]
+CEOS_HARDWARE = ["C41", "C45", "C56"]
+
+
+def ceos_tableau(c3: float, c5: float = 1.0e7) -> dict:
+    """abTEM aberration dict: the round part (C30, C50) plus the CEOS-approx non-round residuals."""
+    import numpy as np
+    rng = np.random.default_rng(CEOS_SEED)
+    ab = {"C30": float(c3), "C50": float(c5)}
+    for t in CEOS_TUNED + CEOS_HARDWARE:
+        ab[t] = CEOS_A5_A if t == "C56" else round(CEOS_DESIGN_WAVES * per_wave(t, CEOS_DESIGN_MRAD), 4)
+        ab["phi" + t[1:]] = round(float(rng.uniform(0, 2 * np.pi)) / int(t[2]), 6)
+    return ab
+
+
 def growth_figure(out, alphas=(30, 40, 50, 60, 70, 80, 90, 100)):
     """Every non-round term of the assumed instrument, in waves at the edge, against aperture."""
     import numpy as np
@@ -141,8 +167,13 @@ def main():
     ap.add_argument("--waves", type=float, default=None,
                     help="print the C_nm that gives this many waves, per term and aperture")
     ap.add_argument("--tsv", default=None, help="a sweep tsv: report the waves each row actually carries")
+    ap.add_argument("--ceos-json", type=float, default=None, metavar="C3",
+                    help="print the CEOS-approx tableau as a sweep-row aber_json, for this round C3 [A]")
     a = ap.parse_args()
 
+    if a.ceos_json is not None:
+        print(json.dumps(ceos_tableau(a.ceos_json), separators=(",", ":")))
+        return
     if a.fig:
         growth_figure(a.fig)
         return
