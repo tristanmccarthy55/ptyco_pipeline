@@ -121,6 +121,9 @@ VAC_ARG=()
 AB_ARG=()
 [ "${ABERRATED:-0}" = "1" ] && AB_ARG=(--aberrated --probe-initial "${PROBE_INITIAL:-nominal}")
 BIN_ARG=(); [ -n "${BIN_FACTOR:-}" ] && BIN_ARG=(--bin-factor "${BIN_FACTOR}")
+# DETECTOR_SAMPLING=sum reproduces sims made before 2026-09-23 (4x4 intensity sum); unset = point
+# sampling, the simulator default and what the recon models. See DETECTOR_SAMPLING in simulate_4dstem.py.
+DS_ARG=(); [ -n "${DETECTOR_SAMPLING:-}" ] && DS_ARG=(--detector-sampling "${DETECTOR_SAMPLING}")
 CONV_ARG=(); [ -n "${CONVERGENCE:-}" ] && CONV_ARG=(--convergence "${CONVERGENCE}")
 
 # per-species RMS thermal displacements (Pb/Sr/Ti/O) instead of one sigma for all
@@ -145,5 +148,5 @@ AJ_ARG=(); [ -n "${ABERRATIONS_JSON:-}" ] && AJ_ARG=(--aberrations-json="${ABERR
     --scan-step "${SCAN_STEP}" \
     --phonons "${PHONONS}" \
     --phonon-sigma "${PHONON_SIGMA}" \
-    "${TILE_ARG[@]}" "${SA_ARG[@]}" "${VAC_ARG[@]}" "${PS_ARG[@]}" "${AB_ARG[@]}" "${BIN_ARG[@]}" "${CONV_ARG[@]}" \
+    "${TILE_ARG[@]}" "${SA_ARG[@]}" "${VAC_ARG[@]}" "${PS_ARG[@]}" "${AB_ARG[@]}" "${BIN_ARG[@]}" "${DS_ARG[@]}" "${CONV_ARG[@]}" \
     "${TH_ARG[@]}" "${DEF_ARG[@]}" "${CS_ARG[@]}" "${AJ_ARG[@]}"

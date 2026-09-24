@@ -9,7 +9,8 @@ Strategy (full box, no cropping):
   - keep the FULL real-space cell (cropping would alias the broadened exit wave),
   - collect the full detector (~200 mrad),
   - return the measurement as a LAZY Dask array,
-  - bin the detector 4x4 with dask.array.coarsen, then .compute() (~20 GB, fits RAM),
+  - reduce the detector to the recon grid (default: point-sample every BIN-th pixel; --detector-sampling sum
+    for the old 4x4 dask.array.coarsen sum), then .compute(),
   - save a single data_dp.hdf5 via h5py (no Zarr).
 
 Outputs (into OUT_DIR, default ./sim_out/01/):
@@ -54,6 +55,14 @@ NOMINAL_DEFOCUS_A  = None      # [campaign] --probe-defocus: defocus for the NOM
 DETECTOR_MAX_ANGLE_MRAD = 200.0   # full detector outer angle [mrad]
 SLICE_THICKNESS_A       = 2.0     # multislice slice thickness [Å]
 BIN_FACTOR              = 4       # NxN detector binning applied to the lazy array
+# How the fine detector is reduced to the recon's grid (--detector-sampling). "point" (default since
+# 2026-09-23) keeps every BIN-th fine pixel starting on the zero-angle pixel: exactly the k-points of
+# the recon's own window (box/BIN), which is what its forward model computes. "sum" is the old 4x4
+# intensity sum: a pixel-integrating detector the recon does NOT model. Measured on the thin slab, the
+# sum alone sets a residual floor of 20.2 at a70/BIN4 and 5.3 at a90/BIN2 (recorded floors 22.6 and 5.8),
+# and because its blocks START on the zero-angle pixel it shifts every pattern by (BIN-1)/2 fine pixels,
+# which the object absorbs as the diagonal phase ramp the analysis has been subtracting. BIN 1: identical.
+DETECTOR_SAMPLING       = "point"
 
 # --- dose ---
 # abTEM flux-normalises each pattern to total ≈ 1, so the per-pixel "photon count"
@@ -488,8 +497,13 @@ def _scan_one_config(probe, potential, scan, detector):
     lazy = da.asarray(meas.array)                    # (..., N_u, N_u); no phonon axis here
     n_u = int(lazy.shape[-1])
     s, n_c = _crop_center_to_multiple(n_u, BIN_FACTOR)
-    binned = da.coarsen(np.sum, lazy[..., s:s + n_c, s:s + n_c],
-                        {lazy.ndim - 2: BIN_FACTOR, lazy.ndim - 1: BIN_FACTOR})
+    crop = lazy[..., s:s + n_c, s:s + n_c]
+    if DETECTOR_SAMPLING == "point":
+        # the zero-angle pixel sits at n_c/2, a multiple of BIN, so this grid includes it; x BIN^2 keeps
+        # the pattern totals on the old summed scale (DOSE_E, the recon's count floor, the Poisson step)
+        binned = crop[..., ::BIN_FACTOR, ::BIN_FACTOR] * float(BIN_FACTOR ** 2)
+    else:
+        binned = da.coarsen(np.sum, crop, {lazy.ndim - 2: BIN_FACTOR, lazy.ndim - 1: BIN_FACTOR})
     n_b = n_c // BIN_FACTOR
     arr = np.asarray(binned.compute()).astype(np.float64).reshape(-1, n_b, n_b)
     return arr, n_b, n_u, n_c
@@ -520,7 +534,8 @@ def run_scan_binned(probe, atoms, scan):
         arr_i, n_b, n_u, n_c = _scan_one_config(
             probe, build_potential(atoms, announce=True), scan, detector)
         arr = arr_i.astype(np.float32)
-    print(f"[bin] detector {n_u} -> crop {n_c} -> {BIN_FACTOR}×{BIN_FACTOR} bin -> N_b = {n_b}")
+    print(f"[bin] detector {n_u} -> crop {n_c} -> {BIN_FACTOR}×{BIN_FACTOR} "
+          f"{'point-sampled' if DETECTOR_SAMPLING == 'point' else 'summed'} -> N_b = {n_b}")
     print(f"[bin] binned measurement: {arr.shape[0]} positions × {n_b}×{n_b}")
     return arr
 
@@ -660,6 +675,7 @@ def write_driver_geometry(n_b: int, box_a: float, beam_thickness_a: float,
         "energy_kev": float(ENERGY_EV / 1e3),
         "box_A": float(box_a),
         "bin_factor": int(BIN_FACTOR),
+        "detector_sampling": DETECTOR_SAMPLING,
         "beam_thickness_A": float(beam_thickness_a),
         "convergence_mrad": float(CONVERGENCE_MRAD),
         "overfocus_A": float(OVERFOCUS_A),
@@ -687,7 +703,7 @@ def write_driver_geometry(n_b: int, box_a: float, beam_thickness_a: float,
 # MAIN
 # ======================================================================
 def main(argv=None) -> int:
-    global DEVICE, SLICE_THICKNESS_A, SCAN_STEP_A, DOSE_E, N_PHONONS, PHONON_SIGMA_A, PER_SPECIES_SIGMA, PHONON_SEED, SCAN_WINDOW_A, ABERRATED, PROBE_INITIAL_ABERRATED, BIN_FACTOR, CONVERGENCE_MRAD, DEFOCUS_A, NOMINAL_DEFOCUS_A, ABERRATIONS, RECON_FULL_BOX, Z_VACUUM_A, GRID_BOX_Z
+    global DEVICE, SLICE_THICKNESS_A, SCAN_STEP_A, DOSE_E, N_PHONONS, PHONON_SIGMA_A, PER_SPECIES_SIGMA, PHONON_SEED, SCAN_WINDOW_A, ABERRATED, PROBE_INITIAL_ABERRATED, BIN_FACTOR, DETECTOR_SAMPLING, CONVERGENCE_MRAD, DEFOCUS_A, NOMINAL_DEFOCUS_A, ABERRATIONS, RECON_FULL_BOX, Z_VACUUM_A, GRID_BOX_Z
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--test", action="store_true",
                     help="Tiny 3x3 scan for fast local shape/geometry validation.")
@@ -747,6 +763,10 @@ def main(argv=None) -> int:
                          "The aberrated run needs BIN=1 (1424 px / full 70 Å window): the "
                          "delocalised 5th-order probe fills the box — finer k-sampling, cf. "
                          "Nguyen et al. Fig 3B.")
+    ap.add_argument("--detector-sampling", default=DETECTOR_SAMPLING, choices=["point", "sum"],
+                    help="reduce the fine detector to the recon grid by POINT sampling every BIN-th pixel "
+                         "(default; what the recon models) or by the old 4x4 intensity SUM (reproduces "
+                         "sims made before 2026-09-23).")
     ap.add_argument("--aberrated", action="store_true",
                     help="inject the corrector residuals (ABERRATIONS: Cs≈0.7 µm dominant, flat "
                          "to ~30 mrad, ~9 waves by 100 mrad) into the SIM probe, on top of "
@@ -793,6 +813,7 @@ def main(argv=None) -> int:
     ABERRATED = args.aberrated
     PROBE_INITIAL_ABERRATED = (args.probe_initial == "true")
     BIN_FACTOR = args.bin_factor
+    DETECTOR_SAMPLING = args.detector_sampling
     CONVERGENCE_MRAD = args.convergence
     DEFOCUS_A = args.defocus                                  # [thin-ab] None -> -OVERFOCUS_A
     NOMINAL_DEFOCUS_A = args.probe_defocus                    # [campaign] nominal start-probe defocus
