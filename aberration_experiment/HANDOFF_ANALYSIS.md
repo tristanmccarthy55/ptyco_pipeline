@@ -34,7 +34,7 @@ Then `HANDOVER.md` for the experiment, `PSF_KERNELS.md` for the kernel rules.
   The small leftovers (oxygen 71 vs 75 %, oxygen false positives 35 → 49 at 90 mrad) are single solves; the
   engine reseeds every run, so they are not separated from run-to-run spread.
 
-## The next job — the CEOS-approx sweep to 80 mrad (built 2026-09-24, first submission pending)
+## The current job — the CEOS-approx sweep to 80 mrad (running since 2026-09-24 18:39)
 
 The question: can an older, widespread hexapole-corrected column still give depth-resolved ptychography by
 **tanking** its aberrations — probe known, aperture opened far past the corrector's 30 mrad design? The user chose
@@ -137,8 +137,39 @@ new ground (NL 4). The analysis needs the region GT (`make_gt_cache --region-sid
 **Two rules that are physics, not plumbing:** `REGLAYER=0` on every leg (it low-passes the depth axis, which
 is the measurement), and one `BETA_LSQ` for every leg in a comparison.
 
-## State
+## State (2026-09-25 morning)
 
-`origin/main`; Blythe needs `git pull`. Raw simulation data is deleted after packing (`CLEANDATA=1`), so any leg
-not on disk needs re-simulating. The fixed-engine six-fold analysis is in `~/Desktop/sixfold_0923_analysis`
-(kernels in `psf/`, one `atomfind_<label>/` per leg), tarballs in `~/Desktop/sixfold_0923_a70` and `_a90`.
+**The CEOS sweep is on Blythe** (commit `f556b87`), submitted 2026-09-24 18:39 as three driver calls + one analysis job:
+
+| block | labels | pack job | state at handover |
+|---|---|---|---|
+| round controls | `round_a040`…`round_a080` (7) | 1291082 | done — tarball `atomfind_results_round_a040-…-round_a080_20260924_183859.tgz` |
+| CEOS low | `ceosopt_a040 _a050 _a060 _a065` | 1291107 | done — `atomfind_results_ceosopt_a040-…-ceosopt_a065_20260924_183900.tgz` |
+| CEOS high | `ceosopt_a070 _a075 _a080` (`PACK_H5=0`) | 1291126 | recons running/queued (1291109 first to start; each ~3–4.5 h; they need a whole GPU node each) |
+| analysis | all 14 labels, `GT_REGION=210` | job 1291127 | waits on the packs. **Its DEP was typed `1991082:…`** (should be 1291082); if `scontrol show job 1291127` still lists 1991082, `scontrol update jobid=1291127 dependency=afterany:1291126` |
+
+The first submission (18:33 the day before) died: every sim GPU-OOM'd — fixed by the batched region scan (`f556b87`).
+Home quota was fixed by moving `~/.vscode-server` to `$SHARE/phucrh` with a symlink back (home now ~37 MB).
+
+**When the analysis job ends, pull only its tarball** (small: kernels, atomfind reports, figures, `summary.csv`):
+```bash
+mkdir -p ~/Desktop/ceos80_analysis && cd ~/Desktop/ceos80_analysis
+scp -O 'phucrh@blythe.scrtp.warwick.ac.uk:/springbrook/share/physics/phucrh/analysis_round_a040-*-ceosopt_a080_*.tgz' .
+tar xzf analysis_round_a040-*-ceosopt_a080_*.tgz
+```
+Optional, for looking at objects: the round and CEOS-low sweep tarballs carry their (small) h5s; the CEOS-high one
+carries logs and sidecars only — its ~1 GB h5s stay on Blythe (`recon_af_ceosopt_a0{70,75,80}_*`).
+
+**First things to check in the results**
+1. `summary.csv`: every label `status=ok` (else the log under `logs/`). Triage columns: wrapped ≤ ~5e-5, phase std ~0.1.
+2. The first region + point-sampled reconstructions: residual floors should sit BELOW the old 22.6 (70 mrad) / 5.8
+   (90 mrad) summed-detector values, and `extract_psf` should report almost no ramp (was ~0.28 rad at 70 mrad).
+   Recon logs: `[region] 210.0 x 210.0 A cut` (sim), and at 80 mrad `presolve widened to 1024 px`.
+3. The result wanted: per α, `ceosopt` vs `round` recall and z-RMS — does depth localisation keep improving to 80
+   mrad with the CEOS probe? 40 mrad is new ground (NL 4). 80 mrad uses dx 0.074 A and a ±133 mrad detector.
+4. Then, with the user's OK: ladder rows (a new step for the CEOS sweep), a figure, and the logbook
+   (https://claude.ai/artifact/7ve93UM6yqCmiRcbfNuiJM, rebuilt from `page/logbook.html`; last republished as v12).
+
+Older data: the fixed-engine six-fold analysis is in `~/Desktop/sixfold_0923_analysis` (tarballs `sixfold_0923_a70`,
+`_a90`); the region GT is at `~/Desktop/ceos_region_gt` (and on Blythe at `$SHARE/phucrh/gt_region210` once the
+analysis job builds it). Raw simulation data is deleted after packing (`CLEANDATA=1`); re-running a leg re-simulates.
