@@ -149,23 +149,26 @@ is the measurement), and one `BETA_LSQ` for every leg in a comparison.
 | **saturated** | round 75, 80 (BIN 12); CEOS 70 (BIN 3), 80 (BIN 2); round 65's Pb leg | triage phase std 0.2–0.93, wrapped up to 1e-2 |
 | **junk** | CEOS 75 (BIN 3) | kernels are speckle ("156 atoms at 0.69 A spacing", peak/bg 24); Pb recall 7 % |
 
-**Hypothesis 1 — windows too small for point sampling (my change).** Point sampling is exact only if the whole exit wave
-fits the window: probe tails plus electrons scattered sideways through the 27.5 Å slab (±~5 Å at 200 mrad). Whatever
-leaves the window aliases back in. The old 4×4 sum filtered those components, which is why 17.5 Å windows used to work;
-`plan_probe.region_geometry`'s thresholds (d99 < 15 → 17.5 Å) were calibrated on summed data. Evidence: every BIN 12
-leg fails at every α (even 40 mrad, 4 Å probe); every BIN 6 leg is clean. **Test (rows built, not run):**
-`round_a070_w35` and `ceosopt_a050_w35` = the same legs at a 35 Å window (BIN 6), ~40 min recons:
-```bash
-CLEANDATA=1 TSV=campaign/ceos_sweep.tsv LABELS="round_a070_w35 ceosopt_a050_w35" bash campaign/run_thin_atomfind.sh
-LABELS="round_a070_w35 ceosopt_a050_w35" GT_REGION=210 DEP=<its pack job> bash campaign/run_analysis.sh
-```
-If both give clean kernels: raise the minimum window for point-sampled runs to 35 Å (region_geometry) and rerun the
-BIN 12 legs. (The alternative, the engine's own detector-upsampling model of a summed detector, costs a 16x bigger model.)
+**Error traces** (pulled 2026-09-26 to `~/Desktop/ceos80_sweeps/`). Relative amplitude error ε ≈ residual × N / 2e5
+(the residual itself scales ~1/N): old summed a70 at 17.5 Å 0.040; **round 70 point-sampled at 17.5 Å 0.050 (worse)**;
+round 75/80 at 17.5 Å **0.47** (first full-engine iteration ~370 vs ~37 at 70); CEOS 60/65 at 35 Å **0.033** (best);
+CEOS 75 at 70 Å 0.075 (converges, yet object is speckle); CEOS 70 / 80 0.27 / 0.45. Logs clean: no NaN, 80 mrad
+`presolve widened to 1026 px`, runtimes 3.9–5.2 h, 1600 positions.
 
-**Hypothesis 2 — large probes break the solve.** CEOS 70/75/80 (d90 25/35/49 Å) fail with 70–105 Å windows, so not
-aliasing; the round 110 mrad leg (d90 24.5 Å) failed the same way in the old campaign. Could be the solver (beta 0.05,
-200 iterations, step 0.95–1.85 Å) or a real limit. First look at the recon logs and `*_error_trace.csv` (diverging?
-stalling?) before changing anything; candidates: smaller BETA_LSQ, more iterations, smaller step / more positions.
+**Hypothesis 1 — the 17.5 Å window fails with point sampling.** Fact: every BIN 12 leg is bad, every BIN 6 leg good.
+The mechanism is NOT the beam spreading through the slab: measured probe spill outside the window stays 0.3–0.5 % from
+entrance to exit and is the same for round 70 (half-works) as round 75/80 (saturate); the old 4x4 sum filtering the
+aliased part is still a candidate, unproven. **Test (rows built, not run)** — the same legs at a 35 Å window (BIN 6):
+```bash
+CLEANDATA=1 TSV=campaign/ceos_sweep.tsv LABELS="round_a070_w35 round_a080_w35 ceosopt_a050_w35" bash campaign/run_thin_atomfind.sh
+LABELS="round_a070_w35 round_a080_w35 ceosopt_a050_w35" GT_REGION=210 DEP=<its pack job> bash campaign/run_analysis.sh
+```
+If they come back clean: minimum window 35 Å for point-sampled runs (`plan_probe.region_geometry`), rerun the BIN 12 legs.
+
+**Hypothesis 2 — large probes break the solve.** CEOS 70/75/80 spill only 0.03–0.1 % outside their 70–105 Å windows, so
+not geometry. Round 110 (d90 24.5 Å) failed the same way in the old campaign. No crash; the fit is poor from the first
+full-engine iteration (70, 80) or fits while the object is speckle (75). Next: look at the objects (h5s on Blythe,
+`recon_af_ceosopt_a0{70,75,80}_*/analysis/`) and try one lever at a time on CEOS 70 — BETA_LSQ, NITER, positions.
 
 **Data to pull for the diagnosis** (the recon logs + error traces are in the sweep tarballs; the two light ones also
 carry their h5s, ~1–2 GB each; the heavy one has logs/sidecars only):
