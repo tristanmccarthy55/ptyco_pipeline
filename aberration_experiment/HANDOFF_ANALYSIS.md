@@ -137,39 +137,48 @@ new ground (NL 4). The analysis needs the region GT (`make_gt_cache --region-sid
 **Two rules that are physics, not plumbing:** `REGLAYER=0` on every leg (it low-passes the depth axis, which
 is the measurement), and one `BETA_LSQ` for every leg in a comparison.
 
-## State (2026-09-25 morning)
+## State (2026-09-26) — first CEOS results are in, and mostly FAILED: diagnose before anything else
 
-**The CEOS sweep is on Blythe** (commit `f556b87`), submitted 2026-09-24 18:39 as three driver calls + one analysis job:
+**Results** (`~/Desktop/ceos80_analysis/analysis_round_a040-…_20260924_183951/summary.csv`, run on Blythe by
+`campaign/run_analysis.sh`; per-leg logs under `logs/`):
 
-| block | labels | pack job | state at handover |
-|---|---|---|---|
-| round controls | `round_a040`…`round_a080` (7) | 1291082 | done — tarball `atomfind_results_round_a040-…-round_a080_20260924_183859.tgz` |
-| CEOS low | `ceosopt_a040 _a050 _a060 _a065` | 1291107 | done — `atomfind_results_ceosopt_a040-…-ceosopt_a065_20260924_183900.tgz` |
-| CEOS high | `ceosopt_a070 _a075 _a080` (`PACK_H5=0`) | 1291126 | recons running/queued (1291109 first to start; each ~3–4.5 h; they need a whole GPU node each) |
-| analysis | all 14 labels, `GT_REGION=210` | job 1291127 | waits on the packs. **Its DEP was typed `1991082:…`** (should be 1291082); if `scontrol show job 1291127` still lists 1991082, `scontrol update jobid=1291127 dependency=afterany:1291126` |
+| outcome | legs | what the logs say |
+|---|---|---|
+| **worked** | CEOS 60, 65 (BIN 6, 35 Å window) | Pb/Ti/O 92/81/78 % and 88/65/74 %, z-RMS 0.85 / 0.86 Å; kernels the CLEANEST yet (peak/bg 899–1193 vs 379 before; **phase ramp 0.001 rad, was 0.28 — the point-sampling fix works**) |
+| **kernels: 0 grid atoms** | every BIN 12 leg (17.5 Å window): round 40/50/60/70, CEOS 40/50 | `extract_psf`: "only 0 grid atoms found in the inner 13 A", for Pb AND Ti (summary.csv showed only Ti — fixed) |
+| **saturated** | round 75, 80 (BIN 12); CEOS 70 (BIN 3), 80 (BIN 2); round 65's Pb leg | triage phase std 0.2–0.93, wrapped up to 1e-2 |
+| **junk** | CEOS 75 (BIN 3) | kernels are speckle ("156 atoms at 0.69 A spacing", peak/bg 24); Pb recall 7 % |
 
-The first submission (18:33 the day before) died: every sim GPU-OOM'd — fixed by the batched region scan (`f556b87`).
-Home quota was fixed by moving `~/.vscode-server` to `$SHARE/phucrh` with a symlink back (home now ~37 MB).
-
-**When the analysis job ends, pull only its tarball** (small: kernels, atomfind reports, figures, `summary.csv`):
+**Hypothesis 1 — windows too small for point sampling (my change).** Point sampling is exact only if the whole exit wave
+fits the window: probe tails plus electrons scattered sideways through the 27.5 Å slab (±~5 Å at 200 mrad). Whatever
+leaves the window aliases back in. The old 4×4 sum filtered those components, which is why 17.5 Å windows used to work;
+`plan_probe.region_geometry`'s thresholds (d99 < 15 → 17.5 Å) were calibrated on summed data. Evidence: every BIN 12
+leg fails at every α (even 40 mrad, 4 Å probe); every BIN 6 leg is clean. **Test (rows built, not run):**
+`round_a070_w35` and `ceosopt_a050_w35` = the same legs at a 35 Å window (BIN 6), ~40 min recons:
 ```bash
-mkdir -p ~/Desktop/ceos80_analysis && cd ~/Desktop/ceos80_analysis
-scp -O 'phucrh@blythe.scrtp.warwick.ac.uk:/springbrook/share/physics/phucrh/analysis_round_a040-*-ceosopt_a080_*.tgz' .
-tar xzf analysis_round_a040-*-ceosopt_a080_*.tgz
+CLEANDATA=1 TSV=campaign/ceos_sweep.tsv LABELS="round_a070_w35 ceosopt_a050_w35" bash campaign/run_thin_atomfind.sh
+LABELS="round_a070_w35 ceosopt_a050_w35" GT_REGION=210 DEP=<its pack job> bash campaign/run_analysis.sh
 ```
-Optional, for looking at objects: the round and CEOS-low sweep tarballs carry their (small) h5s; the CEOS-high one
-carries logs and sidecars only — its ~1 GB h5s stay on Blythe (`recon_af_ceosopt_a0{70,75,80}_*`).
+If both give clean kernels: raise the minimum window for point-sampled runs to 35 Å (region_geometry) and rerun the
+BIN 12 legs. (The alternative, the engine's own detector-upsampling model of a summed detector, costs a 16x bigger model.)
 
-**First things to check in the results**
-1. `summary.csv`: every label `status=ok` (else the log under `logs/`). Triage columns: wrapped ≤ ~5e-5, phase std ~0.1.
-2. The first region + point-sampled reconstructions: residual floors should sit BELOW the old 22.6 (70 mrad) / 5.8
-   (90 mrad) summed-detector values, and `extract_psf` should report almost no ramp (was ~0.28 rad at 70 mrad).
-   Recon logs: `[region] 210.0 x 210.0 A cut` (sim), and at 80 mrad `presolve widened to 1024 px`.
-3. The result wanted: per α, `ceosopt` vs `round` recall and z-RMS — does depth localisation keep improving to 80
-   mrad with the CEOS probe? 40 mrad is new ground (NL 4). 80 mrad uses dx 0.074 A and a ±133 mrad detector.
-4. Then, with the user's OK: ladder rows (a new step for the CEOS sweep), a figure, and the logbook
-   (https://claude.ai/artifact/7ve93UM6yqCmiRcbfNuiJM, rebuilt from `page/logbook.html`; last republished as v12).
+**Hypothesis 2 — large probes break the solve.** CEOS 70/75/80 (d90 25/35/49 Å) fail with 70–105 Å windows, so not
+aliasing; the round 110 mrad leg (d90 24.5 Å) failed the same way in the old campaign. Could be the solver (beta 0.05,
+200 iterations, step 0.95–1.85 Å) or a real limit. First look at the recon logs and `*_error_trace.csv` (diverging?
+stalling?) before changing anything; candidates: smaller BETA_LSQ, more iterations, smaller step / more positions.
 
-Older data: the fixed-engine six-fold analysis is in `~/Desktop/sixfold_0923_analysis` (tarballs `sixfold_0923_a70`,
-`_a90`); the region GT is at `~/Desktop/ceos_region_gt` (and on Blythe at `$SHARE/phucrh/gt_region210` once the
-analysis job builds it). Raw simulation data is deleted after packing (`CLEANDATA=1`); re-running a leg re-simulates.
+**Data to pull for the diagnosis** (the recon logs + error traces are in the sweep tarballs; the two light ones also
+carry their h5s, ~1–2 GB each; the heavy one has logs/sidecars only):
+```bash
+mkdir -p ~/Desktop/ceos80_sweeps && cd ~/Desktop/ceos80_sweeps
+scp -O 'phucrh@blythe.scrtp.warwick.ac.uk:/springbrook/share/physics/phucrh/atomfind_results_round_a040-*_20260924_183859.tgz' .
+scp -O 'phucrh@blythe.scrtp.warwick.ac.uk:/springbrook/share/physics/phucrh/atomfind_results_ceosopt_a040-*_20260924_183900.tgz' .
+scp -O 'phucrh@blythe.scrtp.warwick.ac.uk:/springbrook/share/physics/phucrh/atomfind_results_ceosopt_a070-*_20260924_183900.tgz' .
+for t in *.tgz; do mkdir -p "${t%.tgz}" && tar xzf "$t" -C "${t%.tgz}"; done
+```
+The heavy legs' h5s (~1 GB each) stay on Blythe at `recon_af_ceosopt_a0{70,75,80}_*/analysis/`.
+
+**Nothing from this sweep goes in the ladder, figures or logbook until both hypotheses are settled.**
+
+Older data: the fixed-engine six-fold analysis is in `~/Desktop/sixfold_0923_analysis`; the region GT at
+`~/Desktop/ceos_region_gt` and on Blythe `$SHARE/phucrh/gt_region210`. Raw sim data is deleted after packing.

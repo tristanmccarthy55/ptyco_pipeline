@@ -127,7 +127,7 @@ def main():
                       "--out", os.path.join(a.out, "psf")], os.path.join(a.out, "logs", f"extract_{name}.log"))
             psf[el] = os.path.join(a.out, "psf", f"psf_{name}_vol.npy")
             if rc or not os.path.exists(psf[el]):
-                row["status"] = f"KERNEL FAILED: {el} (logs/extract_{name}.log)"
+                row["status"] = (row["status"] + " " if row["status"] else "KERNEL FAILED:") + f" {el} (logs/extract_{name}.log)"
         if row["status"]:
             rows.append(row); print(f"{label}: {row['status']}"); continue
         outd = os.path.join(a.out, f"atomfind_{label}")
