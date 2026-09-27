@@ -165,6 +165,21 @@ LABELS="round_a070_w35 round_a080_w35 ceosopt_a050_w35" GT_REGION=210 DEP=<its p
 ```
 If they come back clean: minimum window 35 Å for point-sampled runs (`plan_probe.region_geometry`), rerun the BIN 12 legs.
 
+**Window test RESULT (2026-09-27, `~/Desktop/ceos_w35`, analysed locally in `analysis_local/`).** At a 35 Å window the
+50–70 mrad legs recover: kernels clean (25 atoms, peak/bg 494–1066, ramp 0.000); round 70: ε 0.050 → 0.030, Pb/Ti/O
+91/74/66 %, z-RMS 0.62 Å, precision 0.989 (old summed 70 Å-box a70: 98/82/75, 0.56 — the small gap is open); CEOS 50:
+68/53/52 %, z 1.11 Å (≈ old round a50 67/43/54, 1.20 — the CEOS probe costs nothing at 50). **So the minimum window for
+point-sampled runs must be 35 Å** — change `plan_probe.region_geometry` (17.5 Å only when...: never) and rerun the BIN 12 legs.
+**But round 80 still saturates at 35 Å (ε 0.47): a third problem at ≥75 mrad**, round and CEOS alike, although the old
+pipeline reconstructed a90/a100 at the same 35 Å window and 712 px. **Test (rows built, not run)** — round 80 in the OLD
+70 Å box (lazy scan path, no region) at BIN 2, once summed, once point-sampled:
+```bash
+CLEANDATA=1 DETECTOR_SAMPLING=sum TSV=campaign/ceos_sweep.tsv LABELS=round_a080_std_sum bash campaign/run_thin_atomfind.sh
+CLEANDATA=1 TSV=campaign/ceos_sweep.tsv LABELS=round_a080_std_pt bash campaign/run_thin_atomfind.sh
+```
+sum works + pt fails → point sampling is the cause at high α; both work → the region box / batched sim; both fail →
+the round a080 balance (C3 −7 µm, C1 −100 Å) or the solve at NL 18. Judge on the error trace + triage (fast), then kernels.
+
 **Hypothesis 2 — large probes break the solve.** CEOS 70/75/80 spill only 0.03–0.1 % outside their 70–105 Å windows, so
 not geometry. Round 110 (d90 24.5 Å) failed the same way in the old campaign. No crash; the fit is poor from the first
 full-engine iteration (70, 80) or fits while the object is speckle (75). Next: look at the objects (h5s on Blythe,

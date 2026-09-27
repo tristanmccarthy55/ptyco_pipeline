@@ -37,3 +37,10 @@ ceosopt_a080	80	10000000.0	-42000.0	26.4	-	2	0	{"C30":-42000.0,"C50":10000000.0,
 round_a070_w35	70	1e7	-50000	-60	-30	6	0	-	WINDOW TEST (35 A, BIN 6) of round_a070: round control: d90 4.0 A, d99 10.3 A; window 17.5 A	210	20	0.5	200
 ceosopt_a050_w35	50	10000000.0	-20700.0	1.0	-	6	0	{"C30":-20700.0,"C50":10000000.0,"C12":1.575,"phi12":2.001074,"C21":216.8,"phi21":0.670012,"C23":47.2505,"phi23":0.085815,"C32":1260.0128,"phi32":0.051923,"C34":1260.0128,"phi34":1.277482,"C43":31500.32,"phi43":1.911671,"C41":100000.0,"phi41":3.811605,"C45":100000.0,"phi45":0.916712,"C56":10000000.0,"phi56":0.569283}	WINDOW TEST (35 A, BIN 6) of ceosopt_a050: CEOS fought (floor): d90 4.8 A, d99 10.8 A; B2 -22 nm vs B4; window 17.5 A	210	20	0.5	200
 round_a080_w35	80	1e7	-70000	-100	-26	6	0	-	WINDOW TEST (35 A, BIN 6) of round_a080: round control: d90 4.0 A, d99 11.3 A; window 17.5 A	210	20	0.5	200
+# 2026-09-27 HIGH-ALPHA TEST: round_a080 saturates even at a 35 A window (w35), while round_a070_w35 and ceosopt_a050_w35
+# came back clean. The old pipeline reconstructed a90/a100 at the same 35 A window. These run round_a080 in the OLD
+# 70 A box (side '-': no region, so the lazy scan path) at BIN 2 = 35 A: submit _std_sum with DETECTOR_SAMPLING=sum
+# and _std_pt with the default point sampling. sum works + pt fails -> point sampling; both work -> region/batched sim;
+# both fail -> the round a080 balance itself.
+round_a080_std_sum	80	1e7	-70000	-100	-26	2	0	-	HIGH-ALPHA TEST in the old 70 A box, BIN 2 (35 A); detector SUM	-	-	-	-
+round_a080_std_pt	80	1e7	-70000	-100	-26	2	0	-	HIGH-ALPHA TEST in the old 70 A box, BIN 2 (35 A); detector point	-	-	-	-
