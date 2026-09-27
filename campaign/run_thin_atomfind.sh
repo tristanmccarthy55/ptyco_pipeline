@@ -158,12 +158,13 @@ RIDS=(); SIM_DIRS=()          # SIM_DIRS: this submission's own sim dirs, for CL
 ROWS="$ALPHAS"; [ -n "$LABELS" ] && ROWS="$LABELS"
 for a in $ROWS; do
     if [ -n "$LABELS" ]; then       # by label: alpha and the full aberration JSON come from the row
-        read -r alpha c3 c1 bin aj side win step detmax < <(awk -F'\t' -v L="$a" '$1!~/^#/ && $1==L {
-            for (i = 11; i <= 14; i++) if ($i == "") $i = "-"
-            print $2"\t"$4"\t"$5"\t"$7"\t"$9"\t"$11"\t"$12"\t"$13"\t"$14}' "$TSV")
-        ROW_SIDE=""; ROW_WIN=""; ROW_STEP=""; ROW_DETMAX=""     # [region] per-row geometry, "-" = driver default
+        read -r alpha c3 c1 bin aj side win step detmax rnl < <(awk -F'\t' -v L="$a" '$1!~/^#/ && $1==L {
+            for (i = 11; i <= 15; i++) if ($i == "") $i = "-"
+            print $2"\t"$4"\t"$5"\t"$7"\t"$9"\t"$11"\t"$12"\t"$13"\t"$14"\t"$15}' "$TSV")
+        ROW_SIDE=""; ROW_WIN=""; ROW_STEP=""; ROW_DETMAX=""; ROW_NL=""   # [region] per-row geometry, "-" = driver default
         [ "${side:--}" != "-" ] && ROW_SIDE="$side"; [ "${win:--}" != "-" ] && ROW_WIN="$win"
         [ "${step:--}" != "-" ] && ROW_STEP="$step"; [ "${detmax:--}" != "-" ] && ROW_DETMAX="$detmax"
+        [ "${rnl:--}" != "-" ] && ROW_NL="$rnl"
         [ -n "${bin:-}" ] || { echo "  ${a}: not in $TSV, skipping" >&2; continue; }
         leg="$a"
     else
@@ -172,6 +173,9 @@ for a in $ROWS; do
         alpha="$a"; aj="-"; leg="a${a}"
     fi
     nl=$(nl_full "$alpha")
+    # col 15 (nl_force) of a LABELS row forces its NL (a slice-count test that keeps the row's own label, sim and
+    # kernels together); the NL env var still wins. Col 8 is not used: older tsvs carry stale values there.
+    [ -z "${NL:-}" ] && [ -n "${ROW_NL:-}" ] && nl="$ROW_NL"
     line="$(printf '%-14s bin=%s NL=%-2s ' "${leg}${SFX}" "$bin" "$nl")"
     [ -n "${ROW_SIDE:-}" ] && line+="box=${ROW_SIDE} win=${ROW_WIN:-$WIN} step=${ROW_STEP:-$STEP} det=${ROW_DETMAX:-200} class=$(res_class "$bin") "
     for m in $MODES; do                       # MODES="Pb Ti" re-does only the PSF kernels

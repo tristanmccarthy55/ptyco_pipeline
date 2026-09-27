@@ -39,11 +39,26 @@ if [ ${#RDIRS[@]} -gt 0 ]; then
     find "${RDIRS[@]}" -name 'slurm_*.out'                    2>/dev/null >>"$list" || true
 fi
 # sim provenance (small). Real files only: a Poisson copy links these back to its noiseless sim,
-# which is packed itself.
-find "sim_out_${CAMP}_"*    -name 'probe_initial_true.mat' -type f 2>/dev/null >>"$list" || true
-find "sim_out_${CAMP}_"*    -name 'sim_meta.mat'           -type f 2>/dev/null >>"$list" || true
-find "sim_out_${CAMP}_"*    -name 'aberrations.json'       -type f 2>/dev/null >>"$list" || true
-find "sim_out_${CAMP}_"*    -name 'poisson_noise.json'     -type f 2>/dev/null >>"$list" || true
+# which is packed itself. With PACK_DIRS_FILE, only the sims THIS submission's recons read: a recon's
+# 01/sim_meta.mat is a symlink into its sim dir (and a Poisson copy's into the noiseless sim, hence
+# readlink -f as well). Until 2026-09-27 every sim_out_<campaign>_* on the share was packed: a one-label
+# tarball carried 169 other runs' probes, 475 of its 940 MB. Falls back to the old glob if no link resolves.
+SDIRS=()
+if [ -n "${PACK_DIRS_FILE:-}" ] && [ ${#RDIRS[@]} -gt 0 ]; then
+    for d in "${RDIRS[@]}"; do
+        l="$d/01/sim_meta.mat"; [ -L "$l" ] || continue
+        for t in "$(readlink "$l")" "$(readlink -f "$l")"; do
+            s="$(basename "$(dirname "$(dirname "$t")")")"; [ -d "$s" ] && SDIRS+=("$s")
+        done
+    done
+fi
+if [ ${#SDIRS[@]} -eq 0 ]; then
+    for s in "sim_out_${CAMP}_"*; do [ -d "$s" ] && SDIRS+=("$s"); done
+fi
+if [ ${#SDIRS[@]} -gt 0 ]; then
+    find "${SDIRS[@]}" -type f \( -name 'probe_initial_true.mat' -o -name 'sim_meta.mat' \
+         -o -name 'aberrations.json' -o -name 'poisson_noise.json' \) 2>/dev/null | sort -u >>"$list" || true
+fi
 [ -n "$TSV" ] && [ -f "$TSV" ] && echo "$TSV" >>"$list"
 n=$(wc -l <"$list")
 if [ "$n" -eq 0 ]; then echo "pack: nothing found for campaign '${CAMP}'" >&2; rm -f "$list"; exit 1; fi

@@ -162,10 +162,13 @@ MAX_NDP = 1424            # the largest pattern the engine has run (BIN 1 of the
 
 def region_geometry(d90, d99, side=REGION_SIDE):
     """(bin, window, detmax, win, step, runnable) for a probe in a SIDE-A region box. Window from d99 on the old
-    thresholds (17.5 / 35 / 70 A windows held d99 < 15 / 31 / 62), plus 105; bin = side / window; the detector is
-    recorded to +-200 mrad unless the window needs a crop to keep N <= MAX_NDP; the scan field keeps scan/d90 >= 1.5
-    (Rule 4) at 1600 positions; runnable while scan + d99 leaves >= 10 A to the seam on each side."""
-    window = next(w for w, lim in ((17.5, 15), (35.0, 31), (70.0, 62), (105.0, 93), (side, 1e9)) if d99 < lim)
+    thresholds (35 / 70 A windows held d99 < 31 / 62), plus 105; bin = side / window; the detector is recorded to
+    +-200 mrad unless the window needs a crop to keep N <= MAX_NDP; the scan field keeps scan/d90 >= 1.5 (Rule 4)
+    at 1600 positions; runnable while scan + d99 leaves >= 10 A to the seam on each side.
+    MINIMUM WINDOW 35 A (2026-09-27). The old 17.5 A window (d99 < 15) worked only with the summed detector: with
+    point sampling every 17.5 A leg failed (grid kernels 0 atoms at 40-70 mrad), and the same legs at 35 A
+    recovered (round 70: residual eps 0.050 -> 0.030, Pb/Ti/O 91/74/66 %; CEOS 50 = old round 50)."""
+    window = next(w for w, lim in ((35.0, 31), (70.0, 62), (105.0, 93), (side, 1e9)) if d99 < lim)
     binf = int(round(side / window))
     detmax = min(200, int(MAX_NDP * LAM / (2 * window) * 1e3))
     win = max(20, int(np.ceil(1.5 * d90)))

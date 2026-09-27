@@ -246,7 +246,18 @@ finishup = utils.onCleanup(@(x) ptycho_exit(x), p);
                 
                 
                 fdb = [];
-                
+
+                % [diagnostic 2026-09-27] print each engine's Fourier-error trace. The sidecar CSV
+                % (run_synthetic_recon_ML.m) holds only the LAST engine's, and round 80 dies in the
+                % presolve: with nothing else logged, "starts high" and "diverges" look the same.
+                % Print only; save_to_p leaves this engine's trace in p.error_metric.
+                try
+                    em = p.error_metric;
+                    verbose(1, 'engine %d error trace (iteration:error): %s', ieng, ...
+                        sprintf('%d:%.5g ', [double(em.iteration(:)), double(em.value(:))]'));
+                catch
+                end
+
                 if p.ortho_probes && size(p.probes,4)>1
                     % orthogonalize probes
                     p.probes = core.probe_modes_ortho(p.probes);

@@ -189,6 +189,36 @@ region box / batched sim causes the ≥75 mrad failure.** Remaining suspects: th
 — if it works the chain is fine at high α and the 75/80 rows are the problem; (2) round 80 at the smallest-probe
 ("floor") balance instead of 4 Å-by-defocus; (3) only then the slice count. The CEOS 75/80 legs share whatever this is.
 
+**High-α diagnosis (2026-09-27 evening) — facts checked locally, tests BUILT, NOT RUN.**
+- *Test (2) as written is void*: the round 80 row (C3 −7 µm, C1 −100 Å, d90 4.02 Å) already sits at the smallest-probe
+  balance (C3 −7 µm, C1 −96 Å, d90 3.77 Å; searched C3 −12…−2 µm with the planner's own probe builder). "4 Å by heavy
+  defocus" is not what round 80 is. (At 75 it is: floor 2.87 Å at C1 −68, row −80.)
+- *The probe is sampled fine*: the packed round 80 probe (old box, 35 Å) has d90 4.01 / d99 10.8 Å and 3e-4 of its
+  intensity beyond 0.45 W — better contained than the a90 probe that worked (6.5 / 15.3 Å, 5e-4).
+- *The object is lost before the full engine*: failed legs have phase std 1.0–1.3 rad in EVERY layer, vacuum included,
+  |O| 0–1.6, near-Nyquist noise (good round 70 w35: 0.003 rad in vacuum, 0.05–0.08 in the slab). The full engine starts
+  at ε 0.46–0.62 (round 70: 0.08), jumps at iteration 12 (201, 241) and never recovers. The presolve's trace was never
+  recorded — `core/ptycho_recons.m` now prints every engine's trace to the slurm log (`engine 1 error trace`).
+- *Nothing in the recon driver depends on NL or α* except the presolve guard, which did not fire.
+
+The tests (rows `hia_*` in `ceos_sweep.tsv`; each changes ONE thing against a leg we have):
+
+| label | against | changes | if it works |
+|---|---|---|---|
+| `hia_a090_w35` (lab+Pb+Ti) | old a90, 95/94/95 %, z 0.37 | region + point + today's engine | the chain is fine at 90; compare recall |
+| `hia_a090_std_sum` (lab, `DETECTOR_SAMPLING=sum`) | old a90 | today's engine only | only matters if the first fails: engine vs new sim |
+| `hia_a080_nl14`, `hia_a080_nl23` (lab) | round_a080_w35 (NL 18) | slice count only (col 15 `nl_force`) | NL 16/18 is the cause |
+| `hia_a080_k90` (lab) | round_a080_w35 | a90's C3/C1 at 80 mrad: d50/d90/d99 4.5/5.6/6.9 vs 2.2/4.0/11.3 Å | the round 80 probe is the cause |
+
+Judge on the error trace, the layer stats (phase std in vacuum layers) and, for `hia_a090_w35`, recall.
+NL 14/16/18 are also what CEOS 70/75/80 ran: if the slice count is the cause, job 3 (large CEOS probes) may share it.
+
+**Window rule DONE (2026-09-27)**: `plan_probe.region_geometry` minimum window 35 Å; the BIN 12 rows of
+`ceos_sweep.tsv` are BIN 6. Rerun: round 40–70 + CEOS 40/50 (70 and CEOS 50 repeat their w35 runs: a free run-to-run
+spread). Round 75/80 wait on the diagnosis.
+**Packing (2026-09-27)**: `pack_results.sh` now packs only the sims this submission's recons link to — a one-label
+tarball was 940 MB, 475 MB of it 169 other runs' probes.
+
 **Hypothesis 2 — large probes break the solve.** CEOS 70/75/80 spill only 0.03–0.1 % outside their 70–105 Å windows, so
 not geometry. Round 110 (d90 24.5 Å) failed the same way in the old campaign. No crash; the fit is poor from the first
 full-engine iteration (70, 80) or fits while the object is speckle (75). Next: look at the objects (h5s on Blythe,

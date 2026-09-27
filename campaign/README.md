@@ -157,7 +157,10 @@ planner (probe size → real-space window); `nl` recon layers (Nyquist of λ/α�
 `-` = round-only (use c3/c5), else a full abTEM Cnm/phi dict that **overrides** c3/c5 (non-round).
 
 Optional columns 11–14 (`side win step detmax`, `ceos_sweep.tsv`): the row's region box side [Å], scan field
-[Å], scan step [Å] and recorded detector angle [mrad]; `-` or absent = the driver's defaults.
+[Å], scan step [Å] and recorded detector angle [mrad]; `-` or absent = the driver's defaults. Optional column 15
+(`nl_force`, LABELS rows only) forces the row's recon layer count; `-` or absent = Nyquist; the `NL` env var still
+wins. Column 8 `nl` stays unread by `run_thin_atomfind.sh` (older tsvs carry stale values there).
+Region windows are at least 35 Å (`region_geometry`, 2026-09-27): 17.5 Å fails with the point-sampled detector.
 
 ## Results / analysis
 Each `*_recons.h5` holds the object volume (`reconstruction/object`, **NL×1×753×753** — NL varies
