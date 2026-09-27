@@ -180,6 +180,15 @@ CLEANDATA=1 TSV=campaign/ceos_sweep.tsv LABELS=round_a080_std_pt bash campaign/r
 sum works + pt fails → point sampling is the cause at high α; both work → the region box / batched sim; both fail →
 the round a080 balance (C3 −7 µm, C1 −100 Å) or the solve at NL 18. Judge on the error trace + triage (fast), then kernels.
 
+**High-α test RESULT (2026-09-27, `~/Desktop/ceos_a80std`).** round 80 in the OLD 70 Å box at BIN 2 fails with the
+summed detector (ε 0.46) AND point sampling (ε 0.44) — exactly as in the region box. So **neither point sampling nor the
+region box / batched sim causes the ≥75 mrad failure.** Remaining suspects: the planner's round 75/80 rows themselves
+(C3 −6/−7 µm, C1 −80/−100 Å: the 4 Å target reached by heavy defocus, "free"/"floor; ok" regime) or the solve at NL
+16/18. The old pipeline reconstructed a90 (C3 −9 µm, C1 −160 Å, the smallest probe, NL 23, BIN 2, summed) cleanly
+(step-0 ladder row). **Next tests, cheapest first:** (1) the OLD a90 row through the new chain (region, point, BIN 6)
+— if it works the chain is fine at high α and the 75/80 rows are the problem; (2) round 80 at the smallest-probe
+("floor") balance instead of 4 Å-by-defocus; (3) only then the slice count. The CEOS 75/80 legs share whatever this is.
+
 **Hypothesis 2 — large probes break the solve.** CEOS 70/75/80 spill only 0.03–0.1 % outside their 70–105 Å windows, so
 not geometry. Round 110 (d90 24.5 Å) failed the same way in the old campaign. No crash; the fit is poor from the first
 full-engine iteration (70, 80) or fits while the object is speckle (75). Next: look at the objects (h5s on Blythe,
