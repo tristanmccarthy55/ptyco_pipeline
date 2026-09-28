@@ -20,7 +20,8 @@ consumes it directly via cfg.single_atom_vol / cfg.ti_kernel_vol.
 --zdrop is the z-vacuum band in LAYERS dropped at each end: round(z_vacuum / dz), i.e.
 1/2/3/4 at a50/70/90/100 for the thin campaign (4 A vacuum). --single restores the original
 one-blob extraction, for reproducing kernels made before 2026-09-11.
-<recon_dir> holds .../Niter*.mat (newest used) or *_recons.h5. Writes psf_<name>_vol.npy (+ _check.png).
+<recon_dir> is a *_recons.h5, or a recon dir: its newest *_recons.h5 is used (never one under analysis.prev_*),
+and Niter*.mat only when it has no h5. Writes psf_<name>_vol.npy (+ _check.png).
 """
 import argparse, glob, os
 import numpy as np
@@ -31,12 +32,21 @@ DX_DEFAULT = 0.0492          # A/px, the campaign object pixel (p/dx_spec)
 
 
 def load_vol(recon_dir):
-    mats = glob.glob(os.path.join(recon_dir, "**", "Niter*.mat"), recursive=True)
+    # The FINAL object is the *_recons.h5. A recon dir on Blythe also holds the engines' Niter*.mat checkpoints
+    # (01/MLs_*_stepNN/: one per engine, the half-resolution presolve included, and one set per earlier run of the
+    # leg), all called Niter<NITER>.mat. This used to look for those FIRST and take whichever the filesystem listed
+    # last: from 2026-09-24 to 09-27 that was the presolve or the previous run, giving "0 grid atoms" for every
+    # BIN 12 kernel and CEOS 75's "speckle" (local copies of the same legs, which carry only the h5, were clean).
+    # Niter*.mat is now a fallback for recons that predate the h5.
+    if os.path.isfile(recon_dir):
+        rec = [recon_dir]
+    else:
+        rec = [r for r in glob.glob(os.path.join(recon_dir, "**", "*_recons.h5"), recursive=True)
+               if "analysis.prev" not in r]
+    mats = [] if rec else glob.glob(os.path.join(recon_dir, "**", "Niter*.mat"), recursive=True)
     if not mats:
-        # newer PtychoShelves writes *_recons.h5 (reconstruction/object) instead of Niter*.mat
-        rec = glob.glob(os.path.join(recon_dir, "**", "*_recons.h5"), recursive=True)
         if not rec:
-            raise SystemExit(f"no Niter*.mat or *_recons.h5 under {recon_dir}")
+            raise SystemExit(f"no *_recons.h5 or Niter*.mat under {recon_dir}")
         m = sorted(rec, key=os.path.getmtime)[-1]
         with h5py.File(m, "r") as f:
             obj = f["reconstruction"]["object"][:]           # (NL,1,Ny,Nx) or (NL,Ny,Nx) complex

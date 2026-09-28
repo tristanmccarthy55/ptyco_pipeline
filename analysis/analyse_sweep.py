@@ -123,7 +123,8 @@ def main():
         psf = {}
         for el in ("Pb", "Ti"):
             name = f"{el}_{label}"
-            rc = run([a.python, extract, dirs[el], name, "--zdrop", str(g["zdrop"]), "--dx", f"{g['dx_A']:.6f}",
+            # the h5 itself, not the dir: extract_psf once took an engine checkpoint from the dir (presolve / old run)
+            rc = run([a.python, extract, h5s[el], name, "--zdrop", str(g["zdrop"]), "--dx", f"{g['dx_A']:.6f}",
                       "--out", os.path.join(a.out, "psf")], os.path.join(a.out, "logs", f"extract_{name}.log"))
             psf[el] = os.path.join(a.out, "psf", f"psf_{name}_vol.npy")
             if rc or not os.path.exists(psf[el]):

@@ -15,9 +15,10 @@
 # field keeps scan/d90 >= 1.5 at 1600 positions. Seam margin >= 30 A beyond scan + d99 at 80 mrad.
 # Analysis: GT = make_gt_cache --thin-cells 5 --z-vacuum 4 --region-side 210; atomfind --set scan_center_xy=105,105
 # and each leg's dx from its h5 (0.0494 A at BIN 12 ... 0.074 A at 80 mrad).
-# MINIMUM WINDOW 35 A (2026-09-27, plan_probe.region_geometry): with the point-sampled detector every 17.5 A
-# (BIN 12) leg failed and the same legs at 35 A recovered (window test below). The BIN 12 rows are now BIN 6;
-# round_a070_w35 and ceosopt_a050_w35 are the first 35 A runs of round_a070 and ceosopt_a050.
+# WINDOW: the 35 A minimum imposed on 2026-09-27 was WITHDRAWN on 09-28. Its evidence ("17.5 A kernels: 0 grid atoms")
+# was extract_psf reading an engine checkpoint on Blythe; from the h5 every 17.5 A kernel is clean and round 70 at
+# 17.5 A gives 98/83/81 %, z 0.56 A. The round_a040..a080 and ceosopt_a040/050 rows below say BIN 6 because that is
+# what those labels last ran (the 09-27 rerun); their 17.5 A runs are the 2026-09-24 sweep. Both windows work.
 # Optional col 15 nl_force: forces that row's recon layer count ('-' or absent = Nyquist over the full box).
 label	alpha	c5	c3	c1	df_perf	bin	nl	aber_json	note	side	win	step	detmax	nl_force
 round_a040	40	1e7	10000	-18	-48	6	0	-	round control: d90 4.0 A, d99 11.1 A; window 35 A (17.5 A until 2026-09-27)	210	20	0.5	200
@@ -63,3 +64,24 @@ hia_a090_std_sum	90	1e7	-90000	-160	-24	2	0	-	HIGH-ALPHA TEST: old a90 configura
 hia_a080_nl14	80	1e7	-70000	-100	-26	6	0	-	HIGH-ALPHA TEST: round_a080_w35 at NL 14 (Nyquist 18)	210	20	0.5	200	14
 hia_a080_nl23	80	1e7	-70000	-100	-26	6	0	-	HIGH-ALPHA TEST: round_a080_w35 at NL 23 (Nyquist 18)	210	20	0.5	200	23
 hia_a080_k90	80	1e7	-90000	-160	-	6	0	-	HIGH-ALPHA TEST: a90 knobs at 80 mrad; d90 5.6 A, d99 6.9 A; window 35 A	210	20	0.5	200	-
+# 2026-09-28 RESULTS of the hia_* tests: the chain works at 90 (hia_a090_w35 95/85/87 %, z 0.42); round 80's probe diverges
+# IN THE PRESOLVE from iteration 2 at NL 18 and 23 and converges at NL 14 (eps 0.073), while a90's knobs at 80 mrad converge
+# at NL 18 (eps 0.027). Candidate rule (fits every compact-probe leg, not yet tested ahead of a run): the probe's intensity
+# must change >~6 % per recon slice through the box (ok 0.062-0.077, diverged <= 0.042; scratch probe_depth metric).
+# ROUND 75/80 CONTROLS that keep the 4 A-class probe but are stable at Nyquist slicing:
+#   round_a075_b8  C3 -8 um, C1 -130 A: d50/d90/d99 3.0/4.1/5.2 A (planner row 1.4/4.1/10.9), 5.6 %/slice at NL 16 -- inside
+#                  the untested 4.2-6.2 % gap, so it also tests the rule
+#   round_a080_b9  = hia_a080_k90 (C3 -9 um, C1 -160 A; d90 5.6 A, 7.7 %/slice), now with kernels; its lab repeats hia_a080_k90
+round_a075_b8	75	1e7	-80000	-130	-28	6	0	-	round control, stable balance: C3 -8 um, C1 -130 A; d90 4.1 A, d99 5.2 A; window 35 A	210	20	0.5	200	-
+round_a080_b9	80	1e7	-90000	-160	-26	6	0	-	round control, stable balance (= hia_a080_k90): C3 -9 um, C1 -160 A; d90 5.6 A, d99 6.9 A; window 35 A	210	20	0.5	200	-
+# 2026-09-28 LARGE CEOS PROBES (job 3). CEOS 75 was never judged: its kernels were the extract_psf checkpoint bug and its
+# lab object is healthy (eps 0.075, vacuum phase std 0.006) -- re-analysed, not re-run. CEOS 70 half-fails (eps 0.27) and
+# CEOS 80 fails (0.45). The large probes change only 1-2 %/slice (CEOS 60/65, which work: 2.1/2.0 %). Each row changes ONE
+# thing against ceosopt_a070 / a080 (scan 38 A / 74 A at 0.95 / 1.85 A step, 1600 positions, Nyquist NL):
+#   *_f20   scan 20 A at 0.5 A (the round legs' scan, 1600 positions): drops Rule 4 (scan/d90 0.8 / 0.4) and fines the step
+#   *_s05   scan 38 A at 0.5 A (76 x 76 = 5776 positions, ~19 h recon): the step alone
+#   *_nl10  NL 10 (Nyquist 14; 1.9 %/slice, CEOS 65's level): the slice count alone
+ceosopt_a070_f20	70	10000000.0	-35100.0	9.3	-	3	0	{"C30":-35100.0,"C50":10000000.0,"C12":0.8036,"phi12":2.001074,"C21":356.7,"phi21":0.670012,"C23":17.2196,"phi23":0.085815,"C32":327.9917,"phi32":0.051923,"C34":327.9917,"phi34":1.277482,"C43":5856.9941,"phi43":1.911671,"C41":100000.0,"phi41":3.811605,"C45":100000.0,"phi45":0.916712,"C56":10000000.0,"phi56":0.569283}	CEOS 70 scan 20 A at 0.5 A (was 38 A at 0.95)	210	20	0.5	200	-
+ceosopt_a080_f20	80	10000000.0	-42000.0	26.4	-	2	0	{"C30":-42000.0,"C50":10000000.0,"C12":0.6152,"phi12":2.001074,"C21":410.6,"phi21":0.670012,"C23":11.5358,"phi23":0.085815,"C32":192.2627,"phi32":0.051923,"C34":192.2627,"phi34":1.277482,"C43":3004.1046,"phi43":1.911671,"C41":100000.0,"phi41":3.811605,"C45":100000.0,"phi45":0.916712,"C56":10000000.0,"phi56":0.569283}	CEOS 80 scan 20 A at 0.5 A (was 74 A at 1.85)	210	20	0.5	133	-
+ceosopt_a070_s05	70	10000000.0	-35100.0	9.3	-	3	0	{"C30":-35100.0,"C50":10000000.0,"C12":0.8036,"phi12":2.001074,"C21":356.7,"phi21":0.670012,"C23":17.2196,"phi23":0.085815,"C32":327.9917,"phi32":0.051923,"C34":327.9917,"phi34":1.277482,"C43":5856.9941,"phi43":1.911671,"C41":100000.0,"phi41":3.811605,"C45":100000.0,"phi45":0.916712,"C56":10000000.0,"phi56":0.569283}	CEOS 70 scan 38 A at 0.5 A, 5776 positions (step only)	210	38	0.5	200	-
+ceosopt_a070_nl10	70	10000000.0	-35100.0	9.3	-	3	0	{"C30":-35100.0,"C50":10000000.0,"C12":0.8036,"phi12":2.001074,"C21":356.7,"phi21":0.670012,"C23":17.2196,"phi23":0.085815,"C32":327.9917,"phi32":0.051923,"C34":327.9917,"phi34":1.277482,"C43":5856.9941,"phi43":1.911671,"C41":100000.0,"phi41":3.811605,"C45":100000.0,"phi45":0.916712,"C56":10000000.0,"phi56":0.569283}	CEOS 70 at NL 10 (Nyquist 14; slice count only)	210	38	0.95	200	10

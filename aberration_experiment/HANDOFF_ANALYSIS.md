@@ -139,6 +139,35 @@ is the measurement), and one `BETA_LSQ` for every leg in a comparison.
 
 ## State (2026-09-26) — first CEOS results are in, and mostly FAILED: diagnose before anything else
 
+### 2026-09-28 — read this first; it overturns parts of what follows
+
+**An analysis bug made several "failures".** `extract_psf.load_vol` looked for engine checkpoints (`Niter*.mat`) before
+the h5. On Blythe a recon dir holds one per engine — the half-resolution presolve too — and one set per earlier run, all
+`Niter200.mat`, so `run_analysis.sh` read whichever the filesystem listed (the logs name the file: CEOS 60/65 got the
+full solve by luck, CEOS 75 the presolve). Local tarballs carry only the h5, so local analyses were right. Fixed: the h5
+first, never `analysis.prev_*`, and `analyse_sweep` passes the h5 itself. What changes:
+- **The 17.5 Å window works.** Every BIN 12 kernel is clean from its h5 (25 atoms, peak/bg 101–799). Re-scored locally
+  (`~/Desktop/ceos80_sweeps/analysis_local_fixed`): round 70 **98/83/81 %, z 0.56 Å** (= old a70 row; its 35 Å run gave
+  91/74/66, 0.62), round 50 60/60/51 (1.04), round 60 91/82/71 (0.88), CEOS 50 69/58/61 (1.12; 35 Å: 68/53/52). Round 65's
+  Pb kernel leg genuinely half-failed (ε 0.11 → 0.066). The 40 mrad legs crash atomfind (`find.py` `np.gradient` on a
+  one-layer kernel at NL 4) at either window. **The 35 Å minimum is withdrawn** (`region_geometry` restored); the
+  09-27 rerun at 35 Å stands as the window comparison once re-analysed.
+- **CEOS 75 was never judged**: lab ε 0.075, vacuum phase std 0.006 — healthy. Re-analysis handed over.
+
+**Round 75/80, answered by the hia_* tests** (`~/Desktop/ceos_hia`): not the chain — `hia_a090_w35` gives 95/85/87 %,
+z 0.42 Å (old a90 95/94/95, 0.37) and `hia_a090_std_sum` converges (ε 0.021). Round 80's probe **diverges in the
+presolve from iteration 2** at NL 18/23 (presolve ε 0.13 → 0.65 at NL 23) and converges at NL 14 (ε 0.073); a90's knobs
+at 80 mrad converge at NL 18 (ε 0.027). Milder presolve rises appear in many legs and the full engine usually recovers.
+**Candidate rule** (fits every compact-probe leg we have; not yet tested ahead of a run): the probe's intensity pattern
+must change ≳ 6 % per recon slice through the box (worked 6.2–7.7 %, diverged ≤ 4.2 %; round 40 at NL 4 is the
+exception). Large CEOS probes change 1–2 % and still split, so it is not universal. Metric: 1 − mean Pearson r of
+|P(z)|² vs |P(z+dz)|², z over the 27.5 Å box, abTEM probe (session script; rebuild if needed).
+
+**Submitted 09-28** (rows at the end of `ceos_sweep.tsv`): round controls `round_a075_b8` (C3 −8 µm, C1 −130: d90 4.1,
+d99 5.2 Å, 5.6 %/slice — also tests the rule) and `round_a080_b9` (= hia_a080_k90 with kernels); large CEOS, one change
+each against ceosopt_a070/080: `_f20` (scan 20 Å at 0.5 Å, drops Rule 4 — which was never shown to help: widening
+a110's field did not rescue it), `_s05` (CEOS 70 scan 38 Å at 0.5 Å, 5776 positions — step only), `_nl10` (NL only).
+
 **Results** (`~/Desktop/ceos80_analysis/analysis_round_a040-…_20260924_183951/summary.csv`, run on Blythe by
 `campaign/run_analysis.sh`; per-leg logs under `logs/`):
 
@@ -213,7 +242,7 @@ The tests (rows `hia_*` in `ceos_sweep.tsv`; each changes ONE thing against a le
 Judge on the error trace, the layer stats (phase std in vacuum layers) and, for `hia_a090_w35`, recall.
 NL 14/16/18 are also what CEOS 70/75/80 ran: if the slice count is the cause, job 3 (large CEOS probes) may share it.
 
-**Window rule DONE (2026-09-27)**: `plan_probe.region_geometry` minimum window 35 Å; the BIN 12 rows of
+**Window rule (2026-09-27) — WITHDRAWN 09-28, see the top of this section**: `plan_probe.region_geometry` minimum window 35 Å; the BIN 12 rows of
 `ceos_sweep.tsv` are BIN 6. Rerun: round 40–70 + CEOS 40/50 (70 and CEOS 50 repeat their w35 runs: a free run-to-run
 spread). Round 75/80 wait on the diagnosis.
 **Packing (2026-09-27)**: `pack_results.sh` now packs only the sims this submission's recons link to — a one-label
