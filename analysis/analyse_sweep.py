@@ -18,7 +18,8 @@ old 70 A box's (the Rules: "geometry-coupled constants derived, not typed"):
     python analysis/analyse_sweep.py --root <dir holding recon_af_*> --gt <dir holding gt_prepared.npz> \\
         --labels round_a040 ceosopt_a080 --out <out dir>
 
-Writes <out>/phase/ (render_phase.py images of every leg, failed ones included), <out>/psf/ (kernels + extractor
+Writes <out>/phase/ (render_phase.py images of every leg, failed ones included), <out>/figdata/<label>/ (the lab
+volume in the finder's frame, figdata.py), <out>/psf/ (kernels + extractor
 logs), <out>/atomfind_<label>/ (report.json, figures), <out>/logs/,
 <out>/summary.csv (one row per label) and prints the table. A label whose recon fails triage (saturated phase, no
 h5) is reported and skipped, never analysed. The region GT is built with
@@ -105,7 +106,7 @@ def main():
         os.makedirs(os.path.join(a.out, sub), exist_ok=True)
     extract = os.path.join(HERE, "atomfind", "extract_psf.py")
     finder = os.path.join(HERE, "atomfind", "run_atomfind.py")
-    import relaxation_ladder, render_phase
+    import relaxation_ladder, render_phase, figdata
 
     rows = []
     for label in a.labels:
@@ -120,6 +121,15 @@ def main():
                     render_phase.render(h, os.path.join(a.out, "phase"), a.z_vacuum, 27.525)
                 except Exception as e:                       # an image must never cost the numbers
                     print(f"{label} {m}: phase image failed ({e})")
+        # figure data: the lab volume in the atom finder's own frame (figdata.py), for every leg with a lab h5 --
+        # failed ones too -- so figures can be drawn locally while the ~1 GB h5s stay here. ~5 MB a leg.
+        if h5s.get("lab"):
+            try:
+                g0 = geometry(dirs["lab"], h5s["lab"], a.z_vacuum)
+                figdata.save(h5s["lab"], a.gt, g0["dz_A"], g0["dx_A"], g0["scan_centre"],
+                             os.path.join(a.out, "figdata", label))
+            except Exception as e:
+                print(f"{label}: figure data failed ({e})")
         missing = [m for m in MODES if not h5s.get(m)]
         if missing:
             row["status"] = "NO H5: " + " ".join(missing); rows.append(row); print(f"{label}: {row['status']}"); continue
