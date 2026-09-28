@@ -99,6 +99,15 @@ ASSUMED_TABLEAU = {
 #: S5/R5 (C52/C54) are left out: CEOS names A5, A4, B4 as the limiting residuals. Orientations are one seeded
 #: uniform draw per term (the angle of an m-fold term is only defined modulo 2pi/m); probe sizes vary < 1 A across
 #: draws. The simulation energy stays 300 keV (the campaign's), though the target era's column is 200 keV.
+#: ASSUMPTION -- probably OPTIMISTIC (flagged 2026-09-29): with alpha given, ceos_tableau() sets every operator-tuned
+#: term (A1 A2 S3 A3 D4) to CEOS_DESIGN_WAVES = 0.1 waves at the edge of THAT aperture, i.e. the operator re-runs the
+#: corrector tuning after opening the aperture and reaches the same accuracy as at the 30 mrad design aperture. CEOS
+#: lists these terms as adjustable, but how well they can be measured and nulled past the design aperture is NOT known,
+#: and holding 0.1 waves means the coefficients must shrink as the aperture opens (D4 96 um at 40 mrad -> 3 um at 80,
+#: ~30x finer). The other bound is alpha=None ("as built": tuned to 0.1 waves at 30 mrad and left, each term then grows
+#: as alpha^(n+1): at 80 mrad A1 0.7, A2 1.9, S3/A3 5, D4 13 waves) -- probably too pessimistic, since an operator
+#: would retune something. The real instrument lies between. Every ceosopt_* row uses the optimistic retuned case;
+#: ceosbuilt_a080 is the pessimistic bound at 80 mrad (2026-09-29).
 CEOS_DESIGN_MRAD, CEOS_DESIGN_WAVES, CEOS_A5_A, CEOS_SEED = 30.0, 0.1, 1.0e7, 0
 CEOS_PARASITIC_A = 1.0e5        # A4, B4 = 10 um (central; see above)
 CEOS_TUNED = ["C12", "C21", "C23", "C32", "C34", "C43"]

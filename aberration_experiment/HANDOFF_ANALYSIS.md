@@ -139,6 +139,17 @@ is the measurement), and one `BETA_LSQ` for every leg in a comparison.
 
 ## State (2026-09-26) — first CEOS results are in, and mostly FAILED: diagnose before anything else
 
+### ASSUMPTION TO CARRY INTO EVERY CEOS NUMBER (flagged by the user 2026-09-29)
+
+Every `ceosopt_*` row assumes the operator **re-tunes the adjustable terms (A1, A2, S3, A3, D4) to 0.1 waves at the
+edge of each new aperture** — the corrector reaching the same accuracy as at its 30 mrad design aperture
+(`aberration_waves.ceos_tableau(alpha=...)`). That is **probably optimistic**: CEOS lists the terms as adjustable, but
+how well they can be measured and nulled past the design aperture is not known, and holding 0.1 waves means the
+coefficients shrink with the aperture (D4 96 µm at 40 mrad → 3 µm at 80). The other bound, **tuned at 30 mrad and
+left** (`alpha=None`), leaves at 80 mrad 0.7 / 1.9 / 5 / 5 / 13 waves of A1 / A2 / S3 / A3 / D4 on top of 22 of A5 —
+probably too pessimistic. The real instrument lies between. `ceosbuilt_a080` (below) is that pessimistic bound at 80
+mrad on the 20 Å scan. Say this wherever a CEOS result is quoted.
+
 ### 2026-09-28 — read this first; it overturns parts of what follows
 
 **An analysis bug made several "failures".** `extract_psf.load_vol` looked for engine checkpoints (`Niter*.mat`) before

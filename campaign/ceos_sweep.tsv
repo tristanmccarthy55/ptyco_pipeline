@@ -97,3 +97,10 @@ ceosopt_a070_nl10	70	10000000.0	-35100.0	9.3	-	3	0	{"C30":-35100.0,"C50":1000000
 #   round_a075_b7     a 4 A round 75 predicted stable BEFORE running: C3 -7 um, C1 -120 A, d50/d90/d99 1.9/3.9/8.8 A, 7.2 %/slice
 ceosopt_a075_f20	75	10000000.0	-36700.0	25.6	-	3	0	{"C30":-36700.0,"C50":10000000.0,"C12":0.7,"phi12":2.001074,"C21":318.3,"phi21":0.670012,"C23":14.0001,"phi23":0.085815,"C32":248.8914,"phi32":0.051923,"C34":248.8914,"phi34":1.277482,"C43":4148.1903,"phi43":1.911671,"C41":100000.0,"phi41":3.811605,"C45":100000.0,"phi45":0.916712,"C56":10000000.0,"phi56":0.569283}	CEOS 75 scan 20 A at 0.5 A (was 54 A at 1.35)	210	20	0.5	200	-
 round_a075_b7	75	1e7	-70000	-120	-28	6	0	-	round control, stable balance: C3 -7 um, C1 -120 A; d90 3.9 A, d99 8.8 A, 7.2 %/slice at NL 16; window 35 A	210	20	0.5	200	-
+# 2026-09-29 THE TUNING ASSUMPTION (user: 'probably a bad assumption'): every ceosopt_* row re-tunes A1 A2 S3 A3 D4 to 0.1
+# waves at each aperture -- optimistic. ceosbuilt_a080 is the pessimistic bound: those terms tuned to 0.1 waves at 30 mrad and
+# left (ceos_tableau alpha=None), which at 80 mrad leaves A1 0.7, B2/A2 1.9, S3/A3 5.1, D4 13.5 waves; defocus and C3 still set
+# for the smallest probe (Nelder-Mead, 3 starts): C1 -169.3 A, C3 -9.04 um, d50/d90/d99 12.7/55.3/97.7 A. Same geometry as
+# ceosopt_a080_f20 (105 A window, +-133 mrad, 20 A at 0.5 A): 0.25 % of the probe falls outside the window (round_a070
+# loses 0.32 % from its 17.5 A window and reconstructs), so only the aberrations differ.
+ceosbuilt_a080	80	10000000.0	-90400.0	-169.3	-	2	0	{"C30":-90400.0,"C50":10000000.0,"C12":4.375,"phi12":2.001074,"C21":218.7522,"phi21":1.69512,"C23":218.7522,"phi23":0.085815,"C32":9722.321,"phi32":0.051923,"C34":9722.321,"phi34":1.277482,"C43":405096.7078,"phi43":1.911671,"C41":100000.0,"phi41":3.811605,"C45":100000.0,"phi45":0.916712,"C56":10000000.0,"phi56":0.569283}	PESSIMISTIC BOUND: tuned terms left at 0.1 waves at 30 mrad (as built); C1/C3 fought: d90 55.3 A, d99 97.7 A; geometry = ceosopt_a080_f20	210	20	0.5	133	-

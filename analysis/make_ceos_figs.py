@@ -721,7 +721,7 @@ def setup_entry(key, r, al):
     out = []
     for t in sorted((k for k in terms if k.startswith("C") and k in SYMBOL), key=lambda k: (int(k[1]), int(k[2]))):
         v = float(terms[t]); sym, name = SYMBOL[t]
-        role, why = ROLE.get(t, ("retuned", "retuned at this aperture to 0.1 waves"))
+        role, why = ROLE.get(t, ("assumed", "assumed tuned to 0.1 waves at this aperture"))
         out.append(dict(k=t, sym=sym, name=name, C=v, phi=float(terms.get("phi" + t[1:], 0.0)),
                         shown=_unit(t, -c1 if t == "C10" else v), deg=(None if t[2] == "0" else
                         round(float(np.degrees(terms.get("phi" + t[1:], 0.0))), 1)),
@@ -791,8 +791,9 @@ XP_TEMPLATE = """<div class="xp" id="xp">
           <th scope="col">angle</th><th scope="col">waves at edge</th><th scope="col">who sets it</th></tr></thead>
         <tbody id="xp-rows"></tbody>
       </table></div>
-      <p class="xp-note">Highlighted rows are the terms a CEOS corrector lets the operator adjust. Untick a term to
-        take it out of the three wavefront maps; the Ronchigram and probe are always the full setup.</p>
+      <p class="xp-note">Highlighted rows are the terms a CEOS corrector lets the operator adjust. Amber "assumed":
+        the value is our assumption that the operator re-tunes that term to 0.1 waves at this aperture — see below.
+        Untick a term to take it out of the three wavefront maps; the Ronchigram and probe are always the full setup.</p>
     </div>
     <div class="xp-maps">
       <figure class="xp-f"><canvas id="xp-round" width="280" height="280" role="img"></canvas>
@@ -858,7 +859,7 @@ XP_TEMPLATE = """<div class="xp" id="xp">
     s.terms.forEach(function (t) {
       var tr = document.createElement("tr"); if (t.ceos) tr.className = "xp-ceos";
       var id = "xp-t-" + t.k, cb = '<input type="checkbox" id="' + id + '"' + (st.off[t.k] ? "" : " checked") + ' aria-label="include ' + t.sym + '">';
-      var chip = { fought: "c-open", retuned: "c-ok", hardware: "c-stop", held: "c-none" }[t.role];
+      var chip = { fought: "c-open", assumed: "c-warn", hardware: "c-stop", held: "c-none" }[t.role];
       tr.innerHTML = "<td>" + cb + "</td><td><label for='" + id + "'><b>" + t.sym + "</b> <span class='xp-k'>" + t.k +
         "</span><span class='xp-name'>" + t.name + "</span></label></td><td class='xp-num'>" + t.shown + "</td><td class='xp-num'>" +
         (t.deg === null ? "–" : t.deg.toFixed(1) + "°") + "</td><td class='xp-num'>" + (t.waves < 10 ? t.waves.toFixed(2) : t.waves.toFixed(1)) +

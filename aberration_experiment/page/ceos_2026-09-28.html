@@ -359,7 +359,9 @@
       </div>
     </div>
     <ul>
-      <li><b>The instrument is a CEOS-approximation tableau</b> — every coefficient, setup by setup, in §2.</li>
+      <li><b>The instrument is a CEOS-approximation tableau</b> — every coefficient, setup by setup, in §2. It rests on
+        one optimistic assumption, flagged there: that the operator can re-tune the adjustable terms to 0.1 waves at
+        every aperture.</li>
       <li><b>Every run is a 210 Å cut of the tiled crystal</b>, bulk all round, recorded on a point-sampled
         detector (the old 4 × 4 pixel sum is gone: it set the old residual floors and the diagonal phase ramp).</li>
       <li><b>Two failure modes found, each with a fix</b> — large probes need a small, fine scan; compact probes at
@@ -381,10 +383,20 @@
     <p style="font-family:var(--sans);font-size:12.5px;color:var(--ink-3)">
       Who sets what follows CEOS for its hexapole probe corrector: C1, A1, B2, A2, C3, S3, A3 and D4 are adjustable
       (highlighted), A5 is intrinsic and A4, B4 parasitic — no knob. The operator here uses C1, C3 and B2 for the
-      smallest probe and retunes the other adjustable terms to 0.1 waves at each aperture. C5 is adjustable on the
-      real instrument but held at 1 mm here, as in the round sweep. Sourced: A5 = 1.0 mm (CEOS); A4 = B4 = 10 µm is
-      assumed.
+      smallest probe. C5 is adjustable on the real instrument but held at 1 mm here, as in the round sweep. Sourced:
+      A5 = 1.0 mm (CEOS). Assumed: A4 = B4 = 10 µm, and the tuning below.
     </p>
+    <div class="call stop">
+      <b>The biggest assumption, probably optimistic.</b> Every CEOS setup here assumes the operator re-runs the
+      corrector tuning after opening the aperture and brings each adjustable term — A1, A2, S3, A3, D4 — back to
+      0.1 waves at the edge of the new aperture, as well as at the 30 mrad design aperture. CEOS lists those terms
+      as adjustable, but how well they can be measured and nulled past the design aperture is not known. Holding
+      0.1 waves means holding the coefficients ever finer as the aperture opens: D4 at 96 µm at 40 mrad, 3 µm at
+      80 — about thirty times finer. The other bound is to tune to 0.1 waves at 30 mrad and leave it: at 80 mrad
+      that leaves 0.7 waves of A1, 1.9 of A2, 5 each of S3 and A3 and 13 of D4 on top of the 22 of six-fold —
+      probably too pessimistic, since an operator would re-tune something. A real instrument sits between; that
+      pessimistic case is running at 80 mrad (§8).
+    </div>
   </section>
 
   <section id="s3">
@@ -443,9 +455,9 @@
         <div class="howto">
           <b>How to read it</b><br>
           <b>a</b> — waves at the aperture edge for every non-round term. Black: hardware terms with no knob
-          (thick: six-fold, 1 mm). Grey: terms the operator retunes at each aperture; they sit at 0.1 waves by
-          construction, except coma, which is set against fourth-order coma as the one knob sharing its
-          symmetry — so it rises with it.
+          (thick: six-fold, 1 mm). Grey: adjustable terms, assumed tuned to 0.1 waves at each aperture (the
+          optimistic assumption of §2), so they sit at 0.1 by construction — except coma, which is set against
+          fourth-order coma as the one knob sharing its symmetry, so it rises with it.
           <b>b</b> — probe diameter d90: CEOS in black, round control dashed grey; the gold dashes are the 20 Å
           field every run scans. From about 67 mrad the probe is bigger than the field it scans, and that works.
         </div>
@@ -577,6 +589,9 @@
       <li><b>Step or field</b> — CEOS 70 at the old 38 Å field with a 0.59 Å step (4096 positions).</li>
       <li><b>CEOS 75 on the 20 Å scan</b> — the last large probe still on its old scan.</li>
       <li><b>A stable round 75 control</b> — C3 −7 µm, defocus −120 Å: a 3.9 Å probe chosen to converge.</li>
+      <li><b>The pessimistic tuning bound at 80 mrad</b> — adjustable terms tuned to 0.1 waves at 30 mrad and left;
+        defocus and C3 still set for the smallest probe (C3 −9.0 µm, defocus −169 Å): d90 55 Å against 49 Å
+        re-tuned. Same window, detector, scan and slices as the 80 mrad run above, so only the aberrations differ.</li>
     </ul>
     <p>
       Still open: at 40 mrad the reconstruction has only four slices and the atom finder cannot run on so thin a
