@@ -163,6 +163,25 @@ must change ≳ 6 % per recon slice through the box (worked 6.2–7.7 %, diverge
 exception). Large CEOS probes change 1–2 % and still split, so it is not universal. Metric: 1 − mean Pearson r of
 |P(z)|² vs |P(z+dz)|², z over the 27.5 Å box, abTEM probe (session script; rebuild if needed).
 
+**Re-analysis with the fix (09-28, `~/Desktop/ceos_0928`; every extraction logs a `*_recons.h5`).**
+Window, Pb/Ti/O bulk % and z-RMS (17.5 Å = 09-24 sweep re-scored locally; 35 Å = the 09-27 rerun):
+
+| leg | 17.5 Å | 35 Å |
+|---|---|---|
+| round 50 | 60/60/51, 1.04 | 71/49/52, 1.08 |
+| round 60 | 91/82/71, 0.88 | 87/71/69, 0.87 |
+| round 65 | Pb kernel leg half-failed | 84/64/63, 0.87 |
+| round 70 | **98/83/81, 0.56** | 91/74/65, 0.61 (w35 run: 91/74/66, 0.62) |
+| CEOS 50 | 69/58/61, 1.12 | 56/53/51, 0.89 (w35 run: 68/53/52, 1.11) |
+
+Round 70 at 35 Å repeats to one point, so its gap to 17.5 Å is real: **keep the d99 window rule (17.5 Å where it
+fits).** CEOS 50 repeats only to ~12 points on Pb (labels unreliable at NL 7). 40 mrad: atomfind still crashes (NL 4).
+**CEOS 75 genuinely fails — by depth, not divergence**: Pb/Ti/O 5/17/23 %, precision 0.50, confusion 54 %. Its grid
+kernel peaks on the atom plane (layer 6) AND in the exit layers (−0.32, +0.52 at layers 10–11): "50 atoms at 1.33 Å".
+Layer stats show it without atomfind: the last layers' phase std 0.17/0.14/0.08 vs 0.07 mid-slab (lab and Pb alike);
+every working leg's last layer is ≤ 0.33 × its mid-slab (CEOS 60/65, round 70). The low residual (ε 0.075) hid it.
+**Judge the lab-only large-CEOS tests (`_nl10`, `_s06`) on last-layer / mid-slab phase std** as well as ε.
+
 **Submitted 09-28** (rows at the end of `ceos_sweep.tsv`): round controls `round_a075_b8` (C3 −8 µm, C1 −130: d90 4.1,
 d99 5.2 Å, 5.6 %/slice — also tests the rule) and `round_a080_b9` (= hia_a080_k90 with kernels); large CEOS, one change
 each against ceosopt_a070/080: `_f20` (scan 20 Å at 0.5 Å, drops Rule 4 — which was never shown to help: widening
