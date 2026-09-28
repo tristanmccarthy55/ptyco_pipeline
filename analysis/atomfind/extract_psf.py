@@ -119,7 +119,11 @@ def average_blobs(cvol, a):
     sgn = np.sign(np.median(det[ext][np.isin(np.abs(det[ext]), top)]))
     ph *= sgn; det *= sgn
 
-    ys, xs = find_sites(det, int(round(a.inner / 2 / a.dx)), int(round(1.0 / a.dx)))
+    # min_sep: the WIDTH of the square window in which a site must be the maximum (so +-min_sep/2). The default
+    # 1 A only keeps blobs apart. analyse_sweep passes the grid spacing (3 A): the window then covers the gap
+    # between grid atoms without reaching the next atom, rejecting noise peaks in between -- on CEOS 75 the slab's
+    # noisy exit slices put ~25 of them in the band ("50 atoms at 1.33 A"). A clean grid finds the same sites.
+    ys, xs = find_sites(det, int(round(a.inner / 2 / a.dx)), int(round(a.min_sep / a.dx)))
     ok = (ys - W >= 0) & (ys + W <= det.shape[0]) & (xs - W >= 0) & (xs + W <= det.shape[1])
     ys, xs = ys[ok], xs[ok]
     if len(ys) < 3:
@@ -172,6 +176,8 @@ def main():
     ap.add_argument("--fov", type=float, default=16.0, help="central field processed (A)")
     ap.add_argument("--inner", type=float, default=13.0, help="atoms accepted within this box (A)")
     ap.add_argument("--single", action="store_true", help="legacy one-blob extraction")
+    ap.add_argument("--min-sep", type=float, default=1.0,
+                    help="width (A) of the window a grid site must be the maximum of; the grid spacing rejects noise between atoms")
     a = ap.parse_args()
 
     cvol, m = load_vol(a.recon_dir)

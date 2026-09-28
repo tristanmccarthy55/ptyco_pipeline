@@ -98,6 +98,8 @@ def main():
     ap.add_argument("--out", required=True)
     ap.add_argument("--z-vacuum", type=float, default=4.0, help="the sims' Z_VACUUM (campaign: 4 A)")
     ap.add_argument("--python", default=sys.executable, help="interpreter for the pipeline CLIs")
+    ap.add_argument("--grid-spacing", type=float, default=3.0,
+                    help="the kernel grid's spacing (driver GRIDSP); extract_psf --min-sep, so noise between atoms is not a site")
     a = ap.parse_args()
     for sub in ("psf", "logs"):
         os.makedirs(os.path.join(a.out, sub), exist_ok=True)
@@ -134,6 +136,7 @@ def main():
             name = f"{el}_{label}"
             # the h5 itself, not the dir: extract_psf once took an engine checkpoint from the dir (presolve / old run)
             rc = run([a.python, extract, h5s[el], name, "--zdrop", str(g["zdrop"]), "--dx", f"{g['dx_A']:.6f}",
+                      "--min-sep", f"{a.grid_spacing:g}",
                       "--out", os.path.join(a.out, "psf")], os.path.join(a.out, "logs", f"extract_{name}.log"))
             psf[el] = os.path.join(a.out, "psf", f"psf_{name}_vol.npy")
             if rc or not os.path.exists(psf[el]):
