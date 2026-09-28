@@ -18,7 +18,8 @@ old 70 A box's (the Rules: "geometry-coupled constants derived, not typed"):
     python analysis/analyse_sweep.py --root <dir holding recon_af_*> --gt <dir holding gt_prepared.npz> \\
         --labels round_a040 ceosopt_a080 --out <out dir>
 
-Writes <out>/psf/ (kernels + extractor logs), <out>/atomfind_<label>/ (report.json, figures), <out>/logs/,
+Writes <out>/phase/ (render_phase.py images of every leg, failed ones included), <out>/psf/ (kernels + extractor
+logs), <out>/atomfind_<label>/ (report.json, figures), <out>/logs/,
 <out>/summary.csv (one row per label) and prints the table. A label whose recon fails triage (saturated phase, no
 h5) is reported and skipped, never analysed. The region GT is built with
 `python -m atomfind.make_gt_cache --thin-cells 5 --z-vacuum 4 --region-side 210 --out <gt>/gt_prepared.npz`.
@@ -102,13 +103,21 @@ def main():
         os.makedirs(os.path.join(a.out, sub), exist_ok=True)
     extract = os.path.join(HERE, "atomfind", "extract_psf.py")
     finder = os.path.join(HERE, "atomfind", "run_atomfind.py")
-    import relaxation_ladder
+    import relaxation_ladder, render_phase
 
     rows = []
     for label in a.labels:
         row = dict(label=label, status="")
         dirs = leg_dirs(a.root, label)
         h5s = {m: recon_h5(d) for m, d in dirs.items()}
+        # phase images (depth sum, every slice, x-z) for every leg that has an h5 -- BEFORE triage, because the
+        # legs that fail below are the ones most worth looking at; <out>/phase/recon_af_<label>_<mode>_NL<n>.png
+        for m, h in h5s.items():
+            if h:
+                try:
+                    render_phase.render(h, os.path.join(a.out, "phase"), a.z_vacuum, 27.525)
+                except Exception as e:                       # an image must never cost the numbers
+                    print(f"{label} {m}: phase image failed ({e})")
         missing = [m for m in MODES if not h5s.get(m)]
         if missing:
             row["status"] = "NO H5: " + " ".join(missing); rows.append(row); print(f"{label}: {row['status']}"); continue
