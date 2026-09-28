@@ -53,6 +53,7 @@ INK, INK2, MUTED, GRIDC = mmf.INK, mmf.INK2, mmf.MUTED, mmf.GRIDC
 SPECIES = mmf.SPECIES                       # Pb blue, Ti orange, O green: the colours every earlier figure used
 TSV = os.path.join(REPO, "campaign", "ceos_sweep.tsv")
 ALPHAS = (40, 50, 60, 65, 70, 75, 80)
+SCAN_GOLD = "#c99700"                       # the 20 A scan, in every figure (never a species colour)
 ROUND_TERMS = ("C10", "C30", "C50")         # what a round (Cs-type) corrector adjusts and leaves; the rest is non-round
 # the round control used at each aperture in the results (the planner's 4 A row, or the stable balance where the
 # planner's probe diverged at Nyquist slicing -- fig7)
@@ -282,7 +283,7 @@ def fig3_growth(a):
     old = [float(R[f"ceosopt_a{al:03d}"]["win"]) for al in ALPHAS]
     bx.plot(ALPHAS, old, ls="none", marker="s", mfc="none", mec=INK2, ms=7, label="scan field, first sweep")
     new = float(R["ceosopt_a070_f20"]["win"])
-    bx.axhline(new, color=SPECIES["O"], lw=1.4, ls=(0, (4, 3)), label=f"scan field that works, {new:g} Å")
+    bx.axhline(new, color=SCAN_GOLD, lw=1.6, ls=(0, (4, 3)), label=f"scan field that works, {new:g} Å")
     bx.set_yscale("log"); bx.set_xlabel("aperture semi-angle (mrad)"); bx.set_ylabel("length (Å)")
     bx.set_yticks([4, 10, 20, 50, 100]); bx.set_yticklabels(["4", "10", "20", "50", "100"]); bx.set_xticks(ALPHAS)
     bx.minorticks_off()
@@ -343,7 +344,30 @@ def results_table():
     os.makedirs(p, exist_ok=True)
     with open(os.path.join(p, "ceos_sweep_results.csv"), "w", newline="") as f:
         w = csv.DictWriter(f, fieldnames=list(out[0])); w.writeheader(); w.writerows(out)
+    results_fragment(out, os.path.join(p, "ceos_sweep_results_table.html"))
     return out
+
+
+def results_fragment(T, path):
+    """The results table as an HTML fragment for the page (page/build_page.py inserts it), from the same rows."""
+    import html as H
+    def pct(v):
+        return "–" if not np.isfinite(v) else f"{100 * v:.0f}"
+    rows_ = []
+    for t in sorted(T, key=lambda t: (t["alpha"], t["instrument"] != "CEOS", t["status"] != "ok")):
+        ok = t["status"] == "ok"
+        conf = t["confusion"]
+        flag = ('<span class="chip c-stop">did not reconstruct</span>' if not ok else
+                ('<span class="chip c-warn">labels unreliable</span>' if conf > CONF_MAX else ""))
+        rows_.append("<tr>" + "".join(f"<td>{c}</td>" for c in (
+            f"{t['alpha']}", t["instrument"], f"<code>{H.escape(t['label'])}</code>", H.escape(t["scan"]).replace(" A", " Å"),
+            f"{t['NL']}" if ok else "–", f"{pct(t['Pb'])} / {pct(t['Ti'])} / {pct(t['O'])}" if ok else "–",
+            f"{t['z_rms']:.2f}" if ok else "–", f"{t['precision']:.2f}" if ok else "–",
+            f"{100 * conf:.0f} %" if ok else "–", flag)) + "</tr>")
+    head = "".join(f"<th>{h}</th>" for h in ("mrad", "column", "run", "scan", "slices", "Pb / Ti / O %",
+                                             "depth err. Å", "precision", "confusion", ""))
+    open(path, "w").write(f'<table>\n<thead><tr>{head}</tr></thead>\n<tbody>\n' + "\n".join(rows_) +
+                          "\n</tbody>\n</table>\n")
 
 
 def fig6_numbers(a):

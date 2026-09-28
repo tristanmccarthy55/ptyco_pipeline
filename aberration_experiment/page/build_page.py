@@ -39,6 +39,16 @@ SOURCES_BY_TEMPLATE = {
         "FIG_P3":       "2026-W38/paper/fig3_volumes.png",
         "FIG_P4":       "2026-W38/paper/fig4_baselines.png",
     },
+    "ceos_2026-09-28.html": {
+        "FIG_ABER":     "2026-W40/ceos/fig1_aberration.png",
+        "FIG_PROBES":   "2026-W40/ceos/fig2_probes.png",
+        "FIG_GROWTH":   "2026-W40/ceos/fig3_growth.png",
+        "FIG_SCAN":     "2026-W40/ceos/fig4_scan.png",
+        "FIG_RECONS":   "2026-W40/ceos/fig5_recons.png",
+        "FIG_NUMBERS":  "2026-W40/ceos/fig6_numbers.png",
+        "FIG_STAB":     "2026-W40/ceos/fig7_stability.png",
+        "FRAG_RESULTS": "results/2026-W40/ceos_sweep_results_table.html",
+    },
     "round_2026-09-22.html": {
         "FIG_PROBE":    "2026-W39/simple/fig_probe.png",
         "FIG_FOCUS":    "2026-W39/simple/fig_focus.png",
@@ -78,6 +88,15 @@ def main():
         sys.exit(f"no figure list for template {name}; add one to SOURCES_BY_TEMPLATE")
     total = 0
     for key, rel in SOURCES_BY_TEMPLATE[name].items():
+        if key.startswith("FRAG_"):                  # an HTML fragment written by a figure script (a results table)
+            src = os.path.join(os.path.dirname(FIGS), rel)
+            if not os.path.exists(src):
+                sys.exit(f"missing fragment: {src}")
+            if "{{%s}}" % key not in html:
+                sys.exit(f"template has no placeholder for {key}")
+            html = html.replace("{{%s}}" % key, open(src).read())
+            print(f"  {key:12s} {rel}")
+            continue
         src = os.path.join(FIGS, rel)
         if not os.path.exists(src):
             sys.exit(f"missing figure: {src}")

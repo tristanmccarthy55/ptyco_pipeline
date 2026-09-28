@@ -1,0 +1,582 @@
+<title>An Older Corrector at 80 mrad</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Serif:ital,wght@0,400;0,500;1,400&display=swap">
+<style>
+  :root {
+    /* neutrals carry a slight blue bias, toward the accent and toward the dark field of a Ronchigram */
+    --paper:    #eef1f5;
+    --surface:  #ffffff;
+    --sunk:     #e4e9ef;
+    --ink:      #131820;
+    --ink-2:    #4d5765;
+    --ink-3:    #6f7b8a;
+    --rule:     #d5dce4;
+    --rule-2:   #c2ccd7;
+    /* the campaign's own figure palette (Okabe-Ito), so page and figures are one system */
+    --accent:   #0072b2;   /* Pb / structural blue */
+    --ok:       #00795c;   /* flat, works, settled */
+    --warn:     #a97400;   /* unreliable, watch it */
+    --stop:     #c2490a;   /* fails, not reachable */
+    --probe:    #a8438a;   /* flatness / probe-phase accent */
+    --tint:     #e8f1f8;   /* tinted reference row */
+    --shadow:   0 1px 2px rgba(19,24,32,.06), 0 6px 18px rgba(19,24,32,.05);
+    --mono: "IBM Plex Mono", ui-monospace, "SF Mono", Menlo, monospace;
+    --sans: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+    --serif: "IBM Plex Serif", Georgia, "Times New Roman", serif;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --paper:   #0c1016;
+      --surface: #141a22;
+      --sunk:    #1b222c;
+      --ink:     #e7edf4;
+      --ink-2:   #a7b3c1;
+      --ink-3:   #7d8a99;
+      --rule:    #26303c;
+      --rule-2:  #32404f;
+      --accent:  #58aee2;
+      --ok:      #43c7a1;
+      --warn:    #e8b13f;
+      --stop:    #ff8348;
+      --probe:   #dd8fc4;
+      --tint:    #16242f;
+      --shadow:  0 1px 2px rgba(0,0,0,.4), 0 8px 24px rgba(0,0,0,.28);
+    }
+  }
+  :root[data-theme="dark"] {
+    --paper:   #0c1016;
+    --surface: #141a22;
+    --sunk:    #1b222c;
+    --ink:     #e7edf4;
+    --ink-2:   #a7b3c1;
+    --ink-3:   #7d8a99;
+    --rule:    #26303c;
+    --rule-2:  #32404f;
+    --accent:  #58aee2;
+    --ok:      #43c7a1;
+    --warn:    #e8b13f;
+    --stop:    #ff8348;
+    --probe:   #dd8fc4;
+    --tint:    #16242f;
+    --shadow:  0 1px 2px rgba(0,0,0,.4), 0 8px 24px rgba(0,0,0,.28);
+  }
+
+  html { scroll-behavior: smooth; }
+  @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
+
+  body {
+    background: var(--paper);
+    color: var(--ink);
+    font-family: var(--serif);
+    font-size: 16.5px;
+    line-height: 1.62;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* ---- masthead --------------------------------------------------------------- */
+  header.mast {
+    border-bottom: 1px solid var(--rule);
+    background: var(--surface);
+    padding-block: 26px 20px;
+  }
+  .mast-in, main, footer.foot > .foot-in {
+    width: min(100% - 32px, 1120px);
+    margin-inline: auto;
+  }
+  /* masthead and footer text sit on the reading column, so the h1 and the prose share a left edge */
+  .mast-col, footer.foot .foot-in > span { display: block; width: min(70ch, 100%); margin-inline: auto; }
+  .eyebrow {
+    font-family: var(--mono); font-size: 11.5px; font-weight: 500;
+    letter-spacing: .13em; text-transform: uppercase; color: var(--ink-3);
+  }
+  h1 {
+    font-family: var(--sans); font-weight: 700; font-size: clamp(30px, 5.2vw, 44px);
+    line-height: 1.06; letter-spacing: -.021em; margin: 8px 0 0; text-wrap: balance;
+  }
+  .standfirst {
+    max-width: 62ch; margin-top: 12px; color: var(--ink-2); font-size: 17px;
+  }
+  .mast-meta {
+    display: flex; flex-wrap: wrap; gap: 8px 22px; margin-top: 18px;
+    font-family: var(--mono); font-size: 12px; color: var(--ink-3);
+  }
+  .mast-meta b { color: var(--ink-2); font-weight: 500; }
+  nav.jump {
+    display: flex; flex-wrap: wrap; gap: 6px 14px; margin-top: 18px;
+    font-family: var(--mono); font-size: 12px;
+  }
+  nav.jump a { color: var(--ink-2); text-decoration: none; border-bottom: 1px solid var(--rule-2); padding-bottom: 1px; }
+  nav.jump a:hover { color: var(--accent); border-color: var(--accent); }
+
+  /* ---- reading column, with wide blocks breaking out --------------------------- */
+  main {
+    display: grid;
+    grid-template-columns: 1fr min(70ch, 100%) 1fr;
+    row-gap: 0;
+    padding-block: 8px 56px;
+  }
+  main > * { grid-column: 2; }
+  main > .wide { grid-column: 1 / -1; }
+
+  section { padding-top: 40px; }
+  .sec-head { display: flex; align-items: baseline; gap: 12px; margin-bottom: 4px; }
+  .sec-num {
+    font-family: var(--mono); font-size: 12px; font-weight: 600; color: var(--accent);
+    letter-spacing: .06em; padding-top: 3px;
+  }
+  h2 {
+    font-family: var(--sans); font-weight: 600; font-size: clamp(21px, 3vw, 27px);
+    letter-spacing: -.014em; line-height: 1.2; margin: 0; text-wrap: balance;
+  }
+  h3 {
+    font-family: var(--sans); font-weight: 600; font-size: 16px; letter-spacing: -.005em;
+    margin: 26px 0 6px; color: var(--ink);
+  }
+  p { margin: 0 0 14px; }
+  p + h3 { margin-top: 24px; }
+  a { color: var(--accent); text-underline-offset: 2px; }
+  strong { font-weight: 600; }
+  em.term { font-style: italic; color: var(--ink-2); }
+  code, .m {
+    font-family: var(--mono); font-size: .855em;
+    background: var(--sunk); padding: 1px 5px; border-radius: 3px;
+    overflow-wrap: anywhere;
+  }
+  ul, ol { margin: 0 0 14px; padding-left: 22px; }
+  li { margin-bottom: 7px; }
+  li::marker { color: var(--ink-3); }
+
+  /* ---- chips ------------------------------------------------------------------- */
+  .chip {
+    display: inline-block; font-family: var(--mono); font-size: 10.5px; font-weight: 500;
+    letter-spacing: .07em; text-transform: uppercase; padding: 2px 7px; border-radius: 3px;
+    border: 1px solid currentColor; white-space: nowrap; vertical-align: 1px;
+  }
+  .c-ok   { color: var(--ok); }
+  .c-warn { color: var(--warn); }
+  .c-stop { color: var(--stop); }
+  .c-open { color: var(--accent); }
+  .c-none { color: var(--ink-3); }
+
+  /* ---- tables ------------------------------------------------------------------ */
+  .tablewrap { overflow-x: auto; margin: 18px 0 8px; }
+  table {
+    border-collapse: collapse; width: 100%; font-family: var(--sans); font-size: 13.5px;
+    font-variant-numeric: tabular-nums;
+  }
+  th, td { text-align: left; padding: 7px 12px 7px 0; border-bottom: 1px solid var(--rule); white-space: nowrap; }
+  th .raw { text-transform: none; letter-spacing: 0; font-size: 12.5px; }
+  th {
+    font-size: 11px; font-weight: 600; letter-spacing: .07em; text-transform: uppercase;
+    color: var(--ink-3); border-bottom-color: var(--rule-2);
+  }
+  td.wrap, th.wrap { white-space: normal; min-width: 22ch; }
+  tr.ref td { background: var(--tint); }
+  tr.ref td:first-child { box-shadow: inset 3px 0 0 var(--accent); padding-left: 9px; }
+  caption {
+    caption-side: bottom; text-align: left; font-family: var(--sans); font-size: 12.5px;
+    color: var(--ink-3); padding-top: 10px; white-space: normal;
+  }
+
+  /* ---- figure blocks ----------------------------------------------------------- */
+  figure {
+    margin: 26px 0 8px; background: var(--surface); border: 1px solid var(--rule);
+    border-radius: 4px; box-shadow: var(--shadow); overflow: hidden;
+  }
+  figure img { display: block; width: 100%; max-width: 100%; height: auto; background: #fff; }
+  figcaption { padding: 14px 18px 16px; border-top: 1px solid var(--rule); font-family: var(--sans); font-size: 13.5px; color: var(--ink-2); }
+  figcaption .fig-name {
+    font-family: var(--mono); font-size: 11.5px; letter-spacing: .01em;
+    color: var(--ink-3); display: block; margin-bottom: 5px; overflow-wrap: anywhere;
+  }
+  .howto {
+    margin-top: 11px; padding-top: 11px; border-top: 1px dashed var(--rule-2);
+    font-size: 13px; color: var(--ink-2);
+  }
+  .howto b { font-family: var(--mono); font-size: 10.5px; letter-spacing: .08em; text-transform: uppercase; color: var(--ink-3); font-weight: 500; }
+
+  /* ---- callout ----------------------------------------------------------------- */
+  .call {
+    margin: 20px 0; padding: 14px 16px; background: var(--surface);
+    border: 1px solid var(--rule); border-left: 3px solid var(--accent); border-radius: 3px;
+    font-family: var(--sans); font-size: 14px; color: var(--ink-2);
+  }
+  .call b { color: var(--ink); font-weight: 600; }
+  .call.stop { border-left-color: var(--stop); }
+  .call.ok   { border-left-color: var(--ok); }
+
+  /* ---- ledger ------------------------------------------------------------------ */
+  .ledger { display: grid; gap: 1px; background: var(--rule); border: 1px solid var(--rule); border-radius: 4px; overflow: hidden; margin: 20px 0; }
+  .ledger > div { background: var(--surface); padding: 12px 15px; display: grid; grid-template-columns: 1fr auto; gap: 4px 14px; align-items: start; }
+  .ledger .lg-t { font-family: var(--sans); font-weight: 600; font-size: 14.5px; }
+  .ledger .lg-d { font-family: var(--sans); font-size: 13.5px; color: var(--ink-2); grid-column: 1 / -1; }
+
+  /* ---- footer ------------------------------------------------------------------ */
+  footer.foot { border-top: 1px solid var(--rule); background: var(--surface); padding-block: 22px 34px; margin-top: 20px; }
+  footer.foot .foot-in { font-family: var(--mono); font-size: 12px; color: var(--ink-3); }
+
+  @media (max-width: 640px) {
+    body { font-size: 16px; }
+    main { grid-template-columns: 0 100% 0; }
+    .ledger > div { grid-template-columns: 1fr; }
+  }
+
+  /* ---- the specification panel: this page leads with one number, so it gets one block ---- */
+  .spec {
+    margin: 22px 0 6px; background: var(--surface); border: 1px solid var(--rule-2);
+    border-left: 4px solid var(--stop); border-radius: 4px; box-shadow: var(--shadow);
+    padding: 20px 22px 18px;
+  }
+  .spec .spec-k {
+    font-family: var(--mono); font-size: 11px; font-weight: 600; letter-spacing: .13em;
+    text-transform: uppercase; color: var(--ink-3);
+  }
+  .spec .spec-v {
+    font-family: var(--mono); font-weight: 600; font-size: clamp(22px, 4.2vw, 31px);
+    line-height: 1.16; letter-spacing: -.01em; color: var(--ink); margin: 9px 0 0;
+    font-variant-numeric: tabular-nums;
+  }
+  .spec .spec-v em { font-style: normal; color: var(--stop); }
+  .spec p { font-family: var(--sans); font-size: 14px; color: var(--ink-2); margin: 12px 0 0; }
+  .spec .spec-grid {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 14px 26px;
+    margin-top: 16px; padding-top: 15px; border-top: 1px solid var(--rule);
+  }
+  .spec .spec-grid div { display: grid; gap: 3px; }
+  .spec .spec-grid b {
+    font-family: var(--mono); font-size: 16px; font-weight: 600; color: var(--ink);
+    font-variant-numeric: tabular-nums;
+  }
+  .spec .spec-grid span { font-family: var(--sans); font-size: 12.5px; color: var(--ink-3); }
+
+  /* the numbered run of work: the only place a number means a sequence on this page */
+  ol.did { counter-reset: step; list-style: none; padding-left: 0; margin: 20px 0 8px; }
+  ol.did > li {
+    counter-increment: step; position: relative; padding-left: 46px; margin-bottom: 18px;
+  }
+  ol.did > li::before {
+    content: counter(step); position: absolute; left: 0; top: 1px;
+    font-family: var(--mono); font-size: 12px; font-weight: 600; color: var(--accent);
+    border: 1px solid var(--rule-2); border-radius: 50%;
+    width: 28px; height: 28px; display: grid; place-items: center;
+  }
+  ol.did b { font-family: var(--sans); font-size: 15px; display: block; margin-bottom: 2px; }
+  ol.did span { font-family: var(--sans); font-size: 14px; color: var(--ink-2); }
+  .verdict {
+    display: inline-block; font-family: var(--mono); font-size: 11px; font-weight: 500;
+    letter-spacing: .06em; text-transform: uppercase; margin-left: 8px; vertical-align: 2px;
+  }
+  /* ---- this page: sections are grids too, so wide figures break out of the reading column ---- */
+  main > section { grid-column: 1 / -1; display: grid; grid-template-columns: 1fr min(70ch, 100%) 1fr; }
+  main > section > * { grid-column: 2; }
+  main > section > .wide { grid-column: 1 / -1; width: min(100%, 1480px); justify-self: center; }
+  .spec.good { border-left-color: var(--ok); }
+  .spec.good .spec-v em { color: var(--ok); }
+  .spec-grid b small { font-size: 12px; font-weight: 500; color: var(--ink-3); }
+  .ledger .lg-s { font-family: var(--mono); font-size: 11px; color: var(--ink-3); }
+  @media (max-width: 640px) { main > section { grid-template-columns: 0 100% 0; } }
+</style>
+<header class="mast">
+  <div class="mast-in"><div class="mast-col">
+    <div class="eyebrow">Aberration campaign · CEOS sweep · results to 2026-09-28</div>
+    <h1>An Older Corrector at 80 mrad</h1>
+    <p class="standfirst">
+      Can a widespread, older hexapole-corrected column still give depth-resolved ptychography if its
+      aperture is opened far past the 30 mrad it was built for, with the probe known? So far, yes — once the
+      scan is kept small and fine. This page covers only what is new since the last one.
+    </p>
+    <nav class="jump">
+      <a href="#s1">What is new</a>
+      <a href="#s2">The instrument</a>
+      <a href="#s3">The probes</a>
+      <a href="#s4">The scan</a>
+      <a href="#s5">Results</a>
+      <a href="#s6">Round controls</a>
+      <a href="#s7">Fixed on the way</a>
+      <a href="#s8">Running</a>
+    </nav>
+  </div></div>
+</header>
+
+<main>
+
+  <section id="s1">
+    <div class="sec-head"><span class="sec-num">01</span><h2>What is new</h2></div>
+
+    <div class="spec good">
+      <div class="spec-k">The result so far</div>
+      <p class="spec-v">80 mrad, a 49 Å probe: <em>100 / 67 / 75 %</em> of Pb / Ti / O, depth error <em>0.48 Å</em></p>
+      <p>
+        The CEOS-approximation column opened to 80 mrad reconstructs about as well as a round, aberration-balanced
+        probe at the same aperture. Six-fold astigmatism reaches 22 waves at the aperture edge there — fifty times
+        the most the six-fold ladder tested at 70 and 90 mrad — and with the probe known it is not what limits.
+      </p>
+      <div class="spec-grid">
+        <div><b>97 / 86 / 86 % <small>0.57 Å</small></b><span>CEOS at 70 mrad, 25 Å probe</span></div>
+        <div><b>96 / 79 / 81 % <small>0.55 Å</small></b><span>round control at 80 mrad</span></div>
+        <div><b>did not reconstruct</b><span>the same 70 and 80 mrad runs on the first sweep's scan</span></div>
+      </div>
+    </div>
+
+    <ul>
+      <li><b>The instrument is a CEOS-approximation tableau.</b> Six-fold A5 = 1 mm (the CEOS figure for
+        hexapole correctors); parasitic A4 = B4 = 10 µm (assumed); every term the operator can tune is
+        retuned at each aperture to 0.1 waves; defocus, C3 and coma are set for the smallest probe.</li>
+      <li><b>Every run is a 210 Å cut of the tiled crystal</b>, bulk all round, recorded on a point-sampled
+        detector (the old 4 × 4 pixel sum is gone: it set the old residual floors and the diagonal phase ramp).</li>
+      <li><b>The large probes needed a small, fine scan</b> — §4. The first sweep scaled the scanned field with
+        the probe at fixed position count, which coarsened the step to 1–2 Å; those runs failed.</li>
+      <li><b>The round controls at 75 and 80 mrad needed a different balance</b> — §6. The planner's 4 Å probes
+        there make the solver diverge at the depth sampling the aperture calls for.</li>
+      <li><b>Two pipeline faults were found and fixed</b>, and the two conclusions they had produced withdrawn — §7.</li>
+    </ul>
+  </section>
+
+  <section id="s2">
+    <div class="sec-head"><span class="sec-num">02</span><h2>The instrument, as the aperture opens</h2></div>
+    <p>
+      The operator keeps the probe as small as possible at each aperture. Everything with a knob is retuned;
+      what has no knob — six-fold astigmatism above all — grows as the aperture to the sixth power. By 60 mrad it
+      is the aberration.
+    </p>
+    <figure class="wide">
+      <img src="{{FIG_ABER}}" alt="Seven columns, 40 to 80 mrad. Rows: the full aberration across the aperture in waves, the part a corrector cannot null, and the Ronchigram. A six-fold pattern takes over from 60 mrad.">
+      <figcaption>
+        <span class="fig-name">analysis/make_ceos_figs.py → fig1_aberration.png</span>
+        The aberration across the aperture, in waves, for the CEOS column at each aperture, and the Ronchigram it makes.
+        <div class="howto">
+          <b>How to read it</b><br>
+          <b>Top row</b> — the whole wavefront error as the operator leaves it: red ahead, blue behind, thin
+          contours at the spacing written under each panel (solid positive, dashed negative); the grey circle is
+          the aperture edge. Each panel has its own ± scale. At 40 mrad it is the operator's round balance of
+          defocus against C3 and C5; from 60 mrad the six-fold pattern dominates.
+          <b>Middle row</b> — the same with the round terms (defocus, C3, C5) removed: what no round knob can reach.
+          <b>Bottom row</b> — the Ronchigram of one identical patch of amorphous film in every panel, so only the
+          probe differs; the yellow dotted circle is the aperture. The six-pointed star is the six-fold term.
+          The wavefront is computed from the aberration table and checked against the probe the simulator built.
+        </div>
+      </figcaption>
+    </figure>
+  </section>
+
+  <section id="s3">
+    <div class="sec-head"><span class="sec-num">03</span><h2>The probes that land on the specimen</h2></div>
+    <p>
+      With every knob used, the probe stays near 4–5 Å to 50 mrad and then grows fast: 12, 17.5, 25, 35 and
+      49 Å across (d90) at 60, 65, 70, 75 and 80 mrad. Each probe needs a reconstruction window that holds it,
+      from 17.5 Å up to 105 Å.
+    </p>
+    <figure class="wide">
+      <img src="{{FIG_PROBES}}" alt="Seven columns of probes: CEOS probe intensity, the CEOS probe core coloured by phase, and the round control probe, each in its reconstruction window.">
+      <figcaption>
+        <span class="fig-name">analysis/make_ceos_figs.py → fig2_probes.png</span>
+        The probe at the specimen at each aperture, drawn in the reconstruction window the planner gives it.
+        <div class="howto">
+          <b>How to read it</b><br>
+          <b>Top</b> — CEOS probe intensity (raised to the power 0.4 so the tails show); the dashed circle holds
+          90 % of the intensity and its diameter (d90) is written in the corner; the white bar is a scale.
+          <b>Middle</b> — the central ±6 Å of the same probe as a complex wave: colour is phase, brightness is
+          amplitude. The six-fold wavefront shows as the six-armed pattern around the core.
+          <b>Bottom</b> — the round control at the same aperture, in the same window, so the sizes compare
+          directly. The 75 mrad control is the balance now running (§6); the 80 mrad control is 5.6 Å.
+        </div>
+      </figcaption>
+    </figure>
+    <figure class="wide">
+      <img src="{{FIG_GROWTH}}" alt="Left: waves at the aperture edge per aberration term against aperture. Right: probe diameter against aperture for the CEOS probe and the round control, with the scanned fields.">
+      <figcaption>
+        <span class="fig-name">analysis/make_ceos_figs.py → fig3_growth.png</span>
+        What is left of each aberration after the operator retunes, and how the probe compares with the field scanned.
+        <div class="howto">
+          <b>How to read it</b><br>
+          <b>a</b> — waves at the aperture edge for every non-round term. Black: hardware terms with no knob
+          (thick: six-fold, 1 mm). Grey: terms the operator retunes at each aperture; they sit at the tableau's
+          0.1 waves by construction, except coma, which is set against fourth-order coma as the one knob sharing
+          its symmetry — so it rises with it.
+          <b>b</b> — probe diameter d90: CEOS in black, round control dashed grey. Open squares: the scanned field
+          of the first sweep (1.5 × d90, at least 20 Å, always 1600 positions). Gold dashes: the 20 Å field that
+          works (§4). From about 67 mrad the working scan is smaller than the probe.
+        </div>
+      </figcaption>
+    </figure>
+  </section>
+
+  <section id="s4">
+    <div class="sec-head"><span class="sec-num">04</span><h2>What made the large probes work: the scan</h2></div>
+    <p>
+      The first sweep grew the scanned field with the probe (1.5 × d90) at a fixed 1600 positions, so the step
+      grew to 0.95, 1.35 and 1.85 Å at 70, 75 and 80 mrad. The 70 and 80 mrad runs never fitted the data; 75
+      fitted but noisily. The idea behind the fix: the badly aberrated outer probe carries little usable
+      information, so the step that matters is set by the compact core, and 1–2 Å is too coarse for it.
+      Scanning a 20 Å field at 0.5 Å — the round runs' own scan, 1600 positions — both runs reconstruct.
+    </p>
+    <figure class="wide">
+      <img src="{{FIG_SCAN}}" alt="Top: the 70 and 80 mrad probes with the first sweep's scanned field and the 20 A field drawn on, and the misfit through the full solve for both scans. Bottom: the depth-summed phase for each run.">
+      <figcaption>
+        <span class="fig-name">analysis/make_ceos_figs.py → fig4_scan.png</span>
+        Same probe, same slices, same window: only the scan differs.
+        <div class="howto">
+          <b>How to read it</b><br>
+          <b>a, b</b> — the probe on a log scale over six decades, in its window. Grey square: the first sweep's
+          field; gold: the 20 Å field. Inset: the central ±4 Å on four decades, with the scan positions at true
+          spacing — large grey dots the first sweep's step, small gold dots 0.5 Å.
+          <b>c</b> — misfit to the data through the full solve (ε: the residual scaled by pattern size, so runs
+          of different sizes compare). Dashed: first-sweep scan; solid: 20 Å scan; black 70 mrad, grey 80 mrad.
+          The good runs finish at 0.025 and 0.013; the 80 mrad run is the closest fit in this sweep.
+          <b>d–g</b> — the depth-summed phase over the central 20 Å for each run.
+        </div>
+      </figcaption>
+    </figure>
+    <div class="call">
+      <b>Not yet separated: step or field.</b> The 20 Å run changes both at once. A run at the old 38 Å field
+      with a 0.59 Å step (4096 positions) is reconstructing now and will say which one mattered. Fewer slices do
+      not help: CEOS 70 on the old scan at 10 slices instead of 14 still fails (ε 0.20).
+    </div>
+  </section>
+
+  <section id="s5">
+    <div class="sec-head"><span class="sec-num">05</span><h2>Results</h2></div>
+    <p>
+      From 60 to 75 mrad the CEOS column matches or beats the round control species by species. At 80 mrad it
+      leads on Pb and depth error but trails on Ti (67 against 79 %) and O (75 against 81 %) — single runs, and
+      the engine reseeds every run, so a gap of that size is not yet separated from run-to-run spread. The depth
+      error falls from 0.85 Å at 60 mrad to 0.48 Å at 80 (the 75 mrad point is still on its old scan). At
+      65 mrad and below, with slices of 2.3 Å and thicker against 1.95 Å between atomic planes, species labels
+      fail the 5 % confusion check for both columns, as in the round campaign.
+    </p>
+    <figure class="wide">
+      <img src="{{FIG_RECONS}}" alt="Columns 50 to 80 mrad. Rows: depth-summed phase of the CEOS run, a depth section of the CEOS run with atoms drawn on, and the same for the round control.">
+      <figcaption>
+        <span class="fig-name">analysis/make_ceos_figs.py → fig5_recons.png</span>
+        The reconstructions themselves, with the real atoms and the found ones drawn on.
+        <div class="howto">
+          <b>How to read it</b><br>
+          <b>Top</b> — depth-summed phase of the CEOS run over the central 20 Å, with its recall in the title.
+          <b>Middle, bottom</b> — a depth section (x across, depth down) through the same row of B-site columns
+          in every panel, a 0.5 Å-thick band: filled dots are the atoms in the structure (orange Ti, green O),
+          rings are the atoms the finder reported, coloured by the species it assigned. A ring with no dot is
+          spurious; a dot with no ring is a miss. Blue dashes mark the edges of the vacuum above and below the slab.
+          "Species labels unreliable" flags confusion above 5 %.
+        </div>
+      </figcaption>
+    </figure>
+    <figure class="wide">
+      <img src="{{FIG_NUMBERS}}" alt="Recall of Pb, Ti and O and depth error against aperture, CEOS column against round control.">
+      <figcaption>
+        <span class="fig-name">analysis/make_ceos_figs.py → fig6_numbers.png</span>
+        Recall of the bulk atoms per species, and depth error, against aperture.
+        <div class="howto">
+          <b>How to read it</b><br>
+          Solid lines in the species colour: the CEOS column. Dashed grey with squares: the round control.
+          Hollow markers: species labels unreliable (confusion above 5 %), so the species split at that point
+          is not to be trusted. Crosses on the floor: the first sweep's 70 and 80 mrad runs, which did not
+          reconstruct. Two points will move: CEOS 75 is still on its old 54 Å scan, and the round 75 control is
+          the balance that half-failed (§6); both reruns are running.
+        </div>
+      </figcaption>
+    </figure>
+    <div class="tablewrap">
+      {{FRAG_RESULTS}}
+    </div>
+    <p style="font-family:var(--sans);font-size:12.5px;color:var(--ink-3)">
+      Generated from <code>results/2026-W40/ceos_sweep_results.csv</code>, which records the analysis file behind
+      every row. Depth error is the RMS depth error of matched atoms; precision is the fraction of found atoms
+      that are real.
+    </p>
+  </section>
+
+  <section id="s6">
+    <div class="sec-head"><span class="sec-num">06</span><h2>Why the round controls at 75 and 80 mrad changed</h2></div>
+    <p>
+      The round planner reaches 4 Å at 75 and 80 mrad by balancing C3 and defocus. Those probes failed in every
+      geometry tried. It is not the aperture: the same aperture with a different balance works. It is the probe
+      against the number of depth slices — the solver's first, coarse stage runs away from its second iteration.
+      With a balance that keeps the probe near 4–6 Å but changes more from slice to slice, it converges.
+    </p>
+    <figure class="wide">
+      <img src="{{FIG_STAB}}" alt="Left: misfit against iteration in the solver's first stage for several compact probes, some settling and some running away. Right: each probe's intensity change per slice, with converged and failed runs separated by a narrow band.">
+      <figcaption>
+        <span class="fig-name">analysis/make_ceos_figs.py → fig7_stability.png</span>
+        The solver's first stage, and a candidate rule for which probes it can handle.
+        <div class="howto">
+          <b>How to read it</b><br>
+          <b>a</b> — misfit through the first (coarse) stage of the solve. Solid black: the final reconstruction
+          was good; dashed grey: it failed. Each line is labelled with its aperture, C3 / defocus and slice count.
+          The 14-slice round 80 run climbs here and is rescued by the second stage.
+          <b>b</b> — how much each probe's intensity pattern changes from one reconstruction slice to the next as
+          it passes through the sample (propagated in free space, averaged through the box). Filled: good;
+          hollow: failed; the shaded band is where the threshold must lie. The diamond is a prediction made before
+          its run: a 4 Å round 75 probe expected to converge, now reconstructing.
+          This is a rule that fits every compact-probe run so far, not a mechanism; the large CEOS probes change
+          far less per slice and still work, so it does not transfer to them.
+        </div>
+      </figcaption>
+    </figure>
+  </section>
+
+  <section id="s7">
+    <div class="sec-head"><span class="sec-num">07</span><h2>Fixed on the way</h2></div>
+    <div class="ledger">
+      <div>
+        <span class="lg-t">The analysis on the cluster read the wrong file</span>
+        <span class="lg-s">fixed</span>
+        <span class="lg-d">Kernel extraction took a solver checkpoint — sometimes the coarse first stage, sometimes an
+          older run — instead of the final reconstruction. It produced "17.5 Å windows fail" and "CEOS 75 fails";
+          both are withdrawn. From the final reconstructions, every 17.5 Å kernel is clean.</span>
+      </div>
+      <div>
+        <span class="lg-t">The kernel site finder counted noise as atoms</span>
+        <span class="lg-s">fixed</span>
+        <span class="lg-d">On CEOS 75 noise between grid atoms was picked up as extra sites. Sites must now be the
+          strongest within one grid spacing; clean kernels come out byte-identical.</span>
+      </div>
+      <div>
+        <span class="lg-t">A large simulation ran out of memory</span>
+        <span class="lg-s">fixed</span>
+        <span class="lg-d">The region simulation held every pattern in double precision; at 5776 positions it was
+          killed. It now holds single precision with bit-identical output. A reconstruction at 1422-pixel patterns
+          needs about four times its data in memory, so about 5500 positions is the limit on one node.</span>
+      </div>
+      <div>
+        <span class="lg-t">Nothing drew the object</span>
+        <span class="lg-s">added</span>
+        <span class="lg-d">Every analysed run now ships phase images — the depth sum, every slice, and a depth
+          section — including the runs that fail, so a failure is looked at before it is explained.</span>
+      </div>
+    </div>
+    <h3>The reconstruction window: 17.5 Å stays</h3>
+    <p>
+      With the analysis fixed, the 17.5 Å window matches or beats 35 Å for the compact probes (Pb / Ti / O %, depth error):
+    </p>
+    <div class="tablewrap"><table>
+      <thead><tr><th>run</th><th>17.5 Å window</th><th>35 Å window</th></tr></thead>
+      <tbody>
+        <tr><td>round 50 mrad</td><td>60 / 60 / 51, 1.04 Å</td><td>71 / 49 / 52, 1.08 Å</td></tr>
+        <tr><td>round 60 mrad</td><td>91 / 82 / 71, 0.88 Å</td><td>87 / 71 / 69, 0.87 Å</td></tr>
+        <tr class="ref"><td>round 70 mrad</td><td>98 / 83 / 81, 0.56 Å</td><td>91 / 74 / 65, 0.61 Å (repeat: 91 / 74 / 66, 0.62 Å)</td></tr>
+        <tr><td>CEOS 50 mrad</td><td>69 / 58 / 61, 1.12 Å</td><td>56 / 53 / 51, 0.89 Å (repeat: 68 / 53 / 52, 1.11 Å)</td></tr>
+      </tbody>
+      <caption>The 70 mrad run at 35 Å repeats to one point, so its gap to 17.5 Å is real. At 50 mrad two identical
+        runs differ by 12 points on Pb, so there the window cannot be told apart from run-to-run spread.</caption>
+    </table></div>
+  </section>
+
+  <section id="s8">
+    <div class="sec-head"><span class="sec-num">08</span><h2>Running now</h2></div>
+    <ul>
+      <li><b>Step or field</b> — CEOS 70 at the old 38 Å field with a 0.59 Å step (4096 positions).</li>
+      <li><b>CEOS 75 on the 20 Å scan</b> — the last large probe still on its old scan.</li>
+      <li><b>A stable round 75 control</b> — C3 −7 µm, defocus −120 Å: a 3.9 Å probe predicted to converge (fig. 7b).</li>
+    </ul>
+    <p>
+      Still open: at 40 mrad the reconstruction has only four slices and the atom finder cannot run on so thin a
+      kernel; the 40 mrad runs reconstruct, but have no numbers.
+    </p>
+  </section>
+
+</main>
+
+<footer class="foot">
+  <div class="foot-in"><span>
+    Aberration campaign · CEOS sweep, results to 2026-09-28 · built from aberration_experiment/page/ceos_2026-09-28.html by page/build_page.py
+  </span></div>
+</footer>
