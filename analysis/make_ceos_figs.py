@@ -98,7 +98,7 @@ def aberrations(r):
     return {"C30": float(r["c3"]), "C50": float(r["c5"])}
 
 
-def chi_waves(ab, c1, alpha, n=301, keep=1.0, only_nonround=False):
+def chi_waves(ab, c1, alpha, n=301, keep=1.0, only_nonround=False, part=None):
     """The aberration function across the aperture in WAVES, from abTEM's polar convention:
     chi = 2 pi / lambda * sum C_nm theta^(n+1) / (n+1) cos(m (phi - phi_nm)), defocus = -C10.
     Returned in abTEM's array orientation (first axis = x, as every probe and Ronchigram panel here is drawn), in
@@ -110,7 +110,9 @@ def chi_waves(ab, c1, alpha, n=301, keep=1.0, only_nonround=False):
     terms = dict(ab); terms["C10"] = -float(c1)
     w = np.zeros_like(th)
     for k, v in terms.items():
-        if not k.startswith("C") or (only_nonround and k in ROUND_TERMS):
+        part_ = part or ("nonround" if only_nonround else "all")
+        if not k.startswith("C") or (part_ == "nonround" and k in ROUND_TERMS) or \
+                (part_ == "round" and k not in ROUND_TERMS):
             continue
         nn, m = int(k[1]), int(k[2])
         w += float(v) * th ** (nn + 1) / (nn + 1) * np.cos(m * (ph - float(terms.get("phi" + k[1:], 0.0))))
@@ -133,10 +135,18 @@ def check_chi(ab, c1, alpha, P, L):
 
 
 # ------------------------------------------------------------------------------------------------ fig 1
+def wrapped_panel(ax, w, h, al):
+    """A wavefront in waves, wrapped: one full colour cycle per wave, so the fringes crowd where the phase changes
+    fast -- the same places the Ronchigram turns to speckle."""
+    ax.imshow(np.mod(w, 1.0), cmap="twilight", vmin=0, vmax=1, extent=[-h, h, -h, h], interpolation="nearest")
+    ax.add_artist(plt.Circle((0, 0), al, fill=False, color=INK2, lw=0.8))
+    clean(ax)
+
+
 def fig1_aberration(a):
     import make_ronchigram_fig as mrf           # noqa: E402  (one shared film for every Ronchigram)
     R = rows()
-    fig, axes = plt.subplots(3, len(ALPHAS), figsize=(2.35 * len(ALPHAS), 7.6))
+    fig, axes = plt.subplots(2, len(ALPHAS), figsize=(2.35 * len(ALPHAS), 5.4))
     for i, al in enumerate(ALPHAS):
         r = R[f"ceosopt_a{al:03d}"]; ab = aberrations(r); c1 = float(r["c1"])
         L, N = 160.0, 2560
@@ -144,32 +154,19 @@ def fig1_aberration(a):
         err = check_chi(ab, c1, al, P, L)
         if err > 0.15:
             raise SystemExit(f"analytic chi disagrees with abTEM's probe by {err:.2f} rad at {al} mrad")
-        for row, only in ((0, False), (1, True)):
-            w, h = chi_waves(ab, c1, al, only_nonround=only)
-            lim = np.nanmax(np.abs(w))
-            ax = axes[row, i]
-            # same orientation as the Ronchigram and probe panels (imshow's default origin, first axis = x)
-            ax.imshow(w, cmap="RdBu_r", vmin=-lim, vmax=lim, extent=[-h, h, -h, h], interpolation="bilinear")
-            step = next(s for s in (0.5, 1, 2, 5, 10, 20, 50) if lim / s <= 8)
-            lv = np.arange(-np.floor(lim / step) * step, lim + 1e-9, step)
-            lv = lv[np.abs(lv) > 1e-9]
-            ax.contour(np.linspace(-h, h, w.shape[1]), np.linspace(h, -h, w.shape[0]), w, levels=lv,
-                       colors=INK, linewidths=0.45, alpha=0.55)
-            ax.add_artist(plt.Circle((0, 0), al, fill=False, color=INK2, lw=0.8))
-            clean(ax)
-            ax.set_xlabel(f"±{lim:.1f} waves · contour {step:g}", fontsize=8.5, color=INK2, labelpad=3)
-        axes[0, i].set_title(f"{al} mrad", fontsize=11, pad=5)
+        w, h = chi_waves(ab, c1, al, n=601)
+        wrapped_panel(axes[0, i], w, h, al)
+        axes[0, i].set_title(f"{al} mrad\n{np.nanmax(w) - np.nanmin(w):.0f} waves peak to valley", fontsize=10.5, pad=5)
         Rg, hr = mrf.ronchigram(P, L, al)
-        ax = axes[2, i]
+        ax = axes[1, i]
         ax.imshow(Rg, cmap="gray", extent=[-hr, hr, -hr, hr], interpolation="bilinear")
         ax.add_artist(plt.Circle((0, 0), al, fill=False, color="#ffd24a", lw=1.0, ls=":"))
         clean(ax)
-    for row, lab in enumerate(("all of it\n(balanced by the operator)", "only what the corrector\ncannot null",
-                               "Ronchigram")):
-        axes[row, 0].set_ylabel(lab, fontsize=9.5, color=INK2)
-    fig.suptitle("The CEOS-approx column opened from 40 to 80 mrad: the aberration across the aperture, in waves",
+    axes[0, 0].set_ylabel("every aberration\n(one colour cycle = 1 wave)", fontsize=9.5, color=INK2)
+    axes[1, 0].set_ylabel("Ronchigram", fontsize=9.5, color=INK2)
+    fig.suptitle("The CEOS-approx column opened from 40 to 80 mrad: the whole wavefront, and the Ronchigram it makes",
                  x=0.01, ha="left", fontsize=12, fontweight="semibold")
-    fig.tight_layout(rect=[0, 0, 1, 0.96])
+    fig.tight_layout(rect=[0, 0, 1, 0.95])
     return save(fig, "fig1_aberration.png")
 
 
@@ -280,10 +277,8 @@ def fig3_growth(a):
             P = mmf.build_probe(al, aberrations(rr), float(rr["c1"]), L=220.0, N=3584)
             d.append(mrf.enclosed(P, 220.0, (0.9,))[0])
         bx.plot(ALPHAS, d, ls=ls, marker="o", color=col, label=lab)
-    old = [float(R[f"ceosopt_a{al:03d}"]["win"]) for al in ALPHAS]
-    bx.plot(ALPHAS, old, ls="none", marker="s", mfc="none", mec=INK2, ms=7, label="scan field, first sweep")
     new = float(R["ceosopt_a070_f20"]["win"])
-    bx.axhline(new, color=SCAN_GOLD, lw=1.6, ls=(0, (4, 3)), label=f"scan field that works, {new:g} Å")
+    bx.axhline(new, color=SCAN_GOLD, lw=1.6, ls=(0, (4, 3)), label=f"scanned field, {new:g} Å")
     bx.set_yscale("log"); bx.set_xlabel("aperture semi-angle (mrad)"); bx.set_ylabel("length (Å)")
     bx.set_yticks([4, 10, 20, 50, 100]); bx.set_yticklabels(["4", "10", "20", "50", "100"]); bx.set_xticks(ALPHAS)
     bx.minorticks_off()
@@ -388,15 +383,11 @@ def fig6_numbers(a):
         else:
             ax.set_ylim(0, 105); ax.set_ylabel("bulk recall (%)" if k == 0 else "")
             ax.set_title(f"{'abc'[k]}   {sp}", loc="left")
-        for t in T:                                   # the first sweep's large-probe legs: did not reconstruct
-            if t["status"].startswith("SATURATED"):
-                ax.plot(t["alpha"], 0.03 * ax.get_ylim()[1], marker="x", ms=8, mew=2, color=INK2, zorder=4)
         ax.set_xlabel("aperture semi-angle (mrad)"); ax.set_xticks(sorted({t['alpha'] for t in T}))
     h = [Line2D([], [], color=INK, ls="-", marker="o", ms=7, label="CEOS column (species colour)"),
          Line2D([], [], color=MUTED, ls="--", marker="s", ms=7, label="round control"),
-         Line2D([], [], color=INK2, ls="none", marker="o", mfc="white", ms=7, label="species labels unreliable (confusion > 5 %)"),
-         Line2D([], [], color=INK2, ls="none", marker="x", mew=2, ms=8, label="first-sweep scan: did not reconstruct")]
-    fig.legend(handles=h, loc="lower center", ncol=4, bbox_to_anchor=(0.5, -0.02))
+         Line2D([], [], color=INK2, ls="none", marker="o", mfc="white", ms=7, label="species labels unreliable (confusion > 5 %)")]
+    fig.legend(handles=h, loc="lower center", ncol=3, bbox_to_anchor=(0.5, -0.02))
     fig.tight_layout(rect=[0, 0.07, 1, 1])
     return save(fig, "fig6_numbers.png")
 
@@ -694,8 +685,220 @@ def fig5_recons(a):
     return save(fig, "fig5_recons.png")
 
 
+# ------------------------------------------------------------------------------------------------ the explorer
+# Krivanek C_nm -> the symbols a CEOS tableau uses, and what each is
+SYMBOL = {"C10": ("C1", "defocus"), "C12": ("A1", "two-fold astigmatism"), "C21": ("B2", "axial coma"),
+          "C23": ("A2", "three-fold astigmatism"), "C30": ("C3", "spherical aberration"), "C32": ("S3", "star"),
+          "C34": ("A3", "four-fold astigmatism"), "C41": ("B4", "fourth-order axial coma"),
+          "C43": ("D4", "three-lobe"), "C45": ("A4", "five-fold astigmatism"),
+          "C50": ("C5", "fifth-order spherical"), "C56": ("A5", "six-fold astigmatism")}
+ROLE = {"C10": ("fought", "set for the smallest probe"), "C30": ("fought", "set for the smallest probe"),
+        "C21": ("fought", "set against B4, its only partner"), "C50": ("held", "held at 1 mm"),
+        "C41": ("hardware", "no knob (parasitic)"), "C45": ("hardware", "no knob (parasitic)"),
+        "C56": ("hardware", "no knob (intrinsic)")}                       # the rest: retuned to 0.1 waves
+CEOS_ADJUSTABLE = {"C10", "C12", "C21", "C23", "C30", "C32", "C34", "C43"}   # CEOS: C1 A1 B2 A2 C3 S3 A3 D4 (and C5)
+
+
+def _unit(term, v):
+    n = int(term[1])
+    return (f"{v:.2f} Å" if abs(v) < 10 else f"{v:.0f} Å") if n == 1 else \
+           (f"{v / 10:.1f} nm" if n == 2 else (f"{v / 1e4:.2f} µm" if n in (3, 4) else f"{v / 1e7:.2f} mm"))
+
+
+def _uri(fig, fmt="jpeg"):
+    import base64, io
+    buf = io.BytesIO()
+    fig.savefig(buf, format=fmt, dpi=100, bbox_inches="tight", pad_inches=0,
+                **({"pil_kwargs": {"quality": 86}} if fmt == "jpeg" else {}))
+    plt.close(fig)
+    return f"data:image/{fmt};base64," + base64.b64encode(buf.getvalue()).decode()
+
+
+def setup_entry(key, r, al):
+    import make_ronchigram_fig as mrf
+    ab = aberrations(r); c1 = float(r["c1"])
+    terms = dict(ab); terms["C10"] = -c1                               # abTEM defocus = -C10
+    out = []
+    for t in sorted((k for k in terms if k.startswith("C") and k in SYMBOL), key=lambda k: (int(k[1]), int(k[2]))):
+        v = float(terms[t]); sym, name = SYMBOL[t]
+        role, why = ROLE.get(t, ("retuned", "retuned at this aperture to 0.1 waves"))
+        out.append(dict(k=t, sym=sym, name=name, C=v, phi=float(terms.get("phi" + t[1:], 0.0)),
+                        shown=_unit(t, -c1 if t == "C10" else v), deg=(None if t[2] == "0" else
+                        round(float(np.degrees(terms.get("phi" + t[1:], 0.0))), 1)),
+                        waves=round(abs(aw.waves(t, v, al)), 3), role=role, why=why, ceos=t in CEOS_ADJUSTABLE))
+    L, N = 220.0, 3584; px = L / N; c = N // 2
+    P = mmf.build_probe(al, ab, c1, L=L, N=N)
+    win, d90, d99 = window_for(al, P, L)
+    half = win / 2; h = int(round(half / px))
+    fig, ax = plt.subplots(figsize=(3.2, 3.2))
+    ax.imshow((np.abs(P[c - h:c + h, c - h:c + h]) ** 2) ** 0.4, cmap="magma", extent=[-half, half, -half, half],
+              interpolation="bilinear")
+    cy, cx = np.unravel_index((np.abs(P) ** 2).argmax(), P.shape)
+    ax.add_artist(plt.Circle(((cx - c) * px, (cy - c) * px), d90 / 2, fill=False, color="white", lw=0.9, ls=(0, (3, 2))))
+    bar = 0.2 * win
+    ax.plot([-half * 0.9, -half * 0.9 + bar], [-half * 0.85] * 2, color="white", lw=2.2, solid_capstyle="butt")
+    ax.text(-half * 0.9, -half * 0.8, f"{bar:g} Å", color="white", fontsize=9, va="bottom")
+    ax.set_position([0, 0, 1, 1]); clean(ax)
+    probe = _uri(fig)
+    P2 = mmf.build_probe(al, ab, c1, L=160.0, N=2560)
+    Rg, hr = mrf.ronchigram(P2, 160.0, al)
+    fig, ax = plt.subplots(figsize=(3.2, 3.2))
+    ax.imshow(Rg, cmap="gray", extent=[-hr, hr, -hr, hr], interpolation="bilinear")
+    ax.add_artist(plt.Circle((0, 0), al, fill=False, color="#ffd24a", lw=1.0, ls=":"))
+    ax.set_position([0, 0, 1, 1]); clean(ax)
+    ronchi = _uri(fig)
+    return dict(key=key, alpha=al, run=r["label"], terms=out, d90=round(d90, 1), window=win,
+                probe=probe, ronchi=ronchi)
+
+
+def explorer(a):
+    """The page's setup explorer as an HTML fragment: per setup, the coefficient table (CEOS-adjustable terms marked)
+    and, computed live in the page from that table, the round part, the non-round part and their sum across the
+    aperture -- one colour cycle per wave, the same map as fig 1 -- beside the Ronchigram and the probe."""
+    import matplotlib.cm as cm
+    R = rows()
+    setups = []
+    for al in ALPHAS:
+        setups.append(setup_entry(f"ceos-{al}", R[f"ceosopt_a{al:03d}"], al))
+        setups.append(setup_entry(f"round-{al}", R[ROUND_CONTROL[al]], al))
+        print(f"  explorer {al} mrad", flush=True)
+    lut = (np.array([cm.twilight(i / 255.0)[:3] for i in range(256)]) * 255).round().astype(int).tolist()
+    data = json.dumps(dict(lam=LAM, lut=lut, setups=setups), separators=(",", ":"))
+    tabs = "".join(f'<button type="button" role="tab" id="xp-a{al}" data-a="{al}" aria-selected="false" tabindex="-1">'
+                   f'{al}</button>' for al in ALPHAS)
+    frag = XP_TEMPLATE.replace("{{TABS}}", tabs).replace("{{DATA}}", data.replace("</", "<\\/"))
+    p = os.path.join(REPO, "aberration_experiment", "results", datetime.date.today().strftime("%G-W%V"),
+                     "ceos_explorer.html")
+    os.makedirs(os.path.dirname(p), exist_ok=True)
+    open(p, "w").write(frag)
+    print(f"wrote {p} ({os.path.getsize(p) / 1e6:.2f} MB)")
+    return p
+
+
+XP_TEMPLATE = """<div class="xp" id="xp">
+  <div class="xp-bar">
+    <div class="xp-tabs" role="tablist" aria-label="Aperture semi-angle, mrad">{{TABS}}<span class="xp-unit">mrad</span></div>
+    <div class="xp-seg" role="group" aria-label="Which column">
+      <button type="button" id="xp-col-ceos" data-col="ceos" aria-pressed="true">CEOS column</button>
+      <button type="button" id="xp-col-round" data-col="round" aria-pressed="false">round control</button>
+    </div>
+  </div>
+  <div class="xp-body">
+    <div class="xp-left">
+      <div class="xp-meta" id="xp-meta"></div>
+      <div class="xp-tablewrap"><table class="xp-table">
+        <thead><tr><th scope="col"><span class="xp-sr">include</span></th><th scope="col">term</th><th scope="col">value</th>
+          <th scope="col">angle</th><th scope="col">waves at edge</th><th scope="col">who sets it</th></tr></thead>
+        <tbody id="xp-rows"></tbody>
+      </table></div>
+      <p class="xp-note">Highlighted rows are the terms a CEOS corrector lets the operator adjust. Untick a term to
+        take it out of the three wavefront maps; the Ronchigram and probe are always the full setup.</p>
+    </div>
+    <div class="xp-maps">
+      <figure class="xp-f"><canvas id="xp-round" width="280" height="280" role="img"></canvas>
+        <figcaption><b>round part</b><span id="xp-round-pv"></span></figcaption></figure>
+      <figure class="xp-f"><canvas id="xp-nonround" width="280" height="280" role="img"></canvas>
+        <figcaption><b>non-round part</b><span id="xp-nonround-pv"></span></figcaption></figure>
+      <figure class="xp-f"><canvas id="xp-total" width="280" height="280" role="img"></canvas>
+        <figcaption><b>both together</b><span id="xp-total-pv"></span></figcaption></figure>
+      <figure class="xp-f"><img id="xp-ronchi" alt=""><figcaption><b>Ronchigram</b><span>full setup</span></figcaption></figure>
+      <figure class="xp-f"><img id="xp-probe" alt=""><figcaption><b>probe</b><span id="xp-probe-d"></span></figcaption></figure>
+      <p class="xp-key">Maps: one colour cycle per wave across the aperture, the same picture as fig. 1.
+        Probe: intensity in its reconstruction window; dashed circle holds 90 %.</p>
+    </div>
+  </div>
+</div>
+<script type="application/json" id="xp-data">{{DATA}}</script>
+<script>
+(function () {
+  var D = JSON.parse(document.getElementById("xp-data").textContent);
+  var byKey = {}; D.setups.forEach(function (s) { byKey[s.key] = s; });
+  var ROUND = { C10: 1, C30: 1, C50: 1 };
+  var st = { a: 80, col: "ceos", off: {} };
+  try { var sv = JSON.parse(localStorage.getItem("xp-state") || "null"); if (sv && byKey[sv.col + "-" + sv.a]) { st.a = sv.a; st.col = sv.col; } } catch (e) {}
+
+  function waves(s, part) {
+    var n = 280, a = s.alpha * 1e-3, out = new Float32Array(n * n), lo = Infinity, hi = -Infinity;
+    for (var i = 0; i < n; i++) {
+      var tx = -a + 2 * a * i / (n - 1);                 // rows: theta_x, as abTEM's first array axis
+      for (var j = 0; j < n; j++) {
+        var ty = -a + 2 * a * j / (n - 1), th = Math.hypot(tx, ty), v = NaN;
+        if (th <= a) {
+          var ph = Math.atan2(ty, tx); v = 0;
+          for (var k = 0; k < s.terms.length; k++) {
+            var t = s.terms[k], isR = !!ROUND[t.k];
+            if (st.off[t.k] || (part === "round" && !isR) || (part === "nonround" && isR)) continue;
+            var nn = +t.k[1], m = +t.k[2];
+            v += t.C * Math.pow(th, nn + 1) / (nn + 1) * Math.cos(m * (ph - t.phi));
+          }
+          v /= D.lam;
+          if (v < lo) lo = v; if (v > hi) hi = v;
+        }
+        out[i * n + j] = v;
+      }
+    }
+    return { w: out, pv: hi - lo };
+  }
+  function paint(id, s, part) {
+    var cv = document.getElementById(id), ctx = cv.getContext("2d"), n = cv.width;
+    var r = waves(s, part), img = ctx.createImageData(n, n), d = img.data;
+    for (var p = 0; p < n * n; p++) {
+      var v = r.w[p], q = p * 4;
+      if (v !== v) { d[q + 3] = 0; continue; }
+      var c = D.lut[Math.floor((v - Math.floor(v)) * 255.999)];
+      d[q] = c[0]; d[q + 1] = c[1]; d[q + 2] = c[2]; d[q + 3] = 255;
+    }
+    ctx.putImageData(img, 0, 0);
+    var pv = isFinite(r.pv) ? r.pv : 0;
+    document.getElementById(id + "-pv").textContent = pv < 0.05 ? "none" : (pv < 10 ? pv.toFixed(1) : pv.toFixed(0)) + " waves peak to valley";
+    cv.setAttribute("aria-label", part + " part of the wavefront at " + s.alpha + " mrad, " + pv.toFixed(1) + " waves peak to valley");
+  }
+  function rowsFor(s) {
+    var tb = document.getElementById("xp-rows"); tb.textContent = "";
+    s.terms.forEach(function (t) {
+      var tr = document.createElement("tr"); if (t.ceos) tr.className = "xp-ceos";
+      var id = "xp-t-" + t.k, cb = '<input type="checkbox" id="' + id + '"' + (st.off[t.k] ? "" : " checked") + ' aria-label="include ' + t.sym + '">';
+      var chip = { fought: "c-open", retuned: "c-ok", hardware: "c-stop", held: "c-none" }[t.role];
+      tr.innerHTML = "<td>" + cb + "</td><td><label for='" + id + "'><b>" + t.sym + "</b> <span class='xp-k'>" + t.k +
+        "</span><span class='xp-name'>" + t.name + "</span></label></td><td class='xp-num'>" + t.shown + "</td><td class='xp-num'>" +
+        (t.deg === null ? "–" : t.deg.toFixed(1) + "°") + "</td><td class='xp-num'>" + (t.waves < 10 ? t.waves.toFixed(2) : t.waves.toFixed(1)) +
+        "</td><td><span class='chip " + chip + "'>" + t.role + "</span><span class='xp-why'>" + t.why + "</span></td>";
+      tb.appendChild(tr);
+      tr.querySelector("input").addEventListener("change", function (e) { st.off[t.k] = !e.target.checked; maps(); });
+    });
+  }
+  function maps() { var s = byKey[st.col + "-" + st.a]; paint("xp-round", s, "round"); paint("xp-nonround", s, "nonround"); paint("xp-total", s, "total"); }
+  function show() {
+    var s = byKey[st.col + "-" + st.a];
+    document.querySelectorAll("#xp .xp-tabs button").forEach(function (b) {
+      var on = +b.dataset.a === st.a; b.setAttribute("aria-selected", on); b.tabIndex = on ? 0 : -1; });
+    document.querySelectorAll("#xp .xp-seg button").forEach(function (b) { b.setAttribute("aria-pressed", b.dataset.col === st.col); });
+    document.getElementById("xp-meta").innerHTML = "<b>" + s.alpha + " mrad · " + (st.col === "ceos" ? "CEOS column" : "round control") +
+      "</b><span>run <code>" + s.run + "</code> · probe d90 " + s.d90.toFixed(1) + " Å · window " + s.window + " Å</span>";
+    rowsFor(s); maps();
+    var ro = document.getElementById("xp-ronchi"), pr = document.getElementById("xp-probe");
+    ro.src = s.ronchi; ro.alt = "Ronchigram at " + s.alpha + " mrad";
+    pr.src = s.probe; pr.alt = "Probe intensity at " + s.alpha + " mrad, d90 " + s.d90 + " Å";
+    document.getElementById("xp-probe-d").textContent = "d90 " + s.d90.toFixed(1) + " Å, window " + s.window + " Å";
+    try { localStorage.setItem("xp-state", JSON.stringify({ a: st.a, col: st.col })); } catch (e) {}
+  }
+  var tabs = Array.prototype.slice.call(document.querySelectorAll("#xp .xp-tabs button"));
+  tabs.forEach(function (b, i) {
+    b.addEventListener("click", function () { st.a = +b.dataset.a; st.off = {}; show(); });
+    b.addEventListener("keydown", function (e) {
+      var k = e.key === "ArrowRight" ? 1 : (e.key === "ArrowLeft" ? -1 : 0); if (!k) return;
+      e.preventDefault(); var nb = tabs[(i + k + tabs.length) % tabs.length]; nb.focus(); nb.click(); });
+  });
+  document.querySelectorAll("#xp .xp-seg button").forEach(function (b) {
+    b.addEventListener("click", function () { st.col = b.dataset.col; st.off = {}; show(); }); });
+  show();
+})();
+</script>
+"""
+
+
 FIGS = {1: fig1_aberration, 2: fig2_probes, 3: fig3_growth, 4: fig4_scan, 5: fig5_recons, 6: fig6_numbers,
-        7: fig7_stability}
+        7: fig7_stability, 8: explorer}
 
 
 def main():

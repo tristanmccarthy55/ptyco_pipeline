@@ -43,10 +43,9 @@ SOURCES_BY_TEMPLATE = {
         "FIG_ABER":     "2026-W40/ceos/fig1_aberration.png",
         "FIG_PROBES":   "2026-W40/ceos/fig2_probes.png",
         "FIG_GROWTH":   "2026-W40/ceos/fig3_growth.png",
-        "FIG_SCAN":     "2026-W40/ceos/fig4_scan.png",
         "FIG_RECONS":   "2026-W40/ceos/fig5_recons.png",
         "FIG_NUMBERS":  "2026-W40/ceos/fig6_numbers.png",
-        "FIG_STAB":     "2026-W40/ceos/fig7_stability.png",
+        "FRAG_EXPLORER": "results/2026-W40/ceos_explorer.html",
         "FRAG_RESULTS": "results/2026-W40/ceos_sweep_results_table.html",
     },
     "round_2026-09-22.html": {

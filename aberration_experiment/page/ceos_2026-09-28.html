@@ -274,6 +274,49 @@
   .spec-grid b small { font-size: 12px; font-weight: 500; color: var(--ink-3); }
   .ledger .lg-s { font-family: var(--mono); font-size: 11px; color: var(--ink-3); }
   @media (max-width: 640px) { main > section { grid-template-columns: 0 100% 0; } }
+
+  /* ---- the setup explorer --------------------------------------------------------------------- */
+  .xp { background: var(--surface); border: 1px solid var(--rule); border-radius: 4px; box-shadow: var(--shadow);
+        padding: 16px 18px 18px; margin: 18px 0 6px; }
+  .xp-bar { display: flex; flex-wrap: wrap; gap: 10px 18px; align-items: center; justify-content: space-between;
+            margin-bottom: 14px; }
+  .xp-tabs { display: flex; flex-wrap: wrap; gap: 4px; align-items: center; }
+  .xp-tabs button, .xp-seg button {
+    font-family: var(--mono); font-size: 13px; font-variant-numeric: tabular-nums; cursor: pointer;
+    padding: 6px 11px; border: 1px solid var(--rule-2); background: var(--surface); color: var(--ink-2); border-radius: 3px; }
+  .xp-tabs button:hover, .xp-seg button:hover { border-color: var(--ink-3); color: var(--ink); }
+  .xp-tabs button[aria-selected="true"] { background: var(--ink); border-color: var(--ink); color: var(--surface); }
+  .xp-seg { display: inline-flex; }
+  .xp-seg button { border-radius: 0; font-family: var(--sans); font-size: 13px; }
+  .xp-seg button:first-child { border-radius: 3px 0 0 3px; }
+  .xp-seg button:last-child { border-radius: 0 3px 3px 0; margin-left: -1px; }
+  .xp-seg button[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: var(--surface); }
+  .xp button:focus-visible, .xp input:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .xp-unit { font-family: var(--mono); font-size: 12px; color: var(--ink-3); margin-left: 6px; }
+  .xp-body { display: grid; grid-template-columns: minmax(0, 1.08fr) minmax(0, 1fr); gap: 20px; }
+  .xp-meta { font-family: var(--sans); font-size: 14.5px; display: flex; flex-wrap: wrap; gap: 2px 12px; margin-bottom: 8px; }
+  .xp-meta span { color: var(--ink-3); font-size: 13px; }
+  .xp-tablewrap { overflow-x: auto; }
+  .xp-table { font-size: 13px; }
+  .xp-table td, .xp-table th { padding: 6px 10px 6px 0; vertical-align: top; }
+  .xp-table td:first-child, .xp-table th:first-child { padding-left: 8px; width: 1%; }
+  .xp-table tr.xp-ceos td { background: var(--tint); }
+  .xp-table tr.xp-ceos td:first-child { box-shadow: inset 3px 0 0 var(--accent); }
+  .xp-table label { cursor: pointer; }
+  .xp-k { font-family: var(--mono); font-size: 11px; color: var(--ink-3); margin-left: 3px; }
+  .xp-name, .xp-why { display: block; white-space: normal; font-size: 11.5px; color: var(--ink-3); margin-top: 1px; }
+  .xp-num { font-family: var(--mono); text-align: right; }
+  .xp-note { font-family: var(--sans); font-size: 12.5px; color: var(--ink-3); margin: 10px 0 0; }
+  .xp-maps { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px 10px; align-content: start; }
+  figure.xp-f { margin: 0; border: 0; border-radius: 0; box-shadow: none; background: transparent; overflow: visible; }
+  .xp-f canvas, .xp-f img { display: block; width: 100%; max-width: 100%; height: auto; aspect-ratio: 1; }
+  .xp-f img { background: #000; }
+  .xp-f figcaption { padding: 5px 0 0; border-top: 0; font-size: 12px; color: var(--ink-3); }
+  .xp-f figcaption b { display: block; color: var(--ink); font-weight: 600; font-size: 12.5px; }
+  .xp-key { grid-column: 1 / -1; font-family: var(--sans); font-size: 12px; color: var(--ink-3); margin: 0; }
+  .xp-sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+  @media (max-width: 900px) { .xp-body { grid-template-columns: minmax(0, 1fr); } }
+  @media (max-width: 520px) { .xp-maps { grid-template-columns: repeat(2, minmax(0, 1fr)); } .xp { padding: 12px; } }
 </style>
 <header class="mast">
   <div class="mast-in"><div class="mast-col">
@@ -286,11 +329,11 @@
     </p>
     <nav class="jump">
       <a href="#s1">What is new</a>
-      <a href="#s2">The instrument</a>
-      <a href="#s3">The probes</a>
-      <a href="#s4">The scan</a>
-      <a href="#s5">Results</a>
-      <a href="#s6">Round controls</a>
+      <a href="#s2">The setups</a>
+      <a href="#s3">The wavefront</a>
+      <a href="#s4">The probes</a>
+      <a href="#s5">How runs fail</a>
+      <a href="#s6">Results</a>
       <a href="#s7">Fixed on the way</a>
       <a href="#s8">Running</a>
     </nav>
@@ -301,7 +344,6 @@
 
   <section id="s1">
     <div class="sec-head"><span class="sec-num">01</span><h2>What is new</h2></div>
-
     <div class="spec good">
       <div class="spec-k">The result so far</div>
       <p class="spec-v">80 mrad, a 49 Å probe: <em>100 / 67 / 75 %</em> of Pb / Ti / O, depth error <em>0.48 Å</em></p>
@@ -313,53 +355,65 @@
       <div class="spec-grid">
         <div><b>97 / 86 / 86 % <small>0.57 Å</small></b><span>CEOS at 70 mrad, 25 Å probe</span></div>
         <div><b>96 / 79 / 81 % <small>0.55 Å</small></b><span>round control at 80 mrad</span></div>
-        <div><b>did not reconstruct</b><span>the same 70 and 80 mrad runs on the first sweep's scan</span></div>
+        <div><b>20 Å at 0.5 Å</b><span>the scan the large probes need (§5)</span></div>
       </div>
     </div>
-
     <ul>
-      <li><b>The instrument is a CEOS-approximation tableau.</b> Six-fold A5 = 1 mm (the CEOS figure for
-        hexapole correctors); parasitic A4 = B4 = 10 µm (assumed); every term the operator can tune is
-        retuned at each aperture to 0.1 waves; defocus, C3 and coma are set for the smallest probe.</li>
+      <li><b>The instrument is a CEOS-approximation tableau</b> — every coefficient, setup by setup, in §2.</li>
       <li><b>Every run is a 210 Å cut of the tiled crystal</b>, bulk all round, recorded on a point-sampled
         detector (the old 4 × 4 pixel sum is gone: it set the old residual floors and the diagonal phase ramp).</li>
-      <li><b>The large probes needed a small, fine scan</b> — §4. The first sweep scaled the scanned field with
-        the probe at fixed position count, which coarsened the step to 1–2 Å; those runs failed.</li>
-      <li><b>The round controls at 75 and 80 mrad needed a different balance</b> — §6. The planner's 4 Å probes
-        there make the solver diverge at the depth sampling the aperture calls for.</li>
-      <li><b>Two pipeline faults were found and fixed</b>, and the two conclusions they had produced withdrawn — §7.</li>
+      <li><b>Two failure modes found, each with a fix</b> — large probes need a small, fine scan; compact probes at
+        75–80 mrad need a different balance (§5).</li>
+      <li><b>Two pipeline faults fixed</b>, and the two conclusions they had produced withdrawn (§7).</li>
     </ul>
   </section>
 
   <section id="s2">
-    <div class="sec-head"><span class="sec-num">02</span><h2>The instrument, as the aperture opens</h2></div>
+    <div class="sec-head"><span class="sec-num">02</span><h2>The setups, coefficient by coefficient</h2></div>
     <p>
-      The operator keeps the probe as small as possible at each aperture. Everything with a knob is retuned;
-      what has no knob — six-fold astigmatism above all — grows as the aperture to the sixth power. By 60 mrad it
-      is the aberration.
+      Pick an aperture and a column. The table lists every aberration term of that setup, how many waves it puts at
+      the aperture edge, and who sets it. Beside it, the round part of the wavefront, the non-round part and the two
+      together are computed live from the table; untick a term to take it out and watch the rings and petals change.
+    </p>
+    <div class="wide">
+      {{FRAG_EXPLORER}}
+    </div>
+    <p style="font-family:var(--sans);font-size:12.5px;color:var(--ink-3)">
+      Who sets what follows CEOS for its hexapole probe corrector: C1, A1, B2, A2, C3, S3, A3 and D4 are adjustable
+      (highlighted), A5 is intrinsic and A4, B4 parasitic — no knob. The operator here uses C1, C3 and B2 for the
+      smallest probe and retunes the other adjustable terms to 0.1 waves at each aperture. C5 is adjustable on the
+      real instrument but held at 1 mm here, as in the round sweep. Sourced: A5 = 1.0 mm (CEOS); A4 = B4 = 10 µm is
+      assumed.
+    </p>
+  </section>
+
+  <section id="s3">
+    <div class="sec-head"><span class="sec-num">03</span><h2>The whole wavefront, as the aperture opens</h2></div>
+    <p>
+      The operator keeps the probe as small as possible at each aperture. What has no knob — six-fold astigmatism
+      above all — grows as the aperture to the sixth power, and by 60 mrad it shapes the whole wavefront.
     </p>
     <figure class="wide">
-      <img src="{{FIG_ABER}}" alt="Seven columns, 40 to 80 mrad. Rows: the full aberration across the aperture in waves, the part a corrector cannot null, and the Ronchigram. A six-fold pattern takes over from 60 mrad.">
+      <img src="{{FIG_ABER}}" alt="Seven columns, 40 to 80 mrad: the whole wavefront wrapped one colour cycle per wave, above the Ronchigram. A hexagonal flat centre and dense outer fringes appear in both.">
       <figcaption>
         <span class="fig-name">analysis/make_ceos_figs.py → fig1_aberration.png</span>
-        The aberration across the aperture, in waves, for the CEOS column at each aperture, and the Ronchigram it makes.
+        Every aberration together across the aperture, and the Ronchigram it makes.
         <div class="howto">
           <b>How to read it</b><br>
-          <b>Top row</b> — the whole wavefront error as the operator leaves it: red ahead, blue behind, thin
-          contours at the spacing written under each panel (solid positive, dashed negative); the grey circle is
-          the aperture edge. Each panel has its own ± scale. At 40 mrad it is the operator's round balance of
-          defocus against C3 and C5; from 60 mrad the six-fold pattern dominates.
-          <b>Middle row</b> — the same with the round terms (defocus, C3, C5) removed: what no round knob can reach.
-          <b>Bottom row</b> — the Ronchigram of one identical patch of amorphous film in every panel, so only the
-          probe differs; the yellow dotted circle is the aperture. The six-pointed star is the six-fold term.
-          The wavefront is computed from the aberration table and checked against the probe the simulator built.
+          <b>Top</b> — the whole wavefront (round and non-round terms together), wrapped so that one full colour
+          cycle is one wave; the total peak-to-valley is in the title. Where fringes crowd, the phase changes fast
+          across the aperture. The grey circle is the aperture edge.
+          <b>Bottom</b> — the Ronchigram of one identical patch of amorphous film in every panel, so only the probe
+          differs; the yellow dotted circle is the aperture. The flat, magnified centre matches the fringe-free
+          centre above, and the speckled outer ring matches the crowded fringes.
+          The wavefront is computed from the coefficients and checked against the probe the simulator built.
         </div>
       </figcaption>
     </figure>
   </section>
 
-  <section id="s3">
-    <div class="sec-head"><span class="sec-num">03</span><h2>The probes that land on the specimen</h2></div>
+  <section id="s4">
+    <div class="sec-head"><span class="sec-num">04</span><h2>The probes that land on the specimen</h2></div>
     <p>
       With every knob used, the probe stays near 4–5 Å to 50 mrad and then grows fast: 12, 17.5, 25, 35 and
       49 Å across (d90) at 60, 65, 70, 75 and 80 mrad. Each probe needs a reconstruction window that holds it,
@@ -377,71 +431,59 @@
           <b>Middle</b> — the central ±6 Å of the same probe as a complex wave: colour is phase, brightness is
           amplitude. The six-fold wavefront shows as the six-armed pattern around the core.
           <b>Bottom</b> — the round control at the same aperture, in the same window, so the sizes compare
-          directly. The 75 mrad control is the balance now running (§6); the 80 mrad control is 5.6 Å.
+          directly. The 75 mrad control is the balance now running (§5); the 80 mrad control is 5.6 Å.
         </div>
       </figcaption>
     </figure>
     <figure class="wide">
-      <img src="{{FIG_GROWTH}}" alt="Left: waves at the aperture edge per aberration term against aperture. Right: probe diameter against aperture for the CEOS probe and the round control, with the scanned fields.">
+      <img src="{{FIG_GROWTH}}" alt="Left: waves at the aperture edge per aberration term against aperture. Right: probe diameter against aperture for the CEOS probe and the round control, with the 20 A scanned field.">
       <figcaption>
         <span class="fig-name">analysis/make_ceos_figs.py → fig3_growth.png</span>
-        What is left of each aberration after the operator retunes, and how the probe compares with the field scanned.
+        What is left of each aberration after the operator retunes, and the probe against the field it scans.
         <div class="howto">
           <b>How to read it</b><br>
           <b>a</b> — waves at the aperture edge for every non-round term. Black: hardware terms with no knob
-          (thick: six-fold, 1 mm). Grey: terms the operator retunes at each aperture; they sit at the tableau's
-          0.1 waves by construction, except coma, which is set against fourth-order coma as the one knob sharing
-          its symmetry — so it rises with it.
-          <b>b</b> — probe diameter d90: CEOS in black, round control dashed grey. Open squares: the scanned field
-          of the first sweep (1.5 × d90, at least 20 Å, always 1600 positions). Gold dashes: the 20 Å field that
-          works (§4). From about 67 mrad the working scan is smaller than the probe.
+          (thick: six-fold, 1 mm). Grey: terms the operator retunes at each aperture; they sit at 0.1 waves by
+          construction, except coma, which is set against fourth-order coma as the one knob sharing its
+          symmetry — so it rises with it.
+          <b>b</b> — probe diameter d90: CEOS in black, round control dashed grey; the gold dashes are the 20 Å
+          field every run scans. From about 67 mrad the probe is bigger than the field it scans, and that works.
         </div>
       </figcaption>
     </figure>
-  </section>
-
-  <section id="s4">
-    <div class="sec-head"><span class="sec-num">04</span><h2>What made the large probes work: the scan</h2></div>
-    <p>
-      The first sweep grew the scanned field with the probe (1.5 × d90) at a fixed 1600 positions, so the step
-      grew to 0.95, 1.35 and 1.85 Å at 70, 75 and 80 mrad. The 70 and 80 mrad runs never fitted the data; 75
-      fitted but noisily. The idea behind the fix: the badly aberrated outer probe carries little usable
-      information, so the step that matters is set by the compact core, and 1–2 Å is too coarse for it.
-      Scanning a 20 Å field at 0.5 Å — the round runs' own scan, 1600 positions — both runs reconstruct.
-    </p>
-    <figure class="wide">
-      <img src="{{FIG_SCAN}}" alt="Top: the 70 and 80 mrad probes with the first sweep's scanned field and the 20 A field drawn on, and the misfit through the full solve for both scans. Bottom: the depth-summed phase for each run.">
-      <figcaption>
-        <span class="fig-name">analysis/make_ceos_figs.py → fig4_scan.png</span>
-        Same probe, same slices, same window: only the scan differs.
-        <div class="howto">
-          <b>How to read it</b><br>
-          <b>a, b</b> — the probe on a log scale over six decades, in its window. Grey square: the first sweep's
-          field; gold: the 20 Å field. Inset: the central ±4 Å on four decades, with the scan positions at true
-          spacing — large grey dots the first sweep's step, small gold dots 0.5 Å.
-          <b>c</b> — misfit to the data through the full solve (ε: the residual scaled by pattern size, so runs
-          of different sizes compare). Dashed: first-sweep scan; solid: 20 Å scan; black 70 mrad, grey 80 mrad.
-          The good runs finish at 0.025 and 0.013; the 80 mrad run is the closest fit in this sweep.
-          <b>d–g</b> — the depth-summed phase over the central 20 Å for each run.
-        </div>
-      </figcaption>
-    </figure>
-    <div class="call">
-      <b>Not yet separated: step or field.</b> The 20 Å run changes both at once. A run at the old 38 Å field
-      with a 0.59 Å step (4096 positions) is reconstructing now and will say which one mattered. Fewer slices do
-      not help: CEOS 70 on the old scan at 10 slices instead of 14 still fails (ε 0.20).
-    </div>
   </section>
 
   <section id="s5">
-    <div class="sec-head"><span class="sec-num">05</span><h2>Results</h2></div>
+    <div class="sec-head"><span class="sec-num">05</span><h2>How runs fail, and what fixes them</h2></div>
+    <div class="ledger">
+      <div>
+        <span class="lg-t">Large probes (CEOS 70–80 mrad): a coarse scan step</span>
+        <span class="lg-s">fixed</span>
+        <span class="lg-d">Scaling the scanned field with the probe (1.5 × d90) at a fixed 1600 positions coarsens the
+          step to 1–2 Å, and the solve never fits the data. The badly aberrated outer probe carries little usable
+          information, so the step that matters is set by the compact core. A 20 Å field at 0.5 Å — the round runs'
+          own scan — fixes it at 70 and 80 mrad. Fewer slices do not. Whether the step or the field is what matters
+          is being tested (§8).</span>
+      </div>
+      <div>
+        <span class="lg-t">Compact round probes at 75–80 mrad: the solver's first stage runs away</span>
+        <span class="lg-s">fixed</span>
+        <span class="lg-d">The planner's 4 Å balance (C3 −7 µm, defocus −100 Å at 80 mrad) fails at the depth sampling
+          the aperture calls for: the coarse first stage of the solve diverges from its second iteration, at 18 or 23
+          slices; at 14 it survives. The same aperture with a different balance (C3 −9 µm, defocus −160 Å, a 5.6 Å
+          probe) converges at 18 slices. What separates them so far: how much the probe's intensity changes from one
+          slice to the next — 6.2 % or more converged, 5.6 % or less failed. A 3.9 Å round 75 balance chosen by
+          that rule before running is reconstructing now.</span>
+      </div>
+    </div>
+  </section>
+
+  <section id="s6">
+    <div class="sec-head"><span class="sec-num">06</span><h2>Results</h2></div>
     <p>
-      From 60 to 75 mrad the CEOS column matches or beats the round control species by species. At 80 mrad it
-      leads on Pb and depth error but trails on Ti (67 against 79 %) and O (75 against 81 %) — single runs, and
-      the engine reseeds every run, so a gap of that size is not yet separated from run-to-run spread. The depth
-      error falls from 0.85 Å at 60 mrad to 0.48 Å at 80 (the 75 mrad point is still on its old scan). At
-      65 mrad and below, with slices of 2.3 Å and thicker against 1.95 Å between atomic planes, species labels
-      fail the 5 % confusion check for both columns, as in the round campaign.
+      The CEOS column tracks the round control at every aperture from 50 to 80 mrad. Lead is strong throughout
+      (88–100 % from 60 mrad); titanium is the weak species (58–86 %). At 65 mrad and below, species labels fail the
+      5 % confusion check for both columns, so the species split there is not to be trusted.
     </p>
     <figure class="wide">
       <img src="{{FIG_RECONS}}" alt="Columns 50 to 80 mrad. Rows: depth-summed phase of the CEOS run, a depth section of the CEOS run with atoms drawn on, and the same for the round control.">
@@ -455,7 +497,6 @@
           in every panel, a 0.5 Å-thick band: filled dots are the atoms in the structure (orange Ti, green O),
           rings are the atoms the finder reported, coloured by the species it assigned. A ring with no dot is
           spurious; a dot with no ring is a miss. Blue dashes mark the edges of the vacuum above and below the slab.
-          "Species labels unreliable" flags confusion above 5 %.
         </div>
       </figcaption>
     </figure>
@@ -467,10 +508,9 @@
         <div class="howto">
           <b>How to read it</b><br>
           Solid lines in the species colour: the CEOS column. Dashed grey with squares: the round control.
-          Hollow markers: species labels unreliable (confusion above 5 %), so the species split at that point
-          is not to be trusted. Crosses on the floor: the first sweep's 70 and 80 mrad runs, which did not
-          reconstruct. Two points will move: CEOS 75 is still on its old 54 Å scan, and the round 75 control is
-          the balance that half-failed (§6); both reruns are running.
+          Hollow markers: species labels unreliable (confusion above 5 %). Two 75 mrad points will move: CEOS 75 is
+          still on its old 54 Å scan, and the round 75 control is the balance that half-failed; both reruns are
+          running. Each point is a single run.
         </div>
       </figcaption>
     </figure>
@@ -482,35 +522,6 @@
       every row. Depth error is the RMS depth error of matched atoms; precision is the fraction of found atoms
       that are real.
     </p>
-  </section>
-
-  <section id="s6">
-    <div class="sec-head"><span class="sec-num">06</span><h2>Why the round controls at 75 and 80 mrad changed</h2></div>
-    <p>
-      The round planner reaches 4 Å at 75 and 80 mrad by balancing C3 and defocus. Those probes failed in every
-      geometry tried. It is not the aperture: the same aperture with a different balance works. It is the probe
-      against the number of depth slices — the solver's first, coarse stage runs away from its second iteration.
-      With a balance that keeps the probe near 4–6 Å but changes more from slice to slice, it converges.
-    </p>
-    <figure class="wide">
-      <img src="{{FIG_STAB}}" alt="Left: misfit against iteration in the solver's first stage for several compact probes, some settling and some running away. Right: each probe's intensity change per slice, with converged and failed runs separated by a narrow band.">
-      <figcaption>
-        <span class="fig-name">analysis/make_ceos_figs.py → fig7_stability.png</span>
-        The solver's first stage, and a candidate rule for which probes it can handle.
-        <div class="howto">
-          <b>How to read it</b><br>
-          <b>a</b> — misfit through the first (coarse) stage of the solve. Solid black: the final reconstruction
-          was good; dashed grey: it failed. Each line is labelled with its aperture, C3 / defocus and slice count.
-          The 14-slice round 80 run climbs here and is rescued by the second stage.
-          <b>b</b> — how much each probe's intensity pattern changes from one reconstruction slice to the next as
-          it passes through the sample (propagated in free space, averaged through the box). Filled: good;
-          hollow: failed; the shaded band is where the threshold must lie. The diamond is a prediction made before
-          its run: a 4 Å round 75 probe expected to converge, now reconstructing.
-          This is a rule that fits every compact-probe run so far, not a mechanism; the large CEOS probes change
-          far less per slice and still work, so it does not transfer to them.
-        </div>
-      </figcaption>
-    </figure>
   </section>
 
   <section id="s7">
@@ -565,7 +576,7 @@
     <ul>
       <li><b>Step or field</b> — CEOS 70 at the old 38 Å field with a 0.59 Å step (4096 positions).</li>
       <li><b>CEOS 75 on the 20 Å scan</b> — the last large probe still on its old scan.</li>
-      <li><b>A stable round 75 control</b> — C3 −7 µm, defocus −120 Å: a 3.9 Å probe predicted to converge (fig. 7b).</li>
+      <li><b>A stable round 75 control</b> — C3 −7 µm, defocus −120 Å: a 3.9 Å probe chosen to converge.</li>
     </ul>
     <p>
       Still open: at 40 mrad the reconstruction has only four slices and the atom finder cannot run on so thin a
