@@ -176,11 +176,15 @@ Window, Pb/Ti/O bulk % and z-RMS (17.5 Å = 09-24 sweep re-scored locally; 35 Å
 
 Round 70 at 35 Å repeats to one point, so its gap to 17.5 Å is real: **keep the d99 window rule (17.5 Å where it
 fits).** CEOS 50 repeats only to ~12 points on Pb (labels unreliable at NL 7). 40 mrad: atomfind still crashes (NL 4).
-**CEOS 75 genuinely fails — by depth, not divergence**: Pb/Ti/O 5/17/23 %, precision 0.50, confusion 54 %. Its grid
-kernel peaks on the atom plane (layer 6) AND in the exit layers (−0.32, +0.52 at layers 10–11): "50 atoms at 1.33 Å".
-Layer stats show it without atomfind: the last layers' phase std 0.17/0.14/0.08 vs 0.07 mid-slab (lab and Pb alike);
-every working leg's last layer is ≤ 0.33 × its mid-slab (CEOS 60/65, round 70). The low residual (ε 0.075) hid it.
-**Judge the lab-only large-CEOS tests (`_nl10`, `_s06`) on last-layer / mid-slab phase std** as well as ε.
+**CEOS 75 RECONSTRUCTS — corrected 09-28 after the user read the phase images** (`analysis/render_phase.py`; the
+Blythe analysis now writes them to `<out>/phase/` for every leg). Lab: clean lattice, clean tilted columns in x-z through
+the slab; Pb grid: a clean 3 Å grid in the depth sum. What is real: noise that grows toward the exit (slice phase std
+0.04 → 0.17, lab and Pb alike) and a Ti corner artifact outside the analysed 20 Å field. What failed was the KERNEL
+EXTRACTION: its site finder took noise peaks between grid atoms as sites ("50 atoms at 1.33 Å"), so the kernels and
+the 5/17/23 % recall are junk. My "atoms parked at the exit surface" reading of the kernel's axial profile was wrong —
+that profile was the average over those noise sites. Fix: `extract_psf --min-sep` = grid spacing (analyse_sweep passes
+3 Å); byte-identical on all 16 clean kernels. CEOS 70 (phase wraps, "black bubbles") and 80 do fail.
+**Judge the lab-only large-CEOS tests (`_nl10`, `_s06`) on their phase images** (run_analysis renders lab-only legs too) and ε.
 
 **Submitted 09-28** (rows at the end of `ceos_sweep.tsv`): round controls `round_a075_b8` (C3 −8 µm, C1 −130: d90 4.1,
 d99 5.2 Å, 5.6 %/slice — also tests the rule) and `round_a080_b9` (= hia_a080_k90 with kernels); large CEOS, one change
