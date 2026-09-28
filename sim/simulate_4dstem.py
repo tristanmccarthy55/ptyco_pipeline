@@ -92,6 +92,7 @@ SCAN_STEP_A     = 0.1
 MATERIAL_SCAN_CENTRE = (SCAN_CENTER_X_A, SCAN_CENTER_Y_A)
 REGION_SIDE_A   = None
 SCAN_BATCH      = 8        # [region] probe positions per GPU batch (the potential is built once)
+IO_BLOCK        = 256      # positions per block when writing / checking data_dp.hdf5 (~2 GB at 1422 px)
 
 # --- thermal diffuse scattering (frozen phonons) ---
 # OFF by default (coherent) so sim_out/ stays the validated coherent baseline. When
@@ -546,7 +547,7 @@ def _scan_one_config(probe, potential, scan, detector):
     return arr, n_b, n_u, n_c
 
 
-def _scan_one_config_batched(probe, potential, scan, detector):
+def _scan_one_config_batched(probe, potential, scan, detector, dtype=np.float64):
     """[region] _scan_one_config for large boxes: same output, bounded GPU memory.
 
     abTEM's lazy scan rebuilds every potential slice inside every chunk of positions and runs chunks on several
@@ -569,7 +570,10 @@ def _scan_one_config_batched(probe, potential, scan, detector):
                 n_u = int(a.shape[-1])
                 s, n_c = _crop_center_to_multiple(n_u, BIN_FACTOR)
                 n_b = n_c // BIN_FACTOR
-                out = np.empty((len(positions), n_b, n_b), dtype=np.float64)
+                # float32 when the caller only casts to float32 anyway (coherent runs): the same rounding, half
+                # the memory. At 5776 positions x 1422^2 a float64 buffer is 93 GB, and the float32 cast beside it
+                # overran the sim job's 128 GB (ceosopt_a070_s05, 2026-09-28).
+                out = np.empty((len(positions), n_b, n_b), dtype=dtype)
             crop = a[:, s:s + n_c, s:s + n_c]
             if DETECTOR_SAMPLING == "point":
                 red = crop[:, ::BIN_FACTOR, ::BIN_FACTOR] * float(BIN_FACTOR ** 2)
@@ -604,9 +608,10 @@ def run_scan_binned(probe, atoms, scan):
         arr = (acc / N_PHONONS).astype(np.float32)
     else:
         print("[phonons] OFF (coherent — no TDS)")
+        kw = {"dtype": np.float32} if REGION_SIDE_A else {}
         arr_i, n_b, n_u, n_c = scan_one(
-            probe, build_potential(atoms, announce=True), scan, detector)
-        arr = arr_i.astype(np.float32)
+            probe, build_potential(atoms, announce=True), scan, detector, **kw)
+        arr = arr_i.astype(np.float32, copy=False)
     print(f"[bin] detector {n_u} -> crop {n_c} -> {BIN_FACTOR}×{BIN_FACTOR} "
           f"{'point-sampled' if DETECTOR_SAMPLING == 'point' else 'summed'} -> N_b = {n_b}")
     print(f"[bin] binned measurement: {arr.shape[0]} positions × {n_b}×{n_b}")
@@ -621,15 +626,20 @@ def save_outputs(arr, pos_xy, out_dir: Path, box_a: float):
     out_dir.mkdir(parents=True, exist_ok=True)
     npos, n_b, n_bx = arr.shape
     assert n_b == n_bx, f"binned DP not square: {n_b}x{n_bx}"
-    A = arr.astype(np.float64)
 
     # FIXED dose scale (NOT normalised by this run's own mean) so independently
     # simulated scan tiles share one consistent scale and merge seamlessly. abTEM
     # flux-normalises each pattern (~1), so xDOSE_E gives ~DOSE_E e/pattern. The Poisson
     # step renormalises this away anyway; it only has to be consistent across tiles and
     # above the recon's count floor.
-    A *= DOSE_E
-    A = A.astype(np.float32)
+    # Scaled in place in float32 when DOSE_E is exact in float32 (1e10 is): the product of two float32 values
+    # is exact in float64, so one rounding either way -- bit-identical to the float64 detour, without the two
+    # full-size copies (93 + 47 GB at 5776 positions). Any other dose keeps the float64 detour.
+    if float(np.float32(DOSE_E)) == float(DOSE_E):
+        A = arr if arr.dtype == np.float32 else arr.astype(np.float32)
+        A *= np.float32(DOSE_E)
+    else:
+        A = (arr.astype(np.float64) * DOSE_E).astype(np.float32)
     print(f"[dose] ×{DOSE_E:.0e} (fixed)  "
           f"(avg {A.reshape(npos,-1).sum(1).mean()/(n_b*n_b):.3g} e/pixel)")
 
@@ -637,11 +647,13 @@ def save_outputs(arr, pos_xy, out_dir: Path, box_a: float):
     # MATLAB h5read reverses axes: HDF5 (s0,s1,s2) -> MATLAB [s2,s1,s0] with
     # M(p,q,r)=H[r-1,q-1,p-1]. For MATLAB dp[N_b,N_b,Npos] with dp(dy,dx,k)=A[k,dy,dx]
     # the dataset must be (Npos, N_b_x, N_b_y) = A.transpose(0,2,1).
-    H_dp = np.ascontiguousarray(A.transpose(0, 2, 1))
+    # Written in position blocks, each transposed on the way out, instead of one full transposed copy.
     dp_path = out_dir / "data_dp.hdf5"        # NOTE: .hdf5 (PtychoShelves loader name)
     with h5py.File(dp_path, "w") as f:
-        f.create_dataset("dp", data=H_dp)     # uncompressed: noiseless DPs are dense (gzip only ~1.2x)
-    print(f"[save] {dp_path}  (HDF5 /dp {H_dp.shape} -> MATLAB [{n_b},{n_b},{npos}])")
+        d = f.create_dataset("dp", shape=(npos, n_bx, n_b), dtype=np.float32)   # uncompressed, contiguous
+        for i in range(0, npos, IO_BLOCK):
+            d[i:i + IO_BLOCK] = A[i:i + IO_BLOCK].transpose(0, 2, 1)
+    print(f"[save] {dp_path}  (HDF5 /dp {(npos, n_bx, n_b)} -> MATLAB [{n_b},{n_b},{npos}])")
 
     # --- data_position.hdf5 ------------------------------------------
     pos_xy = np.asarray(pos_xy).astype(np.float32)   # (Npos, 2) [x, y]
@@ -690,12 +702,13 @@ def selftest_ordering(dp_path, pos_path, A, pos_xy, ny):
     full grid AND a single tile band (which is also a y-fastest contiguous block)."""
     npos, n_b, n_bx = A.shape
 
-    with h5py.File(dp_path, "r") as f:
-        H = f["dp"][...]                       # (Npos, N_b_x, N_b_y)
-    M_dp = np.transpose(H, (2, 1, 0))          # MATLAB [N_b, N_b, Npos]
-    assert M_dp.shape == (n_b, n_bx, npos), M_dp.shape
-    assert np.array_equal(M_dp, np.transpose(A, (1, 2, 0))), \
-        "dp ordering mismatch (detector/scan transpose)"
+    with h5py.File(dp_path, "r") as f:        # read back in position blocks (a full copy is 47 GB at 5776)
+        d = f["dp"]                            # (Npos, N_b_x, N_b_y)
+        assert (d.shape[2], d.shape[1], d.shape[0]) == (n_b, n_bx, npos), d.shape   # MATLAB [N_b, N_b, Npos]
+        for i in range(0, npos, IO_BLOCK):
+            M_dp = np.transpose(d[i:i + IO_BLOCK], (2, 1, 0))
+            assert np.array_equal(M_dp, np.transpose(A[i:i + IO_BLOCK], (1, 2, 0))), \
+                "dp ordering mismatch (detector/scan transpose)"
 
     with h5py.File(pos_path, "r") as f:
         Hp = f["probe_positions_0"][...]       # (2, Npos)
@@ -724,7 +737,7 @@ def selftest_ordering(dp_path, pos_path, A, pos_xy, ny):
     assert abs(cy - exp) <= tol and abs(cx - exp) <= tol, \
         f"diffraction COM at ({cy:.1f},{cx:.1f}), expected near ({exp},{exp})"
 
-    print(f"[selftest] OK: dp {M_dp.shape}, pos {pos_xy.shape}, "
+    print(f"[selftest] OK: dp {(n_b, n_bx, npos)}, pos {pos_xy.shape}, "
           f"y-fastest verified, DC-centred (COM ({cy:.1f},{cx:.1f}) of {n_b})")
 
 

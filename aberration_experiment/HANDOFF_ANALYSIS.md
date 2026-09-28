@@ -167,6 +167,9 @@ exception). Large CEOS probes change 1–2 % and still split, so it is not unive
 d99 5.2 Å, 5.6 %/slice — also tests the rule) and `round_a080_b9` (= hia_a080_k90 with kernels); large CEOS, one change
 each against ceosopt_a070/080: `_f20` (scan 20 Å at 0.5 Å, drops Rule 4 — which was never shown to help: widening
 a110's field did not rescue it), `_s05` (CEOS 70 scan 38 Å at 0.5 Å, 5776 positions — step only), `_nl10` (NL only).
+`_s05`'s sim failed (job 1294737): its float64 region buffer needs ~140 GB against the sim's 128 GB (now float32,
+bit-identical output), and its recon would need ~4× the 47 GB of data, above a GPU node. Replaced by `_s06`: 38 Å at
+0.594 Å, 4096 positions (~33 GB data, ~135 GB recon peak). **Position ceiling at 1422 px: ~5500 per recon.**
 
 **Results** (`~/Desktop/ceos80_analysis/analysis_round_a040-…_20260924_183951/summary.csv`, run on Blythe by
 `campaign/run_analysis.sh`; per-leg logs under `logs/`):
