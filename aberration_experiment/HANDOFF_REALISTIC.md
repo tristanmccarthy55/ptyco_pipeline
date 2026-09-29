@@ -64,7 +64,7 @@ C3 ±3.5, A3 ±4, A4 ±8 waves at 80 mrad; the manual's standard deviations B4 �
 tuned at ~26–30 mrad leaves an 80 mrad probe with several waves of each residual, and cannot tell you that probe better
 than several waves per term.
 
-## Collected 2026-09-29 (all in `~/Desktop/ceos_figdata`; the CEOS page v5 shows them)
+## Collected 2026-09-29 (all in `~/Desktop/ceos_figdata`; the CEOS page v7 shows them)
 
 | run | result |
 |---|---|
@@ -76,7 +76,7 @@ than several waves per term.
 
 ## Your jobs, in order
 
-1. ~~Collect the waiting runs and update the CEOS page~~ — DONE 2026-09-29 (page v5,
+1. ~~Collect the waiting runs and update the CEOS page~~ — DONE 2026-09-29 (page v7,
    **https://claude.ai/artifact/VqmcbqPVGYkgqdExRxdFnb**; to change it: read it first with the Artifact tool — it was
    published from another conversation — then rebuild with `page/build_page.py --template page/ceos_2026-09-28.html`
    and publish with `url=`).
@@ -111,8 +111,11 @@ Nothing from this goes into the relaxation ladder, the figures of record or the 
 
 ## What carries over from the CEOS sweep (do not re-litigate)
 
-- **Large probes need a small, fine scan**: a 20 Å field at 0.5 Å reconstructs CEOS 70 (97/86/86 %, 0.57 Å) and 80 mrad
-  (100/67/75 %, 0.48 Å); scaling the field with the probe at 1600 positions (1–2 Å steps) fails. Fewer slices do not help.
+- **Large probes need a fine scan step (≤ ~0.6 Å); the field size does not matter**: a 20 Å field at 0.5 Å reconstructs
+  CEOS 70 (98/86/86 %, 0.57 Å), 75 (95/86/90 %, 0.55 Å) and 80 mrad (100/67/75 %, 0.48 Å), and so does CEOS 70 at its old
+  38 Å field with a 0.59 Å step; 1–2 Å steps fail. Fewer slices do not help. The 20 Å / 0.5 Å scan is the default.
+- **Tuning precision did not matter at 80 mrad with the probe known**: tuned at 30 mrad and left (`ceosbuilt_a080`) gives
+  100/67/74 %, 0.47 Å — the same as the idealised re-tuned run.
 - **Compact round probes at 75–80 mrad** make the presolve diverge at Nyquist slicing; a probe whose intensity changes
   ≥ 6.2 % per slice converges, ≤ 5.6 % fails (candidate rule, compact probes only).
 - **17.5 Å windows work** (the 35 Å minimum was an analysis artifact and is withdrawn); window from d99.
@@ -137,7 +140,9 @@ Nothing from this goes into the relaxation ladder, the figures of record or the 
 - Commit and push (`origin/main`); leave `report/` and `analysis/atomfind/*.md` alone.
 - **Figures** (the user's standing preferences): build up from the instrument (wavefront wrapped at one colour cycle per
   wave, Ronchigram, probe) to the reconstruction to the numbers; reuse the existing figure code; every figure gets a
-  "how to read it" naming each line, marker and colour; no before/after "first scan vs second scan" figures — write failure
+  "how to read it" naming each line, marker and colour; image sets across conditions go in a tabbed viewer (one tab per
+  aperture, big images, small found-atom rings — `make_ceos_figs.py --figs 9`); page text runs at the figures' width;
+  comparison tables are judged good / okay / off with a colour AND a word; no before/after "first scan vs second scan" figures — write failure
   modes in words; one colour per species everywhere (Pb `#2a78d6`, Ti `#eb6834`, O `#1baf7a`) and never those colours
   for anything else; no number typed into a figure script. Pages inline their figures (base64) via `page/build_page.py`.
 - Plain language for a professor-level reader; no buzzwords.
@@ -160,5 +165,5 @@ Nothing from this goes into the relaxation ladder, the figures of record or the 
 `campaign/aberration_waves.py` (`ceos_tableau`, waves per term; the tuning-assumption note) · `campaign/plan_probe.py`
 (`plan_ceos`, `region_geometry`) · `campaign/run_thin_atomfind.sh` (driver; cols 11–15 per-row geometry and `nl_force`) ·
 `campaign/run_analysis.sh` → `analysis/analyse_sweep.py` · `analysis/render_phase.py` · `analysis/figdata.py` ·
-`analysis/make_ceos_figs.py` (figures 1–8, `RESULTS` manifest) · `aberration_experiment/page/` (page templates, builder) ·
+`analysis/make_ceos_figs.py` (figures 1–9: 8 = setup explorer, 9 = tabbed reconstructions; `RESULTS` manifest) · `aberration_experiment/page/` (page templates, builder) ·
 `sim/make_probe.py` · `campaign/run_c1_search.sh`. Region GT: `~/Desktop/ceos_region_gt` (Blythe: `$SHARE/phucrh/gt_region210`).

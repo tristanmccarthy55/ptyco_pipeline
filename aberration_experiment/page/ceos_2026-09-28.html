@@ -322,6 +322,13 @@
   td.v-ok   { background: color-mix(in srgb, var(--warn) 17%, transparent); }
   td.v-bad  { background: color-mix(in srgb, var(--stop) 17%, transparent); }
   @media (max-width: 520px) { .xp-maps { grid-template-columns: repeat(2, minmax(0, 1fr)); } .xp { padding: 12px; } }
+  /* ---- one width for everything (the user's call, 2026-09-29): text, tables and figures share the figures' column --- */
+  main { grid-template-columns: minmax(0, 1fr); }
+  main > *, main > section, main > section > *, main > section > .wide { grid-column: 1 / -1; }
+  main > section { display: block; }
+  main > section > .wide { width: 100%; }
+  .mast-col, footer.foot .foot-in > span { width: 100%; }
+  .standfirst { max-width: 110ch; }
 </style>
 <header class="mast">
   <div class="mast-in"><div class="mast-col">
