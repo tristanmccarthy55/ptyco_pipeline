@@ -53,6 +53,7 @@ INK, INK2, MUTED, GRIDC = mmf.INK, mmf.INK2, mmf.MUTED, mmf.GRIDC
 SPECIES = mmf.SPECIES                       # Pb blue, Ti orange, O green: the colours every earlier figure used
 TSV = os.path.join(REPO, "campaign", "ceos_sweep.tsv")
 ALPHAS = (40, 50, 60, 65, 70, 75, 80)
+XP_ALPHAS = ALPHAS + (90, 100)            # the explorer also shows the 90/100 mrad stretch (not yet runnable)
 SCAN_GOLD = "#c99700"                       # the 20 A scan, in every figure (never a species colour)
 ROUND_TERMS = ("C10", "C30", "C50")         # what a round (Cs-type) corrector adjusts and leaves; the rest is non-round
 # the round control used at each aperture in the results (the planner's 4 A row, or the stable balance where the
@@ -83,11 +84,19 @@ def save(fig, name):
 
 
 # ------------------------------------------------------------------------------------------------ the sweep table
-def rows():
-    out = {}
-    with open(TSV) as f:
-        for r in csv.DictReader((l for l in f if not l.startswith("#")), delimiter="\t"):
-            out[r["label"]] = r
+def rows(commented=False, path=TSV):
+    """Sweep rows by label. commented=True also reads the planned-but-commented rows (#arm_..., #ceosopt_...: the
+    setups that are not runnable as planned), so the explorer can show them."""
+    out, hidden = {}, set()
+    with open(path) as f:
+        lines = []
+        for l in f:
+            if commented and l.startswith(("#arm_", "#ceosopt_")):
+                hidden.add(l[1:].split("\t", 1)[0]); l = l[1:]
+            lines.append(l)
+    for r in csv.DictReader((l for l in lines if not l.startswith("#")), delimiter="\t"):
+        r["_commented"] = r["label"] in hidden
+        out[r["label"]] = r
     return out
 
 
@@ -715,6 +724,42 @@ def _unit(term, v):
            (f"{v / 10:.1f} nm" if n == 2 else (f"{v / 1e4:.2f} µm" if n in (3, 4) else f"{v / 1e7:.2f} mm"))
 
 
+def ceos_notation(term, C, phi):
+    """An abTEM term (C_nm [A], phi_nm [rad]) in the corrector's own Haider/CEOS notation: (value [A], angle [deg] of
+    the complex coefficient or None, factor C_nm / value). The inverse of aberration_waves.haider_to_abtem: B2, S3, B4
+    and D4 are C_nm / (n+1), and every angle is m x the azimuth (with the sign flipped for the mixed terms)."""
+    n, m = int(term[1]), int(term[2])
+    for p, q, pref in aw.HAIDER.values():
+        if p + q - 1 == n and abs(p - q) == m:
+            f = (n + 1) * pref
+            if m == 0:
+                return C / f, None, f
+            ang = float(np.degrees((phi if q > p else -phi) * m))
+            return C / f, (ang + 180.0) % 360.0 - 180.0, f
+    raise KeyError(term)
+
+
+# the ARM200F column: where each held term comes from, and why nobody moves it (campaign/arm200f_tableau.tsv)
+ARM_WHY = {"C12": "; the stigmator could null it on the day (open decision)", "C41": "; parasitic, no knob",
+           "C43": "; not a routine knob", "C45": "; parasitic, no knob", "C56": "; intrinsic to the hexapole, no knob"}
+
+
+def arm_role(term, al, sym):
+    """(role, why) of one term of the ARM200F-class tableau, with its measurement uncertainty in waves at this aperture
+    -- the number the 'probe known only as well as it is measured' test turns on."""
+    if term in ("C10", "C30"):
+        return "fought", "set for the smallest probe: the only terms the plan moves"
+    if term == "C50":
+        return "fixed", (f"factory set; +4 mm chosen, a well-tuned column (reference 6 ± 4 mm s.d.: the ± alone is "
+                         f"{aw.waves('C50', 4e7, al):.0f} waves here)")
+    v, ang, unc, kind, src = aw.arm_measured()[sym]
+    p, q, pref = aw.HAIDER[sym]
+    wu = aw.waves(term, unc * (p + q) * pref, al)
+    where = "measured on the ARM (run3)" if src != "manual" else "reference Table 3"
+    lab = "95 % interval" if kind == "ci95" else "s.d."
+    return "measured", f"{where}, held; ± {_unit(term, unc)} ({lab}) = ± {wu:.1f} waves here{ARM_WHY.get(term, '')}"
+
+
 def _uri(fig, fmt="jpeg"):
     import base64, io
     buf = io.BytesIO()
@@ -724,23 +769,43 @@ def _uri(fig, fmt="jpeg"):
     return f"data:image/{fmt};base64," + base64.b64encode(buf.getvalue()).decode()
 
 
-def setup_entry(key, r, al):
+def setup_entry(key, r, al, kind="ceos"):
+    """One explorer setup. Values are shown in the corrector's own (CEOS) notation, the notation the ARM's tableau is
+    in; the abTEM coefficient the simulation used is given beside every term where the two differ (B2, S3, B4, D4).
+    The wavefront maps are computed in the page from the abTEM coefficients (C, phi)."""
     import make_ronchigram_fig as mrf
     ab = aberrations(r); c1 = float(r["c1"])
     terms = dict(ab); terms["C10"] = -c1                               # abTEM defocus = -C10
     out = []
     for t in sorted((k for k in terms if k.startswith("C") and k in SYMBOL), key=lambda k: (int(k[1]), int(k[2]))):
-        v = float(terms[t]); sym, name = SYMBOL[t]
-        role, why = ROLE.get(t, ("assumed", "operator-tuned; assumed re-tuned to 0.1 waves at this aperture"))
-        if key.startswith("round") and t in ("C10", "C30"):
-            why = "set for a 4 A probe (round control)"
-        out.append(dict(k=t, sym=sym, name=name, C=v, phi=float(terms.get("phi" + t[1:], 0.0)),
-                        shown=_unit(t, -c1 if t == "C10" else v), deg=(None if t[2] == "0" else
-                        round(float(np.degrees(terms.get("phi" + t[1:], 0.0))), 1)),
+        v = float(terms[t]); sym, name = SYMBOL[t]; phi = float(terms.get("phi" + t[1:], 0.0))
+        if kind == "arm":
+            role, why = arm_role(t, al, sym)
+        else:
+            role, why = ROLE.get(t, ("assumed", "operator-tuned; assumed re-tuned to 0.1 waves at this aperture"))
+            if kind == "round" and t in ("C10", "C30"):
+                why = "set for a 4 A probe (round control)"
+        hv, hang, fac = ceos_notation(t, v, phi)
+        out.append(dict(k=t, sym=sym, name=name, C=v, phi=phi, shown=_unit(t, hv),
+                        abtem=(None if fac == 1 else _unit(t, v)), deg=(None if hang is None else round(hang, 1)),
                         waves=round(abs(aw.waves(t, v, al)), 3), role=role, why=why, ceos=t in CEOS_ADJUSTABLE))
-    L, N = 220.0, 3584; px = L / N; c = N // 2
+    L, N = 220.0, 3584
     P = mmf.build_probe(al, ab, c1, L=L, N=N)
+    d99 = mrf.enclosed(P, L, (0.99,))[0]
+    if d99 > 0.42 * L:                                  # the ARM's large probes: a box that holds them, same aperture room
+        L = float(np.ceil(2.5 * d99 / 20) * 20)
+        L = min(L, float(np.floor(10240 * LAM / (2 * 1.05 * al * 1e-3) / 20) * 20))   # <= 10240 px (laptop memory)
+        N = int(np.floor(min(2 * 1.2 * al * 1e-3 * L / LAM, 10240) / 64) * 64)
+        import abtem                                    # eager: abTEM 1.0.5's lazy chunking divides by zero past ~4000 px
+        P = np.asarray(abtem.Probe(energy=300e3, semiangle_cutoff=al, extent=L, gpts=N, defocus=c1,
+                                   aberrations=ab).build(lazy=False).array)
+    px = L / N; c = N // 2
     win, d90, d99 = window_for(al, P, L)
+    if kind == "arm":                                   # the planner's window and sizes: one source for every table
+        import re
+        win = float(r["side"]) / int(r["bin"])
+        m = re.search(r"d50/d90/d99 ([0-9.]+)/([0-9.]+)/([0-9.]+)", r["note"])
+        d90, d99 = float(m.group(2)), float(m.group(3))
     half = win / 2; h = int(round(half / px))
     fig, ax = plt.subplots(figsize=(3.2, 3.2))
     ax.imshow((np.abs(P[c - h:c + h, c - h:c + h]) ** 2) ** 0.4, cmap="magma", extent=[-half, half, -half, half],
@@ -759,8 +824,11 @@ def setup_entry(key, r, al):
     ax.add_artist(plt.Circle((0, 0), al, fill=False, color="#ffd24a", lw=1.0, ls=":"))
     ax.set_position([0, 0, 1, 1]); clean(ax)
     ronchi = _uri(fig)
-    return dict(key=key, alpha=al, run=r["label"], terms=out, d90=round(d90, 1), window=win,
-                probe=probe, ronchi=ronchi)
+    flag = ""
+    if r.get("_commented") or "NOT RUNNABLE" in r.get("note", ""):
+        flag = "not runnable as planned — the cost table below says what it needs"
+    return dict(key=key, alpha=al, run=r["label"], terms=out, d90=round(d90, 1), d99=round(d99, 1), window=win,
+                probe=probe, ronchi=ronchi, flag=flag)
 
 
 def explorer(a):
@@ -768,16 +836,25 @@ def explorer(a):
     and, computed live in the page from that table, the round part, the non-round part and their sum across the
     aperture -- one colour cycle per wave, the same map as fig 1 -- beside the Ronchigram and the probe."""
     import matplotlib.cm as cm
-    R = rows()
-    setups = []
-    for al in ALPHAS:
-        setups.append(setup_entry(f"ceos-{al}", R[f"ceosopt_a{al:03d}"], al))
-        setups.append(setup_entry(f"round-{al}", R[ROUND_CONTROL[al]], al))
-        print(f"  explorer {al} mrad", flush=True)
+    R = rows(commented=True)
+    rs = rows(path=os.path.join(REPO, "campaign", "round_sweep.tsv"))
+    round_for = {**ROUND_CONTROL, 90: "hia_a090_w35"}                   # 90: the old a90 row through the region chain
+    setups, alphas = [], []
+    for al in XP_ALPHAS:
+        have = []
+        for col, lab, kind in (("ceos", f"ceosopt_a{al:03d}", "ceos"), ("arm", f"arm_a{al:03d}", "arm")):
+            if lab in R:
+                setups.append(setup_entry(f"{col}-{al}", R[lab], al, kind=kind)); have.append(col)
+        rr = R.get(round_for.get(al, ""), rs.get(f"a{al:03d}"))       # 100: the round sweep's own a100 row
+        if rr is not None:
+            setups.append(setup_entry(f"round-{al}", rr, al, kind="round")); have.append("round")
+        if have:
+            alphas.append(al)
+        print(f"  explorer {al} mrad: {' '.join(have)}", flush=True)
     lut = (np.array([cm.twilight(i / 255.0)[:3] for i in range(256)]) * 255).round().astype(int).tolist()
     data = json.dumps(dict(lam=LAM, lut=lut, setups=setups), separators=(",", ":"))
     tabs = "".join(f'<button type="button" role="tab" id="xp-a{al}" data-a="{al}" aria-selected="false" tabindex="-1">'
-                   f'{al}</button>' for al in ALPHAS)
+                   f'{al}</button>' for al in alphas)
     frag = XP_TEMPLATE.replace("{{TABS}}", tabs).replace("{{DATA}}", data.replace("</", "<\\/"))
     p = os.path.join(REPO, "aberration_experiment", "results", datetime.date.today().strftime("%G-W%V"),
                      "ceos_explorer.html")
@@ -791,7 +868,8 @@ XP_TEMPLATE = """<div class="xp" id="xp">
   <div class="xp-bar">
     <div class="xp-tabs" role="tablist" aria-label="Aperture semi-angle, mrad">{{TABS}}<span class="xp-unit">mrad</span></div>
     <div class="xp-seg" role="group" aria-label="Which column">
-      <button type="button" id="xp-col-ceos" data-col="ceos" aria-pressed="true">CEOS column</button>
+      <button type="button" id="xp-col-arm" data-col="arm" aria-pressed="true">ARM200F tableau</button>
+      <button type="button" id="xp-col-ceos" data-col="ceos" aria-pressed="false">CEOS approximation</button>
       <button type="button" id="xp-col-round" data-col="round" aria-pressed="false">round control</button>
     </div>
   </div>
@@ -799,15 +877,20 @@ XP_TEMPLATE = """<div class="xp" id="xp">
     <div class="xp-left">
       <div class="xp-meta" id="xp-meta"></div>
       <div class="xp-tablewrap"><table class="xp-table">
-        <thead><tr><th scope="col"><span class="xp-sr">include</span></th><th scope="col">term</th><th scope="col">value</th>
+        <thead><tr><th scope="col"><span class="xp-sr">include</span></th><th scope="col">term</th><th scope="col">value <span class="raw">(CEOS notation)</span></th>
           <th scope="col">angle</th><th scope="col">waves at edge</th><th scope="col">who sets it</th></tr></thead>
         <tbody id="xp-rows"></tbody>
       </table></div>
-      <p class="xp-note">Highlighted rows: terms the operator tunes in routine use (what the corrector's tuning
-        measures and corrects, first to third order). Blue "fought": set for the smallest probe. Amber "assumed": our
-        assumption that the term is re-tuned to 0.1 waves at this aperture. Red "fixed": nobody changes it on the day —
-        C5 is set at the factory, A4 and B4 are parasitic, A5 is intrinsic. Untick a term to take it out of the three
-        wavefront maps; the Ronchigram and probe are always the full setup.</p>
+      <p class="xp-note">Three instruments. <b>ARM200F tableau</b>: the measured tableau of the lab's JEOL ARM200F
+        (2009 CEOS probe corrector) — its last tuning tableau for A1 to A4, a reference table for B4, D4 and A5, C5 fixed
+        at +4 mm — with only C1 and C3 set for the smallest probe. <b>CEOS approximation</b>: the model the sweep ran,
+        with its optimistic re-tuning. <b>Round control</b>: C3 and C5 only.
+        Values are in the corrector's own notation; for B2, S3, B4 and D4 that notation drops the 1/(n+1) the
+        simulation's uses, so the simulation's coefficient (grey, "sim") is 3, 4 or 5 times larger — the same
+        aberration. Highlighted rows: terms the operator tunes in routine use. Chips: blue "fought", set for the
+        smallest probe; grey "measured", held at the tableau's value, with its measurement uncertainty in waves at this
+        aperture; amber "assumed", our re-tuning assumption; red "fixed", nobody changes it on the day. Untick a term to
+        take it out of the three wavefront maps; the Ronchigram and probe are always the full setup.</p>
     </div>
     <div class="xp-maps">
       <figure class="xp-f"><canvas id="xp-round" width="280" height="280" role="img"></canvas>
@@ -829,8 +912,8 @@ XP_TEMPLATE = """<div class="xp" id="xp">
   var D = JSON.parse(document.getElementById("xp-data").textContent);
   var byKey = {}; D.setups.forEach(function (s) { byKey[s.key] = s; });
   var ROUND = { C10: 1, C30: 1, C50: 1 };
-  var st = { a: 80, col: "ceos", off: {} };
-  try { var sv = JSON.parse(localStorage.getItem("xp-state") || "null"); if (sv && byKey[sv.col + "-" + sv.a]) { st.a = sv.a; st.col = sv.col; } } catch (e) {}
+  var st = { a: 80, col: "arm", off: {} };
+  try { var sv = JSON.parse(localStorage.getItem("xp-state2") || "null"); if (sv && byKey[sv.col + "-" + sv.a]) { st.a = sv.a; st.col = sv.col; } } catch (e) {}
 
   function waves(s, part) {
     var n = 280, a = s.alpha * 1e-3, out = new Float32Array(n * n), lo = Infinity, hi = -Infinity;
@@ -873,9 +956,9 @@ XP_TEMPLATE = """<div class="xp" id="xp">
     s.terms.forEach(function (t) {
       var tr = document.createElement("tr"); if (t.ceos) tr.className = "xp-ceos";
       var id = "xp-t-" + t.k, cb = '<input type="checkbox" id="' + id + '"' + (st.off[t.k] ? "" : " checked") + ' aria-label="include ' + t.sym + '">';
-      var chip = { fought: "c-open", assumed: "c-warn", fixed: "c-stop" }[t.role];
+      var chip = { fought: "c-open", measured: "c-none", assumed: "c-warn", fixed: "c-stop" }[t.role];
       tr.innerHTML = "<td>" + cb + "</td><td><label for='" + id + "'><b>" + t.sym + "</b> <span class='xp-k'>" + t.k +
-        "</span><span class='xp-name'>" + t.name + "</span></label></td><td class='xp-num'>" + t.shown + "</td><td class='xp-num'>" +
+        "</span><span class='xp-name'>" + t.name + "</span></label></td><td class='xp-num'>" + t.shown + (t.abtem ? "<span class='xp-name'>sim " + t.k + " " + t.abtem + "</span>" : "") + "</td><td class='xp-num'>" +
         (t.deg === null ? "–" : t.deg.toFixed(1) + "°") + "</td><td class='xp-num'>" + (t.waves < 10 ? t.waves.toFixed(2) : t.waves.toFixed(1)) +
         "</td><td><span class='chip " + chip + "'>" + t.role + "</span><span class='xp-why'>" + t.why + "</span></td>";
       tb.appendChild(tr);
@@ -884,18 +967,21 @@ XP_TEMPLATE = """<div class="xp" id="xp">
   }
   function maps() { var s = byKey[st.col + "-" + st.a]; paint("xp-round", s, "round"); paint("xp-nonround", s, "nonround"); paint("xp-total", s, "total"); }
   function show() {
+    if (!byKey[st.col + "-" + st.a]) st.col = ["arm", "ceos", "round"].filter(function (c) { return byKey[c + "-" + st.a]; })[0];
     var s = byKey[st.col + "-" + st.a];
     document.querySelectorAll("#xp .xp-tabs button").forEach(function (b) {
       var on = +b.dataset.a === st.a; b.setAttribute("aria-selected", on); b.tabIndex = on ? 0 : -1; });
-    document.querySelectorAll("#xp .xp-seg button").forEach(function (b) { b.setAttribute("aria-pressed", b.dataset.col === st.col); });
-    document.getElementById("xp-meta").innerHTML = "<b>" + s.alpha + " mrad · " + (st.col === "ceos" ? "CEOS column" : "round control") +
-      "</b><span>run <code>" + s.run + "</code> · probe d90 " + s.d90.toFixed(1) + " Å · window " + s.window + " Å</span>";
+    document.querySelectorAll("#xp .xp-seg button").forEach(function (b) {
+      b.setAttribute("aria-pressed", b.dataset.col === st.col); b.disabled = !byKey[b.dataset.col + "-" + st.a]; });
+    document.getElementById("xp-meta").innerHTML = "<b>" + s.alpha + " mrad · " + ({ arm: "ARM200F tableau", ceos: "CEOS approximation", round: "round control" })[st.col] +
+      "</b><span>row <code>" + s.run + "</code> · probe d90 " + s.d90.toFixed(1) + " Å, d99 " + s.d99.toFixed(0) + " Å · window " + s.window + " Å</span>" +
+      (s.flag ? "<span class='xp-flag'>" + s.flag + "</span>" : "");
     rowsFor(s); maps();
     var ro = document.getElementById("xp-ronchi"), pr = document.getElementById("xp-probe");
     ro.src = s.ronchi; ro.alt = "Ronchigram at " + s.alpha + " mrad";
     pr.src = s.probe; pr.alt = "Probe intensity at " + s.alpha + " mrad, d90 " + s.d90 + " Å";
     document.getElementById("xp-probe-d").textContent = "d90 " + s.d90.toFixed(1) + " Å, window " + s.window + " Å";
-    try { localStorage.setItem("xp-state", JSON.stringify({ a: st.a, col: st.col })); } catch (e) {}
+    try { localStorage.setItem("xp-state2", JSON.stringify({ a: st.a, col: st.col })); } catch (e) {}
   }
   var tabs = Array.prototype.slice.call(document.querySelectorAll("#xp .xp-tabs button"));
   tabs.forEach(function (b, i) {
@@ -1039,8 +1125,120 @@ def recons_tabs(a):
     return p
 
 
+# ------------------------------------------------------------------------------------------------ the ARM plan tables
+RES = os.path.join(REPO, "aberration_experiment", "results", "2026-W40")
+ARM_PLAN = os.path.join(RES, "arm_plan_sizes.json")        # plan_probe.py --arm, every aperture (merged *_sizes.json)
+ARM_VARIANTS = os.path.join(RES, "arm_plan_variants.json")  # the same planner on the open decisions' alternatives
+STRETCH_COSTS = os.path.join(RES, "stretch_costs.json")     # campaign/plan_cost.py on the large-probe rows
+
+
+def _judge(cls, word, why=""):
+    return (f'<td class="v-{cls}"><span class="chip c-{ {"good": "ok", "ok": "warn", "bad": "stop"}[cls] }">{word}</span>'
+            + (f' <span style="font-size:12px;color:var(--ink-2)">{why}</span>' if why else "") + "</td>")
+
+
+def arm_tables(a):
+    """Three tables for the page, every number read from the planner and cost outputs: the ARM200F plan per aperture
+    (against the CEOS approximation), what each open decision changes, and what the large probes would cost."""
+    import html as H
+    plan = {int(r["alpha"]): r for r in json.load(open(ARM_PLAN))}
+    R = rows(commented=True)
+    var = json.load(open(ARM_VARIANTS))
+    cost = {c["label"]: c for c in json.load(open(STRETCH_COSTS))}
+    out = ['<h3>The ARM200F tableau, planned — nothing has run yet</h3>',
+           '<div class="tablewrap"><table><thead><tr><th>aperture</th><th>C1</th><th>C3</th>'
+           '<th>probe d50 / d90 / d99</th><th>CEOS approx. d90</th><th>window (probe lost)</th><th>pattern</th>'
+           '<th>with today\'s pipeline</th></tr></thead><tbody>']
+    for al in sorted(plan):
+        r = plan[al]
+        c = R.get(f"ceosopt_a{al:03d}")
+        cd = "–"
+        if c is not None:
+            m = [s for s in c["note"].split(";") if "d90" in s]
+            cd = m[0].split("d90")[1].split("A")[0].strip() + " Å" if m else "–"
+        quick = "QUICK" in r["note"]
+        runnable = not r["note"].startswith("NOT RUNNABLE")
+        if runnable:
+            j = _judge("good", "runs", "as the CEOS sweep did: 210 Å region, N ≤ 1424 px")
+        else:
+            j = _judge("bad", "not as is", "needs a larger pattern or region (costs below)"
+                       + ("; coarse plan" if quick else ""))
+        out.append(f"<tr><td>{al} mrad</td><td>{r['c1']:+.0f} Å</td><td>{r['c3'] / 1e4:+.1f} µm</td>"
+                   f"<td>{r['d50']:.1f} / {r['d90']:.1f} / {r['d99']:.0f} Å</td><td>{cd}</td>"
+                   + (f"<td>{r['window']:g} Å ({100 * r['loss']:.2f} %)</td>" if r["window"] <= 105 else
+                      f"<td>more than 105 Å (105 Å would lose {100 * r['loss']:.2f} %)</td>")
+                   + (f"<td>{r['npx']} px</td>" if runnable else "<td>below</td>") + f"{j}</tr>")
+    out.append('</tbody><caption>C1 and C3 set for the smallest d90 with every measured term held (plan_probe.py '
+               '--arm). d50 / d90 / d99: diameters holding 50 / 90 / 99 % of the probe. Window: the reconstruction '
+               'window the probe needs; "probe lost" is the share of its intensity outside it — the most a run has '
+               'lost and still reconstructed is 0.31 % (round 70 from its 17.5 Å window). Pattern: its width in '
+               'pixels; 1424 is the largest the engine has run. 90 and 100 mrad are coarse plans (one search start), '
+               'good for sizing only. d50 / d90 / d99 are measured about the probe\'s brightest point, as in every '
+               'earlier plan; for probes this speckled that point can move with the sampling grid and the diameters '
+               'with it, by up to ~15 % (75 mrad: d90 68–80 Å). The window loss is measured about the beam axis and '
+               'does not move.</caption></table></div>')
+
+    # what each open decision changes
+    base = {int(r["alpha"]): r for r in json.load(open(ARM_PLAN))}
+    out += ['<h3>What each open decision changes</h3>',
+            '<div class="tablewrap"><table><thead><tr><th>decision</th><th>aperture</th><th>probe d90 / d99</th>'
+            '<th>proposed tableau</th><th>change</th><th>verdict</th></tr></thead><tbody>']
+    for v in var:
+        b = base.get(int(v["alpha"]))
+        if b is None:
+            continue
+        ratio = v["d90"] / b["d90"]
+        cls, word = ("good", "small") if abs(ratio - 1) < 0.1 else (("ok", "moderate") if abs(ratio - 1) < 0.3
+                                                                     else ("bad", "large"))
+        out.append(f"<tr><td class='wrap'>{H.escape(v['variant'])}</td><td>{int(v['alpha'])} mrad</td>"
+                   f"<td>{v['d90']:.1f} / {v['d99']:.0f} Å</td><td>{b['d90']:.1f} / {b['d99']:.0f} Å</td>"
+                   f"<td>{100 * (ratio - 1):+.0f} %</td>{_judge(cls, word)}</tr>")
+    out.append('</tbody><caption>Each row re-plans C1 and C3 with one choice changed; the proposed tableau is run3 + '
+               'the reference\'s B4, D4 and A5, C5 +4 mm, coefficients kept at 300 kV. Verdict on the change in d90: '
+               'small below 10 %, moderate below 30 %, large above. The planner\'s own repeatability is about ±1 Å in '
+               'd90 (its objective is a step function of the probe grid).</caption></table></div>')
+
+    # costs
+    out += ['<h3>What the large probes would cost</h3>',
+            '<div class="tablewrap"><table><thead><tr><th>setup</th><th>probe d90 / d99</th><th>detector</th>'
+            '<th>region / BIN = window</th><th>pattern</th><th>positions</th><th>data, peak memory</th>'
+            '<th>GPU batch</th><th>recon time</th><th>verdict</th></tr></thead><tbody>']
+    for lab, c in cost.items():
+        first = True
+        for f, b in c["best"].items():
+            head = (f"<td rowspan='2'>{'ARM200F' if lab.startswith('arm') else 'CEOS approx.'} {int(c['alpha'])} mrad"
+                    f"</td><td rowspan='2'>{c['d90']:.0f} / {c['d99']:.0f} Å</td>") if first else ""
+            first = False
+            if b is None:
+                out.append(f"<tr>{head}<td>{float(f):g} α</td><td colspan='6'>no geometry fits the node</td>"
+                           f"{_judge('bad', 'no', H.escape(c.get('why') or 'host memory, GPU or walltime'))}</tr>")
+                continue
+            needs = ([f"new {b['side']:.0f} Å region (simulation grid {b.get('sim_px', 0)} px) + ground truth"]
+                     if b["new_region"] else []) + \
+                    ([f"N {b['N']} px unproven"] if b["unproven"] else [])
+            cls = "good" if not needs else "ok"
+            out.append(f"<tr>{head}<td>{float(f):g} α ({b['det_mrad']} mrad)</td><td>{b['side']:.0f} Å / {b['bin']} = "
+                       f"{b['window']:g} Å</td><td>{b['N']} px</td><td>{b['positions']} ({b['scan']:g} Å)</td>"
+                       f"<td>{b['data_GB']:g} GB, {b['peak_GB']} GB</td><td>{b['grouping']}</td><td>~{b['hours']:g} h</td>"
+                       f"{_judge(cls, 'as is' if not needs else 'build first', '; '.join(needs))}</tr>")
+    out.append('</tbody><caption>For each detector choice, the geometry that fits one GPU node with the most scan '
+               'positions at the 0.5 Å step, preferring the existing 210 Å region (campaign/plan_cost.py). Window: region '
+               'side over an integer BIN; it must lose ≤ 0.31 % of the probe, and the region must keep scan + d99 + '
+               '20 Å inside. Pattern N = 2 θmax × window / λ. Peak memory: 4 × data (measured on a 1422 px run; a node '
+               'gives ~184 GB). GPU batch: 16 × (1426 / N)², the GROUPING that fits a 48 GB L40. Time: scaled from the '
+               '80 mrad legs (1419 px, 18 slices, 1600 positions, 3.9–5.2 h) by N², slices, positions and the width of '
+               'the half-resolution first pass, which must keep 1.2 α and so runs at full width behind a 1.2 α detector. '
+               'The simulation samples the potential to 200 mrad, so its grid grows with the region: 4264 px at 210 Å, '
+               'the only side run so far. The detector at 1.66 α is what the 80 mrad runs used; 1.2 α is cheaper and has never been run. Beyond '
+               '1424 px the driver also needs a per-leg GPU batch (it gives every large leg 16).</caption></table></div>')
+    p = os.path.join(RES, "arm_plan_tables.html")
+    open(p, "w").write("\n".join(out))
+    print(f"wrote {p}")
+    return p
+
+
 FIGS = {1: fig1_aberration, 2: fig2_probes, 3: fig3_growth, 4: fig4_scan, 5: fig5_recons, 6: fig6_numbers,
-        7: fig7_stability, 8: explorer, 9: recons_tabs}
+        7: fig7_stability, 8: explorer, 9: recons_tabs, 10: arm_tables}
 
 
 def main():

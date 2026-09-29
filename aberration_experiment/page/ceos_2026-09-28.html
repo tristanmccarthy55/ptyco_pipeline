@@ -291,6 +291,9 @@
   .xp-seg button:first-child { border-radius: 3px 0 0 3px; }
   .xp-seg button:last-child { border-radius: 0 3px 3px 0; margin-left: -1px; }
   .xp-seg button[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: var(--surface); }
+  .xp-seg button + button { margin-left: -1px; }
+  .xp-seg button:disabled { opacity: .38; cursor: not-allowed; }
+  .xp-flag { flex-basis: 100%; color: var(--stop); font-size: 12.5px; }
   .xp button:focus-visible, .xp input:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
   .xp-unit { font-family: var(--mono); font-size: 12px; color: var(--ink-3); margin-left: 6px; }
   .xp-body { display: grid; grid-template-columns: minmax(0, 1.08fr) minmax(0, 1fr); gap: 20px; }
@@ -332,7 +335,7 @@
 </style>
 <header class="mast">
   <div class="mast-in"><div class="mast-col">
-    <div class="eyebrow">Aberration campaign · CEOS sweep · results to 2026-09-28</div>
+    <div class="eyebrow">Aberration campaign · CEOS sweep · results to 2026-09-28 · ARM200F plan 2026-09-29</div>
     <h1>An Older Corrector at 80 mrad</h1>
     <p class="standfirst">
       Can a widespread, older hexapole-corrected column still give depth-resolved ptychography if its
@@ -374,6 +377,10 @@
       </div>
     </div>
     <ul>
+      <li><b>New 2026-09-29, planned, nothing run: the lab ARM200F's own measured tableau</b> (§2, first column of the
+        explorer). Read correctly — a CEOS tableau writes B2, S3, B4 and D4 3–5 times smaller than the simulation's
+        convention — its probes are two to three times the CEOS approximation's, and with today's pipeline it runs to
+        65 mrad. The comparison table in §2 had mixed the two notations and is corrected.</li>
       <li><b>The instrument is a CEOS-approximation tableau</b> — every coefficient, setup by setup, in §2, with how it
         compares with a real JEOL ARM200F. The sweep assumed the operator re-tunes the adjustable terms at every aperture,
         which is optimistic; keeping the 30 mrad tune and re-setting only defocus and C3 gives the same result at
@@ -389,9 +396,11 @@
   <section id="s2">
     <div class="sec-head"><span class="sec-num">02</span><h2>The setups, coefficient by coefficient</h2></div>
     <p>
-      Pick an aperture and a column. The table lists every aberration term of that setup, how many waves it puts at
-      the aperture edge, and who sets it. Beside it, the round part of the wavefront, the non-round part and the two
+      Pick an aperture and an instrument. The table lists every aberration term of that setup, how many waves it puts
+      at the aperture edge, and who sets it. Beside it, the round part of the wavefront, the non-round part and the two
       together are computed live from the table; untick a term to take it out and watch the rings and petals change.
+      <b>New (2026-09-29):</b> the first instrument is the lab ARM200F's own measured tableau — planned, not yet run
+      (below the explorer) — and the 90 and 100 mrad tabs show what the stretch runs would face.
     </p>
     <div class="wide">
       {{FRAG_EXPLORER}}
@@ -401,40 +410,62 @@
       operator tunes C1, A1, B2, A2, C3, S3 and A3 in routine use (what the corrector's tuning measures and corrects).
       Everything else is fixed on the day: C5 is set at the factory, A4 and B4 are parasitic, A5 is intrinsic to the
       hexapole design, and D4 is not a routine knob. A ± in a measured tableau is measurement uncertainty, not a range
-      anyone can tune over. Sourced: A5 = 1.0 mm (CEOS). Assumed: A4 = B4 = 10 µm, C5 = 1 mm.
+      anyone can tune over. CEOS approximation — sourced: A5 = 1.0 mm (CEOS); assumed: A4 = 10 µm, B4 = 2 µm in
+      the corrector's notation (10 µm as the simulation's coefficient), C5 = 1 mm.
     </p>
     <div class="call stop">
       <b>The sweep's tuning assumption is optimistic — and at 80 mrad it did not matter.</b> Every CEOS setup above
       assumes the operator re-tunes A1, A2, S3, A3 and D4 to 0.1 waves at the edge of each new aperture. Measured on a
-      real ARM200F that is out of reach: at 80 mrad it asks for A2 at 1.2 nm, S3 and A3 at 0.02 µm and D4 at 0.30 µm,
-      20 to 70 times finer than the tuning can even measure (below). The realistic case is to tune at the ~30 mrad the
+      real ARM200F that is out of reach: at 80 mrad it asks for A2 at 1.2 nm, S3 at 0.005 µm, A3 at 0.02 µm and D4 at
+      0.06 µm (the corrector's notation), 30 to 80 times finer than the ARM's tuning measures them (below). The realistic case is to tune at the ~30 mrad the
       corrector works at, keep those terms and re-set only defocus and C3 for the wider aperture, which at 80 mrad leaves 0.7 waves of A1, 1.9 of A2, 5 each of S3 and A3 and 13 of
       D4 on top of the 22 of six-fold. That run reconstructs exactly as well: 100 / 67 / 74 % of Pb / Ti / O, depth
       error 0.47 Å, against 100 / 67 / 75 % and 0.48 Å re-tuned. With the probe known, how finely it was tuned makes no
       measurable difference here — what matters is that it is known (§8).
     </div>
-    <h3>How the model compares with a real ARM200F</h3>
+    <h3>A third instrument: the ARM200F's own tableau</h3>
+    <p>
+      The explorer's first column holds the measured tableau of the lab's ARM200F at 300 kV: its last tuning tableau
+      for A1 to A4, the reference tableau for B4, D4 and A5, and C5 fixed at +4 mm — all held as measured, with only
+      defocus and C3 set for the smallest probe at each aperture, as an operator would. Nothing has run on it yet; this
+      is the plan to check before anything does.
+    </p>
+    <div class="call stop">
+      <b>A CEOS tableau needs two conversions before a simulation can use it.</b> The corrector writes each aberration
+      as a complex coefficient: its angle is m times the direction the m-fold pattern points (with the opposite sign
+      for B2, S3, B4 and D4), and for those four terms it leaves out the 1/(n+1) of the simulation's convention, so the
+      same aberration is 3, 4, 5 and 5 times larger as the simulation's coefficient. The conversion is checked three
+      ways — against the CEOS formula itself, abTEM's aberration function and the probe abTEM builds, which agree to
+      0.02 rad at 80 mrad. The factors matter, the sign much less: read naively, the ARM's 60 mrad probe comes out at
+      half its real size; with the sign unflipped it changes by a few per cent (table below).
+    </div>
+    {{FRAG_ARMPLAN}}
+    <h3>How the models compare with the real ARM200F</h3>
     <div class="tablewrap"><table>
-      <thead><tr><th>term</th><th>ARM200F, measured</th><th>reference tableau</th><th>this model, tuned at 30 mrad</th><th>verdict</th><th>who changes it</th></tr></thead>
+      <thead><tr><th>term</th><th>ARM200F, measured</th><th>reference tableau</th><th>ARM200F run uses</th><th>CEOS approx., tuned at 30 mrad</th><th>verdict on the approximation</th><th>who changes it</th></tr></thead>
       <tbody>
-        <tr><td>A1</td><td>2.2–4.2 nm</td><td>14 ± 10 nm</td><td class="v-ok">0.44 nm</td><td class="v-ok"><span class="chip c-warn">okay</span> <span style="font-size:12px;color:var(--ink-2)">below the measured values, inside their uncertainty; the stigmator sets it</span></td><td>operator</td></tr>
-        <tr><td>A2</td><td>13.5–22 nm</td><td>250 ± 60 nm</td><td class="v-good">22 nm</td><td class="v-good"><span class="chip c-ok">good</span> <span style="font-size:12px;color:var(--ink-2)">inside the measured range</span></td><td>operator</td></tr>
-        <tr><td>B2</td><td>12.8–34 nm</td><td>55 ± 60 nm</td><td class="v-good">22 nm</td><td class="v-good"><span class="chip c-ok">good</span> <span style="font-size:12px;color:var(--ink-2)">inside the measured range</span></td><td>operator</td></tr>
-        <tr><td>C3</td><td>0.32–1.08 µm</td><td>90 ± 3 µm</td><td class="v-good">set for the probe</td><td class="v-good"><span class="chip c-ok">good</span> <span style="font-size:12px;color:var(--ink-2)">an operator knob, set for the probe</span></td><td>operator</td></tr>
-        <tr><td>A3</td><td>0.63–1.25 µm</td><td>5.5 ± 2 µm</td><td class="v-good">0.97 µm</td><td class="v-good"><span class="chip c-ok">good</span> <span style="font-size:12px;color:var(--ink-2)">inside the measured range</span></td><td>operator</td></tr>
-        <tr><td>S3</td><td>0.44–0.47 µm</td><td>1.6 ± 2 µm</td><td class="v-ok">0.97 µm</td><td class="v-ok"><span class="chip c-warn">okay</span> <span style="font-size:12px;color:var(--ink-2)">twice the measured value — pessimistic</span></td><td>operator</td></tr>
-        <tr><td>A4</td><td>4.9–29 µm</td><td>86 ± 60 µm</td><td class="v-good">10 µm</td><td class="v-good"><span class="chip c-ok">good</span> <span style="font-size:12px;color:var(--ink-2)">inside the measured range</span></td><td>fixed — parasitic</td></tr>
-        <tr><td>B4</td><td>not measured</td><td>30 ± 30 µm</td><td class="v-ok">10 µm</td><td class="v-ok"><span class="chip c-warn">okay</span> <span style="font-size:12px;color:var(--ink-2)">not measured here; a third of the reference</span></td><td>fixed — parasitic</td></tr>
-        <tr><td>D4</td><td>not measured</td><td>19 ± 20 µm</td><td class="v-ok">40 µm</td><td class="v-ok"><span class="chip c-warn">okay</span> <span style="font-size:12px;color:var(--ink-2)">not measured here; twice the reference — pessimistic</span></td><td>not a routine knob</td></tr>
-        <tr><td>C5</td><td>not measured</td><td>6 ± 4 mm</td><td class="v-bad">1 mm</td><td class="v-bad"><span class="chip c-stop">off</span> <span style="font-size:12px;color:var(--ink-2)">not measured here; a sixth of the reference — the next run uses 4 mm</span></td><td>fixed — factory set</td></tr>
-        <tr><td>A5</td><td>not measured</td><td>1 ± 2 mm</td><td class="v-good">1 mm</td><td class="v-good"><span class="chip c-ok">good</span> <span style="font-size:12px;color:var(--ink-2)">matches the reference and the CEOS figure</span></td><td>fixed — intrinsic</td></tr>
+        <tr><td>A1</td><td>2.2–4.2 nm</td><td>14 ± 10 nm</td><td>4.15 nm (run3)</td><td class="v-ok">0.44 nm</td><td class="v-ok"><span class="chip c-warn">okay</span> <span style="font-size:12px;color:var(--ink-2)">below the measured values, inside their ±6 nm interval; the stigmator sets it</span></td><td>operator</td></tr>
+        <tr><td>A2</td><td>13.5–22 nm</td><td>250 ± 60 nm</td><td>16.4 nm</td><td class="v-good">22 nm</td><td class="v-good"><span class="chip c-ok">good</span> <span style="font-size:12px;color:var(--ink-2)">inside the measured range</span></td><td>operator</td></tr>
+        <tr><td>B2</td><td>12.8–34 nm</td><td>55 ± 60 nm</td><td>12.8 nm</td><td class="v-ok">7.3 nm</td><td class="v-ok"><span class="chip c-warn">okay</span> <span style="font-size:12px;color:var(--ink-2)">below the measured range, inside its ±19 nm interval — optimistic</span></td><td>operator</td></tr>
+        <tr><td>C3</td><td>0.32–1.08 µm</td><td>90 ± 3 µm</td><td>set for the probe</td><td class="v-good">set for the probe</td><td class="v-good"><span class="chip c-ok">good</span> <span style="font-size:12px;color:var(--ink-2)">an operator knob, set for the probe</span></td><td>operator</td></tr>
+        <tr><td>A3</td><td>0.63–1.25 µm</td><td>5.5 ± 2 µm</td><td>0.63 µm</td><td class="v-good">0.97 µm</td><td class="v-good"><span class="chip c-ok">good</span> <span style="font-size:12px;color:var(--ink-2)">inside the measured range</span></td><td>operator</td></tr>
+        <tr><td>S3</td><td>0.44–0.47 µm</td><td>1.6 ± 2 µm</td><td>0.44 µm</td><td class="v-ok">0.24 µm</td><td class="v-ok"><span class="chip c-warn">okay</span> <span style="font-size:12px;color:var(--ink-2)">half the measured value, inside its ±0.4 µm interval — optimistic</span></td><td>operator</td></tr>
+        <tr><td>A4</td><td>4.9–29 µm</td><td>86 ± 60 µm</td><td>4.9 µm</td><td class="v-good">10 µm</td><td class="v-good"><span class="chip c-ok">good</span> <span style="font-size:12px;color:var(--ink-2)">inside the measured range</span></td><td>fixed — parasitic</td></tr>
+        <tr><td>B4</td><td>not measured</td><td>30 ± 30 µm</td><td>30 µm (reference)</td><td class="v-bad">2 µm</td><td class="v-bad"><span class="chip c-stop">off</span> <span style="font-size:12px;color:var(--ink-2)">a fifteenth of the reference — optimistic</span></td><td>fixed — parasitic</td></tr>
+        <tr><td>D4</td><td>not measured</td><td>19 ± 20 µm</td><td>19 µm (reference)</td><td class="v-ok">8.1 µm</td><td class="v-ok"><span class="chip c-warn">okay</span> <span style="font-size:12px;color:var(--ink-2)">under half the reference — optimistic</span></td><td>not a routine knob</td></tr>
+        <tr><td>C5</td><td>not measured</td><td>6 ± 4 mm</td><td>4 mm</td><td class="v-bad">1 mm</td><td class="v-bad"><span class="chip c-stop">off</span> <span style="font-size:12px;color:var(--ink-2)">a sixth of the reference; the ARM run uses 4 mm</span></td><td>fixed — factory set</td></tr>
+        <tr><td>A5</td><td>not measured</td><td>1 ± 2 mm</td><td>1 mm (reference)</td><td class="v-good">1 mm</td><td class="v-good"><span class="chip c-ok">good</span> <span style="font-size:12px;color:var(--ink-2)">matches the reference and the CEOS figure</span></td><td>fixed — intrinsic</td></tr>
       </tbody>
-      <caption>ARM200F: three tableaus from a lab JEOL ARM200F with a 2009 CEOS probe corrector, 200 kV, taken while
-        tuning; the routine measures up to A4. Reference: the corrector manual's tableau measured at 26 mrad tilt, value ±
-        one standard deviation (measurement uncertainty). Verdict: judged against the ARM's measured values where it has
-        them, otherwise against the reference — a looser guide, since it is an older measurement on a different
-        instrument. Most terms sit inside or near what the ARM shows; C5 is the one clear gap and goes into the next run. At 80 mrad the measurement uncertainty
-        alone is worth several waves per term (A2 ±2, A3 ±4, A4 ±8, D4 ±5, C5 ±70 waves).</caption>
+      <caption>Every value in the corrector's own (CEOS) notation. <b>Corrected 2026-09-29:</b> the first version of
+        this table set the simulation's coefficients beside the tableau's, but for B2, S3, B4 and D4 the two notations
+        differ by 3, 4, 5 and 5 (the CEOS notation leaves out the 1/(n+1)); read in one notation, the approximation is
+        more optimistic than it looked on those four terms — it had called S3 and D4 pessimistic. Its runs are
+        unchanged. ARM200F: three tableaus from a lab JEOL ARM200F with a 2009 CEOS probe corrector, 200 kV, taken while
+        tuning; the routine measures up to A4. Reference: a corrector tableau measured at 26 mrad tilt, value ± one
+        standard deviation (measurement uncertainty) — the only source for B4, D4 and A5. Verdict: against the ARM's
+        measured values where it has them, otherwise against the reference, a looser guide. At 80 mrad the measurement
+        uncertainty alone is worth A1 ±9.6, A2 ±2.9, B2 ±4.9, S3 ±8.1, A3 ±5.0, A4 ±10, B4 ±50, D4 ±33, A5 ±44 and
+        C5 ±89 waves (at 300 kV; the explorer lists each at every aperture).</caption>
     </table></div>
   </section>
 
@@ -639,7 +670,8 @@
     <ul>
       <li><b>A true-to-life run</b> — the measured tableau of the ARM200F (§2) at 300 kV: its measured first- to
         fourth-order residuals, the reference values for B4, D4 and A5, C5 at 4 mm (a well-tuned instrument, inside the
-        measured 6 ± 4 mm), with only defocus and C3 set for the smallest probe.</li>
+        measured 6 ± 4 mm), with only defocus and C3 set for the smallest probe. Planned (§2); four choices wait on a
+        decision before it runs.</li>
       <li><b>The probe known only as well as the corrector measures it</b> — reconstruct with a probe off by the tableau's
         own measurement uncertainty. At 80 mrad that uncertainty is several waves per term, so this decides whether
         "probe known" can be achieved on a real instrument — the question behind this whole sweep.</li>

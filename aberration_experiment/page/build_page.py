@@ -45,6 +45,7 @@ SOURCES_BY_TEMPLATE = {
         "FIG_GROWTH":   "2026-W40/ceos/fig3_growth.png",
         "FIG_NUMBERS":  "2026-W40/ceos/fig6_numbers.png",
         "FRAG_EXPLORER": "results/2026-W40/ceos_explorer.html",
+        "FRAG_ARMPLAN": "results/2026-W40/arm_plan_tables.html",
         "FRAG_RESULTS": "results/2026-W40/ceos_sweep_results_table.html",
         "FRAG_RECONS":  "results/2026-W40/ceos_recons_tabs.html",
     },

@@ -240,6 +240,134 @@ def plan_ceos(alphas, C5, target, out):
     print("wrote", out)
 
 
+def window_loss(P, ext, window):
+    """Fraction of the probe's intensity outside a WINDOW-A square centred on the beam axis (the array centre, where
+    the recon window sits). Calibration: round_a070 loses 0.31 % from its 17.5 A window and reconstructs;
+    ceosbuilt_a080 0.16 % from 105 A."""
+    I = np.abs(P) ** 2; c = P.shape[0] // 2; h = int(round(window / 2 / (ext / P.shape[0])))
+    return float(1 - I[c - h:c + h, c - h:c + h].sum() / I.sum())
+
+
+LOSS_OK = 0.0031           # the largest window loss a leg has reconstructed with (round_a070, 17.5 A)
+
+
+def round_balance(alpha, c5):
+    """(C1, C3) [A] that minimise the area-weighted RMS of C1 th^2/2 + C3 th^4/4 + C5 th^6/6 over the aperture: the
+    balanced round wavefront, used only to place the search. C1 in abTEM's defocus sign (= -C10)."""
+    th = np.linspace(0, alpha / 1000.0, 800); sw = np.sqrt(th)
+    A = np.c_[np.ones_like(th), th ** 2 / 2, th ** 4 / 4]
+    coef = np.linalg.lstsq(A * sw[:, None], -(c5 * th ** 6 / 6) * sw, rcond=None)[0]
+    return -float(coef[1]), float(coef[2])
+
+
+def plan_arm(alphas, c5, override, scale, prefix, out, run="run3", quick=False):
+    """[ARM200F-class] The measured tableau of the user's JEOL ARM200F (campaign/arm200f_tableau.tsv, converted from
+    Haider notation by aberration_waves.arm_tableau): every measured term held FIXED, C5 fixed (factory set), and only
+    C1 and C3 -- the knobs an operator always has -- set for the smallest d90 at each aperture: a coarse 7 x 7 grid
+    around the balanced round wavefront, then Nelder-Mead from the 3 best grid points (the ceosbuilt_a080 search had 3
+    starts too). The search grid holds 2.2 d99 of the start probe and samples to 1.25 alpha; the result is remeasured
+    on a finer, larger grid. Window from d99 by region_geometry; where d99 is past the 105 A limit, 105 A is accepted
+    if the probe loses no more than LOSS_OK from it. Writes rows in the ceos_sweep.tsv layout.
+    quick=True (the 90/100 mrad stretch, whose probes are hundreds of A and whose grids are ~10^7-10^8 px): a 5 x 5 grid,
+    one Nelder-Mead start of 40 evaluations and the aperture sampled to 1.1 alpha -- a coarse optimum, said so in the
+    note; good for sizing what the leg would cost, not for a run."""
+    import abtem, importlib.util, json, os
+    from scipy.optimize import minimize
+    try: abtem.config.set({"local_diagnostics.progress_bar": False})
+    except Exception: pass
+    spec = importlib.util.spec_from_file_location("aw", os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                                                                      "aberration_waves.py"))
+    aw = importlib.util.module_from_spec(spec); spec.loader.exec_module(aw)
+
+    def probe(a, c1, c3, ext, n):
+        return np.asarray(abtem.Probe(energy=300e3, semiangle_cutoff=a, extent=ext, gpts=n, defocus=c1,
+                                      aberrations=aw.arm_tableau(c3, c5, override=override, scale=scale, run=run)
+                                      ).build(lazy=False).array)
+
+    def grid_n(ext, a, over):                               # pixels that sample the aperture to over x alpha
+        return int(np.ceil(ext / (LAM / (2 * over * a / 1000.0)) / 64) * 64)
+
+    rows = []
+    for a in alphas:
+        c1b, c3b = round_balance(a, c5 * scale)
+        pext = 600.0
+        for _grow in range(4):                              # the first box must hold the start probe (d99 < 0.4 box)
+            pre = sizes(probe(a, c1b, c3b, pext, grid_n(pext, a, 1.1)), pext)
+            if pre[3] < 0.4 * pext:
+                break
+            pext = float(np.ceil(2.6 * pre[3] / 50) * 50)
+        ext = float(max(60.0, np.ceil(2.2 * pre[3] / 10) * 10)); n = grid_n(ext, a, 1.1 if quick else 1.25)
+        half, starts, fev = (2, 1, 40) if quick else (3, 3, 90)
+        f = lambda c1, c3: sizes(probe(a, c1, c3, ext, n), ext)[2]
+        s1, s3 = max(20.0, 0.25 * abs(c1b)), 0.25 * abs(c3b)
+        k1, k3, seen = c1b, c3b, {}
+        for _walk in range(6):                             # re-centre until the best grid point is interior
+            for i in range(-half, half + 1):
+                for j in range(-half, half + 1):
+                    key = (round((k1 + i * s1) / s1 * 4), round((k3 + j * s3) / s3 * 4))
+                    if key not in seen:
+                        seen[key] = (f(k1 + i * s1, k3 + j * s3), k1 + i * s1, k3 + j * s3)
+            grid = sorted(seen.values())
+            _, b1, b3 = grid[0]
+            if abs(b1 - k1) < (half - 0.5) * s1 and abs(b3 - k3) < (half - 0.5) * s3:
+                break
+            k1, k3 = b1, b3
+        best = None
+        for _, x1, x3 in grid[:starts]:                     # scaled so both knobs move in comparable steps
+            g = lambda x: f(x[0] * s1, x[1] * s3)
+            x0 = np.array([x1 / s1, x3 / s3])
+            r = minimize(g, x0, method="Nelder-Mead",
+                         options=dict(initial_simplex=[x0, x0 + [0.5, 0], x0 + [0, 0.5]], maxfev=fev, xatol=0.02,
+                                      fatol=0.05))
+            if best is None or r.fun < best.fun:
+                best = r
+        C1, C3 = round(float(best.x[0] * s1), 1), round(float(best.x[1] * s3), -2)
+        extf = max(220.0, float(np.ceil(2.5 * pre[3] / 10) * 10))
+        for _grow in range(4):                              # remeasure on a box that holds the chosen probe
+            P = probe(a, C1, C3, extf, grid_n(extf, a, 1.2 if quick else 1.55))
+            _, d50, d90, d99 = sizes(P, extf)
+            if d99 < 0.4 * extf:
+                break
+            extf = float(np.ceil(2.6 * d99 / 50) * 50)
+        binf, window, detmax, win, step, ok = region_geometry(d90, d99)
+        # the scan: 20 A at 0.5 A (1600 positions), the default since 2026-09-28 -- large probes need the fine step, and
+        # the field size does not matter (Rule 4, scan >= 1.5 d90, is dropped; region_geometry still returns it)
+        win, step = 20, 0.5
+        ok = win + d99 + 20 <= REGION_SIDE
+        loss = window_loss(P, extf, 105.0 if window > 105 else window)
+        if window > 105 and loss <= LOSS_OK:                # ceosbuilt_a080's route: 105 A if it loses little
+            window, binf = 105.0, 2
+            detmax = min(200, int(MAX_NDP * LAM / (2 * window) * 1e3))
+        ok = ok and detmax >= 1.2 * a                        # the detector must hold the aperture with room
+        npx = int(round(2 * detmax / 1000.0 * window / LAM))
+        ab = aw.arm_tableau(C3, c5, override=override, scale=scale, run=run)
+        wv = aw.tableau_waves(ab, a)
+        note = (f"ARM200F-class ({run} + manual B4/D4/A5, C5 {c5 * scale / 1e7:g} mm"
+                + "".join(f", {k} {v / aw.UNIT_A['nm' if k[1] in '12' else ('um' if k[1] in '34' else 'mm')]:g}"
+                          f" {'nm' if k[1] in '12' else ('um' if k[1] in '34' else 'mm')}" for k, v in (override or {}).items())
+                + (f", x{scale:g}" if scale != 1 else "")
+                + f"): C1/C3 set for the smallest probe{' (QUICK, coarse)' if quick else ''}; d50/d90/d99 {d50:.1f}/{d90:.1f}/{d99:.1f} A; window {window:g} A"
+                f" loses {100 * loss:.2f} %" + ("" if detmax == 200 else f"; detector +-{detmax} mrad") + f"; N {npx} px")
+        if not ok:
+            note = f"NOT RUNNABLE as planned (window {window:g} A, detector +-{detmax} mrad vs aperture {a}): " + note
+        rows.append(dict(label=f"{prefix}_a{a:03d}", alpha=a, c5=c5 * scale, c3=C3, c1=C1, df_perf="-", bin=binf, nl=0,
+                         aber_json=json.dumps(ab, separators=(",", ":")), note=note, side=f"{REGION_SIDE:g}", win=win,
+                         step=f"{step:g}", detmax=detmax, nl_force="-", d50=d50, d90=d90, d99=d99, loss=loss,
+                         npx=npx, waves=wv, window=window, ext=extf))
+        print(f"  alpha={a:3d}  C1={C1:+7.1f}A  C3={C3 / 1e4:+6.2f}um  d50/d90/d99={d50:.1f}/{d90:.1f}/{d99:.1f}  "
+              f"window={window:g} loss={100 * loss:.2f}% BIN={binf} det={detmax} N={npx}  [{'ok' if ok else 'NOT RUNNABLE'}]"
+              f"  (search box {ext:g} A, {n} px; start {c1b:+.0f} A / {c3b / 1e4:+.2f} um)", flush=True)
+    cols = ["label", "alpha", "c5", "c3", "c1", "df_perf", "bin", "nl", "aber_json", "note", "side", "win", "step",
+            "detmax", "nl_force"]
+    with open(out, "w") as fh:
+        fh.write("\t".join(cols) + "\n")
+        for r in rows:
+            fh.write(("#" if r["note"].startswith("NOT RUNNABLE") else "") + "\t".join(str(r[c]) for c in cols) + "\n")
+    with open(os.path.splitext(out)[0] + "_sizes.json", "w") as fh:
+        json.dump([{k: v for k, v in r.items() if k not in ("aber_json",)} for r in rows], fh, indent=1)
+    print("wrote", out)
+
+
 if __name__ == "__main__":
     ap = argparse.ArgumentParser()
     ap.add_argument("--alphas", type=int, nargs="+", default=[30,50,70,90,100,110,120])
@@ -249,7 +377,29 @@ if __name__ == "__main__":
     ap.add_argument("--out", default=None)
     ap.add_argument("--ceos", action="store_true",
                     help="plan the CEOS-approx 'fought' legs (plan_ceos) instead of the round sweep; needs --out")
+    ap.add_argument("--arm", action="store_true",
+                    help="plan the ARM200F-class legs (plan_arm): measured tableau fixed, C1/C3 set; needs --out. "
+                         "--c5 then defaults to the ARM's fixed +4 mm")
+    ap.add_argument("--set", nargs="+", default=[], metavar="TERM=VALUE",
+                    help="[--arm] override a measured magnitude, Haider notation with its unit, keeping the angle: "
+                         "A1=0nm (nulled on the day), B4=10um D4=4um")
+    ap.add_argument("--scale", type=float, default=1.0,
+                    help="[--arm] multiply every measured term and C5 (0.785 = the same waves at 300 kV as at 200 kV)")
+    ap.add_argument("--prefix", default="arm", help="[--arm] row label prefix")
+    ap.add_argument("--run", default="run3", help="[--arm] which tableau of arm200f_tableau.tsv for A1..A4")
+    ap.add_argument("--quick", action="store_true", help="[--arm] coarse search for the 90/100 mrad stretch rows")
     a = ap.parse_args()
+    if a.arm:
+        if not a.out:
+            ap.error("--arm needs --out (it writes rows for campaign/ceos_sweep.tsv)")
+        c5 = a.c5 if "--c5" in sys.argv else 4.0e7
+        import re
+        ov = {}
+        for kv in a.set:
+            k, v, u = re.fullmatch(r"([A-Z]\d)=([-0-9.eE+]+)(nm|um|mm)", kv).groups()
+            ov[k] = float(v) * {"nm": 10.0, "um": 1e4, "mm": 1e7}[u]
+        plan_arm(a.alphas, c5, ov or None, a.scale, a.prefix, a.out, run=a.run, quick=a.quick)
+        raise SystemExit(0)
     if a.ceos:
         if not a.out:
             ap.error("--ceos needs --out (it writes rows for campaign/ceos_sweep.tsv, not round_sweep.tsv)")

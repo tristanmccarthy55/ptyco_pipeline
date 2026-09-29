@@ -142,6 +142,95 @@ def ceos_tableau(c3: float, c5: float = 1.0e7, alpha: float | None = None, b2: f
     return ab
 
 
+#: HAIDER (CEOS) NOTATION -> abTEM (2026-09-29). The CEOS software reports each coefficient as a magnitude and the angle
+#: of the complex coefficient X in
+#:   chi(w) = (2 pi / lambda) Re{ 1/2 C1 w w' + 1/2 A1 w'^2 + B2 w^2 w' + 1/3 A2 w'^3 + 1/4 C3 (w w')^2 + S3 w^3 w'
+#:            + 1/4 A3 w'^4 + B4 w^3 w'^2 + D4 w^4 w' + 1/5 A4 w'^5 + 1/6 C5 (w w')^3 + S5 w^4 w'^2 + R5 w^5 w' + 1/6 A5 w'^6 }
+#: with w = theta e^{i phi} and w' its conjugate (Uhlemann & Haider 1998; the same form in arXiv 2510.01493 eq. A1 and
+#: arXiv 2603.23958 Table 1). Two consequences for abTEM's C_nm theta^(n+1)/(n+1) cos(m (phi - phi_nm)):
+#:   * the mixed terms B2, S3, B4, D4, S5, R5 carry NO 1/(n+1): C21 = 3 B2, C32 = 4 S3, C41 = 5 B4, C43 = 5 D4,
+#:     C52 = 6 S5, C54 = 6 R5. The A and C terms map one to one.
+#:   * the angle is m x the azimuth: an A term (w'^m) points at phi_nm = +angle/m, a mixed term (w^p w'^q, p > q)
+#:     at phi_nm = -angle/m. The sign matters only BETWEEN kinds: A1 against S3, A2 against D4 (B2 against B4 share it).
+#: That the software's angle is the complex coefficient's argument (not the pattern's azimuth) is read off the data:
+#: every term's angles fill -180..180 deg (A3 -159/-176/-169, A5 150), where azimuths would fill only 360/m.
+#: A global rotation or mirror of every angle only rotates or mirrors the probe. check: haider_chi() evaluates the
+#: formula above directly, so haider_to_abtem() is tested against it, and abTEM's probe against both (tests below).
+HAIDER = {"C1": (1, 1, 1 / 2), "A1": (0, 2, 1 / 2), "B2": (2, 1, 1.0), "A2": (0, 3, 1 / 3), "C3": (2, 2, 1 / 4),
+          "S3": (3, 1, 1.0), "A3": (0, 4, 1 / 4), "B4": (3, 2, 1.0), "D4": (4, 1, 1.0), "A4": (0, 5, 1 / 5),
+          "C5": (3, 3, 1 / 6), "S5": (4, 2, 1.0), "R5": (5, 1, 1.0), "A5": (0, 6, 1 / 6)}     # name: (p, q, prefactor)
+UNIT_A = {"nm": 10.0, "um": 1e4, "mm": 1e7}
+
+
+def haider_to_abtem(name: str, value_A: float, angle_deg: float | None = None) -> dict:
+    """One Haider-notation coefficient (magnitude [A], CEOS angle [deg]) as abTEM's {C_nm: .., phi_nm: ..}."""
+    import math
+    p, q, pref = HAIDER[name]
+    n, m = p + q - 1, abs(p - q)
+    key = f"C{n}{m}"
+    if m == 0:
+        return {key: float(value_A)}
+    ang = math.radians(angle_deg or 0.0)
+    phi = (ang if q > p else -ang) / m
+    return {key: float(value_A) * (n + 1) * pref, "phi" + key[1:]: phi % (2 * math.pi / m)}
+
+
+def haider_chi(tab: dict, tx, ty):
+    """chi / (2 pi / lambda) [A] of a Haider-notation tableau {name: (magnitude A, angle deg)}, straight from the complex
+    formula above -- the reference haider_to_abtem() is checked against."""
+    import numpy as np
+    w = np.asarray(tx) + 1j * np.asarray(ty)
+    out = np.zeros(w.shape)
+    for name, (v, ang) in tab.items():
+        p, q, pref = HAIDER[name]
+        out += np.real(pref * v * np.exp(1j * np.radians(ang or 0.0)) * w ** p * np.conj(w) ** q)
+    return out
+
+
+ARM_TSV = "arm200f_tableau.tsv"
+#: THE ARM200F-CLASS INSTRUMENT (2026-09-29, the user's lab microscope: JEOL JEM-ARM200F, 2009 CEOS CESCOR-type probe
+#: corrector). Measured terms from campaign/arm200f_tableau.tsv, held FIXED: run3 (the last of three tableaus, 23 Sep
+#: 2026) for A1 A2 B2 A3 S3 A4 -- one real, internally consistent snapshot rather than an average of wandering vectors --
+#: and the reference Table 3 ("manual") for B4 D4 A5, the only source for them. C5 is factory set and NOT a knob: +4 mm
+#: (the user: a well-tuned instrument, a little generous, inside the reference's 6 +- 4 mm). C1 and C3 are the only
+#: terms the planner moves. Coefficients are kept in length units at 300 kV (the ARM runs at 200 kV): the same length is
+#: 1.27x more waves at 300 kV, so this is slightly pessimistic; scale=0.785 keeps the waves at the tuning aperture.
+ARM_RUN, ARM_MANUAL_TERMS, ARM_C5_A = "run3", ("B4", "D4", "A5"), 4.0e7
+
+
+def arm_measured(run: str = ARM_RUN) -> dict:
+    """{name: (magnitude A, angle deg or None, uncertainty A, kind, source)} of the ARM200F-class tableau, from the tsv."""
+    import csv
+    import os
+    path = os.path.join(os.path.dirname(os.path.abspath(__file__)), ARM_TSV)
+    rows = [r for r in csv.DictReader((l for l in open(path) if not l.startswith("#")), delimiter="\t")]
+    out = {}
+    for r in rows:
+        name = r["term"]
+        want = "manual" if name in ARM_MANUAL_TERMS else run
+        if r["source"] != want or name in ("C1", "C3", "C5"):
+            continue
+        f = UNIT_A[r["unit"]]
+        ang = float(r["angle_deg"]) if r["angle_deg"] else None
+        out[name] = (float(r["value"]) * f, ang, float(r["uncertainty"]) * f, r["uncertainty_kind"], r["source"])
+    return out
+
+
+def arm_tableau(c3: float, c5: float = ARM_C5_A, override: dict | None = None, scale: float = 1.0,
+                run: str = ARM_RUN) -> dict:
+    """abTEM aberration dict of the ARM200F-class tableau: round C30 (fought) and C50 (fixed), plus every measured
+    non-round term converted from Haider notation. override {name: |X| [A], Haider notation}: replace a magnitude,
+    keeping the measured angle -- for the open decisions (A1 nulled on the day: {"A1": 0}; B4/D4 at other values).
+    scale multiplies every measured term and C5 (0.785 = the same waves at 300 kV as at 200 kV)."""
+    ab = {"C30": float(c3), "C50": float(c5) * scale}
+    for name, (v, ang, *_rest) in arm_measured(run).items():
+        if override and name in override:
+            v = float(override[name])
+        for k, x in haider_to_abtem(name, v * scale, ang).items():
+            ab[k] = round(x, 6) if k.startswith("phi") else round(x, 4)
+    return ab
+
+
 def growth_figure(out, alphas=(30, 40, 50, 60, 70, 80, 90, 100)):
     """Every non-round term of the assumed instrument, in waves at the edge, against aperture."""
     import numpy as np
