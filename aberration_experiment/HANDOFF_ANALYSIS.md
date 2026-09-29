@@ -5,6 +5,10 @@ Then `HANDOVER.md` for the experiment, `PSF_KERNELS.md` for the kernel rules.
 
 ---
 
+> **2026-09-29 — NEXT JOB: the true-to-life run. Start with `HANDOFF_REALISTIC.md`**, then come back here for the CEOS
+> sweep's history (its "State" section). The CEOS `ceosopt_*` results are an idealised bound; the next run models the
+> measured tableau of the user's JEOL ARM200F (`campaign/arm200f_tableau.tsv`) at 300 kV.
+
 ## Where it stands
 
 - **Round-α campaign: complete.** Known probe, 50–100 mrad, depth error falls with aperture; 110 mrad is
