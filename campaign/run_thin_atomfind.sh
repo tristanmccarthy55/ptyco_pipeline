@@ -104,7 +104,9 @@ sim_job(){   # $1 dir $2 alpha $3 bin $4 c3 $5 c1 $6 mode(lab|Pb|Ti) [$7 aber_js
     # symlink dangles and every recon dies on "File corrupt: probe_initial.mat" -- the
     # 2026-09-09 batch failure. Matches run_campaign.sh's ab_known leg.)
     exp="${exp},BIN_FACTOR=${bin},RECON_FULL_BOX=1,Z_VACUUM=${ZVAC},ABERRATED=1,PROBE_INITIAL=nominal"
-    exp="${exp},CS=${c3},C5=${C5},DEFOCUS=${c1},OVERWRITE=${OVERWRITE:-0}"   # OVERWRITE=1 to re-sim over existing
+    # C5 from the row in LABELS mode (col 3): an ARM row (4 mm) and a CEOS row (1 mm) can share a submission. The JSON
+    # carries C50 and wins in the simulator either way; this keeps the export (and the sim log) honest.
+    exp="${exp},CS=${c3},C5=${ROW_C5:-$C5},DEFOCUS=${c1},OVERWRITE=${OVERWRITE:-0}"   # OVERWRITE=1 to re-sim over existing
     # SCAN_WINDOW goes to EVERY leg (it used to reach only the grids, leaving the lab on the sim
     # default). The scan field must stay larger than the probe or ptychography loses its positional
     # diversity: scan/d90 is 5.0/5.0/3.0/1.8 at a50-a100 but 0.8 at a110, where the 24.5 A probe
@@ -158,9 +160,10 @@ RIDS=(); SIM_DIRS=()          # SIM_DIRS: this submission's own sim dirs, for CL
 ROWS="$ALPHAS"; [ -n "$LABELS" ] && ROWS="$LABELS"
 for a in $ROWS; do
     if [ -n "$LABELS" ]; then       # by label: alpha and the full aberration JSON come from the row
-        read -r alpha c3 c1 bin aj side win step detmax rnl < <(awk -F'\t' -v L="$a" '$1!~/^#/ && $1==L {
+        read -r alpha c3 c1 bin aj side win step detmax rnl rc5 < <(awk -F'\t' -v L="$a" '$1!~/^#/ && $1==L {
             for (i = 11; i <= 15; i++) if ($i == "") $i = "-"
-            print $2"\t"$4"\t"$5"\t"$7"\t"$9"\t"$11"\t"$12"\t"$13"\t"$14"\t"$15}' "$TSV")
+            print $2"\t"$4"\t"$5"\t"$7"\t"$9"\t"$11"\t"$12"\t"$13"\t"$14"\t"$15"\t"$3}' "$TSV")
+        ROW_C5="${rc5:-}"
         ROW_SIDE=""; ROW_WIN=""; ROW_STEP=""; ROW_DETMAX=""; ROW_NL=""   # [region] per-row geometry, "-" = driver default
         [ "${side:--}" != "-" ] && ROW_SIDE="$side"; [ "${win:--}" != "-" ] && ROW_WIN="$win"
         [ "${step:--}" != "-" ] && ROW_STEP="$step"; [ "${detmax:--}" != "-" ] && ROW_DETMAX="$detmax"

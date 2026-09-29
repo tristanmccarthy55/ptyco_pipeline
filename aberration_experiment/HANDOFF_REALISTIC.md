@@ -6,9 +6,25 @@ newer.
 
 ---
 
-## State (2026-09-29, late) — job 1 DONE, job 2 waits on the user's decisions
+## State (2026-09-30) — job 1 DONE; BLOCK 1 handed over (70 mrad and up in the 80 mrad geometry)
 
 **Read this block first; it overrides the numbers further down where they differ.**
+
+- **The user's rule (2026-09-30, [memory: dense-scan-not-big-window])**: large probes need dense scan points, not bigger
+  windows, regions or smaller fields. 20 Å at 0.5 Å (1600 positions) everywhere, never cut to 10–15 Å; denser (0.4 Å,
+  2500 positions) fits at 1419 px. "Loses ≤ 0.31 %" is the most any run has lost, not a limit — test it by cropping.
+  Everything from 70 mrad runs in the ceosopt_a080_f20 geometry (210 Å region + its GT, BIN 2 = 105 Å, ±133 mrad,
+  N 1419 px); the window loss is reported as a number. If 105 Å fails: detector crop first (add FULL_NDP beside
+  PRESOLVE_NDP in run_synthetic_recon_ML.m, one sim kept with CLEANDATA=0, RECON_ONLY), region and scan last.
+- **Block 1** (rows in `ceos_sweep.tsv`; plan in `results/2026-W40/block1_plan.json`), lab + Pb + Ti, CLEANDATA=1
+  PACK_H5=0, analysed on Blythe with GT_REGION=210. Loss outside the 105 Å window / outside the 210 Å region:
+  ARM 70 0.77 / 0.01 %, 75 3.18 / 0.01, 80 6.09 / 0.21, 90 17.35 / 4.04 (the sim itself wraps 4 %); CEOS 90 3.43 / 0.01,
+  100 18.29 / 1.08; **calibration `ceosopt_a080_f20_b4`** (the working 80 mrad probe at BIN 4 = 52.5 Å, N 709) loses 5.54 %
+  — about ARM 80's loss, on a probe that reconstructs at 105 Å (100/67/75 %, 0.48 Å). Est. 1–8 h per recon.
+  Judge on the object and the residual, and look at the phase images (`<out>/phase/`).
+- `plan_cost.py`'s big geometries (280–420 Å regions, N up to 4600, 400–900 positions) are NOT the plan; the tool stays
+  for a later window discussion. `plan_probe.region_geometry` now caps the window at 105 Å; `plan_arm` reports
+  `window_loss` and the region loss, never gates. The driver now exports each row's own C5 in LABELS mode.
 
 - **Convention, resolved and tested** (`campaign/aberration_waves.py` `HAIDER`, `haider_to_abtem`, `haider_chi`;
   `campaign/test_haider.py`, 4 checks pass). The CEOS software writes the Haider complex notation (Uhlemann & Haider 1998;
@@ -24,10 +40,10 @@ newer.
   A5 ±44, C5 ±89 waves (the explorer lists every term at every aperture).
 - **Planner**: `plan_probe.py --arm` (`plan_arm`): measured terms held, C5 fixed, C1/C3 by a 7×7 grid walked until its best
   point is interior + Nelder-Mead from the 3 best; `--set A1=0nm B4=10um ...`, `--scale 0.785`, `--c5`, `--quick` (90/100:
-  5×5, one start). Scan 20 Å at 0.5 Å. Rows `arm_a040…arm_a080` in `ceos_sweep.tsv` (70–80 commented, not runnable).
+  5×5, one start). Scan 20 Å at 0.5 Å. Rows `arm_a040…arm_a090` live in `ceos_sweep.tsv`, `arm_a100` planned only.
 - **The ARM plan** (d90 / d99, window): 40: 7.1 / 18 Å, 35 Å · 50: 14.2 / 33, 70 · 60: 28.0 / 65, 105 · 65: 40.2 / 90, 105 ·
-  70: 45.8 / 96 · 75: 80.1 / 168 · 80: 95.6 / 206 Å (CEOS approx. 4.2/4.8/11.6/17.5/25/35/49). Runnable with today's pipeline:
-  **40–65 mrad**. The probes are comets (B4, fourth-order axial coma, ~12 waves at 60 and 50 at 80, dominates, then D4) —
+  70: 45.8 / 96 · 75: 80.1 / 168 · 80: 95.6 / 206 · 90: 153 / 326 · 100: 213 / 435 Å (CEOS approx. 4.2/4.8/11.6/17.5/25/35/49).
+  From 70 mrad all run in the 105 Å window (block 1). The probes are comets (B4, fourth-order axial coma, ~12 waves at 60 and 50 at 80, dominates, then D4) —
   both from the 1998 reference, not measured on this ARM.
 - **What the open decisions change** (`results/2026-W40/arm_plan_variants.json`): A1 nulled: 40 mrad 7.1 → 5.0 Å, 60 mrad −5 %.
   C5 3 / 5 mm at 60: within the planner's ±1 Å. Waves-matched (×0.785): 60 −6 %, **80 −34 %** (63 vs 96 Å). **B4/D4 at CEOS's
@@ -37,11 +53,6 @@ newer.
   point moves with the grid: 75 mrad d90 68 Å at 1.1 α sampling vs 80 Å at 1.55 α. Centroid/axis measures and the window
   loss (`plan_probe.window_loss`, about the beam axis) do not move. `plan_cost.py` and the explorer therefore take the
   sizes from the planner's note — one source.
-- **Costs** (`campaign/plan_cost.py` → `results/2026-W40/stretch_costs.json`; time model validated on the 80 mrad legs,
-  includes the presolve widening to full width behind a 1.2 α detector). The window is always side / integer BIN, so the
-  "~140 Å window in the 210 Å region" of job 3b below is not makeable: 90 mrad CEOS needs the whole 210 Å box (BIN 1,
-  N ~2300 at 1.2 α) or a 350 Å region. Beyond 1424 px the driver also needs a per-leg GROUPING (`grp_for` gives every
-  BIN-1-class leg 16) — not built yet.
 - **Page v10** (same URL): explorer third column "ARM200F tableau" + 90/100 tabs; §2 notation callout, three generated tables
   (`make_ceos_figs.py --figs 10` → `results/2026-W40/arm_plan_tables.html`), corrected comparison table.
 - **Job-2 driver dry-run** (stub sbatch) passes for `LABELS="arm_a040 arm_a050 arm_a060 arm_a065"`; pass `C5=4e7` (the JSON
@@ -50,9 +61,9 @@ newer.
   `sim/make_probe.py` full-tableau override; `run_c1_search.sh` by label/region (today: round_sweep.tsv by alpha).
   Open design point: the tableau's ± were measured at a ~26–40 mrad tilt; at 80 mrad they are tens of waves.
 
-**Waiting on the user**: A1 (measured / nulled), C5 bracket, coefficients vs waves, B4/D4 source (reference / CEOS
-achievable / both), which apertures now, and whether to build the >1424 px path (ARM 70–75, CEOS 90) and the 280 Å region
-(ARM 80, CEOS 100). Then re-plan if needed, dry-run, hand over the block.
+**Waiting on the user** (for 40–65 mrad): A1 (measured / nulled), C5 bracket, coefficients vs waves, B4/D4 source
+(reference / CEOS achievable / both), and whether the job-4 lab sims are kept (CLEANDATA=0). ARM 100 (d90 213, d99 435 Å,
+29 % outside 105 Å) is planned only.
 
 ---
 

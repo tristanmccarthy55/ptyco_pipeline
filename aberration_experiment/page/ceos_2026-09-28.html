@@ -379,8 +379,10 @@
     <ul>
       <li><b>New 2026-09-29, planned, nothing run: the lab ARM200F's own measured tableau</b> (§2, first column of the
         explorer). Read correctly — a CEOS tableau writes B2, S3, B4 and D4 3–5 times smaller than the simulation's
-        convention — its probes are two to three times the CEOS approximation's, and with today's pipeline it runs to
-        65 mrad. The comparison table in §2 had mixed the two notations and is corrected.</li>
+        convention — its probes are two to three times the CEOS approximation's. From 70 mrad up they spill past the
+        105 Å window that reconstructs CEOS 80 mrad (0.8 % of the probe at 70, 6 % at 80); the first block runs them in
+        that window anyway, to measure what the spill costs instead of paying for a bigger window. The comparison table
+        in §2 had mixed the two notations and is corrected.</li>
       <li><b>The instrument is a CEOS-approximation tableau</b> — every coefficient, setup by setup, in §2, with how it
         compares with a real JEOL ARM200F. The sweep assumed the operator re-tunes the adjustable terms at every aperture,
         which is optimistic; keeping the 30 mrad tune and re-setting only defocus and C3 gives the same result at
@@ -400,7 +402,7 @@
       at the aperture edge, and who sets it. Beside it, the round part of the wavefront, the non-round part and the two
       together are computed live from the table; untick a term to take it out and watch the rings and petals change.
       <b>New (2026-09-29):</b> the first instrument is the lab ARM200F's own measured tableau — planned, not yet run
-      (below the explorer) — and the 90 and 100 mrad tabs show what the stretch runs would face.
+      (below the explorer) — and the 90 and 100 mrad tabs hold the stretch setups.
     </p>
     <div class="wide">
       {{FRAG_EXPLORER}}
@@ -429,6 +431,14 @@
       for A1 to A4, the reference tableau for B4, D4 and A5, and C5 fixed at +4 mm — all held as measured, with only
       defocus and C3 set for the smallest probe at each aperture, as an operator would. Nothing has run on it yet; this
       is the plan to check before anything does.
+    </p>
+    <p>
+      How the large probes are run: what they need is dense scan points, not a large field or window — the CEOS sweep
+      showed the step is what fails and the field size does not matter. So every probe from 70 mrad up runs in the one
+      geometry that already reconstructs an 80 mrad probe, with only the probe changed, and the share of the probe
+      falling outside the 105 Å window is reported as a number. No run has yet lost more than 0.31 % of its probe, so
+      that figure is a record, not a limit; a calibration run on the working 80 mrad probe in a window half the size
+      shows what a known loss does.
     </p>
     <div class="call stop">
       <b>A CEOS tableau needs two conversions before a simulation can use it.</b> The corrector writes each aberration
@@ -670,8 +680,9 @@
     <ul>
       <li><b>A true-to-life run</b> — the measured tableau of the ARM200F (§2) at 300 kV: its measured first- to
         fourth-order residuals, the reference values for B4, D4 and A5, C5 at 4 mm (a well-tuned instrument, inside the
-        measured 6 ± 4 mm), with only defocus and C3 set for the smallest probe. Planned (§2); four choices wait on a
-        decision before it runs.</li>
+        measured 6 ± 4 mm), with only defocus and C3 set for the smallest probe. Block 1 (§2) runs 70–90 mrad in the
+        80 mrad geometry, with CEOS 90 and 100 and a calibration; 40–65 wait on four choices. If the 105 Å window
+        fails, a detector crop comes next — a bigger region or a smaller scan field only last.</li>
       <li><b>The probe known only as well as the corrector measures it</b> — reconstruct with a probe off by the tableau's
         own measurement uncertainty. At 80 mrad that uncertainty is several waves per term, so this decides whether
         "probe known" can be achieved on a real instrument — the question behind this whole sweep.</li>

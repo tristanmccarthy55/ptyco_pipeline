@@ -801,11 +801,13 @@ def setup_entry(key, r, al, kind="ceos"):
                                    aberrations=ab).build(lazy=False).array)
     px = L / N; c = N // 2
     win, d90, d99 = window_for(al, P, L)
-    if kind == "arm":                                   # the planner's window and sizes: one source for every table
-        import re
-        win = float(r["side"]) / int(r["bin"])
-        m = re.search(r"d50/d90/d99 ([0-9.]+)/([0-9.]+)/([0-9.]+)", r["note"])
+    import re                                           # the planner's sizes wherever its note carries them: one source
+    m = re.search(r"d50/d90/d99 ([0-9.]+)/([0-9.]+)/([0-9.]+)", r.get("note", "")) or \
+        re.search(r"()d90 ([0-9.]+) A, d99 ([0-9.]+) A", r.get("note", ""))
+    if m:
         d90, d99 = float(m.group(2)), float(m.group(3))
+    if kind == "arm":                                   # and the planner's window
+        win = float(r["side"]) / int(r["bin"])
     half = win / 2; h = int(round(half / px))
     fig, ax = plt.subplots(figsize=(3.2, 3.2))
     ax.imshow((np.abs(P[c - h:c + h, c - h:c + h]) ** 2) ** 0.4, cmap="magma", extent=[-half, half, -half, half],
@@ -826,7 +828,7 @@ def setup_entry(key, r, al, kind="ceos"):
     ronchi = _uri(fig)
     flag = ""
     if r.get("_commented") or "NOT RUNNABLE" in r.get("note", ""):
-        flag = "not runnable as planned — the cost table below says what it needs"
+        flag = "planned only — not in block 1"
     return dict(key=key, alpha=al, run=r["label"], terms=out, d90=round(d90, 1), d99=round(d99, 1), window=win,
                 probe=probe, ronchi=ronchi, flag=flag)
 
@@ -843,6 +845,8 @@ def explorer(a):
     for al in XP_ALPHAS:
         have = []
         for col, lab, kind in (("ceos", f"ceosopt_a{al:03d}", "ceos"), ("arm", f"arm_a{al:03d}", "arm")):
+            if lab in R and R[lab]["_commented"] and (lab + "_f20") in R:
+                lab += "_f20"                           # same probe, the block's 20 A scan
             if lab in R:
                 setups.append(setup_entry(f"{col}-{al}", R[lab], al, kind=kind)); have.append(col)
         rr = R.get(round_for.get(al, ""), rs.get(f"a{al:03d}"))       # 100: the round sweep's own a100 row
@@ -1129,7 +1133,10 @@ def recons_tabs(a):
 RES = os.path.join(REPO, "aberration_experiment", "results", "2026-W40")
 ARM_PLAN = os.path.join(RES, "arm_plan_sizes.json")        # plan_probe.py --arm, every aperture (merged *_sizes.json)
 ARM_VARIANTS = os.path.join(RES, "arm_plan_variants.json")  # the same planner on the open decisions' alternatives
-STRETCH_COSTS = os.path.join(RES, "stretch_costs.json")     # campaign/plan_cost.py on the large-probe rows
+BLOCK1 = os.path.join(RES, "block1_plan.json")              # block 1: every probe from 70 mrad in the 80 mrad geometry
+
+
+LOSS_TESTED = 0.0031          # the most any run has lost from its window and reconstructed (round 70): a record, not a limit
 
 
 def _judge(cls, word, why=""):
@@ -1144,11 +1151,11 @@ def arm_tables(a):
     plan = {int(r["alpha"]): r for r in json.load(open(ARM_PLAN))}
     R = rows(commented=True)
     var = json.load(open(ARM_VARIANTS))
-    cost = {c["label"]: c for c in json.load(open(STRETCH_COSTS))}
+    block = {c["label"]: c for c in json.load(open(BLOCK1))}
     out = ['<h3>The ARM200F tableau, planned — nothing has run yet</h3>',
            '<div class="tablewrap"><table><thead><tr><th>aperture</th><th>C1</th><th>C3</th>'
-           '<th>probe d50 / d90 / d99</th><th>CEOS approx. d90</th><th>window (probe lost)</th><th>pattern</th>'
-           '<th>with today\'s pipeline</th></tr></thead><tbody>']
+           '<th>probe d50 / d90 / d99</th><th>CEOS approx. d90</th><th>window (probe outside it)</th><th>pattern</th>'
+           '<th>when</th></tr></thead><tbody>']
     for al in sorted(plan):
         r = plan[al]
         c = R.get(f"ceosopt_a{al:03d}")
@@ -1157,23 +1164,23 @@ def arm_tables(a):
             m = [s for s in c["note"].split(";") if "d90" in s]
             cd = m[0].split("d90")[1].split("A")[0].strip() + " Å" if m else "–"
         quick = "QUICK" in r["note"]
-        runnable = not r["note"].startswith("NOT RUNNABLE")
-        if runnable:
-            j = _judge("good", "runs", "as the CEOS sweep did: 210 Å region, N ≤ 1424 px")
+        lab = f"arm_a{al:03d}"
+        if lab in block and block[lab]["in_block"]:
+            j = _judge("good", "block 1", "the 80 mrad geometry" + ("; coarse plan" if quick else ""))
+        elif lab in block:
+            j = _judge("bad", "planned only", "not in block 1" + ("; coarse plan" if quick else ""))
         else:
-            j = _judge("bad", "not as is", "needs a larger pattern or region (costs below)"
-                       + ("; coarse plan" if quick else ""))
+            j = _judge("ok", "waits", "on the decisions below")
+        loss = block[lab]["loss_pct"] if lab in block else 100 * r["loss"]
         out.append(f"<tr><td>{al} mrad</td><td>{r['c1']:+.0f} Å</td><td>{r['c3'] / 1e4:+.1f} µm</td>"
                    f"<td>{r['d50']:.1f} / {r['d90']:.1f} / {r['d99']:.0f} Å</td><td>{cd}</td>"
-                   + (f"<td>{r['window']:g} Å ({100 * r['loss']:.2f} %)</td>" if r["window"] <= 105 else
-                      f"<td>more than 105 Å (105 Å would lose {100 * r['loss']:.2f} %)</td>")
-                   + (f"<td>{r['npx']} px</td>" if runnable else "<td>below</td>") + f"{j}</tr>")
+                   f"<td>{r['window']:g} Å ({loss:.2f} %)</td><td>{r['npx']} px</td>{j}</tr>")
     out.append('</tbody><caption>C1 and C3 set for the smallest d90 with every measured term held (plan_probe.py '
                '--arm). d50 / d90 / d99: diameters holding 50 / 90 / 99 % of the probe. Window: the reconstruction '
-               'window the probe needs; "probe lost" is the share of its intensity outside it — the most a run has '
-               'lost and still reconstructed is 0.31 % (round 70 from its 17.5 Å window). Pattern: its width in '
-               'pixels; 1424 is the largest the engine has run. 90 and 100 mrad are coarse plans (one search start), '
-               'good for sizing only. d50 / d90 / d99 are measured about the probe\'s brightest point, as in every '
+               'window, never larger than the 105 Å that reconstructs CEOS 80 mrad; in brackets the share of the '
+               'probe\'s intensity that falls outside it — a number to test, not a limit (the most any run has lost so far '
+               'is 0.31 %). Pattern: its width in pixels; 1424 is the largest the engine has run. 90 and 100 mrad are '
+               'coarse plans (one search start). d50 / d90 / d99 are measured about the probe\'s brightest point, as in every '
                'earlier plan; for probes this speckled that point can move with the sampling grid and the diameters '
                'with it, by up to ~15 % (75 mrad: d90 68–80 Å). The window loss is measured about the beam axis and '
                'does not move.</caption></table></div>')
@@ -1198,39 +1205,36 @@ def arm_tables(a):
                'small below 10 %, moderate below 30 %, large above. The planner\'s own repeatability is about ±1 Å in '
                'd90 (its objective is a step function of the probe grid).</caption></table></div>')
 
-    # costs
-    out += ['<h3>What the large probes would cost</h3>',
-            '<div class="tablewrap"><table><thead><tr><th>setup</th><th>probe d90 / d99</th><th>detector</th>'
-            '<th>region / BIN = window</th><th>pattern</th><th>positions</th><th>data, peak memory</th>'
-            '<th>GPU batch</th><th>recon time</th><th>verdict</th></tr></thead><tbody>']
-    for lab, c in cost.items():
-        first = True
-        for f, b in c["best"].items():
-            head = (f"<td rowspan='2'>{'ARM200F' if lab.startswith('arm') else 'CEOS approx.'} {int(c['alpha'])} mrad"
-                    f"</td><td rowspan='2'>{c['d90']:.0f} / {c['d99']:.0f} Å</td>") if first else ""
-            first = False
-            if b is None:
-                out.append(f"<tr>{head}<td>{float(f):g} α</td><td colspan='6'>no geometry fits the node</td>"
-                           f"{_judge('bad', 'no', H.escape(c.get('why') or 'host memory, GPU or walltime'))}</tr>")
-                continue
-            needs = ([f"new {b['side']:.0f} Å region (simulation grid {b.get('sim_px', 0)} px) + ground truth"]
-                     if b["new_region"] else []) + \
-                    ([f"N {b['N']} px unproven"] if b["unproven"] else [])
-            cls = "good" if not needs else "ok"
-            out.append(f"<tr>{head}<td>{float(f):g} α ({b['det_mrad']} mrad)</td><td>{b['side']:.0f} Å / {b['bin']} = "
-                       f"{b['window']:g} Å</td><td>{b['N']} px</td><td>{b['positions']} ({b['scan']:g} Å)</td>"
-                       f"<td>{b['data_GB']:g} GB, {b['peak_GB']} GB</td><td>{b['grouping']}</td><td>~{b['hours']:g} h</td>"
-                       f"{_judge(cls, 'as is' if not needs else 'build first', '; '.join(needs))}</tr>")
-    out.append('</tbody><caption>For each detector choice, the geometry that fits one GPU node with the most scan '
-               'positions at the 0.5 Å step, preferring the existing 210 Å region (campaign/plan_cost.py). Window: region '
-               'side over an integer BIN; it must lose ≤ 0.31 % of the probe, and the region must keep scan + d99 + '
-               '20 Å inside. Pattern N = 2 θmax × window / λ. Peak memory: 4 × data (measured on a 1422 px run; a node '
-               'gives ~184 GB). GPU batch: 16 × (1426 / N)², the GROUPING that fits a 48 GB L40. Time: scaled from the '
-               '80 mrad legs (1419 px, 18 slices, 1600 positions, 3.9–5.2 h) by N², slices, positions and the width of '
-               'the half-resolution first pass, which must keep 1.2 α and so runs at full width behind a 1.2 α detector. '
-               'The simulation samples the potential to 200 mrad, so its grid grows with the region: 4264 px at 210 Å, '
-               'the only side run so far. The detector at 1.66 α is what the 80 mrad runs used; 1.2 α is cheaper and has never been run. Beyond '
-               '1424 px the driver also needs a per-leg GPU batch (it gives every large leg 16).</caption></table></div>')
+    # block 1
+    name = {"arm": "ARM200F", "ceo": "CEOS approx."}
+    out += ['<h3>Block 1: every probe from 70 mrad in the geometry that works at 80 mrad</h3>',
+            '<div class="tablewrap"><table><thead><tr><th>setup</th><th>probe d90 / d99</th><th>window</th>'
+            '<th>probe outside the window</th><th>outside the 210 Å region</th><th>pattern</th><th>slices</th>'
+            '<th>recon time</th><th>loss tested before?</th></tr></thead><tbody>']
+    for lab, c in block.items():
+        if not c["in_block"]:
+            continue
+        who = ("calibration: CEOS approx." if lab.endswith("_b4") else name[lab[:3]]) + f" {int(c['alpha'])} mrad"
+        if c["loss_pct"] <= 100 * LOSS_TESTED:
+            j = _judge("good", "yes", "within the 0.31 % a run has lost")
+        else:
+            j = _judge("ok", "new", f"{c['loss_pct'] / (100 * LOSS_TESTED):.0f}× the most lost so far")
+        out.append(f"<tr><td>{who}</td><td>{c['d90']:.0f} / {c['d99']:.0f} Å</td><td>{c['window']:g} Å</td>"
+                   f"<td>{c['loss_pct']:.2f} %</td><td>{c['region_loss_pct']:.2f} %</td><td>{c['N']} px</td>"
+                   f"<td>{c['nl']}</td><td>~{c['hours']:g} h</td>{j}</tr>")
+    ref = next(r for r in csv.DictReader(open(os.path.join(RES, "ceos_sweep_results.csv"))) if r["label"] == "ceosopt_a080_f20")
+    got = " / ".join(f"{100 * float(ref[k]):.0f}" for k in ("Pb", "Ti", "O")) + f" %, depth error {float(ref['z_rms']):.2f} Å"
+    out.append('</tbody><caption>One submission, lab + Pb + Ti kernels for every setup, all in the geometry of '
+               f'ceosopt_a080_f20 — the 80 mrad CEOS run that reconstructs ({got}): the '
+               'existing 210 Å region and its ground truth, a 105 Å window, the detector to ±133 mrad (N 1419 px, the '
+               'proven size), the 20 Å field at 0.5 Å (1600 positions). Only the probe changes. Probe outside the '
+               'window: the share of its intensity beyond the 105 Å the reconstruction models, the far tails, where the '
+               'probe is most aberrated. Outside the region: the share the simulation itself wraps back into its periodic '
+               '210 Å box (ARM 90: 4 %). The calibration runs the probe that reconstructs at 105 Å in a 52.5 Å window, '
+               'where it loses 5.5 % — about what ARM 80 loses at 105 Å — so it shows what a known loss does to a run '
+               'that otherwise works. Time: scaled from the 80 mrad legs (3.9–5.2 h) by slices, pattern and the width '
+               'of the half-resolution first pass. If the 105 Å window fails, a detector crop comes first; a bigger '
+               'region or scan last.</caption></table></div>')
     p = os.path.join(RES, "arm_plan_tables.html")
     open(p, "w").write("\n".join(out))
     print(f"wrote {p}")

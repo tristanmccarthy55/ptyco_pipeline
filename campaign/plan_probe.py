@@ -165,11 +165,14 @@ def region_geometry(d90, d99, side=REGION_SIDE):
     thresholds (17.5 / 35 / 70 A windows held d99 < 15 / 31 / 62), plus 105; bin = side / window; the detector is
     recorded to +-200 mrad unless the window needs a crop to keep N <= MAX_NDP; the scan field keeps scan/d90 >= 1.5
     (Rule 4) at 1600 positions; runnable while scan + d99 leaves >= 10 A to the seam on each side.
+    CAPPED AT 105 A (2026-09-30, the user): 105 A / BIN 2 at +-133 mrad (N 1419 px) is the geometry that reconstructs
+    CEOS 80 mrad; a larger probe is run there and its loss outside the window reported (window_loss), not paid for with
+    a bigger window, region or a smaller scan. Only if 105 A fails: detector crop first, region and scan last.
     (A 35 A minimum window was imposed on 2026-09-27 and withdrawn on 09-28: the "17.5 A kernels show 0 grid atoms"
     behind it was extract_psf reading an engine checkpoint on Blythe. From the h5, every 17.5 A kernel is clean and
     round 70 at 17.5 A gives 98/83/81 %, z 0.56 A -- the old a70 row. Rule 4 is itself unproven: widening a110's
     field did not rescue it.)"""
-    window = next(w for w, lim in ((17.5, 15), (35.0, 31), (70.0, 62), (105.0, 93), (side, 1e9)) if d99 < lim)
+    window = next(w for w, lim in ((17.5, 15), (35.0, 31), (70.0, 62), (105.0, 1e9)) if d99 < lim)
     binf = int(round(side / window))
     detmax = min(200, int(MAX_NDP * LAM / (2 * window) * 1e3))
     win = max(20, int(np.ceil(1.5 * d90)))
@@ -242,13 +245,26 @@ def plan_ceos(alphas, C5, target, out):
 
 def window_loss(P, ext, window):
     """Fraction of the probe's intensity outside a WINDOW-A square centred on the beam axis (the array centre, where
-    the recon window sits). Calibration: round_a070 loses 0.31 % from its 17.5 A window and reconstructs;
-    ceosbuilt_a080 0.16 % from 105 A."""
+    the recon window sits). For reference: round_a070 loses 0.31 % from its 17.5 A window and reconstructs;
+    ceosbuilt_a080 0.16 % from 105 A. A NUMBER TO REPORT, not a gate (the user, 2026-09-30): the light far out is the
+    most aberrated part of the probe and may carry little -- test the loss by cropping instead of paying for it."""
     I = np.abs(P) ** 2; c = P.shape[0] // 2; h = int(round(window / 2 / (ext / P.shape[0])))
     return float(1 - I[c - h:c + h, c - h:c + h].sum() / I.sum())
 
 
-LOSS_OK = 0.0031           # the largest window loss a leg has reconstructed with (round_a070, 17.5 A)
+def geometry_losses(P, ext, window, side=None):
+    """(loss outside the recon window, loss outside the simulated region) of a probe on an ext-A grid: the second is the
+    share the simulation itself wraps back into its periodic side x side box."""
+    return window_loss(P, ext, window), window_loss(P, ext, side or REGION_SIDE)
+
+
+def geometry_note(window, detmax, npx, loss, loss_region):
+    return (f"window {window:g} A loses {100 * loss:.2f} %, {100 * loss_region:.2f} % lies outside the {REGION_SIDE:g} A "
+            f"region" + ("" if detmax == 200 else f"; detector +-{detmax} mrad") + f"; N {npx} px")
+
+
+LOSS_OK = 0.0031           # the largest window loss a leg has reconstructed with SO FAR (round_a070, 17.5 A): a record,
+                           # not a limit -- no run has tested more (2026-09-30). Only plan_cost.py still gates on it.
 
 
 def round_balance(alpha, c5):
@@ -333,12 +349,8 @@ def plan_arm(alphas, c5, override, scale, prefix, out, run="run3", quick=False):
         # the scan: 20 A at 0.5 A (1600 positions), the default since 2026-09-28 -- large probes need the fine step, and
         # the field size does not matter (Rule 4, scan >= 1.5 d90, is dropped; region_geometry still returns it)
         win, step = 20, 0.5
-        ok = win + d99 + 20 <= REGION_SIDE
-        loss = window_loss(P, extf, 105.0 if window > 105 else window)
-        if window > 105 and loss <= LOSS_OK:                # ceosbuilt_a080's route: 105 A if it loses little
-            window, binf = 105.0, 2
-            detmax = min(200, int(MAX_NDP * LAM / (2 * window) * 1e3))
-        ok = ok and detmax >= 1.2 * a                        # the detector must hold the aperture with room
+        loss, loss_region = geometry_losses(P, extf, window)
+        ok = True                                           # 2026-09-30: the loss is reported, never a gate
         npx = int(round(2 * detmax / 1000.0 * window / LAM))
         ab = aw.arm_tableau(C3, c5, override=override, scale=scale, run=run)
         wv = aw.tableau_waves(ab, a)
@@ -346,16 +358,14 @@ def plan_arm(alphas, c5, override, scale, prefix, out, run="run3", quick=False):
                 + "".join(f", {k} {v / aw.UNIT_A['nm' if k[1] in '12' else ('um' if k[1] in '34' else 'mm')]:g}"
                           f" {'nm' if k[1] in '12' else ('um' if k[1] in '34' else 'mm')}" for k, v in (override or {}).items())
                 + (f", x{scale:g}" if scale != 1 else "")
-                + f"): C1/C3 set for the smallest probe{' (QUICK, coarse)' if quick else ''}; d50/d90/d99 {d50:.1f}/{d90:.1f}/{d99:.1f} A; window {window:g} A"
-                f" loses {100 * loss:.2f} %" + ("" if detmax == 200 else f"; detector +-{detmax} mrad") + f"; N {npx} px")
-        if not ok:
-            note = f"NOT RUNNABLE as planned (window {window:g} A, detector +-{detmax} mrad vs aperture {a}): " + note
+                + f"): C1/C3 set for the smallest probe{' (QUICK, coarse)' if quick else ''}; d50/d90/d99 {d50:.1f}/{d90:.1f}/{d99:.1f} A; "
+                + geometry_note(window, detmax, npx, loss, loss_region))
         rows.append(dict(label=f"{prefix}_a{a:03d}", alpha=a, c5=c5 * scale, c3=C3, c1=C1, df_perf="-", bin=binf, nl=0,
                          aber_json=json.dumps(ab, separators=(",", ":")), note=note, side=f"{REGION_SIDE:g}", win=win,
                          step=f"{step:g}", detmax=detmax, nl_force="-", d50=d50, d90=d90, d99=d99, loss=loss,
-                         npx=npx, waves=wv, window=window, ext=extf))
+                         loss_region=loss_region, npx=npx, waves=wv, window=window, ext=extf))
         print(f"  alpha={a:3d}  C1={C1:+7.1f}A  C3={C3 / 1e4:+6.2f}um  d50/d90/d99={d50:.1f}/{d90:.1f}/{d99:.1f}  "
-              f"window={window:g} loss={100 * loss:.2f}% BIN={binf} det={detmax} N={npx}  [{'ok' if ok else 'NOT RUNNABLE'}]"
+              f"window={window:g} loss={100 * loss:.2f}% (outside region {100 * loss_region:.2f}%) BIN={binf} det={detmax} N={npx}"
               f"  (search box {ext:g} A, {n} px; start {c1b:+.0f} A / {c3b / 1e4:+.2f} um)", flush=True)
     cols = ["label", "alpha", "c5", "c3", "c1", "df_perf", "bin", "nl", "aber_json", "note", "side", "win", "step",
             "detmax", "nl_force"]

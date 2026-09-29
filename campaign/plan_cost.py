@@ -14,6 +14,10 @@ box that holds it, and every geometry the pipeline can make is enumerated:
 Probe sizes are the planner's (read from the row's note: d90/d99 about the probe's brightest point, the measure every
 plan used; for these speckled probes it moves by up to ~15 % with the grid, so it is taken from one place). The probe is
 built here only for the window loss, measured about the beam axis, which does not move with the grid.
+2026-09-30, THE USER: the large geometries this tool finds are NOT the plan. LOSS_OK is the most any run has lost, not
+a limit; every probe from 70 mrad up runs first in the 105 A / 1419 px geometry of ceosopt_a080_f20 with its loss
+reported (plan_probe.geometry_losses). Never a smaller scan field. Only if the 105 A window fails: a detector crop first,
+region and scan last. This tool is kept for that later discussion.
 A geometry is kept if the window holds the probe -- it loses no more intensity than LOSS_OK, the most a leg has lost
 and still reconstructed (round_a070 from its 17.5 A window) -- and the region keeps scan + d99 + 20 A inside its side
 (the seam rule of plan_probe.region_geometry). Its price, from measured runs:
@@ -64,6 +68,13 @@ def rows_all(path=TSV):
     for r in csv.DictReader((l for l in lines if not l.startswith("#")), delimiter="\t"):
         out[r["label"]] = r
     return out
+
+
+def recon_hours(N, nl, npos, det_over_alpha):
+    """Recon walltime [h] from the measured 80 mrad legs: N^2, slices, positions and the presolve width (half the
+    pattern, widened to 1.2 alpha where half would cut the aperture)."""
+    fp = min(1.0, max(0.5, 1.2 / det_over_alpha))
+    return T_REF_H * (N / N_REF) ** 2 * (nl / NL_REF) * (npos / POS_REF) * (1 + fp ** 2) / (1 + 0.72 ** 2)
 
 
 def nyquist_nl(alpha):
@@ -129,8 +140,7 @@ def cost(label, r):
                     N = int(2 * round(f * a / 1000.0 * W / LAM))
                     data = npos * N * N * 4 / 1e9
                     grp = 16 * (PROVEN_N / N) ** 2
-                    fp = min(1.0, max(0.5, 1.2 / f))              # presolve width / N (f = detector / alpha)
-                    t = T_REF_H * (N / N_REF) ** 2 * (nl / NL_REF) * (npos / POS_REF) * (1 + fp ** 2) / (1 + 0.72 ** 2)
+                    t = recon_hours(N, nl, npos, f)
                     ok = 4 * data <= HOST_GB and grp >= 1 and t <= 0.85 * WALL_H
                     opts.append(dict(side=S, bin=b, window=round(W, 1), loss=round(100 * loss, 3), det=f,
                                      det_mrad=round(f * a), N=N, positions=npos, scan=scan, data_GB=round(data, 1),
