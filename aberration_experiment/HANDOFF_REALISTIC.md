@@ -43,8 +43,13 @@ quoting a number):
 | B4 | 30 µm / −141° | manual |
 | D4 | 19 µm / −10° | manual |
 | A5 | 1 mm / 150° | manual |
-| C5 | **+4 mm** | manual gives 6 ± 4 mm; the user: "set it to like 3–5 and say it's a well tuned microscope, to be a little generous" |
+| C5 | **+4 mm** | **fixed — factory set, NOT an operator knob.** The manual measures 6 ± 4 mm (± = measurement standard deviation, not a tuning range); the user: take 3–5 mm "and say it's a well tuned microscope, to be a little generous" — i.e. a generous choice of the instrument's fixed value |
 | C1, C3 | set for the smallest probe at each aperture | the knobs an operator always has (as `ceosbuilt_a080`) |
+
+**Who can change what (the user, 2026-09-29 — be careful here):** the operator tunes C1, A1, B2, A2, C3, S3, A3 in
+routine use (what the CEOS tuning measures and corrects). Everything else is fixed on the day: C5 factory set, A4 and B4
+parasitic, A5 intrinsic, D4 not a routine knob. "Adjustable" in a vendor page is not "tuned to zero", and a ± in a
+measured tableau is measurement uncertainty, never a range anyone can tune over. So in the planner only C1 and C3 move.
 
 Why run3 as one snapshot rather than a mean: run-to-run the angles wander (A2: +159°, −104°, +116°) because several terms
 sit at their measurement noise floor; one real, internally consistent tableau is more honest than an average of vectors.
@@ -59,23 +64,22 @@ C3 ±3.5, A3 ±4, A4 ±8 waves at 80 mrad; the manual's standard deviations B4 �
 tuned at ~26–30 mrad leaves an 80 mrad probe with several waves of each residual, and cannot tell you that probe better
 than several waves per term.
 
-## Waiting to be collected (submitted by the user; check `squeue` and the tarballs before assuming anything)
+## Collected 2026-09-29 (all in `~/Desktop/ceos_figdata`; the CEOS page v5 shows them)
 
-| run | what | pull into |
-|---|---|---|
-| analysis of `ceosopt_a070 _a070_f20 _a070_nl10 _a075 _a080 _a080_f20 round_a065 round_a075_b8 round_a080_b9` | figure data (`figdata/`) + phase images for the page's figs 4–5 | `~/Desktop/ceos_figdata`, glob `analysis_ceosopt_a070-ceosopt_a070_f20-*.tgz` |
-| `ceosopt_a075_f20`, `round_a075_b7` | CEOS 75 on the 20 Å scan; a 3.9 Å round 75 predicted stable (7.2 %/slice) BEFORE running | `~/Desktop/ceos_figdata`, glob `*ceosopt_a075_f20-round_a075_b7_*.tgz` |
-| `ceosbuilt_a080` | the "tuned at 30 mrad and left" CEOS tableau at 80 mrad, same geometry as `ceosopt_a080_f20` — the closest existing run to the real instrument | `~/Desktop/ceos_figdata`, glob `*ceosbuilt_a080_*.tgz` (block handed over 09-29; the user may not have submitted it — ask) |
-| `ceosopt_a070_s06` | CEOS 70 at the old 38 Å field with a 0.594 Å step, 4096 positions: step or field? | `~/Desktop/ceos_0928_s06`, glob `atomfind_results_ceosopt_a070_s06_*.tgz` (lab only: judge on ε, presolve trace and phase images; its analysis can be run with `run_analysis.sh` for images) |
+| run | result |
+|---|---|
+| `ceosbuilt_a080` — CEOS tuned at 30 mrad and left, 80 mrad | **100 / 67 / 74 %, depth error 0.47 Å** — the same as the idealised re-tuned run (100 / 67 / 75 %, 0.48 Å). With the probe known, tuning precision made no measurable difference. |
+| `ceosopt_a075_f20` | 95 / 86 / 90 %, 0.55 Å (the old 54 Å scan gave 96 / 64 / 52 %, 0.73 Å) |
+| `round_a075_b7` — predicted stable before running (7.2 %/slice) | converged: 95 / 75 / 78 %, 0.60 Å |
+| `ceosopt_a070_s06` — old 38 Å field, 0.594 Å step, 4096 positions | reconstructs (ε 0.085 → 0.038, clean lattice and depth sections; some field-corner artefacts): **the step, not the field**, was the failure |
+| figure data for the page's figs 4–5 | in; fig 5 complete |
 
 ## Your jobs, in order
 
-1. **Collect the waiting runs and update the CEOS page.** Triage each (the tar step sometimes does not run — check), look
-   at the phase images, then: rebuild figs 4–5 (`analysis/make_ceos_figs.py --figs 4 5`; it reads
-   `~/Desktop/ceos_figdata`), switch the 75 mrad points in its `RESULTS` manifest to `ceosopt_a075_f20` and
-   `round_a075_b7`, add `ceosbuilt_a080` and `s06` to the text, rebuild (`page/build_page.py --template
-   page/ceos_2026-09-28.html`) and republish to **https://claude.ai/artifact/VqmcbqPVGYkgqdExRxdFnb** — read it first
-   with the Artifact tool (it was published from another conversation), then publish with `url=`.
+1. ~~Collect the waiting runs and update the CEOS page~~ — DONE 2026-09-29 (page v5,
+   **https://claude.ai/artifact/VqmcbqPVGYkgqdExRxdFnb**; to change it: read it first with the Artifact tool — it was
+   published from another conversation — then rebuild with `page/build_page.py --template page/ceos_2026-09-28.html`
+   and publish with `url=`).
 2. **Build the ARM200F-class tableau and plan it.** Add a planner mode to `campaign/plan_probe.py` that reads
    `arm200f_tableau.tsv` (run3 + manual B4/D4/A5, C5 = +4 mm), holds every measured term fixed, and optimises C1 and C3
    for the smallest d90 at each aperture (as the `ceosbuilt_a080` search did: Nelder-Mead from 3 starts). First resolve the

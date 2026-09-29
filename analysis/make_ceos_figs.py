@@ -293,14 +293,16 @@ D = os.path.expanduser("~/Desktop")
 AN_1712 = f"{D}/ceos80_sweeps/analysis_local_fixed"          # first sweep, re-scored locally from the h5s (09-28)
 AN_W35 = glob.glob(f"{D}/ceos_0928/analysis_*/analysis_*")   # the 35 A rerun + CEOS 75, Blythe, fixed extraction
 AN_NEW = glob.glob(f"{D}/ceos_0928c/analysis_ceosopt_a070_f20-ceosopt_a070_nl10*/analysis_*")   # 09-28 legs
+AN_FD9 = f"{D}/ceos_figdata/analysis_*/analysis_*"          # 09-29: CEOS 75 on the 20 A scan, round 75 b7, ceosbuilt_a080
 # which run stands for each point, and where its numbers live -- paths only, every number is read from the file
 RESULTS = [
     ("CEOS", 50, "ceosopt_a050", f"{AN_1712}/ceos"), ("CEOS", 60, "ceosopt_a060", f"{AN_1712}/ceos6x"),
     ("CEOS", 65, "ceosopt_a065", f"{AN_1712}/ceos6x"), ("CEOS", 70, "ceosopt_a070_f20", AN_NEW),
-    ("CEOS", 75, "ceosopt_a075", AN_NEW), ("CEOS", 80, "ceosopt_a080_f20", AN_NEW),
+    ("CEOS", 75, "ceosopt_a075_f20", AN_FD9), ("CEOS", 80, "ceosopt_a080_f20", AN_NEW),
     ("round", 50, "round_a050", f"{AN_1712}/round"), ("round", 60, "round_a060", f"{AN_1712}/round"),
     ("round", 65, "round_a065", AN_W35), ("round", 70, "round_a070", f"{AN_1712}/round"),
-    ("round", 75, "round_a075_b8", AN_NEW), ("round", 80, "round_a080_b9", AN_NEW),
+    ("round", 75, "round_a075_b7", AN_FD9), ("round", 80, "round_a080_b9", AN_NEW),
+    ("CEOS, tuned at 30 mrad", 80, "ceosbuilt_a080", AN_FD9),
 ]
 # the first sweep's large-probe legs on their original scans, which did not reconstruct (triage: SATURATED)
 FAILED_FIRST = [("CEOS", 70, "ceosopt_a070", f"{D}/ceos_phase_ceos/analysis_*/analysis_*"),
@@ -369,6 +371,9 @@ def fig6_numbers(a):
     T = results_table()
     fig, axes = plt.subplots(1, 4, figsize=(15.5, 4.3), sharex=True)
     for k, (sp, ax) in enumerate(zip(("Pb", "Ti", "O", "z_rms"), axes)):
+        for t in (t for t in T if t["instrument"].startswith("CEOS, tuned") and t["status"] == "ok"):
+            yy = 100 * t[sp] if sp != "z_rms" else t[sp]
+            ax.plot(t["alpha"] + 1.2, yy, marker="D", ms=8, mew=1.6, mec=SPECIES.get(sp, INK), mfc="white", zorder=4)
         for inst, col, ls, mk in (("CEOS", SPECIES.get(sp, INK), "-", "o"), ("round", MUTED, "--", "s")):
             pts = sorted((t for t in T if t["instrument"] == inst and t["status"] == "ok"), key=lambda t: t["alpha"])
             x = [t["alpha"] for t in pts]
@@ -386,8 +391,9 @@ def fig6_numbers(a):
         ax.set_xlabel("aperture semi-angle (mrad)"); ax.set_xticks(sorted({t['alpha'] for t in T}))
     h = [Line2D([], [], color=INK, ls="-", marker="o", ms=7, label="CEOS column (species colour)"),
          Line2D([], [], color=MUTED, ls="--", marker="s", ms=7, label="round control"),
-         Line2D([], [], color=INK2, ls="none", marker="o", mfc="white", ms=7, label="species labels unreliable (confusion > 5 %)")]
-    fig.legend(handles=h, loc="lower center", ncol=3, bbox_to_anchor=(0.5, -0.02))
+         Line2D([], [], color=INK2, ls="none", marker="o", mfc="white", ms=7, label="species labels unreliable (confusion > 5 %)"),
+         Line2D([], [], color=INK, ls="none", marker="D", mfc="white", ms=7, label="CEOS tuned at 30 mrad and left (80 mrad)")]
+    fig.legend(handles=h, loc="lower center", ncol=4, bbox_to_anchor=(0.5, -0.02))
     fig.tight_layout(rect=[0, 0.07, 1, 1])
     return save(fig, "fig6_numbers.png")
 
@@ -693,10 +699,14 @@ SYMBOL = {"C10": ("C1", "defocus"), "C12": ("A1", "two-fold astigmatism"), "C21"
           "C43": ("D4", "three-lobe"), "C45": ("A4", "five-fold astigmatism"),
           "C50": ("C5", "fifth-order spherical"), "C56": ("A5", "six-fold astigmatism")}
 ROLE = {"C10": ("fought", "set for the smallest probe"), "C30": ("fought", "set for the smallest probe"),
-        "C21": ("fought", "set against B4, its only partner"), "C50": ("held", "held at 1 mm"),
-        "C41": ("hardware", "no knob (parasitic)"), "C45": ("hardware", "no knob (parasitic)"),
-        "C56": ("hardware", "no knob (intrinsic)")}                       # the rest: retuned to 0.1 waves
-CEOS_ADJUSTABLE = {"C10", "C12", "C21", "C23", "C30", "C32", "C34", "C43"}   # CEOS: C1 A1 B2 A2 C3 S3 A3 D4 (and C5)
+        "C21": ("fought", "set against B4, its only partner"),
+        "C43": ("assumed", "assumed re-tuned to 0.1 waves here -- not a routine operator knob"),
+        "C50": ("fixed", "factory set; 1 mm here (a reference tableau measures 6 +- 4 mm)"),
+        "C41": ("fixed", "parasitic: no knob"), "C45": ("fixed", "parasitic: no knob"),
+        "C56": ("fixed", "intrinsic to the hexapole design: no knob")}   # A1 A2 S3 A3: assumed re-tuned (below)
+# the terms an operator tunes in routine use: what the CEOS STEM tuning measures and corrects, first to third order
+# (the target ARM200F's own tableaus, campaign/arm200f_tableau.tsv). Everything else is fixed on the day.
+CEOS_ADJUSTABLE = {"C10", "C12", "C21", "C23", "C30", "C32", "C34"}
 
 
 def _unit(term, v):
@@ -721,7 +731,9 @@ def setup_entry(key, r, al):
     out = []
     for t in sorted((k for k in terms if k.startswith("C") and k in SYMBOL), key=lambda k: (int(k[1]), int(k[2]))):
         v = float(terms[t]); sym, name = SYMBOL[t]
-        role, why = ROLE.get(t, ("assumed", "assumed tuned to 0.1 waves at this aperture"))
+        role, why = ROLE.get(t, ("assumed", "operator-tuned; assumed re-tuned to 0.1 waves at this aperture"))
+        if key.startswith("round") and t in ("C10", "C30"):
+            why = "set for a 4 A probe (round control)"
         out.append(dict(k=t, sym=sym, name=name, C=v, phi=float(terms.get("phi" + t[1:], 0.0)),
                         shown=_unit(t, -c1 if t == "C10" else v), deg=(None if t[2] == "0" else
                         round(float(np.degrees(terms.get("phi" + t[1:], 0.0))), 1)),
@@ -791,9 +803,11 @@ XP_TEMPLATE = """<div class="xp" id="xp">
           <th scope="col">angle</th><th scope="col">waves at edge</th><th scope="col">who sets it</th></tr></thead>
         <tbody id="xp-rows"></tbody>
       </table></div>
-      <p class="xp-note">Highlighted rows are the terms a CEOS corrector lets the operator adjust. Amber "assumed":
-        the value is our assumption that the operator re-tunes that term to 0.1 waves at this aperture — see below.
-        Untick a term to take it out of the three wavefront maps; the Ronchigram and probe are always the full setup.</p>
+      <p class="xp-note">Highlighted rows: terms the operator tunes in routine use (what the corrector's tuning
+        measures and corrects, first to third order). Blue "fought": set for the smallest probe. Amber "assumed": our
+        assumption that the term is re-tuned to 0.1 waves at this aperture. Red "fixed": nobody changes it on the day —
+        C5 is set at the factory, A4 and B4 are parasitic, A5 is intrinsic. Untick a term to take it out of the three
+        wavefront maps; the Ronchigram and probe are always the full setup.</p>
     </div>
     <div class="xp-maps">
       <figure class="xp-f"><canvas id="xp-round" width="280" height="280" role="img"></canvas>
@@ -859,7 +873,7 @@ XP_TEMPLATE = """<div class="xp" id="xp">
     s.terms.forEach(function (t) {
       var tr = document.createElement("tr"); if (t.ceos) tr.className = "xp-ceos";
       var id = "xp-t-" + t.k, cb = '<input type="checkbox" id="' + id + '"' + (st.off[t.k] ? "" : " checked") + ' aria-label="include ' + t.sym + '">';
-      var chip = { fought: "c-open", assumed: "c-warn", hardware: "c-stop", held: "c-none" }[t.role];
+      var chip = { fought: "c-open", assumed: "c-warn", fixed: "c-stop" }[t.role];
       tr.innerHTML = "<td>" + cb + "</td><td><label for='" + id + "'><b>" + t.sym + "</b> <span class='xp-k'>" + t.k +
         "</span><span class='xp-name'>" + t.name + "</span></label></td><td class='xp-num'>" + t.shown + "</td><td class='xp-num'>" +
         (t.deg === null ? "–" : t.deg.toFixed(1) + "°") + "</td><td class='xp-num'>" + (t.waves < 10 ? t.waves.toFixed(2) : t.waves.toFixed(1)) +

@@ -335,7 +335,7 @@
       <a href="#s5">How runs fail</a>
       <a href="#s6">Results</a>
       <a href="#s7">Fixed on the way</a>
-      <a href="#s8">Running</a>
+      <a href="#s8">Next</a>
     </nav>
   </div></div>
 </header>
@@ -350,18 +350,20 @@
       <p>
         The CEOS-approximation column opened to 80 mrad reconstructs about as well as a round, aberration-balanced
         probe at the same aperture. Six-fold astigmatism reaches 22 waves at the aperture edge there — fifty times
-        the most the six-fold ladder tested at 70 and 90 mrad — and with the probe known it is not what limits.
+        the most the six-fold ladder tested at 70 and 90 mrad — and with the probe known it is not what limits. It
+        holds when the corrector is tuned at 30 mrad and left alone, the more realistic case.
       </p>
       <div class="spec-grid">
-        <div><b>97 / 86 / 86 % <small>0.57 Å</small></b><span>CEOS at 70 mrad, 25 Å probe</span></div>
+        <div><b>100 / 67 / 74 % <small>0.47 Å</small></b><span>80 mrad, corrector tuned at 30 mrad and left</span></div>
+        <div><b>98 / 86 / 86 % <small>0.57 Å</small></b><span>CEOS at 70 mrad, 25 Å probe</span></div>
         <div><b>96 / 79 / 81 % <small>0.55 Å</small></b><span>round control at 80 mrad</span></div>
-        <div><b>20 Å at 0.5 Å</b><span>the scan the large probes need (§5)</span></div>
+        <div><b>≤ 0.6 Å step</b><span>what the large probes need (§5)</span></div>
       </div>
     </div>
     <ul>
-      <li><b>The instrument is a CEOS-approximation tableau</b> — every coefficient, setup by setup, in §2. It rests on
-        one optimistic assumption, flagged there: that the operator can re-tune the adjustable terms to 0.1 waves at
-        every aperture.</li>
+      <li><b>The instrument is a CEOS-approximation tableau</b> — every coefficient, setup by setup, in §2, with how it
+        compares with a real JEOL ARM200F. The sweep assumed the operator re-tunes the adjustable terms at every aperture,
+        which is optimistic; tuning at 30 mrad and leaving it gives the same result at 80 mrad.</li>
       <li><b>Every run is a 210 Å cut of the tiled crystal</b>, bulk all round, recorded on a point-sampled
         detector (the old 4 × 4 pixel sum is gone: it set the old residual floors and the diagonal phase ramp).</li>
       <li><b>Two failure modes found, each with a fix</b> — large probes need a small, fine scan; compact probes at
@@ -381,22 +383,44 @@
       {{FRAG_EXPLORER}}
     </div>
     <p style="font-family:var(--sans);font-size:12.5px;color:var(--ink-3)">
-      Who sets what follows CEOS for its hexapole probe corrector: C1, A1, B2, A2, C3, S3, A3 and D4 are adjustable
-      (highlighted), A5 is intrinsic and A4, B4 parasitic — no knob. The operator here uses C1, C3 and B2 for the
-      smallest probe. C5 is adjustable on the real instrument but held at 1 mm here, as in the round sweep. Sourced:
-      A5 = 1.0 mm (CEOS). Assumed: A4 = B4 = 10 µm, and the tuning below.
+      Who can change what, on an instrument like the target — a JEOL ARM200F with its 2009 CEOS probe corrector: the
+      operator tunes C1, A1, B2, A2, C3, S3 and A3 in routine use (what the corrector's tuning measures and corrects).
+      Everything else is fixed on the day: C5 is set at the factory, A4 and B4 are parasitic, A5 is intrinsic to the
+      hexapole design, and D4 is not a routine knob. A ± in a measured tableau is measurement uncertainty, not a range
+      anyone can tune over. Sourced: A5 = 1.0 mm (CEOS). Assumed: A4 = B4 = 10 µm, C5 = 1 mm.
     </p>
     <div class="call stop">
-      <b>The biggest assumption, probably optimistic.</b> Every CEOS setup here assumes the operator re-runs the
-      corrector tuning after opening the aperture and brings each adjustable term — A1, A2, S3, A3, D4 — back to
-      0.1 waves at the edge of the new aperture, as well as at the 30 mrad design aperture. CEOS lists those terms
-      as adjustable, but how well they can be measured and nulled past the design aperture is not known. Holding
-      0.1 waves means holding the coefficients ever finer as the aperture opens: D4 at 9.6 µm at 40 mrad, 0.30 µm at
-      80 — about thirty times finer. The other bound is to tune to 0.1 waves at 30 mrad and leave it: at 80 mrad
-      that leaves 0.7 waves of A1, 1.9 of A2, 5 each of S3 and A3 and 13 of D4 on top of the 22 of six-fold —
-      probably too pessimistic, since an operator would re-tune something. A real instrument sits between; that
-      pessimistic case is running at 80 mrad (§8).
+      <b>The sweep's tuning assumption is optimistic — and at 80 mrad it did not matter.</b> Every CEOS setup above
+      assumes the operator re-tunes A1, A2, S3, A3 and D4 to 0.1 waves at the edge of each new aperture. Measured on a
+      real ARM200F that is out of reach: at 80 mrad it asks for A2 at 1.2 nm, S3 and A3 at 0.02 µm and D4 at 0.30 µm,
+      20 to 70 times finer than the tuning can even measure (below). The realistic case is to tune at the ~30 mrad the
+      corrector works at and leave it, which at 80 mrad leaves 0.7 waves of A1, 1.9 of A2, 5 each of S3 and A3 and 13 of
+      D4 on top of the 22 of six-fold. That run reconstructs exactly as well: 100 / 67 / 74 % of Pb / Ti / O, depth
+      error 0.47 Å, against 100 / 67 / 75 % and 0.48 Å re-tuned. With the probe known, how finely it was tuned makes no
+      measurable difference here — what matters is that it is known (§8).
     </div>
+    <h3>How the model compares with a real ARM200F</h3>
+    <div class="tablewrap"><table>
+      <thead><tr><th>term</th><th>ARM200F, measured</th><th>reference tableau</th><th>this model, tuned at 30 mrad</th><th>who changes it</th></tr></thead>
+      <tbody>
+        <tr><td>A1</td><td>2.2–4.2 nm</td><td>14 ± 10 nm</td><td>0.44 nm</td><td>operator</td></tr>
+        <tr><td>A2</td><td>13.5–22 nm</td><td>250 ± 60 nm</td><td>22 nm</td><td>operator</td></tr>
+        <tr><td>B2</td><td>12.8–34 nm</td><td>55 ± 60 nm</td><td>22 nm</td><td>operator</td></tr>
+        <tr><td>C3</td><td>0.32–1.08 µm</td><td>90 ± 3 µm</td><td>set for the probe</td><td>operator</td></tr>
+        <tr><td>A3</td><td>0.63–1.25 µm</td><td>5.5 ± 2 µm</td><td>0.97 µm</td><td>operator</td></tr>
+        <tr><td>S3</td><td>0.44–0.47 µm</td><td>1.6 ± 2 µm</td><td>0.97 µm</td><td>operator</td></tr>
+        <tr><td>A4</td><td>4.9–29 µm</td><td>86 ± 60 µm</td><td>10 µm</td><td>fixed — parasitic</td></tr>
+        <tr><td>B4</td><td>not measured</td><td>30 ± 30 µm</td><td>10 µm</td><td>fixed — parasitic</td></tr>
+        <tr><td>D4</td><td>not measured</td><td>19 ± 20 µm</td><td>40 µm</td><td>not a routine knob</td></tr>
+        <tr class="ref"><td>C5</td><td>not measured</td><td>6 ± 4 mm</td><td>1 mm</td><td>fixed — factory set</td></tr>
+        <tr><td>A5</td><td>not measured</td><td>1 ± 2 mm</td><td>1 mm</td><td>fixed — intrinsic</td></tr>
+      </tbody>
+      <caption>ARM200F: three tableaus from a lab JEOL ARM200F with a 2009 CEOS probe corrector, 200 kV, taken while
+        tuning; the routine measures up to A4. Reference: the corrector manual's tableau measured at 26 mrad tilt, value ±
+        one standard deviation (measurement uncertainty). The model's second- to fourth-order terms sit inside or near
+        the measured range; C5 is the largest gap and goes into the next run. At 80 mrad the measurement uncertainty
+        alone is worth several waves per term (A2 ±2, A3 ±4, A4 ±8, D4 ±5, C5 ±70 waves).</caption>
+    </table></div>
   </section>
 
   <section id="s3">
@@ -443,7 +467,7 @@
           <b>Middle</b> — the central ±6 Å of the same probe as a complex wave: colour is phase, brightness is
           amplitude. The six-fold wavefront shows as the six-armed pattern around the core.
           <b>Bottom</b> — the round control at the same aperture, in the same window, so the sizes compare
-          directly. The 75 mrad control is the balance now running (§5); the 80 mrad control is 5.6 Å.
+          directly. The 75 and 80 mrad controls use balances that converge (§5): 3.9 and 5.6 Å.
         </div>
       </figcaption>
     </figure>
@@ -455,8 +479,8 @@
         <div class="howto">
           <b>How to read it</b><br>
           <b>a</b> — waves at the aperture edge for every non-round term. Black: hardware terms with no knob
-          (thick: six-fold, 1 mm). Grey: adjustable terms, assumed tuned to 0.1 waves at each aperture (the
-          optimistic assumption of §2), so they sit at 0.1 by construction — except coma, which is set against
+          (thick: six-fold, 1 mm). Grey: terms assumed re-tuned to 0.1 waves at each aperture (the optimistic
+          assumption of §2; D4 among them, though it is not a routine knob), so they sit at 0.1 by construction — except coma, which is set against
           fourth-order coma as the one knob sharing its symmetry, so it rises with it.
           <b>b</b> — probe diameter d90: CEOS in black, round control dashed grey; the gold dashes are the 20 Å
           field every run scans. From about 67 mrad the probe is bigger than the field it scans, and that works.
@@ -474,8 +498,8 @@
         <span class="lg-d">Scaling the scanned field with the probe (1.5 × d90) at a fixed 1600 positions coarsens the
           step to 1–2 Å, and the solve never fits the data. The badly aberrated outer probe carries little usable
           information, so the step that matters is set by the compact core. A 20 Å field at 0.5 Å — the round runs'
-          own scan — fixes it at 70 and 80 mrad. Fewer slices do not. Whether the step or the field is what matters
-          is being tested (§8).</span>
+          own scan — fixes it at 70, 75 and 80 mrad. It is the step, not the field: the 70 mrad run at its original 38 Å
+          field with a 0.59 Å step (4096 positions) reconstructs too (misfit 0.038). Fewer slices do not help.</span>
       </div>
       <div>
         <span class="lg-t">Compact round probes at 75–80 mrad: the solver's first stage runs away</span>
@@ -485,7 +509,7 @@
           slices; at 14 it survives. The same aperture with a different balance (C3 −9 µm, defocus −160 Å, a 5.6 Å
           probe) converges at 18 slices. What separates them so far: how much the probe's intensity changes from one
           slice to the next — 6.2 % or more converged, 5.6 % or less failed. A 3.9 Å round 75 balance chosen by
-          that rule before running is reconstructing now.</span>
+          that rule before running (C3 −7 µm, defocus −120 Å, 7.2 % per slice) converged: 95 / 75 / 78 %, 0.60 Å.</span>
       </div>
     </div>
   </section>
@@ -495,7 +519,8 @@
     <p>
       The CEOS column tracks the round control at every aperture from 50 to 80 mrad. Lead is strong throughout
       (88–100 % from 60 mrad); titanium is the weak species (58–86 %). At 65 mrad and below, species labels fail the
-      5 % confusion check for both columns, so the species split there is not to be trusted.
+      5 % confusion check for both columns, so the species split there is not to be trusted. At 80 mrad the corrector
+      tuned at 30 mrad and left gives the same numbers as the idealised re-tuning. Each point is a single run.
     </p>
     <figure class="wide">
       <img src="{{FIG_RECONS}}" alt="Columns 50 to 80 mrad. Rows: depth-summed phase of the CEOS run, a depth section of the CEOS run with atoms drawn on, and the same for the round control.">
@@ -520,9 +545,8 @@
         <div class="howto">
           <b>How to read it</b><br>
           Solid lines in the species colour: the CEOS column. Dashed grey with squares: the round control.
-          Hollow markers: species labels unreliable (confusion above 5 %). Two 75 mrad points will move: CEOS 75 is
-          still on its old 54 Å scan, and the round 75 control is the balance that half-failed; both reruns are
-          running. Each point is a single run.
+          Hollow markers: species labels unreliable (confusion above 5 %). Open diamonds at 80 mrad: the CEOS column
+          with the corrector tuned at 30 mrad and left, the more realistic tuning. Each point is a single run.
         </div>
       </figcaption>
     </figure>
@@ -584,14 +608,14 @@
   </section>
 
   <section id="s8">
-    <div class="sec-head"><span class="sec-num">08</span><h2>Running now</h2></div>
+    <div class="sec-head"><span class="sec-num">08</span><h2>Next: a real instrument's tableau</h2></div>
     <ul>
-      <li><b>Step or field</b> — CEOS 70 at the old 38 Å field with a 0.59 Å step (4096 positions).</li>
-      <li><b>CEOS 75 on the 20 Å scan</b> — the last large probe still on its old scan.</li>
-      <li><b>A stable round 75 control</b> — C3 −7 µm, defocus −120 Å: a 3.9 Å probe chosen to converge.</li>
-      <li><b>The pessimistic tuning bound at 80 mrad</b> — adjustable terms tuned to 0.1 waves at 30 mrad and left;
-        defocus and C3 still set for the smallest probe (C3 −9.0 µm, defocus −169 Å): d90 55 Å against 49 Å
-        re-tuned. Same window, detector, scan and slices as the 80 mrad run above, so only the aberrations differ.</li>
+      <li><b>A true-to-life run</b> — the measured tableau of the ARM200F (§2) at 300 kV: its measured first- to
+        fourth-order residuals, the reference values for B4, D4 and A5, C5 at 4 mm (a well-tuned instrument, inside the
+        measured 6 ± 4 mm), with only defocus and C3 set for the smallest probe.</li>
+      <li><b>The probe known only as well as the corrector measures it</b> — reconstruct with a probe off by the tableau's
+        own measurement uncertainty. At 80 mrad that uncertainty is several waves per term, so this decides whether
+        "probe known" can be achieved on a real instrument — the question behind this whole sweep.</li>
     </ul>
     <p>
       Still open: at 40 mrad the reconstruction has only four slices and the atom finder cannot run on so thin a
