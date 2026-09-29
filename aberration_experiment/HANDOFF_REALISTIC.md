@@ -64,19 +64,21 @@ C3 ±3.5, A3 ±4, A4 ±8 waves at 80 mrad; the manual's standard deviations B4 �
 tuned at ~26–30 mrad leaves an 80 mrad probe with several waves of each residual, and cannot tell you that probe better
 than several waves per term.
 
-## Collected 2026-09-29 (all in `~/Desktop/ceos_figdata`; the CEOS page v7 shows them)
+## Collected 2026-09-29 (all in `~/Desktop/ceos_figdata`; the CEOS page v9 shows them)
 
 | run | result |
 |---|---|
-| `ceosbuilt_a080` — CEOS tuned at 30 mrad and left, 80 mrad | **100 / 67 / 74 %, depth error 0.47 Å** — the same as the idealised re-tuned run (100 / 67 / 75 %, 0.48 Å). With the probe known, tuning precision made no measurable difference. |
+| `ceosbuilt_a080` — CEOS at 80 mrad, tuned terms kept at their 30 mrad values, only C1 and C3 re-set | **100 / 67 / 74 %, depth error 0.47 Å** — the same as the idealised re-tuned run (100 / 67 / 75 %, 0.48 Å). With the probe known, tuning precision made no measurable difference. |
 | `ceosopt_a075_f20` | 95 / 86 / 90 %, 0.55 Å (the old 54 Å scan gave 96 / 64 / 52 %, 0.73 Å) |
 | `round_a075_b7` — predicted stable before running (7.2 %/slice) | converged: 95 / 75 / 78 %, 0.60 Å |
 | `ceosopt_a070_s06` — old 38 Å field, 0.594 Å step, 4096 positions | reconstructs (ε 0.085 → 0.038, clean lattice and depth sections; some field-corner artefacts): **the step, not the field**, was the failure |
 | figure data for the page's figs 4–5 | in; fig 5 complete |
+| depth sections, checked against the raw arrays (09-29) | the blocks down a section are the reconstruction's slices (7 of 3.9 Å at 50 mrad … 18 of 1.5 Å at 80), not a drawing or convergence fault: every lab recon reaches its error plateau by iteration ~20–30 and then wanders ±3–10 % with no trend. A real plotting bug was fixed: the image sat half a slice above the atom markers (see Traps). |
+| Pb rows vs B-site rows (09-29) | a Pb column (Pb every 3.9 Å, nothing between) splits into separate atoms from ~70 mrad: the phase between two Pb atoms is ~90 % of the on-atom phase at 50 mrad, 30–55 % at 70–80 (every Pb column in the field). A B-site column (Ti and O alternating every 1.95 Å) stays a bar at 80; λ/α² reaches ~2 Å only near 100 mrad. The page's tabs now show both cuts. |
 
 ## Your jobs, in order
 
-1. ~~Collect the waiting runs and update the CEOS page~~ — DONE 2026-09-29 (page v7,
+1. ~~Collect the waiting runs and update the CEOS page~~ — DONE 2026-09-29 (page v9,
    **https://claude.ai/artifact/VqmcbqPVGYkgqdExRxdFnb**; to change it: read it first with the Artifact tool — it was
    published from another conversation — then rebuild with `page/build_page.py --template page/ceos_2026-09-28.html`
    and publish with `url=`).
@@ -91,6 +93,21 @@ than several waves per term.
    column so the user sees the tableau and the probes **before** anything runs.
 3. **Run it**: 40–80 mrad as the user chooses, the 20 Å scan at 0.5 Å (1600 positions), lab + Pb + Ti, `CLEANDATA=1
    PACK_H5=0`, analysis on Blythe with `GT_REGION=210`. Dry-run the driver with a stub `sbatch` first.
+   **3b. Stretch: 90 and 100 mrad** (the user, 2026-09-29: "in case it magically works"), on the ARM tableau AND the
+   CEOS-approx one (`ceosopt_a090` / `ceosopt_a100`, planned and sitting commented-out at the end of `ceos_sweep.tsv`).
+   They need engineering first, so plan them, show the user the probes, and say what each costs before building:
+   - CEOS-approx, re-tuned (optimistic): d90/d99 **88/136 Å at 90 mrad, 149/223 Å at 100** (80 mrad: 49/76). The ARM
+     tableau (C5 4 mm, B4 30 µm, D4 19 µm fixed) will be at least as large — compute it.
+   - `region_geometry` has no window between 105 Å and the whole 210 Å box, and caps N at 1424 px (`MAX_NDP`), which at
+     210 Å crops the detector to ±66 mrad — inside the aperture. That is why the planner commented both rows out.
+   - 90 mrad: a ~140 Å window, detector 1.2–1.66 α (108–150 mrad; 80 ran at 1.66) → N ≈ 1540–2130 px, beyond the
+     engine's proven 1424. 1600 positions = 15–29 GB of data (fits the node); full-engine GROUPING ~7–14 on an L40
+     (16 fits at 1426). Presolve half-N must be even. Region 210 Å is still enough (d99 + scan + 20 Å margin ≈ 176 Å).
+   - 100 mrad: a ~230 Å window → a region side ≥ ~280 Å (new sim region, new GT cache via `make_gt_cache
+     --region-side`), and N ≈ 2800 px at 1.2 α. 1600 positions = 50 GB of data → ~200 GB peak, over the 192 GB node:
+     cut to ~900 positions (15 Å at 0.5 Å — the step is what matters, not the field) or fewer. Slow: GROUPING ~4.
+   - Controls exist: round 90 through the region chain (`hia_a090_w35`: 95/85/87 %, z 0.42 Å) and the old round 100
+     (`~/Desktop/thin_ab_af_final/recon_af_a100_lab_NL28`). Nyquist NL is 23 at 90 and 28 at 100.
 4. **The key test for a real instrument: the probe known only as well as the corrector measures it.** Simulate with the
    true tableau; reconstruct with probes built from the tableau perturbed by its measurement uncertainty (run3's 95 %
    intervals for A1–A4, the manual's standard deviations for B4, D4, C5, A5; a few random draws). Mechanism exists:
@@ -107,14 +124,15 @@ Nothing from this goes into the relaxation ladder, the figures of record or the 
   stigmator (it can be measured at any aperture)? The 95 % interval is ±6 nm, so the tableau value is noise-dominated.
 - **C5**: +4 mm proposed (user said 3–5). A 3 / 5 mm bracket costs two more runs.
 - **Coefficients vs waves** at 300 kV (above).
-- **Which apertures** (40–80 mrad as before, or fewer).
+- **Which apertures** (40–80 mrad as before, or fewer) — and whether the 90/100 stretch (job 3b) runs with the first
+  block or after 80 mrad has worked on the ARM tableau.
 
 ## What carries over from the CEOS sweep (do not re-litigate)
 
 - **Large probes need a fine scan step (≤ ~0.6 Å); the field size does not matter**: a 20 Å field at 0.5 Å reconstructs
   CEOS 70 (98/86/86 %, 0.57 Å), 75 (95/86/90 %, 0.55 Å) and 80 mrad (100/67/75 %, 0.48 Å), and so does CEOS 70 at its old
   38 Å field with a 0.59 Å step; 1–2 Å steps fail. Fewer slices do not help. The 20 Å / 0.5 Å scan is the default.
-- **Tuning precision did not matter at 80 mrad with the probe known**: tuned at 30 mrad and left (`ceosbuilt_a080`) gives
+- **Tuning precision did not matter at 80 mrad with the probe known**: tuned terms kept from a 30 mrad tune, only C1 and C3 re-set (`ceosbuilt_a080`), gives
   100/67/74 %, 0.47 Å — the same as the idealised re-tuned run.
 - **Compact round probes at 75–80 mrad** make the presolve diverge at Nyquist slicing; a probe whose intensity changes
   ≥ 6.2 % per slice converges, ≤ 5.6 % fails (candidate rule, compact probes only).
@@ -158,6 +176,8 @@ Nothing from this goes into the relaxation ladder, the figures of record or the 
 | "tunable" read as "zero" | CEOS lists terms as adjustable without saying to what | always ask "tuned to what"; the measured tableau answers it |
 | a 5776-position sim killed | float64 pattern buffer | fixed (float32); keep recons ≤ ~5500 positions at 1422 px |
 | `DependencyNeverSatisfied` | the simulation failed | read `logs/af_sim_<id>.err`; cancel the recon and its pack together |
+| depth-section image half a slice off its atom dots; a blank strip at the bottom; phase above the vacuum line | `imshow` extent put slice i at i·dz; `site_to_index` (dots, rings) puts it at (i+0.5)·dz | fixed 09-29 in every x–z figure: `extent=[0, nx*dx, nL*dz, 0]`, markers at `(layer+0.5)*dz`. atomfind's `z_A` is `layer*dz` (its own index frame) — never plot it against a physical depth axis |
+| "the columns are bars, not converged?" | at ≤ 80 mrad a B-site column (Ti, O every 1.95 Å) cannot split; a Pb column can from ~70 | show a Pb row next to a B-site row (`--figs 9` does) and check the error trace plateau before blaming convergence |
 
 ## Where things live
 

@@ -363,10 +363,11 @@
         The CEOS-approximation column opened to 80 mrad reconstructs about as well as a round, aberration-balanced
         probe at the same aperture. Six-fold astigmatism reaches 22 waves at the aperture edge there — fifty times
         the most the six-fold ladder tested at 70 and 90 mrad — and with the probe known it is not what limits. It
-        holds when the corrector is tuned at 30 mrad and left alone, the more realistic case.
+        holds when the tuned terms are left where a 30 mrad tune put them and only defocus and C3 are re-set, the more
+        realistic case.
       </p>
       <div class="spec-grid">
-        <div><b>100 / 67 / 74 % <small>0.47 Å</small></b><span>80 mrad, corrector tuned at 30 mrad and left</span></div>
+        <div><b>100 / 67 / 74 % <small>0.47 Å</small></b><span>80 mrad, tuned terms kept from 30 mrad, C1 and C3 re-set</span></div>
         <div><b>98 / 86 / 86 % <small>0.57 Å</small></b><span>CEOS at 70 mrad, 25 Å probe</span></div>
         <div><b>96 / 79 / 81 % <small>0.55 Å</small></b><span>round control at 80 mrad</span></div>
         <div><b>≤ 0.6 Å step</b><span>what the large probes need (§5)</span></div>
@@ -375,7 +376,8 @@
     <ul>
       <li><b>The instrument is a CEOS-approximation tableau</b> — every coefficient, setup by setup, in §2, with how it
         compares with a real JEOL ARM200F. The sweep assumed the operator re-tunes the adjustable terms at every aperture,
-        which is optimistic; tuning at 30 mrad and leaving it gives the same result at 80 mrad.</li>
+        which is optimistic; keeping the 30 mrad tune and re-setting only defocus and C3 gives the same result at
+        80 mrad.</li>
       <li><b>Every run is a 210 Å cut of the tiled crystal</b>, bulk all round, recorded on a point-sampled
         detector (the old 4 × 4 pixel sum is gone: it set the old residual floors and the diagonal phase ramp).</li>
       <li><b>Two failure modes found, each with a fix</b> — large probes need a small, fine scan; compact probes at
@@ -406,7 +408,7 @@
       assumes the operator re-tunes A1, A2, S3, A3 and D4 to 0.1 waves at the edge of each new aperture. Measured on a
       real ARM200F that is out of reach: at 80 mrad it asks for A2 at 1.2 nm, S3 and A3 at 0.02 µm and D4 at 0.30 µm,
       20 to 70 times finer than the tuning can even measure (below). The realistic case is to tune at the ~30 mrad the
-      corrector works at and leave it, which at 80 mrad leaves 0.7 waves of A1, 1.9 of A2, 5 each of S3 and A3 and 13 of
+      corrector works at, keep those terms and re-set only defocus and C3 for the wider aperture, which at 80 mrad leaves 0.7 waves of A1, 1.9 of A2, 5 each of S3 and A3 and 13 of
       D4 on top of the 22 of six-fold. That run reconstructs exactly as well: 100 / 67 / 74 % of Pb / Ti / O, depth
       error 0.47 Å, against 100 / 67 / 75 % and 0.48 Å re-tuned. With the probe known, how finely it was tuned makes no
       measurable difference here — what matters is that it is known (§8).
@@ -533,7 +535,7 @@
       The CEOS column tracks the round control at every aperture from 50 to 80 mrad. Lead is strong throughout
       (88–100 % from 60 mrad); titanium is the weak species (58–86 %). At 65 mrad and below, species labels fail the
       5 % confusion check for both columns, so the species split there is not to be trusted. At 80 mrad the corrector
-      tuned at 30 mrad and left gives the same numbers as the idealised re-tuning. Each point is a single run.
+      with the tuned terms kept from 30 mrad (only C1 and C3 re-set) gives the same numbers as the idealised re-tuning. Each point is a single run.
     </p>
     <figure class="wide">
       {{FRAG_RECONS}}
@@ -542,14 +544,23 @@
         The reconstructions themselves, one aperture per tab, with the real atoms and the found ones drawn on.
         <div class="howto">
           <b>How to read it</b><br>
-          <b>Left</b> — depth-summed phase of the CEOS run over the central 20 Å. <b>Middle</b> — a depth section of the
-          CEOS run (x across, depth down) through a row of B-site columns, a 0.5 Å-thick band; <b>right</b> — the same row
-          in the round control. Filled dots are the atoms in the structure (orange Ti, green O); small rings are the atoms
-          the finder reported, coloured by the species it assigned — a ring with no dot is spurious, a dot with no ring a
-          miss. Blue dashes mark the edges of the vacuum above and below the slab. Each horizontal band in a depth
-          section is one reconstructed slice: 7 slices of 3.9 Å at 50 mrad up to 18 of 1.5 Å at 80 (thickness
-          λ/2α², fine enough for the depth detail each aperture carries), so the steps down the image are in the
-          data, not the drawing. Slice count, recall and depth error are in each title. The last tab is the 80 mrad run with the corrector tuned at 30 mrad and left.
+          <b>Left</b> — depth-summed phase of the CEOS run over the central 20 Å; white dashes mark the two rows the
+          depth sections cut through. <b>Middle</b> — depth sections of the CEOS run (x across, depth down), each a
+          0.5 Å-thick band; <b>right</b> — the same two cuts in the round control. Filled dots are the atoms in the
+          structure (blue Pb, orange Ti, green O); small rings are the atoms the finder reported, coloured by the species
+          it assigned — a ring with no dot is spurious, a dot with no ring a miss. Blue dashes mark the edges of the
+          vacuum above and below the slab.<br>
+          <b>Top, a Pb row</b> — each Pb column holds a Pb atom every 3.9 Å with nothing between, so it splits into
+          separate atoms once the depth resolution beats that spacing. At 50 mrad it is one continuous bar; from 70 mrad
+          the atoms stand apart. Measured down every Pb column in the field, the phase between two Pb atoms is about
+          90 % of the on-atom phase at 50 mrad and 30–55 % of it at 70–80 mrad.
+          <b>Bottom, a B-site row</b> — Ti and apical O alternate every 1.95 Å down the same column, the hardest depth
+          target in the structure. It stays a bar at 80 mrad: separating atoms 1.95 Å apart needs a depth resolution
+          of roughly 2 Å, which λ/α² reaches only around 100 mrad at 300 kV (2.4 Å at 90).<br>
+          Each horizontal band in a depth section is one reconstructed slice: 7 slices of 3.9 Å at 50 mrad up to 18 of
+          1.5 Å at 80 (thickness λ/2α², fine enough for the depth detail each aperture carries), so the steps down the
+          image are in the data, not the drawing. Slice count, recall and depth error are in each title. The last tab
+          is 80 mrad with the tuned terms kept at their 30 mrad values and only C1 and C3 re-set.
         </div>
       </figcaption>
     </figure>
@@ -562,7 +573,7 @@
           <b>How to read it</b><br>
           Solid lines in the species colour: the CEOS column. Dashed grey with squares: the round control.
           Hollow markers: species labels unreliable (confusion above 5 %). Open diamonds at 80 mrad: the CEOS column
-          with the corrector tuned at 30 mrad and left, the more realistic tuning. Each point is a single run.
+          with the tuned terms kept from a 30 mrad tune and only C1 and C3 re-set, the more realistic tuning. Each point is a single run.
         </div>
       </figcaption>
     </figure>

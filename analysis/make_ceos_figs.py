@@ -302,7 +302,7 @@ RESULTS = [
     ("round", 50, "round_a050", f"{AN_1712}/round"), ("round", 60, "round_a060", f"{AN_1712}/round"),
     ("round", 65, "round_a065", AN_W35), ("round", 70, "round_a070", f"{AN_1712}/round"),
     ("round", 75, "round_a075_b7", AN_FD9), ("round", 80, "round_a080_b9", AN_NEW),
-    ("CEOS, tuned at 30 mrad", 80, "ceosbuilt_a080", AN_FD9),
+    ("CEOS, 30 mrad tune kept", 80, "ceosbuilt_a080", AN_FD9),
 ]
 # the first sweep's large-probe legs on their original scans, which did not reconstruct (triage: SATURATED)
 FAILED_FIRST = [("CEOS", 70, "ceosopt_a070", f"{D}/ceos_phase_ceos/analysis_*/analysis_*"),
@@ -392,7 +392,7 @@ def fig6_numbers(a):
     h = [Line2D([], [], color=INK, ls="-", marker="o", ms=7, label="CEOS column (species colour)"),
          Line2D([], [], color=MUTED, ls="--", marker="s", ms=7, label="round control"),
          Line2D([], [], color=INK2, ls="none", marker="o", mfc="white", ms=7, label="species labels unreliable (confusion > 5 %)"),
-         Line2D([], [], color=INK, ls="none", marker="D", mfc="white", ms=7, label="CEOS tuned at 30 mrad and left (80 mrad)")]
+         Line2D([], [], color=INK, ls="none", marker="D", mfc="white", ms=7, label="CEOS, tuned terms kept from 30 mrad, C1 and C3 re-set (80 mrad)")]
     fig.legend(handles=h, loc="lower center", ncol=4, bbox_to_anchor=(0.5, -0.02))
     fig.tight_layout(rect=[0, 0.07, 1, 1])
     return save(fig, "fig6_numbers.png")
@@ -950,44 +950,68 @@ def xz_small(ax, lg, row, sfig, half_A=0.25, xlim=None, show_y=True, ms_gt=3.4, 
 
 
 def recons_tabs(a):
-    """Fig 5 as a tabbed viewer for the page: one tab per aperture (plus the corrector tuned at 30 mrad at 80), each a
-    large image -- CEOS depth-summed phase, CEOS depth section, round-control depth section -- with small rings."""
+    """Fig 5 as a tabbed viewer for the page: one tab per aperture (plus 80 mrad with the tuned terms kept from 30 mrad).
+    Each tab: the CEOS depth-summed phase with the two cuts marked; depth sections of the CEOS run and the round control
+    through a Pb row (Pb every 3.9 A down the column, nothing between) and a B-site row (Ti and apical O alternating every
+    1.95 A, the hardest depth target); real atoms as dots, found atoms as small rings."""
     import base64, io
     sfig = _load_mod("make_simple_figs", os.path.join(HERE, "make_simple_figs.py"))
+    mep = _load_mod("mep", os.path.join(HERE, "make_mep_volumes_fig.py"))
     T = {t["label"]: t for t in results_table()}
     ceos = {al: lab for inst, al, lab, _ in RESULTS if inst == "CEOS"}
     rnd = {al: lab for inst, al, lab, _ in RESULTS if inst == "round"}
     tabs = [(f"{al}", al, ceos[al], rnd.get(al), "CEOS") for al in sorted(ceos)]
-    tabs += [("80 · tuned at 30", 80, "ceosbuilt_a080", rnd.get(80), "CEOS, tuned at 30 mrad and left")]
-    rowA = section_row_A(leg("round_a070"))
+    tabs += [("80 · 30 mrad tune", 80, "ceosbuilt_a080", rnd.get(80),
+              "CEOS, tuned terms kept from a 30 mrad tune,\nonly C1 and C3 re-set for 80 mrad")]
+    base = leg("round_a070")                                  # both cuts are fixed in A, from one run, for every tab
+    cuts = [("Pb row", mep.pick_row(base["found"], 82, base["V"].shape[1], base["dx"]) * base["dx"]),
+            ("B-site row", section_row_A(base))]
     panes = []
     for name, al, lc, lr, who in tabs:
-        fig = plt.figure(figsize=(13.0, 6.2))
-        gs = fig.add_gridspec(1, 3, width_ratios=[1.35, 1, 1], wspace=0.22)
+        fig = plt.figure(figsize=(13.0, 12.6))
+        gs = fig.add_gridspec(2, 3, width_ratios=[1.35, 1, 1], wspace=0.22, hspace=0.16)
         seen = set()
         lgc = leg(lc)
         ax = fig.add_subplot(gs[0, 0]); insitu(ax, lgc)
-        ax.set_title(f"{who} · depth-summed phase, central 20 Å", fontsize=11, loc="left")
-        for k, (lab, head) in enumerate(((lc, who), (lr, "round control"))):
-            ax = fig.add_subplot(gs[0, 1 + k])
+        ax.set_title(f"{who}\ndepth-summed phase, central 20 Å", fontsize=11, loc="left")
+        top = lgc["V"].shape[1] * lgc["dx"] / 2
+        for cut, rA in cuts:
+            ax.axhline(rA - top, color="white", lw=0.9, ls=(0, (4, 3)), alpha=0.8)
+            ax.text(0.015, rA - top - 0.2, cut, transform=ax.get_yaxis_transform(), va="bottom", fontsize=10,
+                    color="white")
+        for k, (lab, head) in enumerate(((lc, "CEOS"), (lr, "round control"))):
             lg = leg(lab) if lab else None
-            if lg is None:
-                placeholder(ax, "no run"); continue
-            nx = lg["V"].shape[2]
-            seen |= xz_small(ax, lg, rowA / lg["dx"], sfig, xlim=(nx * lg["dx"] / 2 - 8, nx * lg["dx"] / 2 + 8),
-                             show_y=(k == 0))
-            t = T[lab]
-            flag = "\nspecies labels unreliable" if t["confusion"] > CONF_MAX else ""
-            ax.set_title(f"{head} · {lg['V'].shape[0]} slices of {lg['dz']:.2f} Å\n"
-                         f"Pb {100 * t['Pb']:.0f} / Ti {100 * t['Ti']:.0f} / O {100 * t['O']:.0f} %, "
-                         f"depth {t['z_rms']:.2f} Å{flag}", fontsize=10, loc="left")
-        sfig.legend_axes(fig, y=-0.02, species=seen or None)
-        buf = io.BytesIO(); fig.savefig(buf, format="png", dpi=130, bbox_inches="tight"); plt.close(fig)
+            for j, (cut, rA) in enumerate(cuts):
+                ax = fig.add_subplot(gs[j, 1 + k])
+                if lg is None:
+                    placeholder(ax, "no run"); continue
+                nx = lg["V"].shape[2]
+                seen |= xz_small(ax, lg, rA / lg["dx"], sfig, xlim=(nx * lg["dx"] / 2 - 8, nx * lg["dx"] / 2 + 8),
+                                 show_y=(k == 0))
+                if j == 0:
+                    t = T[lab]
+                    flag = "\nspecies labels unreliable" if t["confusion"] > CONF_MAX else ""
+                    ax.set_title(f"{head} · {lg['V'].shape[0]} slices of {lg['dz']:.2f} Å\n"
+                                 f"Pb {100 * t['Pb']:.0f} / Ti {100 * t['Ti']:.0f} / O {100 * t['O']:.0f} %, "
+                                 f"depth {t['z_rms']:.2f} Å{flag}\n\nPb row: Pb every 3.9 Å down the column",
+                                 fontsize=10, loc="left")
+                else:
+                    ax.set_title("B-site row: Ti and O alternate every 1.95 Å", fontsize=10, loc="left")
+                if k == 0:
+                    ax.set_ylabel("depth z (Å)")
+        lax = fig.add_subplot(gs[1, 0]); lax.axis("off")         # the legend sits under the depth sum
+        h = [Line2D([], [], ls="none", marker=".", color=c, ms=11, label=f"{n} in the structure")
+             for z, (n, c) in sfig.SP.items() if z in seen]
+        h += [Line2D([], [], ls="none", marker="o", mfc="none", mec=INK2, mew=1.4, ms=9, label="atom the finder reported"),
+              Line2D([], [], color="#7fd4ff", ls=(0, (4, 3)), lw=1.2, label="edge of the vacuum"),
+              Line2D([], [], color=INK2, ls=(0, (4, 3)), lw=1.0, label="where the depth sections cut\n(left image)")]
+        lax.legend(handles=h, loc="upper left", fontsize=11, frameon=False, labelspacing=0.9)
+        buf = io.BytesIO(); fig.savefig(buf, format="png", dpi=120, bbox_inches="tight"); plt.close(fig)
         panes.append((name, "data:image/png;base64," + base64.b64encode(buf.getvalue()).decode(), al, lc, lr))
         print(f"  recons tab {name}", flush=True)
     btn = "".join(f'<button type="button" role="tab" id="rx-t{i}" data-i="{i}" aria-selected="{str(i == len(panes) - 2).lower()}" '
                   f'tabindex="{0 if i == len(panes) - 2 else -1}">{n}</button>' for i, (n, *_ ) in enumerate(panes))
-    imgs = "".join(f'<img id="rx-i{i}" src="{u}" alt="{al} mrad: depth-summed phase and depth sections of {lc} and {lr}"'
+    imgs = "".join(f'<img id="rx-i{i}" src="{u}" alt="{al} mrad: depth-summed phase and Pb-row and B-site-row depth sections of {lc} and {lr}"'
                    f'{"" if i == len(panes) - 2 else " hidden"}>' for i, (n, u, al, lc, lr) in enumerate(panes))
     frag = f"""<div class="xp rx" id="rx">
   <div class="xp-bar"><div class="xp-tabs" role="tablist" aria-label="Aperture, mrad">{btn}<span class="xp-unit">mrad</span></div></div>
