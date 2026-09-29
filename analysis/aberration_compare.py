@@ -101,7 +101,7 @@ def main():
         V, dz = vols[leg]; nL = V.shape[0]
         cs = V[:, yc-1:yc+2, xc-W:xc+W].mean(1)
         ax = fig.add_subplot(gs[0, i])
-        ax.imshow(cs, extent=[-W*DX, W*DX, (nL-0.5)*dz, 0.5*dz], aspect="auto", cmap="inferno",
+        ax.imshow(cs, extent=[-W*DX, W*DX, nL*dz, 0], aspect="auto", cmap="inferno",
                   vmin=np.percentile(cs, 5), vmax=np.percentile(cs, 99.3))
         _, _, prom[leg] = kz_prominence(V, dz)
         ax.set_title(f"{TITLE[leg]}\nPb-plane kz prominence {prom[leg]:.1f}×")

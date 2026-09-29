@@ -171,10 +171,10 @@ def main():
             axx = ax[i, 1 + j]
             # equal aspect: depth is the point of the figure, so 1 A of z must look like 1 A of x
             axx.imshow(s, cmap="magma", aspect="equal", origin="upper",
-                       extent=[0, nx * dx, (nL - 0.5) * dz, -0.5 * dz],
+                       extent=[0, nx * dx, nL * dz, 0],
                        vmin=np.percentile(s, 1), vmax=np.percentile(s, 99.7))
-            axx.axhspan(-0.5 * dz, ZVAC, color="0.6", alpha=0.25, lw=0)
-            axx.axhspan(BOXZ - ZVAC, (nL - 0.5) * dz, color="0.6", alpha=0.25, lw=0)
+            axx.axhspan(0, ZVAC, color="0.6", alpha=0.25, lw=0)
+            axx.axhspan(BOXZ - ZVAC, nL * dz, color="0.6", alpha=0.25, lw=0)
             if al is not None:
                 # ground-truth plane depths as ticks OUTSIDE the right edge: a reference that does not
                 # sit on the data (full-width lines every 1.95 A read as texture, not information)
@@ -192,7 +192,7 @@ def main():
                 for sp, (nm, col, mk) in SP.items():
                     q = m & (Z == sp)
                     if q.any():
-                        axx.scatter(gc[q] * dx, gl[q] * dz, s=14, marker="o", c=col,
+                        axx.scatter(gc[q] * dx, (gl[q] + 0.5) * dz, s=14, marker="o", c=col,
                                     alpha=0.95, linewidths=0, zorder=2)
             if found is not None:
                 m = np.abs(found["row"] - row) <= 2 * half_px
@@ -201,13 +201,13 @@ def main():
                     f = found[q]
                     if len(f):
                         if hw95 is not None:      # calibrated 95% depth interval, per atom
-                            axx.errorbar(f["col"] * dx, f["z_A"], yerr=hw95[q], fmt="none",
+                            axx.errorbar(f["col"] * dx, (f["layer"] + 0.5) * dz, yerr=hw95[q], fmt="none",
                                          ecolor=col, elinewidth=0.9, alpha=0.5, capsize=0, zorder=2.5)
-                        axx.scatter(f["col"] * dx, f["z_A"], s=34, marker=mk, facecolors="none",
+                        axx.scatter(f["col"] * dx, (f["layer"] + 0.5) * dz, s=34, marker=mk, facecolors="none",
                                     edgecolors=col, linewidths=1.1, zorder=3, label=f"found {nm}")
                 if i == 0 and j == 0:
                     axx.scatter([], [], s=14, marker="o", c="0.55", linewidths=0, label="ground truth")
-            axx.set_xlim(0, nx * dx); axx.set_ylim((nL - 0.5) * dz, -0.5 * dz)
+            axx.set_xlim(0, nx * dx); axx.set_ylim(nL * dz, 0)
             axx.set_title(f"x–z, {lab}", fontsize=10)
             axx.set_xlabel("x (Å)"); axx.set_ylabel("depth z (Å)")
             if i == 0 and found is not None:

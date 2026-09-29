@@ -68,18 +68,18 @@ def main():
 
         ax = axes[j]
         ax.imshow(sec, cmap="magma", aspect="equal", origin="upper",
-                  extent=[0, nx * dx, (nL - 0.5) * dz, -0.5 * dz],
+                  extent=[0, nx * dx, nL * dz, 0],
                   vmin=np.percentile(sec, 1), vmax=np.percentile(sec, 99.7))
         m = (np.abs(gr - row) <= 2 * half) & (gc >= 0) & (gc < nx)
         fm = np.abs(found["row"] - row) <= 2 * half
         for sp, (nm, col) in ps.SPECIES.items():
             q = m & (Z == sp)
             if q.any():
-                ax.scatter(gc[q] * dx, gl[q] * dz, s=7, marker="o", c=col, alpha=0.95,
+                ax.scatter(gc[q] * dx, (gl[q] + 0.5) * dz, s=7, marker="o", c=col, alpha=0.95,
                            linewidths=0, zorder=2)
             f = found[fm & (found["species"] == sp)]
             if len(f):
-                ax.scatter(f["col"] * dx, f["z_A"], s=26, marker="o", facecolors="none",
+                ax.scatter(f["col"] * dx, (f["layer"] + 0.5) * dz, s=26, marker="o", facecolors="none",
                            edgecolors=col, linewidths=0.9, zorder=3,
                            label=nm if j == 0 else None)
         ax.set_ylim(BOXZ - ZVAC, ZVAC)                    # the atomic slab only

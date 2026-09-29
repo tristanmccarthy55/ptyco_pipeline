@@ -920,7 +920,7 @@ def xz_small(ax, lg, row, sfig, half_A=0.25, xlim=None, show_y=True, ms_gt=3.4, 
     hp = half_A / dx
     r0, r1 = int(round(row - hp)), int(round(row + hp)) + 1
     sec = V[:, max(r0, 0):min(r1, ny), :].mean(1)
-    ax.imshow(sec, cmap="magma", aspect="equal", origin="upper", extent=[0, nx * dx, (nL - 0.5) * dz, -0.5 * dz],
+    ax.imshow(sec, cmap="magma", aspect="equal", origin="upper", extent=[0, nx * dx, nL * dz, 0],
               vmin=np.percentile(sec, 1), vmax=np.percentile(sec, 99.7), interpolation="nearest")
     seen = set()
     if lg["gt"] is not None:
@@ -977,8 +977,9 @@ def recons_tabs(a):
             seen |= xz_small(ax, lg, rowA / lg["dx"], sfig, xlim=(nx * lg["dx"] / 2 - 8, nx * lg["dx"] / 2 + 8),
                              show_y=(k == 0))
             t = T[lab]
-            flag = "  (species labels unreliable)" if t["confusion"] > CONF_MAX else ""
-            ax.set_title(f"{head}\nPb {100 * t['Pb']:.0f} / Ti {100 * t['Ti']:.0f} / O {100 * t['O']:.0f} %, "
+            flag = "\nspecies labels unreliable" if t["confusion"] > CONF_MAX else ""
+            ax.set_title(f"{head} · {lg['V'].shape[0]} slices of {lg['dz']:.2f} Å\n"
+                         f"Pb {100 * t['Pb']:.0f} / Ti {100 * t['Ti']:.0f} / O {100 * t['O']:.0f} %, "
                          f"depth {t['z_rms']:.2f} Å{flag}", fontsize=10, loc="left")
         sfig.legend_axes(fig, y=-0.02, species=seen or None)
         buf = io.BytesIO(); fig.savefig(buf, format="png", dpi=130, bbox_inches="tight"); plt.close(fig)

@@ -109,7 +109,7 @@ def xz_panel(ax, leg, row, half_A=0.25, xlim=None, show_y=True):
     r0, r1 = int(round(row - hp)), int(round(row + hp)) + 1
     s = V[:, max(r0, 0):min(r1, ny), :].mean(1)
     ax.imshow(s, cmap="magma", aspect="equal", origin="upper",
-              extent=[0, nx * dx, (nL - 0.5) * dz, -0.5 * dz],
+              extent=[0, nx * dx, nL * dz, 0],
               vmin=np.percentile(s, 1), vmax=np.percentile(s, 99.7), interpolation="nearest")
     # ground truth: every atom whose column falls inside this slab
     if leg["gt"] is not None:
