@@ -145,10 +145,18 @@ Every `ceosopt_*` row assumes the operator **re-tunes the adjustable terms (A1, 
 edge of each new aperture** — the corrector reaching the same accuracy as at its 30 mrad design aperture
 (`aberration_waves.ceos_tableau(alpha=...)`). That is **probably optimistic**: CEOS lists the terms as adjustable, but
 how well they can be measured and nulled past the design aperture is not known, and holding 0.1 waves means the
-coefficients shrink with the aperture (D4 96 µm at 40 mrad → 3 µm at 80). The other bound, **tuned at 30 mrad and
+coefficients shrink with the aperture (D4 9.6 µm at 40 mrad → 0.30 µm at 80). The other bound, **tuned at 30 mrad and
 left** (`alpha=None`), leaves at 80 mrad 0.7 / 1.9 / 5 / 5 / 13 waves of A1 / A2 / S3 / A3 / D4 on top of 22 of A5 —
 probably too pessimistic. The real instrument lies between. `ceosbuilt_a080` (below) is that pessimistic bound at 80
 mrad on the 20 Å scan. Say this wherever a CEOS result is quoted.
+
+### TARGET INSTRUMENT (user, 2026-09-29): a JEOL JEM-ARM200F (their lab owns one), not a GRAND ARM
+
+The tier that opens to ~30-40 mrad with a CEOS-type hexapole probe corrector (a NEOARM carries the newer ASCOR:
+|A5| < 0.2 mm, C5 corrected). Simulation stays at 300 kV. "Tunable" is not "tuned to zero": the conventional criterion
+is pi/4 of phase per term within the working aperture (~30 mrad on this tier), which is the ceosbuilt (tuned at 30 mrad
+and left) case, not the ceosopt (retuned at every aperture) one. No open source gives measured B4/D4/A4/C5/A5 for an
+ARM200F; the authoritative tableau is the lab's own corrector-software measurement after a routine tune — ask for it.
 
 ### 2026-09-28 — read this first; it overturns parts of what follows
 
