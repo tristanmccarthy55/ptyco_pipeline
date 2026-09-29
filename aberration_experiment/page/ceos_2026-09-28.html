@@ -316,6 +316,11 @@
   .xp-key { grid-column: 1 / -1; font-family: var(--sans); font-size: 12px; color: var(--ink-3); margin: 0; }
   .xp-sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
   @media (max-width: 900px) { .xp-body { grid-template-columns: minmax(0, 1fr); } }
+  figure > .xp { border: 0; border-radius: 0; box-shadow: none; margin: 0; padding: 14px 16px 6px; }
+  .rx-img img { display: block; width: 100%; max-width: 100%; height: auto; background: #fff; }
+  td.v-good { background: color-mix(in srgb, var(--ok) 15%, transparent); }
+  td.v-ok   { background: color-mix(in srgb, var(--warn) 17%, transparent); }
+  td.v-bad  { background: color-mix(in srgb, var(--stop) 17%, transparent); }
   @media (max-width: 520px) { .xp-maps { grid-template-columns: repeat(2, minmax(0, 1fr)); } .xp { padding: 12px; } }
 </style>
 <header class="mast">
@@ -401,24 +406,25 @@
     </div>
     <h3>How the model compares with a real ARM200F</h3>
     <div class="tablewrap"><table>
-      <thead><tr><th>term</th><th>ARM200F, measured</th><th>reference tableau</th><th>this model, tuned at 30 mrad</th><th>who changes it</th></tr></thead>
+      <thead><tr><th>term</th><th>ARM200F, measured</th><th>reference tableau</th><th>this model, tuned at 30 mrad</th><th>verdict</th><th>who changes it</th></tr></thead>
       <tbody>
-        <tr><td>A1</td><td>2.2–4.2 nm</td><td>14 ± 10 nm</td><td>0.44 nm</td><td>operator</td></tr>
-        <tr><td>A2</td><td>13.5–22 nm</td><td>250 ± 60 nm</td><td>22 nm</td><td>operator</td></tr>
-        <tr><td>B2</td><td>12.8–34 nm</td><td>55 ± 60 nm</td><td>22 nm</td><td>operator</td></tr>
-        <tr><td>C3</td><td>0.32–1.08 µm</td><td>90 ± 3 µm</td><td>set for the probe</td><td>operator</td></tr>
-        <tr><td>A3</td><td>0.63–1.25 µm</td><td>5.5 ± 2 µm</td><td>0.97 µm</td><td>operator</td></tr>
-        <tr><td>S3</td><td>0.44–0.47 µm</td><td>1.6 ± 2 µm</td><td>0.97 µm</td><td>operator</td></tr>
-        <tr><td>A4</td><td>4.9–29 µm</td><td>86 ± 60 µm</td><td>10 µm</td><td>fixed — parasitic</td></tr>
-        <tr><td>B4</td><td>not measured</td><td>30 ± 30 µm</td><td>10 µm</td><td>fixed — parasitic</td></tr>
-        <tr><td>D4</td><td>not measured</td><td>19 ± 20 µm</td><td>40 µm</td><td>not a routine knob</td></tr>
-        <tr class="ref"><td>C5</td><td>not measured</td><td>6 ± 4 mm</td><td>1 mm</td><td>fixed — factory set</td></tr>
-        <tr><td>A5</td><td>not measured</td><td>1 ± 2 mm</td><td>1 mm</td><td>fixed — intrinsic</td></tr>
+        <tr><td>A1</td><td>2.2–4.2 nm</td><td>14 ± 10 nm</td><td class="v-ok">0.44 nm</td><td class="v-ok"><span class="chip c-warn">okay</span> <span style="font-size:12px;color:var(--ink-2)">below the measured values, inside their uncertainty; the stigmator sets it</span></td><td>operator</td></tr>
+        <tr><td>A2</td><td>13.5–22 nm</td><td>250 ± 60 nm</td><td class="v-good">22 nm</td><td class="v-good"><span class="chip c-ok">good</span> <span style="font-size:12px;color:var(--ink-2)">inside the measured range</span></td><td>operator</td></tr>
+        <tr><td>B2</td><td>12.8–34 nm</td><td>55 ± 60 nm</td><td class="v-good">22 nm</td><td class="v-good"><span class="chip c-ok">good</span> <span style="font-size:12px;color:var(--ink-2)">inside the measured range</span></td><td>operator</td></tr>
+        <tr><td>C3</td><td>0.32–1.08 µm</td><td>90 ± 3 µm</td><td class="v-good">set for the probe</td><td class="v-good"><span class="chip c-ok">good</span> <span style="font-size:12px;color:var(--ink-2)">an operator knob, set for the probe</span></td><td>operator</td></tr>
+        <tr><td>A3</td><td>0.63–1.25 µm</td><td>5.5 ± 2 µm</td><td class="v-good">0.97 µm</td><td class="v-good"><span class="chip c-ok">good</span> <span style="font-size:12px;color:var(--ink-2)">inside the measured range</span></td><td>operator</td></tr>
+        <tr><td>S3</td><td>0.44–0.47 µm</td><td>1.6 ± 2 µm</td><td class="v-ok">0.97 µm</td><td class="v-ok"><span class="chip c-warn">okay</span> <span style="font-size:12px;color:var(--ink-2)">twice the measured value — pessimistic</span></td><td>operator</td></tr>
+        <tr><td>A4</td><td>4.9–29 µm</td><td>86 ± 60 µm</td><td class="v-good">10 µm</td><td class="v-good"><span class="chip c-ok">good</span> <span style="font-size:12px;color:var(--ink-2)">inside the measured range</span></td><td>fixed — parasitic</td></tr>
+        <tr><td>B4</td><td>not measured</td><td>30 ± 30 µm</td><td class="v-ok">10 µm</td><td class="v-ok"><span class="chip c-warn">okay</span> <span style="font-size:12px;color:var(--ink-2)">not measured here; a third of the reference</span></td><td>fixed — parasitic</td></tr>
+        <tr><td>D4</td><td>not measured</td><td>19 ± 20 µm</td><td class="v-ok">40 µm</td><td class="v-ok"><span class="chip c-warn">okay</span> <span style="font-size:12px;color:var(--ink-2)">not measured here; twice the reference — pessimistic</span></td><td>not a routine knob</td></tr>
+        <tr><td>C5</td><td>not measured</td><td>6 ± 4 mm</td><td class="v-bad">1 mm</td><td class="v-bad"><span class="chip c-stop">off</span> <span style="font-size:12px;color:var(--ink-2)">not measured here; a sixth of the reference — the next run uses 4 mm</span></td><td>fixed — factory set</td></tr>
+        <tr><td>A5</td><td>not measured</td><td>1 ± 2 mm</td><td class="v-good">1 mm</td><td class="v-good"><span class="chip c-ok">good</span> <span style="font-size:12px;color:var(--ink-2)">matches the reference and the CEOS figure</span></td><td>fixed — intrinsic</td></tr>
       </tbody>
       <caption>ARM200F: three tableaus from a lab JEOL ARM200F with a 2009 CEOS probe corrector, 200 kV, taken while
         tuning; the routine measures up to A4. Reference: the corrector manual's tableau measured at 26 mrad tilt, value ±
-        one standard deviation (measurement uncertainty). The model's second- to fourth-order terms sit inside or near
-        the measured range; C5 is the largest gap and goes into the next run. At 80 mrad the measurement uncertainty
+        one standard deviation (measurement uncertainty). Verdict: judged against the ARM's measured values where it has
+        them, otherwise against the reference — a looser guide, since it is an older measurement on a different
+        instrument. Most terms sit inside or near what the ARM shows; C5 is the one clear gap and goes into the next run. At 80 mrad the measurement uncertainty
         alone is worth several waves per term (A2 ±2, A3 ±4, A4 ±8, D4 ±5, C5 ±70 waves).</caption>
     </table></div>
   </section>
@@ -523,17 +529,18 @@
       tuned at 30 mrad and left gives the same numbers as the idealised re-tuning. Each point is a single run.
     </p>
     <figure class="wide">
-      <img src="{{FIG_RECONS}}" alt="Columns 50 to 80 mrad. Rows: depth-summed phase of the CEOS run, a depth section of the CEOS run with atoms drawn on, and the same for the round control.">
+      {{FRAG_RECONS}}
       <figcaption>
-        <span class="fig-name">analysis/make_ceos_figs.py → fig5_recons.png</span>
-        The reconstructions themselves, with the real atoms and the found ones drawn on.
+        <span class="fig-name">analysis/make_ceos_figs.py --figs 9 → results/2026-W40/ceos_recons_tabs.html</span>
+        The reconstructions themselves, one aperture per tab, with the real atoms and the found ones drawn on.
         <div class="howto">
           <b>How to read it</b><br>
-          <b>Top</b> — depth-summed phase of the CEOS run over the central 20 Å, with its recall in the title.
-          <b>Middle, bottom</b> — a depth section (x across, depth down) through the same row of B-site columns
-          in every panel, a 0.5 Å-thick band: filled dots are the atoms in the structure (orange Ti, green O),
-          rings are the atoms the finder reported, coloured by the species it assigned. A ring with no dot is
-          spurious; a dot with no ring is a miss. Blue dashes mark the edges of the vacuum above and below the slab.
+          <b>Left</b> — depth-summed phase of the CEOS run over the central 20 Å. <b>Middle</b> — a depth section of the
+          CEOS run (x across, depth down) through a row of B-site columns, a 0.5 Å-thick band; <b>right</b> — the same row
+          in the round control. Filled dots are the atoms in the structure (orange Ti, green O); small rings are the atoms
+          the finder reported, coloured by the species it assigned — a ring with no dot is spurious, a dot with no ring a
+          miss. Blue dashes mark the edges of the vacuum above and below the slab. Recall and depth error are in each
+          title. The last tab is the 80 mrad run with the corrector tuned at 30 mrad and left.
         </div>
       </figcaption>
     </figure>

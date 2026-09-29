@@ -912,8 +912,110 @@ XP_TEMPLATE = """<div class="xp" id="xp">
 """
 
 
+# ------------------------------------------------------------------------------------------------ fig 5, tabbed
+def xz_small(ax, lg, row, sfig, half_A=0.25, xlim=None, show_y=True, ms_gt=3.4, ms_ring=5.2, mew=0.9):
+    """make_simple_figs.xz_panel with smaller markers, so the rings sit on atoms instead of covering them."""
+    V, dx, dz = lg["V"], lg["dx"], lg["dz"]
+    nL, ny, nx = V.shape
+    hp = half_A / dx
+    r0, r1 = int(round(row - hp)), int(round(row + hp)) + 1
+    sec = V[:, max(r0, 0):min(r1, ny), :].mean(1)
+    ax.imshow(sec, cmap="magma", aspect="equal", origin="upper", extent=[0, nx * dx, (nL - 0.5) * dz, -0.5 * dz],
+              vmin=np.percentile(sec, 1), vmax=np.percentile(sec, 99.7), interpolation="nearest")
+    seen = set()
+    if lg["gt"] is not None:
+        gr, gc, gl = lg["gt"]
+        m = np.abs(gr - row) <= hp
+        for z_, col, sp in zip(gl[m], gc[m], lg["Z"][m]):
+            if sp in sfig.SP:
+                ax.plot(col * dx, (z_ + 0.5) * dz, ".", color=sfig.SP[sp][1], ms=ms_gt, alpha=.95, zorder=3)
+                seen.add(int(sp))
+    if lg["found"] is not None:
+        f = lg["found"]
+        m = np.abs(f["row"] - row) <= hp * 2.2
+        for a_ in f[m]:
+            c = sfig.SP.get(int(a_["species"]), (None, "white"))[1]
+            ax.plot(a_["col"] * dx, (a_["layer"] + 0.5) * dz, "o", mfc="none", mec=c, mew=mew, ms=ms_ring, zorder=4)
+    for zb in (sfig.ZVAC, sfig.BOXZ - sfig.ZVAC):
+        ax.axhline(zb, color="#7fd4ff", lw=0.8, ls=(0, (4, 3)), alpha=.85)
+    if xlim:
+        ax.set_xlim(*xlim)
+    ax.set_ylim(sfig.BOXZ, 0); ax.grid(False)
+    ax.set_xlabel("x (Å)")
+    if show_y:
+        ax.set_ylabel("depth z (Å)")
+    else:
+        ax.set_yticklabels([])
+    return seen
+
+
+def recons_tabs(a):
+    """Fig 5 as a tabbed viewer for the page: one tab per aperture (plus the corrector tuned at 30 mrad at 80), each a
+    large image -- CEOS depth-summed phase, CEOS depth section, round-control depth section -- with small rings."""
+    import base64, io
+    sfig = _load_mod("make_simple_figs", os.path.join(HERE, "make_simple_figs.py"))
+    T = {t["label"]: t for t in results_table()}
+    ceos = {al: lab for inst, al, lab, _ in RESULTS if inst == "CEOS"}
+    rnd = {al: lab for inst, al, lab, _ in RESULTS if inst == "round"}
+    tabs = [(f"{al}", al, ceos[al], rnd.get(al), "CEOS") for al in sorted(ceos)]
+    tabs += [("80 · tuned at 30", 80, "ceosbuilt_a080", rnd.get(80), "CEOS, tuned at 30 mrad and left")]
+    rowA = section_row_A(leg("round_a070"))
+    panes = []
+    for name, al, lc, lr, who in tabs:
+        fig = plt.figure(figsize=(13.0, 6.2))
+        gs = fig.add_gridspec(1, 3, width_ratios=[1.35, 1, 1], wspace=0.22)
+        seen = set()
+        lgc = leg(lc)
+        ax = fig.add_subplot(gs[0, 0]); insitu(ax, lgc)
+        ax.set_title(f"{who} · depth-summed phase, central 20 Å", fontsize=11, loc="left")
+        for k, (lab, head) in enumerate(((lc, who), (lr, "round control"))):
+            ax = fig.add_subplot(gs[0, 1 + k])
+            lg = leg(lab) if lab else None
+            if lg is None:
+                placeholder(ax, "no run"); continue
+            nx = lg["V"].shape[2]
+            seen |= xz_small(ax, lg, rowA / lg["dx"], sfig, xlim=(nx * lg["dx"] / 2 - 8, nx * lg["dx"] / 2 + 8),
+                             show_y=(k == 0))
+            t = T[lab]
+            flag = "  (species labels unreliable)" if t["confusion"] > CONF_MAX else ""
+            ax.set_title(f"{head}\nPb {100 * t['Pb']:.0f} / Ti {100 * t['Ti']:.0f} / O {100 * t['O']:.0f} %, "
+                         f"depth {t['z_rms']:.2f} Å{flag}", fontsize=10, loc="left")
+        sfig.legend_axes(fig, y=-0.02, species=seen or None)
+        buf = io.BytesIO(); fig.savefig(buf, format="png", dpi=130, bbox_inches="tight"); plt.close(fig)
+        panes.append((name, "data:image/png;base64," + base64.b64encode(buf.getvalue()).decode(), al, lc, lr))
+        print(f"  recons tab {name}", flush=True)
+    btn = "".join(f'<button type="button" role="tab" id="rx-t{i}" data-i="{i}" aria-selected="{str(i == len(panes) - 2).lower()}" '
+                  f'tabindex="{0 if i == len(panes) - 2 else -1}">{n}</button>' for i, (n, *_ ) in enumerate(panes))
+    imgs = "".join(f'<img id="rx-i{i}" src="{u}" alt="{al} mrad: depth-summed phase and depth sections of {lc} and {lr}"'
+                   f'{"" if i == len(panes) - 2 else " hidden"}>' for i, (n, u, al, lc, lr) in enumerate(panes))
+    frag = f"""<div class="xp rx" id="rx">
+  <div class="xp-bar"><div class="xp-tabs" role="tablist" aria-label="Aperture, mrad">{btn}<span class="xp-unit">mrad</span></div></div>
+  <div class="rx-img">{imgs}</div>
+</div>
+<script>
+(function () {{
+  var tabs = Array.prototype.slice.call(document.querySelectorAll("#rx .xp-tabs button"));
+  function show(i) {{
+    tabs.forEach(function (b, k) {{ b.setAttribute("aria-selected", k === i); b.tabIndex = k === i ? 0 : -1;
+      document.getElementById("rx-i" + k).hidden = k !== i; }});
+  }}
+  tabs.forEach(function (b, i) {{
+    b.addEventListener("click", function () {{ show(i); }});
+    b.addEventListener("keydown", function (e) {{
+      var k = e.key === "ArrowRight" ? 1 : (e.key === "ArrowLeft" ? -1 : 0); if (!k) return;
+      e.preventDefault(); var j = (i + k + tabs.length) % tabs.length; tabs[j].focus(); show(j); }});
+  }});
+}})();
+</script>
+"""
+    p = os.path.join(REPO, "aberration_experiment", "results", datetime.date.today().strftime("%G-W%V"), "ceos_recons_tabs.html")
+    open(p, "w").write(frag)
+    print(f"wrote {p} ({os.path.getsize(p) / 1e6:.2f} MB)")
+    return p
+
+
 FIGS = {1: fig1_aberration, 2: fig2_probes, 3: fig3_growth, 4: fig4_scan, 5: fig5_recons, 6: fig6_numbers,
-        7: fig7_stability, 8: explorer}
+        7: fig7_stability, 8: explorer, 9: recons_tabs}
 
 
 def main():
