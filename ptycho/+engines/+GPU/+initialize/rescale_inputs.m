@@ -88,7 +88,11 @@ function self = rescale_inputs(self, Np_p_new, rescale_data)
         self.diffraction_deform_matrix = [];
     end
     
-    self.Np_p = ceil(self.Np_p.*scale);
+    % Np_p .* scale is Np_p_new exactly in exact arithmetic, but ceil of the floating-point product can overshoot by
+    % one: 1420 * (898/1420) = 898.0000000000001 -> 899, and every array cropped to 898 then mismatched the 899-px
+    % model (arm_a070's presolve, 2026-09-30: "incompatible sizes of 899 and 898" in modulus_constraint). round is
+    % identical wherever ceil was right.
+    self.Np_p = round(self.Np_p.*scale);
     self.Np_o = ceil(self.Np_o.*scale);
 
     if ~isempty(self.probe_positions) && any(self.probe_positions(:) ~= self.probe_positions_0(:))
