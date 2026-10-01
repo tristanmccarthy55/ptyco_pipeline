@@ -38,7 +38,10 @@ newer.
   ceosopt_a080_f20 (ε 0.013, 100/67/75 %, 0.48 Å): ARM 75 ε 0.013, clean, 100/67/71 %, 0.56 Å · ARM 80 0.013, clean (corner
   streaks), 100/67/73 %, 0.47 Å · ARM 90 0.030, lattice over 2/3, right third fringes, 100/74/53 %, 0.42 Å · CEOS 90 0.020,
   clean, 100/75/81 %, 0.38 Å · calibration (52.5 Å, 5.5 % lost) 0.039, reconstructs noisier, 100/67/71 %, 0.54 Å.
-  **ARM 70 crashed**: engine bug, `rescale_inputs.m` ceil(1420*(898/1420)) = 899 (fixed by round, 32c0305). **CEOS 100 hung
+  **ARM 70 re-run (2026-10-01, fixed engine): works** -- presolve 898 px ran, eps 0.0135 (= reference), clean lattice and
+  slices, 100/67/66 %, z 0.48 A, precision 0.97 (`~/Desktop/arm_block1/analysis_a070`). CEOS 100 re-run with GROUPING
+  "32;16" iterates normally (full engine ~102 s/iteration at NL 28, ~6 h a leg) -- the presolve batch was the hang.
+  **ARM 70 crashed** (first run): engine bug, `rescale_inputs.m` ceil(1420*(898/1420)) = 899 (fixed by round, 32c0305). **CEOS 100 hung
   17 h** in the GPU engine's unbounded OOM retry loop (~8000 "Failed due to GPU issue", presolve batch 64 at 1282 px x 28
   slices). Re-runs queued 2026-10-01 (RECON_ONLY, own packs): ARM 70 recons 1299664-66 / pack 1299667 / analysis 1299675;
   CEOS 100 with GROUPING="32;16" RTIME=36 h, recons 1299668-70 / pack 1299671 / analysis 1299676. Block-1 pack 1296796 is
