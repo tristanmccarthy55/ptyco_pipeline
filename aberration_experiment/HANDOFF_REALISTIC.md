@@ -22,6 +22,18 @@ newer.
   100 18.29 / 1.08; **calibration `ceosopt_a080_f20_b4`** (the working 80 mrad probe at BIN 4 = 52.5 Å, N 709) loses 5.54 %
   — about ARM 80's loss, on a probe that reconstructs at 105 Å (100/67/75 %, 0.48 Å). Est. 1–8 h per recon.
   Judge on the object and the residual, and look at the phase images (`<out>/phase/`).
+- **BLOCK 2 = THE ARM SET WE MOVE FORWARD WITH (the user, 2026-10-01; replaces the CEOS-approx data going forward).** ARM200F
+  tableau at 300 kV in lengths, the knobs the user is SURE the ARM's CEOS tuning moves set for the smallest probe: C1, C3,
+  B2 (against B4) and A1 (against S3) -- `plan_probe.py --arm --fight B2 A1` (90/100 --quick). A2, S3, A3 held at run3
+  (editable on the ARM not confirmed; A2 against D4 would shrink 80 mrad further: 55 vs ~70 A). Rows `armf_a040`..`armf_a100`,
+  105 A-capped geometry, 20 Å at 0.5 Å. Plus KICK legs at 40/60/80/100 (`KICK_LABELS`): probe released from C1, C3, A1 x 1.05,
+  3 modes, presolve/full probe start 40/20, aperture constraint, GROUPING "8;4", 48 h -- does the update recover the true
+  probe (`analysis/kick_probe.py`, `<out>/kick/`)? This opens the "probe not perfectly known" front the user wants answered
+  next: the real approach is free variables with an outer search + probe update from a good-enough start.
+  User on knob precision: roughly the reference's standard deviations or a bit finer (ARM 95 % intervals: C1 4 nm,
+  A1 6 nm, B2 19 nm, C3 0.8 µm) -- a 5 % kick on C1/C3 is that order.
+  Engine: GPU.m now gives up after 3 OOM retries / 600 s waiting (was unbounded). Main legs GROUPING "32;16" (100 mrad's
+  presolve OOMs at 64), RTIME 36 h.
 - **Block 1 results so far (2026-10-01, `~/Desktop/arm_block1`)**: residual ε (lab) and first look at the phase images, against
   ceosopt_a080_f20 (ε 0.013, 100/67/75 %, 0.48 Å): ARM 75 ε 0.013, clean, 100/67/71 %, 0.56 Å · ARM 80 0.013, clean (corner
   streaks), 100/67/73 %, 0.47 Å · ARM 90 0.030, lattice over 2/3, right third fringes, 100/74/53 %, 0.42 Å · CEOS 90 0.020,
