@@ -276,7 +276,7 @@ def round_balance(alpha, c5):
     return -float(coef[1]), float(coef[2])
 
 
-def plan_arm(alphas, c5, override, scale, prefix, out, run="run3", quick=False):
+def plan_arm(alphas, c5, override, scale, prefix, out, run="run3", quick=False, fight=()):
     """[ARM200F-class] The measured tableau of the user's JEOL ARM200F (campaign/arm200f_tableau.tsv, converted from
     Haider notation by aberration_waves.arm_tableau): every measured term held FIXED, C5 fixed (factory set), and only
     C1 and C3 -- the knobs an operator always has -- set for the smallest d90 at each aperture: a coarse 7 x 7 grid
@@ -286,7 +286,13 @@ def plan_arm(alphas, c5, override, scale, prefix, out, run="run3", quick=False):
     if the probe loses no more than LOSS_OK from it. Writes rows in the ceos_sweep.tsv layout.
     quick=True (the 90/100 mrad stretch, whose probes are hundreds of A and whose grids are ~10^7-10^8 px): a 5 x 5 grid,
     one Nelder-Mead start of 40 evaluations and the aperture sampled to 1.1 alpha -- a coarse optimum, said so in the
-    note; good for sizing what the leg would cost, not for a run."""
+    note; good for sizing what the leg would cost, not for a run.
+    fight=("B2", "A2"): operator-tuned terms set too, each along the axis of the fixed term it shares symmetry with
+    (B2 against B4, m = 1; A2 against D4, m = 3), as plan_ceos sets B2 -- a Nelder-Mead over C1, C3 and these from the
+    (C1, C3) optimum; the measured values are replaced. Tuned terms with no fixed partner in the tableau (A1, S3, A3) are
+    best at zero: pass --set A1=0nm S3=0um A3=0um. (The user, 2026-10-01: every term the CEOS tuning can change on the
+    ARM is a free variable for the operator; a routine tune near the working aperture nulls the EFFECTIVE coma there,
+    which is this balance.)"""
     import abtem, importlib.util, json, os
     from scipy.optimize import minimize
     try: abtem.config.set({"local_diagnostics.progress_bar": False})
@@ -295,10 +301,19 @@ def plan_arm(alphas, c5, override, scale, prefix, out, run="run3", quick=False):
                                                                       "aberration_waves.py"))
     aw = importlib.util.module_from_spec(spec); spec.loader.exec_module(aw)
 
-    def probe(a, c1, c3, ext, n):
+    PARTNER = {"B2": ("C21", "C41", 1), "A2": ("C23", "C43", 3)}     # tuned term -> (its key, fixed partner, m)
+
+    def tableau(c3, set_=None):
+        ab = aw.arm_tableau(c3, c5, override=override, scale=scale, run=run)
+        for name, v in (set_ or {}).items():                # along the partner's axis: negative = opposed
+            k, kp, m = PARTNER[name]
+            ab[k] = round(abs(float(v)), 4)
+            ab["phi" + k[1:]] = round((ab["phi" + kp[1:]] + (np.pi / m if v < 0 else 0.0)) % (2 * np.pi / m), 6)
+        return ab
+
+    def probe(a, c1, c3, ext, n, set_=None):
         return np.asarray(abtem.Probe(energy=300e3, semiangle_cutoff=a, extent=ext, gpts=n, defocus=c1,
-                                      aberrations=aw.arm_tableau(c3, c5, override=override, scale=scale, run=run)
-                                      ).build(lazy=False).array)
+                                      aberrations=tableau(c3, set_)).build(lazy=False).array)
 
     def grid_n(ext, a, over):                               # pixels that sample the aperture to over x alpha
         return int(np.ceil(ext / (LAM / (2 * over * a / 1000.0)) / 64) * 64)
@@ -338,9 +353,27 @@ def plan_arm(alphas, c5, override, scale, prefix, out, run="run3", quick=False):
             if best is None or r.fun < best.fun:
                 best = r
         C1, C3 = round(float(best.x[0] * s1), 1), round(float(best.x[1] * s3), -2)
+        SET = None
+        if fight:
+            ab0 = tableau(0.0); th2 = (a / 1000.0) ** 2
+            sc = [0.25 * ab0[PARTNER[t][1]] * th2 for t in fight]
+            nk = 2 + len(fight)
+            fN = lambda x: sizes(probe(a, x[0] * s1, x[1] * s3, ext, n,
+                                       {t: x[2 + i] * sc[i] for i, t in enumerate(fight)}), ext)[2]
+            bestN = None
+            for b0 in (-0.8, -1.2):
+                x0 = np.array([C1 / s1, C3 / s3] + [b0 * ab0[PARTNER[t][1]] * th2 / sc[i] for i, t in enumerate(fight)])
+                simplex = [x0] + [x0 + 0.5 * np.eye(nk)[i] for i in range(nk)]
+                r = minimize(fN, x0, method="Nelder-Mead",
+                             options=dict(initial_simplex=simplex, maxfev=fev + 40 * len(fight), xatol=0.02, fatol=0.05))
+                if bestN is None or r.fun < bestN.fun:
+                    bestN = r
+            if bestN.fun < best.fun:
+                C1, C3 = round(float(bestN.x[0] * s1), 1), round(float(bestN.x[1] * s3), -2)
+                SET = {t: round(float(bestN.x[2 + i] * sc[i]), 1) for i, t in enumerate(fight)}
         extf = max(220.0, float(np.ceil(2.5 * pre[3] / 10) * 10))
         for _grow in range(4):                              # remeasure on a box that holds the chosen probe
-            P = probe(a, C1, C3, extf, grid_n(extf, a, 1.2 if quick else 1.55))
+            P = probe(a, C1, C3, extf, grid_n(extf, a, 1.2 if quick else 1.55), SET)
             _, d50, d90, d99 = sizes(P, extf)
             if d99 < 0.4 * extf:
                 break
@@ -352,12 +385,14 @@ def plan_arm(alphas, c5, override, scale, prefix, out, run="run3", quick=False):
         loss, loss_region = geometry_losses(P, extf, window)
         ok = True                                           # 2026-09-30: the loss is reported, never a gate
         npx = int(round(2 * detmax / 1000.0 * window / LAM))
-        ab = aw.arm_tableau(C3, c5, override=override, scale=scale, run=run)
+        ab = tableau(C3, SET)
         wv = aw.tableau_waves(ab, a)
         note = (f"ARM200F-class ({run} + manual B4/D4/A5, C5 {c5 * scale / 1e7:g} mm"
                 + "".join(f", {k} {v / aw.UNIT_A['nm' if k[1] in '12' else ('um' if k[1] in '34' else 'mm')]:g}"
                           f" {'nm' if k[1] in '12' else ('um' if k[1] in '34' else 'mm')}" for k, v in (override or {}).items())
                 + (f", x{scale:g}" if scale != 1 else "")
+                + "".join(f", {t} {v / (30 if t == 'B2' else 10):+.1f} nm (CEOS) set against {'B4' if t == 'B2' else 'D4'}"
+                          for t, v in (SET or {}).items())
                 + f"): C1/C3 set for the smallest probe{' (QUICK, coarse)' if quick else ''}; d50/d90/d99 {d50:.1f}/{d90:.1f}/{d99:.1f} A; "
                 + geometry_note(window, detmax, npx, loss, loss_region))
         rows.append(dict(label=f"{prefix}_a{a:03d}", alpha=a, c5=c5 * scale, c3=C3, c1=C1, df_perf="-", bin=binf, nl=0,
@@ -398,6 +433,8 @@ if __name__ == "__main__":
     ap.add_argument("--prefix", default="arm", help="[--arm] row label prefix")
     ap.add_argument("--run", default="run3", help="[--arm] which tableau of arm200f_tableau.tsv for A1..A4")
     ap.add_argument("--quick", action="store_true", help="[--arm] coarse search for the 90/100 mrad stretch rows")
+    ap.add_argument("--fight", nargs="+", default=[], choices=["B2", "A2"],
+                    help="[--arm] also set these operator-tuned terms against their fixed partner (B2 vs B4, A2 vs D4)")
     a = ap.parse_args()
     if a.arm:
         if not a.out:
@@ -408,7 +445,7 @@ if __name__ == "__main__":
         for kv in a.set:
             k, v, u = re.fullmatch(r"([A-Z]\d)=([-0-9.eE+]+)(nm|um|mm)", kv).groups()
             ov[k] = float(v) * {"nm": 10.0, "um": 1e4, "mm": 1e7}[u]
-        plan_arm(a.alphas, c5, ov or None, a.scale, a.prefix, a.out, run=a.run, quick=a.quick)
+        plan_arm(a.alphas, c5, ov or None, a.scale, a.prefix, a.out, run=a.run, quick=a.quick, fight=tuple(a.fight))
         raise SystemExit(0)
     if a.ceos:
         if not a.out:
