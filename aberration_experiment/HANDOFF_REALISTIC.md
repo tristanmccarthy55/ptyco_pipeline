@@ -22,6 +22,17 @@ newer.
   100 18.29 / 1.08; **calibration `ceosopt_a080_f20_b4`** (the working 80 mrad probe at BIN 4 = 52.5 Å, N 709) loses 5.54 %
   — about ARM 80's loss, on a probe that reconstructs at 105 Å (100/67/75 %, 0.48 Å). Est. 1–8 h per recon.
   Judge on the object and the residual, and look at the phase images (`<out>/phase/`).
+- **Block 1 results so far (2026-10-01, `~/Desktop/arm_block1`)**: residual ε (lab) and first look at the phase images, against
+  ceosopt_a080_f20 (ε 0.013, 100/67/75 %, 0.48 Å): ARM 75 ε 0.013, clean, 100/67/71 %, 0.56 Å · ARM 80 0.013, clean (corner
+  streaks), 100/67/73 %, 0.47 Å · ARM 90 0.030, lattice over 2/3, right third fringes, 100/74/53 %, 0.42 Å · CEOS 90 0.020,
+  clean, 100/75/81 %, 0.38 Å · calibration (52.5 Å, 5.5 % lost) 0.039, reconstructs noisier, 100/67/71 %, 0.54 Å.
+  **ARM 70 crashed**: engine bug, `rescale_inputs.m` ceil(1420*(898/1420)) = 899 (fixed by round, 32c0305). **CEOS 100 hung
+  17 h** in the GPU engine's unbounded OOM retry loop (~8000 "Failed due to GPU issue", presolve batch 64 at 1282 px x 28
+  slices). Re-runs queued 2026-10-01 (RECON_ONLY, own packs): ARM 70 recons 1299664-66 / pack 1299667 / analysis 1299675;
+  CEOS 100 with GROUPING="32;16" RTIME=36 h, recons 1299668-70 / pack 1299671 / analysis 1299676. Block-1 pack 1296796 is
+  HELD (it would delete the raw data the re-runs read): `scontrol release 1296796` once both are back. Pull: the four
+  tarballs `{analysis,atomfind_results}_{arm_a070,ceosopt_a100_f20}_2*.tgz` (packs carry the error traces).
+  Offered, not built: a retry cap in `engines/GPU.m` so an OOM fails fast instead of burning the walltime.
 - `plan_cost.py`'s big geometries (280–420 Å regions, N up to 4600, 400–900 positions) are NOT the plan; the tool stays
   for a later window discussion. `plan_probe.region_geometry` now caps the window at 105 Å; `plan_arm` reports
   `window_loss` and the region loss, never gates. The driver now exports each row's own C5 in LABELS mode.
