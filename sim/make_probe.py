@@ -24,6 +24,10 @@ non-zero -- a writer that cannot reproduce the truth must not feed a search.
     python sim/make_probe.py --sim-dir <packed sim>/01 --c1=-60 --norm-from true --out /tmp/p.mat   # no data locally
 
 Negative values: use --c1=-40 (with '=') so argparse does not read them as flags.
+
+KICKED START PROBE (2026-10-01): --scale C12=1.05:C30=1.05 multiplies those coefficients of the sim's tableau (after any
+--c3/--c5 override), keeping their angles -- with --c1 at 1.05 x the sim's C1 this is the "good but not true" start
+probe for a probe-update reconstruction. The .json records the start probe's overlap with the true one.
 """
 from __future__ import annotations
 
@@ -74,6 +78,7 @@ def main(argv=None) -> int:
     ap.add_argument("--c3", type=float, default=None, help="override C30 [A] (default: aberrations.json)")
     ap.add_argument("--c5", type=float, default=None, help="override C50 [A] (default: aberrations.json)")
     ap.add_argument("--out", type=Path, required=True, help="probe_initial.mat to write")
+    ap.add_argument("--scale", default="", help="multiply tableau terms, e.g. C12=1.05:C30=1.05 (':' or ',' separated)")
     ap.add_argument("--norm-from", choices=["data", "true"], default="data",
                     help="||P||^2 from the data's mean pattern total (default) or from probe_initial_true.mat")
     ap.add_argument("--norm-patterns", type=int, default=100, help="patterns sampled for --norm-from data")
@@ -102,6 +107,13 @@ def main(argv=None) -> int:
             if key in aberr and abs(aberr[key] - val) > 1e-6 * max(1.0, abs(val)):
                 print(f"[probe] NOTE {key} override {val:g} A differs from the sim's {aberr[key]:g} A")
             aberr[key] = float(val)
+    scaled = {}
+    for kv in (x for x in a.scale.replace(",", ":").split(":") if x):
+        k, f = kv.split("=")
+        if k not in aberr:
+            raise SystemExit(f"[probe] --scale {k}: not in the sim's tableau {sorted(aberr)}")
+        aberr[k] = float(aberr[k]) * float(f); scaled[k] = float(f)
+        print(f"[probe] {k} x {float(f):g}: {aberr_sim[k]:g} -> {aberr[k]:g} A")
     c1_true = float(ab["defocus_A"])
 
     # the sim's globals, set exactly as its main() sets them for this data
@@ -131,7 +143,7 @@ def main(argv=None) -> int:
     savemat(str(a.out), {"probe": P32, "p": {"binning": False, "detector": {"binning": False}}})
 
     info = dict(alpha_mrad=alpha, energy_eV=sim.ENERGY_EV, c1_A=float(a.c1), c1_sim_A=c1_true,
-                dc1_A=float(a.c1) - c1_true, aberrations_Cnm_A_phi_rad=aberr, bin_factor=binf, n_b=n_b,
+                dc1_A=float(a.c1) - c1_true, scaled_terms=scaled, aberrations_Cnm_A_phi_rad=aberr, bin_factor=binf, n_b=n_b,
                 box_A=box, extent_A=box / binf, norm_from=a.norm_from, norm_patterns=n_used,
                 mean_pattern_total=itot, sim_dir=str(sd.resolve()))
     try:

@@ -26,6 +26,13 @@
 # (sim/add_poisson_noise.py -> sim_out_af_a<A>_<mode>_dose<D>) and the recon runs on it once that job
 # succeeds -- lab AND Pb/Ti kernels at the same dose (NEXT_PHASE rule 3), independent noise per leg
 # (seed = DOSE_SEED + 0/1/2 for lab/Pb/Ti). Recon dirs: recon_af_a<A>_<mode>_dose<D>_NL<NL>.
+# KICK_LABELS (2026-10-01): those labels (must be in LABELS) also get a "kick" leg on their lab simulation -- the probe
+# RELEASED from a start probe built from the true tableau with C1, C3 and A1 scaled by KICK (default 1.05; written
+# in-job by sim/make_probe.py), KICK_MODES probe modes (3), probe update from KICK_PSTART in the presolve and KICK_PSTART2
+# in the full engine (40 / 20), the TEM aperture constraint on, GROUPING KICK_GROUPING ("8;4": modes multiply the GPU
+# memory), walltime KICK_RTIME (48:00:00). Dir recon_af_<label>_kick_NL<n>; analyse_sweep.py compares its probe with the
+# true one (kick/) and runs atomfind on it with the label's known-probe kernels. Part of the same pack, so CLEANDATA
+# waits for it.
 # Then (when done): extract each PSF and run atomfind (see the echo at the end).
 set -euo pipefail
 REPO_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"; cd "${REPO_DIR}"; mkdir -p logs
@@ -156,6 +163,27 @@ recon_job(){ # $1 name $2 datadir $3 bin $4 nl $5 dep -> jobid  (true probe fixe
         run_recon_synthetic_ML.slurm
 }
 
+KICK_LABELS="${KICK_LABELS:-}"; KICK="${KICK:-1.05}"; KICK_MODES="${KICK_MODES:-3}"; KICK_PSTART="${KICK_PSTART:-40}"
+KICK_PSTART2="${KICK_PSTART2:-20}"; KICK_GROUPING="${KICK_GROUPING:-8;4}"; KICK_RTIME="${KICK_RTIME:-48:00:00}"
+kick_job(){ # $1 name $2 lab sim dir $3 bin $4 nl $5 dep $6 c1 $7 c3 -> jobid  (kicked start probe, probe RELEASED)
+    local name="$1" datadir="$2" bin="$3" nl="$4" dep="$5" c1="$6" c3="$7"
+    local rdir="${REPO_DIR}/recon_af_${name}_NL${nl}"; mkdir -p "${rdir}/01"
+    echo "recon_af_${name}_NL${nl}" >>"${DIRS_FILE}"
+    if [ -d "${rdir}/analysis" ]; then mv "${rdir}/analysis" "${rdir}/analysis.prev_$(date +%Y%m%d_%H%M%S)"; fi
+    # the writer needs aberrations.json (the tableau) and the true probe (its overlap record); the in-job probe must be
+    # the only probe_initial.mat (make_probe.py refuses to write through a symlink)
+    local f; for f in "${INPUTS[@]}" aberrations.json probe_initial_true.mat; do ln -sf "${datadir}/01/${f}" "${rdir}/01/${f}"; done
+    rm -f "${rdir}/01/probe_initial.mat" "${rdir}/01/probe_initial.json"
+    local k1 k3; k1=$(awk "BEGIN{printf \"%.4f\", ${c1}*${KICK}}"); k3=$(awk "BEGIN{printf \"%.2f\", ${c3}*${KICK}}")
+    local cls; cls="$(res_class "$bin")"
+    local dep_arg=(); [ -n "$dep" ] && dep_arg=(--dependency="afterok:${dep}")
+    # PROBE_SCALE rides in the environment (its value holds '='), as ABERRATIONS_JSON does for the sims
+    PROBE_SCALE="C12=${KICK}" sbatch --parsable --job-name="af_kick_${name}" --time="${KICK_RTIME}" --mem="$(mem_for "$cls")" \
+        ${dep_arg[@]+"${dep_arg[@]}"} --output="${rdir}/slurm_%j.out" --error="${rdir}/slurm_%j.err" \
+        --export=ALL,NLAYERS="${nl}",SIM_BASE="${rdir}/",REGLAYER=0,PROBE_MODES="${KICK_MODES}",NITER="${NITER}",SAVE_EVERY="${SAVE}",BETA_LSQ="${BETA_LSQ}",GROUPING="${KICK_GROUPING}",PROBE_C1="${k1}",PROBE_C3="${k3}",PROBE_START="${KICK_PSTART}",PROBE_START2="${KICK_PSTART2}",PROBE_SUPPORT_FFT=1 \
+        run_recon_synthetic_ML.slurm
+}
+
 RIDS=(); SIM_DIRS=()          # SIM_DIRS: this submission's own sim dirs, for CLEANDATA
 ROWS="$ALPHAS"; [ -n "$LABELS" ] && ROWS="$LABELS"
 for a in $ROWS; do
@@ -213,6 +241,10 @@ for a in $ROWS; do
         fi
         R=$(recon_job "${leg}_${m}${SFX}" "$D" "$bin" "$nl" "$S")
         RIDS+=("$R"); SIM_DIRS+=("$D"); line+=" ${m}=${R}"
+        if [ "$m" = lab ] && [ -n "$LABELS" ] && [[ " ${KICK_LABELS} " == *" ${leg} "* ]]; then
+            K=$(kick_job "${leg}_kick${SFX}" "$D" "$bin" "$nl" "$S" "$c1" "$c3")
+            RIDS+=("$K"); line+=" kick=${K}"
+        fi
     done
     echo "$line"
 done

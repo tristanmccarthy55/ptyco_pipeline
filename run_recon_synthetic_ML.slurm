@@ -71,6 +71,7 @@ if [ -n "${PROBE_C1:-}" ]; then
     PW_ARG=(--sim-dir "${SIM_BASE}01" --c1="${PROBE_C1}" --out "${SIM_BASE}01/probe_initial.mat")
     [ -n "${PROBE_C3:-}" ] && PW_ARG+=(--c3="${PROBE_C3}")
     [ -n "${PROBE_C5:-}" ] && PW_ARG+=(--c5="${PROBE_C5}")
+    [ -n "${PROBE_SCALE:-}" ] && PW_ARG+=(--scale="${PROBE_SCALE}")      # e.g. C12=1.05 (kicked start probe)
     echo "PROBE    : trial C1=${PROBE_C1} A  (sim/make_probe.py ${PW_ARG[*]})"
     # In a subshell with the sim's CUDA module (best effort): abtem imports cupy, and the sim env has only
     # ever run with CUDA/12.6.0 loaded. The subshell keeps that module out of MATLAB's environment.

@@ -301,7 +301,8 @@ def plan_arm(alphas, c5, override, scale, prefix, out, run="run3", quick=False, 
                                                                       "aberration_waves.py"))
     aw = importlib.util.module_from_spec(spec); spec.loader.exec_module(aw)
 
-    PARTNER = {"B2": ("C21", "C41", 1), "A2": ("C23", "C43", 3)}     # tuned term -> (its key, fixed partner, m)
+    PARTNER = {"B2": ("C21", "C41", 1), "A2": ("C23", "C43", 3),     # tuned term -> (its key, fixed partner, m)
+               "A1": ("C12", "C32", 2)}                               # A1 against S3 (held at its measured value)
 
     def tableau(c3, set_=None):
         ab = aw.arm_tableau(c3, c5, override=override, scale=scale, run=run)
@@ -391,8 +392,8 @@ def plan_arm(alphas, c5, override, scale, prefix, out, run="run3", quick=False, 
                 + "".join(f", {k} {v / aw.UNIT_A['nm' if k[1] in '12' else ('um' if k[1] in '34' else 'mm')]:g}"
                           f" {'nm' if k[1] in '12' else ('um' if k[1] in '34' else 'mm')}" for k, v in (override or {}).items())
                 + (f", x{scale:g}" if scale != 1 else "")
-                + "".join(f", {t} {v / (30 if t == 'B2' else 10):+.1f} nm (CEOS) set against {'B4' if t == 'B2' else 'D4'}"
-                          for t, v in (SET or {}).items())
+                + "".join(f", {t} {v / (30 if t == 'B2' else 10):+.1f} nm (CEOS) set against "
+                          f"{dict(B2='B4', A2='D4', A1='S3')[t]}" for t, v in (SET or {}).items())
                 + f"): C1/C3 set for the smallest probe{' (QUICK, coarse)' if quick else ''}; d50/d90/d99 {d50:.1f}/{d90:.1f}/{d99:.1f} A; "
                 + geometry_note(window, detmax, npx, loss, loss_region))
         rows.append(dict(label=f"{prefix}_a{a:03d}", alpha=a, c5=c5 * scale, c3=C3, c1=C1, df_perf="-", bin=binf, nl=0,
@@ -433,8 +434,9 @@ if __name__ == "__main__":
     ap.add_argument("--prefix", default="arm", help="[--arm] row label prefix")
     ap.add_argument("--run", default="run3", help="[--arm] which tableau of arm200f_tableau.tsv for A1..A4")
     ap.add_argument("--quick", action="store_true", help="[--arm] coarse search for the 90/100 mrad stretch rows")
-    ap.add_argument("--fight", nargs="+", default=[], choices=["B2", "A2"],
-                    help="[--arm] also set these operator-tuned terms against their fixed partner (B2 vs B4, A2 vs D4)")
+    ap.add_argument("--fight", nargs="+", default=[], choices=["B2", "A2", "A1"],
+                    help="[--arm] also set these operator-tuned terms against their fixed partner (B2 vs B4, A2 vs D4, "
+                         "A1 vs S3)")
     a = ap.parse_args()
     if a.arm:
         if not a.out:

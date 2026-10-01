@@ -22,7 +22,9 @@ Writes <out>/phase/ (render_phase.py images of every leg, failed ones included),
 volume in the finder's frame, figdata.py), <out>/psf/ (kernels + extractor
 logs), <out>/atomfind_<label>/ (report.json, figures), <out>/logs/,
 <out>/summary.csv (one row per label) and prints the table. A label whose recon fails triage (saturated phase, no
-h5) is reported and skipped, never analysed. The region GT is built with
+h5) is reported and skipped, never analysed. KICK legs (recon_af_<label>_kick_NL<n>: probe released from a kicked start,
+campaign/run_thin_atomfind.sh KICK_LABELS) get a phase image, the probe comparison (<out>/kick/, kick_probe.py) and an
+atomfind run with that label's known-probe kernels, as a row <label>_kick. The region GT is built with
 `python -m atomfind.make_gt_cache --thin-cells 5 --z-vacuum 4 --region-side 210 --out <gt>/gt_prepared.npz`.
 """
 from __future__ import annotations
@@ -43,7 +45,7 @@ import triage_recon  # noqa: E402  (object_health, WRAP_FRAC_MAX, STD_MAX)
 MODES = ("lab", "Pb", "Ti")
 COLS = ["label", "alpha", "NL", "dx_A", "dz_A", "zdrop", "scan_centre", "wrapped", "phase_std", "status",
         "precision", "Pb_recall_bulk", "Ti_recall_bulk", "O_recall_bulk", "xy_rms", "z_rms", "confusion",
-        "n_found", "fp_total"]
+        "n_found", "fp_total", "ov_start", "ov_final", "mode1_power"]
 
 
 def newest(paths):
@@ -168,6 +170,52 @@ def main():
         pct = lambda k: "-" if r.get(k) is None else f"{100 * float(r[k]):.0f}"
         print(f"{label}: ok | Pb/Ti/O bulk {pct('Pb_recall_bulk')}/{pct('Ti_recall_bulk')}/{pct('O_recall_bulk')} % "
               f"| z-RMS {float(r['z_rms']):.3f} A | precision {float(r['precision']):.3f}", flush=True)
+
+    # KICK legs: the probe released from a kicked start -- did it come back to the true probe, and what did the object
+    # pay? Same kernels as the label's known-probe legs (the matched PSF of the true probe is the reference).
+    import kick_probe
+    for label in a.labels:
+        kd = newest(glob.glob(os.path.join(a.root, f"recon_af_{label}_kick_NL*")))
+        if not kd:
+            continue
+        row = dict(label=f"{label}_kick", status="")
+        try:
+            k = kick_probe.compare(kd, os.path.join(a.out, "kick"))
+            row.update(ov_start=f"{k['ov_start']:.4f}")
+            if k.get("status") == "ok":
+                row.update(ov_final=f"{k['ov_final']:.4f}", mode1_power=f"{k['mode_power'][0]:.3f}")
+        except Exception as e:
+            print(f"{label}_kick: probe comparison failed ({e})")
+        kh = recon_h5(kd)
+        if not kh:
+            row["status"] = "NO H5"; rows.append(row); print(f"{label}_kick: NO H5"); continue
+        try:
+            render_phase.render(kh, os.path.join(a.out, "phase"), a.z_vacuum, 27.525)
+        except Exception as e:
+            print(f"{label}_kick: phase image failed ({e})")
+        wrap, std = triage_recon.object_health(kh)
+        row["wrapped"], row["phase_std"] = f"{wrap:.2e}", f"{std:.3f}"
+        if wrap > triage_recon.WRAP_FRAC_MAX or std > triage_recon.STD_MAX:
+            row["status"] = "SATURATED"; rows.append(row); print(f"{label}_kick: SATURATED"); continue
+        psf = {el: os.path.join(a.out, "psf", f"psf_{el}_{label}_vol.npy") for el in ("Pb", "Ti")}
+        if not all(os.path.exists(v) for v in psf.values()):
+            row["status"] = "NO KERNELS (the label's Pb/Ti legs)"; rows.append(row); print(f"{label}_kick: {row['status']}"); continue
+        g = geometry(kd, kh, a.z_vacuum)
+        row.update(alpha=g["alpha"], NL=g["NL"], dx_A=f"{g['dx_A']:.5f}", dz_A=f"{g['dz_A']:.4f}", zdrop=g["zdrop"])
+        outd = os.path.join(a.out, f"atomfind_{label}_kick")
+        cmd = [a.python, finder, "--preset", "thin", "--recon", kh, "--dz", f"{g['dz_A']:.6f}",
+               "--data-dir", a.gt, "--single-atom-vol", psf["Pb"], "--ti-kernel-vol", psf["Ti"], "--out", outd,
+               "--set", f"dx={g['dx_A']:.6f}"]
+        if g["scan_centre"] is not None:
+            cmd += ["--set", f"scan_center_xy={g['scan_centre'][0]:g},{g['scan_centre'][1]:g}"]
+        rc = run(cmd, os.path.join(a.out, "logs", f"atomfind_{label}_kick.log"))
+        if rc or not os.path.exists(os.path.join(outd, "report.json")):
+            row["status"] = f"ATOMFIND FAILED (logs/atomfind_{label}_kick.log)"; rows.append(row); continue
+        r = relaxation_ladder.ladder_row(outd, "-", label + "_kick", "", None, int(round(g["alpha"])))
+        row.update(status="ok", **{k_: r.get(k_) for k_ in COLS if k_ in r and k_ not in ("label", "alpha")})
+        rows.append(row)
+        print(f"{label}_kick: ok | probe overlap start {row.get('ov_start')} -> {row.get('ov_final')} | "
+              f"z-RMS {float(r['z_rms']):.3f} A", flush=True)
 
     path = os.path.join(a.out, "summary.csv")
     with open(path, "w", newline="") as fh:

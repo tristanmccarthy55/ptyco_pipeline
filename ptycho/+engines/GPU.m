@@ -76,6 +76,13 @@ function [p_out, fdb] = GPU(p)
         [mem_avail, mem_total] = utils.check_available_memory(); 
         verbose(1,'%.0f of %.0f GB RAM free', mem_avail/1e3, mem_total/1e3 ); 
 
+        % Bounded retries (2026-10-01): the loop below waited and retried WITHOUT LIMIT. ceosopt_a100_f20 (presolve batch
+        % 64 at 1282 px x 28 slices) ran ~8000 "Failed due to GPU issue" retries over 17 h and never reached iteration
+        % 1. Now: at most GPU_MAX_RETRY out-of-memory retries and GPU_MAX_WAIT_S of waiting for free memory, then an
+        % error, so the job ends at once and the log says to lower GROUPING.
+        n_retry = 0; t_wait0 = tic; 
+        max_retry = 3;   e = getenv('GPU_MAX_RETRY');  if ~isempty(e); max_retry = str2double(e); end
+        max_wait = 600;  e = getenv('GPU_MAX_WAIT_S'); if ~isempty(e); max_wait = str2double(e); end
         while  param.use_gpu
             if isinf(param.grouping)
                 grouping_tmp = 5;  % for inf grouping, use a small initial guess of the group size and refine later for given availible memory 
@@ -140,6 +147,12 @@ function [p_out, fdb] = GPU(p)
                         verbose(-1,'Return back to queue')
                         required_mem = required_mem .* 1.2; % assume that the required memory was too low, -> increase 
 %                         keyboard;
+                        n_retry = n_retry + 1;
+                        if n_retry > max_retry
+                            error('GPU:retriesExhausted', ['GPU out of memory %d times (grouping %g, %d px): giving up ', ...
+                                  'instead of retrying forever -- lower GROUPING ("g_presolve;g_full")'], ...
+                                  n_retry, param.grouping, tmp.Np_p(1));
+                        end
                         continue
                     else
                         rethrow(ME)
@@ -149,7 +162,11 @@ function [p_out, fdb] = GPU(p)
             elseif required_mem > gpu.TotalMemory * 0.9
                 error('Too large memory requirements for selected GPU, try to reduce grouping')
             end
-            % otherwise keep waiting 
+            % otherwise keep waiting -- but not forever
+            if toc(t_wait0) > max_wait
+                error('GPU:waitExhausted', ['required %.1f GB never became free in %.0f s (grouping %g): giving up -- ', ...
+                      'lower GROUPING ("g_presolve;g_full")'], required_mem / 1e9, toc(t_wait0), param.grouping);
+            end
             wait_time = 5;
             warning('Low memory on GPU %i, waiting %is ...',gpu_id, wait_time)
             pause(wait_time)
