@@ -25,8 +25,11 @@ newer.
 - **RUNNING ON BLYTHE (2026-10-02 12:00)** -- block 2 (armf_a040..a090, kicks 40/60/80): pack 1301450, analysis 1301451
   (pulled the analysis fix first). Hail mary: sims 1301883/86/89 (16 configs x ~17.5 min), noise 1301884/87/90, kicked
   recons 1301885/88/91, pack 1301892, analysis 1301893. Block-1 pack 1296796 was HELD -- check it was released.
-  (12:05 commit 15203bc came from a SECOND Claude session still open since 2026-10-01 23:36; armf_a100's job ids were
-  given there, not recorded here -- ask the user for them.)
+  (12:05 commit 15203bc came from a SECOND Claude session still open since 2026-10-01 23:36.) Status 12:15: 1296796
+  COMPLETED (released); hail-mary sims still PENDING (Priority) -- no sim log yet, so ~17.5 min/config is an estimate;
+  block 2 only armf_a060_kick running, the rest of a060-a090 queued. **armf_a100 NOT submitted** (Blythe had not pulled
+  its row); its block re-dry-run with a stub sbatch 12:17 (sims 12 h, recons NL 28 / 175 G / 36 h / "32;16", kick C1 -1819
+  C3 -58.17 um A1 x1.05 / 3 modes / "8;4" / 48 h, pack + CLEANDATA, analysis GT_REGION=210 on the captured pack id).
   armf_a100 PLANNED 2026-10-02 (d90 208, d99 374 A; 23 % outside 105 A, 7.3 % outside the 210 A region -- the sim wraps it) and HANDED OVER (block in chat; analysis tarball analysis_armf_a100_2*.tgz). Was: its plan ran locally, output aberration_experiment/results/2026-W40/plan_runs/armf_a100.*
   (the scratchpad dies with a session; write plans here). Next: append its row to ceos_sweep.tsv under the BLOCK 2 header
   (the row line in armf_a100.tsv), dry-run, submit LABELS=armf_a100 KICK_LABELS=armf_a100 GROUPING="32;16" RTIME=36:00:00.
