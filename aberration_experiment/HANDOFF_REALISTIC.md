@@ -22,6 +22,12 @@ newer.
   100 18.29 / 1.08; **calibration `ceosopt_a080_f20_b4`** (the working 80 mrad probe at BIN 4 = 52.5 Å, N 709) loses 5.54 %
   — about ARM 80's loss, on a probe that reconstructs at 105 Å (100/67/75 %, 0.48 Å). Est. 1–8 h per recon.
   Judge on the object and the residual, and look at the phase images (`<out>/phase/`).
+- **RUNNING ON BLYTHE (2026-10-02 12:00)** -- block 2 (armf_a040..a090, kicks 40/60/80): pack 1301450, analysis 1301451
+  (pulled the analysis fix first). Hail mary: sims 1301883/86/89 (16 configs x ~17.5 min), noise 1301884/87/90, kicked
+  recons 1301885/88/91, pack 1301892, analysis 1301893. Block-1 pack 1296796 was HELD -- check it was released.
+  NOT SUBMITTED: armf_a100 -- its plan runs locally, output aberration_experiment/results/2026-W40/plan_runs/armf_a100.*
+  (the scratchpad dies with a session; write plans here). Next: append its row to ceos_sweep.tsv under the BLOCK 2 header
+  (the row line in armf_a100.tsv), dry-run, submit LABELS=armf_a100 KICK_LABELS=armf_a100 GROUPING="32;16" RTIME=36:00:00.
 - **HAIL MARY (2026-10-02): armf_a080 with everything real** -- PHONONS=16 PER_SPECIES=1, partial coherence (ARM200F
   cold FEG 0.3 eV FWHM -- 0.26-0.4 eV measured for this gun; STEM objective Cc 1.4 mm (JEM-ARM200cF spec) -> 7.29 A rms
   focal spread at 300 kV = 1.19 waves rms at the 80 mrad edge; source 40 pm FWHM, the cold-FEG mid estimate of Quigley et
