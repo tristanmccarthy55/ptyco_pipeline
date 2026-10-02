@@ -94,6 +94,15 @@ def run(cmd, log):
     return r.returncode
 
 
+def kernel_mismatch(psf, g):
+    """'' when the kernels fit this leg's depth sampling, else why not. A kernel holds NL - 2*zdrop layers (extract_psf
+    drops the vacuum bands), so a kernel from another run is only usable at the same NL and dz."""
+    want = g["NL"] - 2 * g["zdrop"]
+    got = {el: int(np.load(p, mmap_mode="r").shape[0]) for el, p in psf.items()}
+    bad = {el: n for el, n in got.items() if n != want}
+    return "" if not bad else f"KERNEL LAYERS {bad} != NL {g['NL']} - 2 x zdrop {g['zdrop']} = {want}"
+
+
 def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--root", required=True, help="directory holding the recon_af_<label>_<mode>_NL<n> dirs")
@@ -105,7 +114,24 @@ def main():
     ap.add_argument("--suffix", default="", help="the driver's dir tag after the mode, e.g. _ph16_coh_dose1e7")
     ap.add_argument("--grid-spacing", type=float, default=3.0,
                     help="the kernel grid's spacing (driver GRIDSP); extract_psf --min-sep, so noise between atoms is not a site")
+    ap.add_argument("--psf-dir", default=None,
+                    help="take the kernels psf_Pb_<psf-tag>_vol.npy / psf_Ti_<psf-tag>_vol.npy from this dir (an earlier "
+                         "analysis' psf/) instead of extracting each label's own: only the lab leg is needed, outputs are "
+                         "tagged _kern-<psf-tag>. The fallback when a run's grid legs fail (e.g. a kicked-probe lab leg "
+                         "read with the known-probe kernels of the same tableau); the kernels then do NOT come from the "
+                         "lab leg's operator (PSF_KERNELS.md), say so wherever a number is quoted")
+    ap.add_argument("--psf-tag", default=None, help="with --psf-dir: the kernels' tag, e.g. armf_a080")
     a = ap.parse_args()
+    if (a.psf_dir is None) != (a.psf_tag is None):
+        ap.error("--psf-dir and --psf-tag go together")
+    psf_fixed = None
+    if a.psf_dir:
+        psf_fixed = {el: os.path.join(a.psf_dir, f"psf_{el}_{a.psf_tag}_vol.npy") for el in ("Pb", "Ti")}
+        miss = [p for p in psf_fixed.values() if not os.path.exists(p)]
+        if miss:
+            ap.error(f"kernels not found: {' '.join(miss)}")
+    need = ("lab",) if psf_fixed else MODES    # legs a label must have
+    ktag = f"_kern-{a.psf_tag}" if psf_fixed else ""
     for sub in ("psf", "logs"):
         os.makedirs(os.path.join(a.out, sub), exist_ok=True)
     extract = os.path.join(HERE, "atomfind", "extract_psf.py")
@@ -114,7 +140,7 @@ def main():
 
     rows = []
     for label in a.labels:
-        tag = label + a.suffix                 # every output of this label is named by label + suffix
+        tag = label + a.suffix + ktag          # every output of this label is named by label + suffix (+ kernel tag)
         row = dict(label=tag, status="")
         dirs = leg_dirs(a.root, label, a.suffix)
         # KICK_ALL: the lab leg itself started from a kicked probe (a real probe_initial.json beside it) -- report
@@ -147,19 +173,19 @@ def main():
                              os.path.join(a.out, "figdata", tag))
             except Exception as e:
                 print(f"{label}: figure data failed ({e})")
-        missing = [m for m in MODES if not h5s.get(m)]
+        missing = [m for m in need if not h5s.get(m)]
         if missing:
             row["status"] = "NO H5: " + " ".join(missing); rows.append(row); print(f"{label}: {row['status']}"); continue
-        health = {m: triage_recon.object_health(h5s[m]) for m in MODES}
-        bad = [m for m in MODES if health[m][0] > triage_recon.WRAP_FRAC_MAX or health[m][1] > triage_recon.STD_MAX]
+        health = {m: triage_recon.object_health(h5s[m]) for m in need}
+        bad = [m for m in need if health[m][0] > triage_recon.WRAP_FRAC_MAX or health[m][1] > triage_recon.STD_MAX]
         row["wrapped"], row["phase_std"] = f"{health['lab'][0]:.2e}", f"{health['lab'][1]:.3f}"
         if bad:
             row["status"] = "SATURATED: " + " ".join(bad); rows.append(row); print(f"{label}: {row['status']}"); continue
         g = geometry(dirs["lab"], h5s["lab"], a.z_vacuum)
         row.update(alpha=g["alpha"], NL=g["NL"], dx_A=f"{g['dx_A']:.5f}", dz_A=f"{g['dz_A']:.4f}", zdrop=g["zdrop"],
                    scan_centre="preset" if g["scan_centre"] is None else f"{g['scan_centre'][0]:g},{g['scan_centre'][1]:g}")
-        psf = {}
-        for el in ("Pb", "Ti"):
+        psf = dict(psf_fixed) if psf_fixed else {}
+        for el in ([] if psf_fixed else ("Pb", "Ti")):
             name = f"{el}_{tag}"
             # the h5 itself, not the dir: extract_psf once took an engine checkpoint from the dir (presolve / old run)
             rc = run([a.python, extract, h5s[el], name, "--zdrop", str(g["zdrop"]), "--dx", f"{g['dx_A']:.6f}",
@@ -168,6 +194,8 @@ def main():
             psf[el] = os.path.join(a.out, "psf", f"psf_{name}_vol.npy")
             if rc or not os.path.exists(psf[el]):
                 row["status"] = (row["status"] + " " if row["status"] else "KERNEL FAILED:") + f" {el} (logs/extract_{name}.log)"
+        if psf_fixed:
+            row["status"] = kernel_mismatch(psf, g)
         if row["status"]:
             rows.append(row); print(f"{label}: {row['status']}"); continue
         outd = os.path.join(a.out, f"atomfind_{tag}")
@@ -202,7 +230,7 @@ def main():
         kd = newest(glob.glob(os.path.join(a.root, f"recon_af_{label}_kick{a.suffix}_NL*")))
         if not kd:
             continue
-        row = dict(label=f"{label}_kick", status="")
+        row = dict(label=f"{label}_kick{ktag}", status="")
         try:
             k = kick_probe.compare(kd, os.path.join(a.out, "kick"))
             row.update(ov_start=f"{k['ov_start']:.4f}")
@@ -222,12 +250,14 @@ def main():
             row["wrapped"], row["phase_std"] = f"{hh[0]:.2e}", f"{hh[1]:.3f}"
             if hh[0] > triage_recon.WRAP_FRAC_MAX or hh[1] > triage_recon.STD_MAX:
                 row["status"] = "SATURATED"; rows.append(row); print(f"{label}_kick: SATURATED"); continue
-            psf = {el: os.path.join(a.out, "psf", f"psf_{el}_{label}{a.suffix}_vol.npy") for el in ("Pb", "Ti")}
+            psf = psf_fixed or {el: os.path.join(a.out, "psf", f"psf_{el}_{label}{a.suffix}_vol.npy") for el in ("Pb", "Ti")}
             if not all(os.path.exists(v) for v in psf.values()):
                 row["status"] = "NO KERNELS (the label's Pb/Ti legs)"; rows.append(row); print(f"{label}_kick: {row['status']}"); continue
             g = geometry(kd, kh, a.z_vacuum)
             row.update(alpha=g["alpha"], NL=g["NL"], dx_A=f"{g['dx_A']:.5f}", dz_A=f"{g['dz_A']:.4f}", zdrop=g["zdrop"])
-            outd = os.path.join(a.out, f"atomfind_{label}_kick")
+            if psf_fixed and kernel_mismatch(psf, g):
+                row["status"] = kernel_mismatch(psf, g); rows.append(row); print(f"{label}_kick: {row['status']}"); continue
+            outd = os.path.join(a.out, f"atomfind_{label}_kick{ktag}")
             cmd = [a.python, finder, "--preset", "thin", "--recon", kh, "--dz", f"{g['dz_A']:.6f}",
                    "--data-dir", a.gt, "--single-atom-vol", psf["Pb"], "--ti-kernel-vol", psf["Ti"], "--out", outd,
                    "--set", f"dx={g['dx_A']:.6f}"]

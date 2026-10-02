@@ -7,6 +7,9 @@
 #   LABELS="..." GT=/path/to/dir_with_gt_prepared.npz bash campaign/run_analysis.sh   # any other geometry
 #   DEP=<job id> ...     start only once that job has ended (e.g. a sweep's pack job: afterany)
 #   SUFFIX=_ph16_coh_dose1e7 ...   legs named recon_af_<label>_<mode><SUFFIX>_NL<n> (phonons / coherence / dose runs)
+#   PSF_DIR=<an earlier analysis' psf/> PSF_TAG=<its label> ...   atomfind with THOSE kernels instead of the label's own
+#       grid legs (only the lab leg is needed; outputs and tarball tagged _kern-<PSF_TAG>) -- the fallback when a run's
+#       kernels fail, e.g. the kicked hail mary read with block 2's known-probe armf_a080 kernels
 #
 # GT_REGION=S uses $SHARE/$USER/gt_region<S>/gt_prepared.npz, building it in the job if it is missing
 # (atomfind.make_gt_cache --thin-cells THIN --z-vacuum ZVAC --region-side S, from the simulator's own builder).
@@ -21,7 +24,13 @@ if [ -n "${GT:-}" ]; then GTDIR="$GT"; BUILD_GT=""
 elif [ -n "${GT_REGION:-}" ]; then GTDIR="${BASE}/gt_region${GT_REGION}"
     BUILD_GT="[ -f '${GTDIR}/gt_prepared.npz' ] || (cd '${REPO_DIR}/analysis' && '${PYBIN}' -m atomfind.make_gt_cache --thin-cells ${THIN} --z-vacuum ${ZVAC} --region-side ${GT_REGION} --out '${GTDIR}/gt_prepared.npz')"
 else echo "set GT=<dir> or GT_REGION=<side>" >&2; exit 1; fi
-TS="$(date +%Y%m%d_%H%M%S)"; TAG="$(echo ${LABELS} | tr ' ' '-')${SUFFIX:-}"
+KARG=""
+if [ -n "${PSF_DIR:-}${PSF_TAG:-}" ]; then
+    [ -n "${PSF_DIR:-}" ] && [ -n "${PSF_TAG:-}" ] || { echo "PSF_DIR and PSF_TAG go together" >&2; exit 1; }
+    for el in Pb Ti; do [ -f "${PSF_DIR}/psf_${el}_${PSF_TAG}_vol.npy" ] || { echo "no ${PSF_DIR}/psf_${el}_${PSF_TAG}_vol.npy" >&2; exit 1; }; done
+    KARG="--psf-dir '${PSF_DIR}' --psf-tag '${PSF_TAG}'"
+fi
+TS="$(date +%Y%m%d_%H%M%S)"; TAG="$(echo ${LABELS} | tr ' ' '-')${SUFFIX:-}${PSF_TAG:+_kern-${PSF_TAG}}"
 NAME="analysis_${TAG}_${TS}"; OUT="${BASE}/${NAME}"
 JOB="logs/${NAME}.sh"
 cat >"${JOB}" <<EOF
@@ -30,7 +39,7 @@ set -euo pipefail
 mkdir -p '${GTDIR}'
 ${BUILD_GT}
 '${PYBIN}' '${REPO_DIR}/analysis/analyse_sweep.py' --root '${REPO_DIR}' --labels ${LABELS} --suffix '${SUFFIX:-}' --gt '${GTDIR}' \\
-    --out '${OUT}' --z-vacuum ${ZVAC} --python '${PYBIN}' || echo "analyse_sweep: some labels did not complete (see summary.csv)"
+    --out '${OUT}' --z-vacuum ${ZVAC} --python '${PYBIN}' ${KARG} || echo "analyse_sweep: some labels did not complete (see summary.csv)"
 tar czf '${OUT}.tgz' -C '${BASE}' '${NAME}'
 du -h '${OUT}.tgz'
 EOF
