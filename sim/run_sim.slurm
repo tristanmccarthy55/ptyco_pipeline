@@ -143,6 +143,15 @@ CS_ARG=(); [ -n "${CS:-}" ] && CS_ARG=(--cs="${CS}")
 [ -n "${C5:-}" ] && CS_ARG+=(--c5="${C5}")
 # [campaign] full aberration dict as JSON (non-round terms); overrides CS/C5, implies --aberrated
 AJ_ARG=(); [ -n "${ABERRATIONS_JSON:-}" ] && AJ_ARG=(--aberrations-json="${ABERRATIONS_JSON}")
+# [coherence] partial coherence, sampled jointly with the phonons: FOCAL_SPREAD (rms A) or ENERGY_SPREAD_EV + CC_MM,
+# SOURCE_FWHM (A), COHERENCE_SAMPLES (configs when PHONONS=0)
+COH_ARG=()
+[ -n "${FOCAL_SPREAD:-}" ] && COH_ARG+=(--focal-spread="${FOCAL_SPREAD}")
+[ -n "${ENERGY_SPREAD_EV:-}" ] && COH_ARG+=(--energy-spread-ev="${ENERGY_SPREAD_EV}")
+[ -n "${CC_MM:-}" ] && COH_ARG+=(--cc-mm="${CC_MM}")
+[ -n "${SOURCE_FWHM:-}" ] && COH_ARG+=(--source-size-fwhm="${SOURCE_FWHM}")
+[ -n "${COHERENCE_SAMPLES:-}" ] && COH_ARG+=(--coherence-samples="${COHERENCE_SAMPLES}")
+[ ${#COH_ARG[@]} -gt 0 ] && echo "coherence: ${COH_ARG[*]}"
 
 "${PYBIN}" "${SIM_DIR}/simulate_4dstem.py" \
     --device gpu \
@@ -152,4 +161,4 @@ AJ_ARG=(); [ -n "${ABERRATIONS_JSON:-}" ] && AJ_ARG=(--aberrations-json="${ABERR
     --phonons "${PHONONS}" \
     --phonon-sigma "${PHONON_SIGMA}" \
     "${TILE_ARG[@]}" "${SA_ARG[@]}" "${VAC_ARG[@]}" "${PS_ARG[@]}" "${AB_ARG[@]}" "${BIN_ARG[@]}" "${DS_ARG[@]}" "${CONV_ARG[@]}" \
-    "${TH_ARG[@]}" "${DEF_ARG[@]}" "${CS_ARG[@]}" "${AJ_ARG[@]}"
+    "${TH_ARG[@]}" "${DEF_ARG[@]}" "${CS_ARG[@]}" "${AJ_ARG[@]}" "${COH_ARG[@]}"

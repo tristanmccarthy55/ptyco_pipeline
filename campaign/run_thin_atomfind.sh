@@ -33,6 +33,11 @@
 # memory), walltime KICK_RTIME (48:00:00). Dir recon_af_<label>_kick_NL<n>; analyse_sweep.py compares its probe with the
 # true one (kick/) and runs atomfind on it with the label's known-probe kernels. Part of the same pack, so CLEANDATA
 # waits for it.
+# PARTIAL COHERENCE (2026-10-02): FOCAL_SPREAD (rms A) or ENERGY_SPREAD_EV + CC_MM, SOURCE_FWHM (A) and COHERENCE_SAMPLES
+# reach the sim (sim/simulate_4dstem.py: sampled jointly with PHONONS); dirs gain _coh. With DOSES the chain is built in
+# ONE submission: sim (when its data are missing) -> Poisson copy -> recon. KICK_ALL=1 runs EVERY leg (lab, Pb, Ti) as a
+# kick leg -- start probe kicked, probe released, KICK_MODES modes -- so the kernels come out of the same reconstruction
+# operator as the lab leg (PSF_KERNELS.md: byte-identical except the object).
 # Then (when done): extract each PSF and run atomfind (see the echo at the end).
 set -euo pipefail
 REPO_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"; cd "${REPO_DIR}"; mkdir -p logs
@@ -61,6 +66,12 @@ DOSES="${DOSES:-}"; DOSE_SEED="${DOSE_SEED:-0}"
 PHONONS="${PHONONS:-0}"; PHONON_SIGMA="${PHONON_SIGMA:-0.08}"; PER_SPECIES="${PER_SPECIES:-0}"; PHONON_SEED="${PHONON_SEED:-1}"
 LABELS="${LABELS:-}"                      # non-empty: select TSV rows by label (col 1), not alpha
 SFX=""; [ "$PHONONS" != 0 ] && SFX="_ph${PHONONS}"; [ "$THIN" != 5 ] && SFX="${SFX}_thin${THIN}"   # sim + recon dir suffix
+COH_EXP=""                            # [coherence] partial-coherence settings for the sim; any of them adds _coh
+for v in FOCAL_SPREAD ENERGY_SPREAD_EV CC_MM SOURCE_FWHM COHERENCE_SAMPLES; do
+    [ -n "${!v:-}" ] && COH_EXP="${COH_EXP},${v}=${!v}"
+done
+[ -n "$COH_EXP" ] && SFX="${SFX}_coh"
+KICK_ALL="${KICK_ALL:-0}"
 # (never `VAR=$([ test ] && echo x)`: a false test fails the substitution and set -e exits the script)
 PYBIN="${CONDA_ENV:-${SHARE:-}/phucrh/envs/abtem}/bin/python"
 # Tarball name to the second, tagged by alphas (+doses): submissions pasted together must not share one.
@@ -100,7 +111,7 @@ sim_job(){   # $1 dir $2 alpha $3 bin $4 c3 $5 c1 $6 mode(lab|Pb|Ti) [$7 aber_js
     # round trip on 2026-09-22 working out which simulation a failed recon had been waiting on.
     local jn="af_sim_$(basename "$dir" | sed 's/^sim_out_af_//')"
     local exp="ALL,JOB_DIR=${dir},SLICE_THICKNESS=${SLICE},SCAN_STEP=${ROW_STEP:-$STEP},CONVERGENCE=${alpha}"
-    exp="${exp},PHONONS=${PHONONS},PHONON_SIGMA=${PHONON_SIGMA},PER_SPECIES_SIGMA=${PER_SPECIES},PHONON_SEED=${PHONON_SEED}"
+    exp="${exp},PHONONS=${PHONONS},PHONON_SIGMA=${PHONON_SIGMA},PER_SPECIES_SIGMA=${PER_SPECIES},PHONON_SEED=${PHONON_SEED}${COH_EXP}"
     # a non-round row's JSON has commas, so it cannot ride in --export's list: run_sim.slurm reads it from
     # the environment (ALL) instead, as campaign/run_campaign.sh does for its json legs
     if [ -n "$aj" ] && [ "$aj" != "-" ]; then export ABERRATIONS_JSON="$aj"; else unset ABERRATIONS_JSON; fi
@@ -130,10 +141,11 @@ sim_job(){   # $1 dir $2 alpha $3 bin $4 c3 $5 c1 $6 mode(lab|Pb|Ti) [$7 aber_js
     sbatch --parsable --job-name="${jn}" --time="$(stime_for "$sb")" \
         --output="logs/af_sim_%j.out" --error="logs/af_sim_%j.err" --export="${exp}" sim/run_sim.slurm
 }
-noise_job(){ # $1 noiseless sim dir $2 noisy out dir $3 dose $4 seed -> jobid  (CPU; streamed, ~minutes)
-    local src="$1" out="$2" dose="$3" seed="$4"
+noise_job(){ # $1 noiseless sim dir $2 noisy out dir $3 dose $4 seed [$5 sim job to wait for] -> jobid  (CPU; ~minutes)
+    local src="$1" out="$2" dose="$3" seed="$4" dep="${5:-}"
     [ -x "${PYBIN}" ] || { echo "no abtem env python at ${PYBIN}" >&2; exit 1; }
-    sbatch --parsable --job-name="af_noise" --time=01:00:00 --mem=32G --cpus-per-task=2 \
+    local dep_arg=(); [ -n "$dep" ] && dep_arg=(--dependency="afterok:${dep}")
+    sbatch --parsable --job-name="af_noise" --time=01:00:00 --mem=32G --cpus-per-task=2 ${dep_arg[@]+"${dep_arg[@]}"} \
         --output="logs/af_noise_%j.out" --error="logs/af_noise_%j.err" \
         --wrap="'${PYBIN}' '${REPO_DIR}/sim/add_poisson_noise.py' --in-dir '${src}' --out-dir '${out}' --dose ${dose} --seed ${seed}"
 }
@@ -211,13 +223,21 @@ for a in $ROWS; do
     [ -n "${ROW_SIDE:-}" ] && line+="box=${ROW_SIDE} win=${ROW_WIN:-$WIN} step=${ROW_STEP:-$STEP} det=${ROW_DETMAX:-200} class=$(res_class "$bin") "
     for m in $MODES; do                       # MODES="Pb Ti" re-does only the PSF kernels
         D="${REPO_DIR}/sim_out_af_${leg}_${m}${SFX}"
-        if [ -n "$DOSES" ]; then               # step 2: Poisson copies of the EXISTING noiseless sim
-            [ -e "${D}/01/data_dp.hdf5" ] || { echo "  a${a} ${m}: ${D}/01/data_dp.hdf5 missing -- run the noiseless sim first" >&2; exit 1; }
+        if [ -n "$DOSES" ]; then               # step 2: Poisson copies of the noiseless sim
+            S=""
+            if [ ! -e "${D}/01/data_dp.hdf5" ]; then   # not there yet: simulate it in this submission, then noise it
+                [ "${RECON_ONLY:-0}" = "1" ] && { echo "  ${leg} ${m}: ${D}/01/data_dp.hdf5 missing and RECON_ONLY=1" >&2; exit 1; }
+                S=$(sim_job "$D" "$alpha" "$bin" "$c3" "$c1" "$m" "$aj"); SIM_DIRS+=("$D"); line+=" ${m}:sim=${S}"
+            fi
             case "$m" in lab) so=0;; Pb) so=1;; *) so=2;; esac
             for dose in $DOSES; do
                 DN="${D}_dose${dose}"
-                N=$(noise_job "$D" "$DN" "$dose" $(( DOSE_SEED + so )))
-                R=$(recon_job "${leg}_${m}${SFX}_dose${dose}" "$DN" "$bin" "$nl" "$N")
+                N=$(noise_job "$D" "$DN" "$dose" $(( DOSE_SEED + so )) "$S")
+                if [ "$KICK_ALL" = 1 ]; then
+                    R=$(kick_job "${leg}_${m}${SFX}_dose${dose}" "$DN" "$bin" "$nl" "$N" "$c1" "$c3")
+                else
+                    R=$(recon_job "${leg}_${m}${SFX}_dose${dose}" "$DN" "$bin" "$nl" "$N")
+                fi
                 RIDS+=("$R"); SIM_DIRS+=("$DN"); line+=" ${m}@${dose}=${N}>${R}"   # $DN, not $D: the
                 # noiseless original is the SOURCE for every other dose in this submission
             done
@@ -239,9 +259,13 @@ for a in $ROWS; do
             fi
             S=$(sim_job "$D" "$alpha" "$bin" "$c3" "$c1" "$m" "$aj")
         fi
-        R=$(recon_job "${leg}_${m}${SFX}" "$D" "$bin" "$nl" "$S")
+        if [ "$KICK_ALL" = 1 ]; then
+            R=$(kick_job "${leg}_${m}${SFX}" "$D" "$bin" "$nl" "$S" "$c1" "$c3")
+        else
+            R=$(recon_job "${leg}_${m}${SFX}" "$D" "$bin" "$nl" "$S")
+        fi
         RIDS+=("$R"); SIM_DIRS+=("$D"); line+=" ${m}=${R}"
-        if [ "$m" = lab ] && [ -n "$LABELS" ] && [[ " ${KICK_LABELS} " == *" ${leg} "* ]]; then
+        if [ "$KICK_ALL" != 1 ] && [ "$m" = lab ] && [ -n "$LABELS" ] && [[ " ${KICK_LABELS} " == *" ${leg} "* ]]; then
             K=$(kick_job "${leg}_kick${SFX}" "$D" "$bin" "$nl" "$S" "$c1" "$c3")
             RIDS+=("$K"); line+=" kick=${K}"
         fi

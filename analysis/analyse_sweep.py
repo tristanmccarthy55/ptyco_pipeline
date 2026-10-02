@@ -53,11 +53,12 @@ def newest(paths):
     return max(paths, key=os.path.getmtime) if paths else None
 
 
-def leg_dirs(root, label):
-    """{mode: recon dir}: recon_af_<label>_<mode>_NL<n>, the newest when several NL dirs exist."""
+def leg_dirs(root, label, suffix=""):
+    """{mode: recon dir}: recon_af_<label>_<mode><suffix>_NL<n>, the newest when several NL dirs exist. suffix is the
+    driver's dir tag after the mode (e.g. _ph16_coh_dose1e7 for phonons + partial coherence + a dose)."""
     out = {}
     for m in MODES:
-        d = newest(glob.glob(os.path.join(root, f"recon_af_{label}_{m}_NL*")))
+        d = newest(glob.glob(os.path.join(root, f"recon_af_{label}_{m}{suffix}_NL*")))
         if d:
             out[m] = d
     return out
@@ -101,6 +102,7 @@ def main():
     ap.add_argument("--out", required=True)
     ap.add_argument("--z-vacuum", type=float, default=4.0, help="the sims' Z_VACUUM (campaign: 4 A)")
     ap.add_argument("--python", default=sys.executable, help="interpreter for the pipeline CLIs")
+    ap.add_argument("--suffix", default="", help="the driver's dir tag after the mode, e.g. _ph16_coh_dose1e7")
     ap.add_argument("--grid-spacing", type=float, default=3.0,
                     help="the kernel grid's spacing (driver GRIDSP); extract_psf --min-sep, so noise between atoms is not a site")
     a = ap.parse_args()
@@ -112,8 +114,21 @@ def main():
 
     rows = []
     for label in a.labels:
-        row = dict(label=label, status="")
-        dirs = leg_dirs(a.root, label)
+        tag = label + a.suffix                 # every output of this label is named by label + suffix
+        row = dict(label=tag, status="")
+        dirs = leg_dirs(a.root, label, a.suffix)
+        # KICK_ALL: the lab leg itself started from a kicked probe (a real probe_initial.json beside it) -- report
+        # how close its recovered probe came back to the true one
+        pj = os.path.join(dirs.get("lab", ""), "01", "probe_initial.json")
+        if dirs.get("lab") and os.path.isfile(pj) and not os.path.islink(pj):
+            try:
+                import kick_probe
+                k = kick_probe.compare(dirs["lab"], os.path.join(a.out, "kick"))
+                row.update(ov_start=f"{k['ov_start']:.4f}")
+                if k.get("status") == "ok":
+                    row.update(ov_final=f"{k['ov_final']:.4f}", mode1_power=f"{k['mode_power'][0]:.3f}")
+            except Exception as e:
+                print(f"{tag}: probe comparison failed ({e})")
         h5s = {m: recon_h5(d) for m, d in dirs.items()}
         # phase images (depth sum, every slice, x-z) for every leg that has an h5 -- BEFORE triage, because the
         # legs that fail below are the ones most worth looking at; <out>/phase/recon_af_<label>_<mode>_NL<n>.png
@@ -129,7 +144,7 @@ def main():
             try:
                 g0 = geometry(dirs["lab"], h5s["lab"], a.z_vacuum)
                 figdata.save(h5s["lab"], a.gt, g0["dz_A"], g0["dx_A"], g0["scan_centre"],
-                             os.path.join(a.out, "figdata", label))
+                             os.path.join(a.out, "figdata", tag))
             except Exception as e:
                 print(f"{label}: figure data failed ({e})")
         missing = [m for m in MODES if not h5s.get(m)]
@@ -145,7 +160,7 @@ def main():
                    scan_centre="preset" if g["scan_centre"] is None else f"{g['scan_centre'][0]:g},{g['scan_centre'][1]:g}")
         psf = {}
         for el in ("Pb", "Ti"):
-            name = f"{el}_{label}"
+            name = f"{el}_{tag}"
             # the h5 itself, not the dir: extract_psf once took an engine checkpoint from the dir (presolve / old run)
             rc = run([a.python, extract, h5s[el], name, "--zdrop", str(g["zdrop"]), "--dx", f"{g['dx_A']:.6f}",
                       "--min-sep", f"{a.grid_spacing:g}",
@@ -155,7 +170,7 @@ def main():
                 row["status"] = (row["status"] + " " if row["status"] else "KERNEL FAILED:") + f" {el} (logs/extract_{name}.log)"
         if row["status"]:
             rows.append(row); print(f"{label}: {row['status']}"); continue
-        outd = os.path.join(a.out, f"atomfind_{label}")
+        outd = os.path.join(a.out, f"atomfind_{tag}")
         cmd = [a.python, finder, "--preset", "thin", "--recon", h5s["lab"], "--dz", f"{g['dz_A']:.6f}",
                "--data-dir", a.gt, "--single-atom-vol", psf["Pb"], "--ti-kernel-vol", psf["Ti"], "--out", outd,
                "--set", f"dx={g['dx_A']:.6f}"]
@@ -184,7 +199,7 @@ def main():
     # in this pass once lost a whole summary.csv).
     import kick_probe
     for label in a.labels:
-        kd = newest(glob.glob(os.path.join(a.root, f"recon_af_{label}_kick_NL*")))
+        kd = newest(glob.glob(os.path.join(a.root, f"recon_af_{label}_kick{a.suffix}_NL*")))
         if not kd:
             continue
         row = dict(label=f"{label}_kick", status="")
@@ -207,7 +222,7 @@ def main():
             row["wrapped"], row["phase_std"] = f"{hh[0]:.2e}", f"{hh[1]:.3f}"
             if hh[0] > triage_recon.WRAP_FRAC_MAX or hh[1] > triage_recon.STD_MAX:
                 row["status"] = "SATURATED"; rows.append(row); print(f"{label}_kick: SATURATED"); continue
-            psf = {el: os.path.join(a.out, "psf", f"psf_{el}_{label}_vol.npy") for el in ("Pb", "Ti")}
+            psf = {el: os.path.join(a.out, "psf", f"psf_{el}_{label}{a.suffix}_vol.npy") for el in ("Pb", "Ti")}
             if not all(os.path.exists(v) for v in psf.values()):
                 row["status"] = "NO KERNELS (the label's Pb/Ti legs)"; rows.append(row); print(f"{label}_kick: {row['status']}"); continue
             g = geometry(kd, kh, a.z_vacuum)

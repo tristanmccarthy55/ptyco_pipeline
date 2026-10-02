@@ -101,6 +101,19 @@ IO_BLOCK        = 256      # positions per block when writing / checking data_dp
 # Cost scales ~linearly with N_PHONONS. sigma is the rms 1-D displacement (~0.08 Å
 # is a sensible room-temperature value for these elements).
 N_PHONONS      = 0        # 0 = coherent; 8-16 for a realistic TDS sim
+# --- partial coherence (2026-10-02) ---
+# Temporal: the gun's energy spread through the objective's Cc is a Gaussian spread of DEFOCUS, rms FOCAL_SPREAD_A.
+# Spatial: the demagnified source is a Gaussian of FWHM SOURCE_SIZE_FWHM_A, i.e. a Gaussian spread of PROBE POSITION.
+# Both are incoherent sums over intensities, sampled JOINTLY with the frozen phonons: configuration i gets its own
+# displaced atoms, its own defocus offset (stratified Gaussian quantiles, shuffled, rescaled to exactly the rms) and
+# its own source offset (the whole scan grid shifted; the RECORDED positions stay nominal, as in an experiment).
+# Averaged over configurations each pattern carries all three averages at no cost beyond the phonons. Without
+# phonons, COHERENCE_SAMPLES configurations of the undisplaced crystal are used. The true probe written for the
+# reconstruction stays the central coherent one.
+FOCAL_SPREAD_A     = 0.0  # rms defocus spread [A]: Cc (sigma_E / E) (1 + E/E0) / (1 + E/2E0), sigma_E = FWHM / 2.355
+SOURCE_SIZE_FWHM_A = 0.0  # effective (demagnified) source FWHM [A]; Gaussian
+COHERENCE_SAMPLES  = 16   # configurations when phonons are off
+COHERENCE_SEED     = 7
 PHONON_SIGMA_A = 0.08     # abtem `sigmas` [Å] (scalar: same for all species)
 PHONON_SEED    = 1
 # Per-species thermal displacements at ROOM TEMPERATURE. abtem's `sigmas` is the 3-D rms
@@ -416,16 +429,19 @@ def _defocus():
     return DEFOCUS_A if DEFOCUS_A is not None else -OVERFOCUS_A
 
 
-def build_probe(potential):
+def build_probe(potential, ddf=0.0, quiet=False):
     """Probe on the full simulation grid, used for the scan (accurate multislice).
 
     With --aberrated the higher-order corrector residuals (ABERRATIONS) are added on top of
-    the defocus, so the simulated data carries them; abTEM combines defocus= with aberrations=."""
-    kw = dict(energy=ENERGY_EV, semiangle_cutoff=CONVERGENCE_MRAD, defocus=_defocus(), device=DEVICE)
+    the defocus, so the simulated data carries them; abTEM combines defocus= with aberrations=.
+    ddf [A] offsets the defocus (one sample of the focal spread, partial temporal coherence)."""
+    kw = dict(energy=ENERGY_EV, semiangle_cutoff=CONVERGENCE_MRAD, defocus=_defocus() + ddf, device=DEVICE)
     if ABERRATED:
         kw["aberrations"] = ABERRATIONS
     probe = abtem.Probe(**kw)
     probe.grid.match(potential)
+    if quiet:
+        return probe
     print(f"[probe] semiangle = {CONVERGENCE_MRAD:.0f} mrad, "
           f"abTEM defocus = {_defocus():+.1f} Å (overfocus {OVERFOCUS_A:.1f} Å: "
           f"crossover before entrance surface)")
@@ -585,6 +601,57 @@ def _scan_one_config_batched(probe, potential, scan, detector, dtype=np.float64)
     return out, n_b, n_u, n_c
 
 
+def coherence_offsets(n, seed=None):
+    """(defocus offsets [A], (n, 2) source offsets [A]) for n configurations: the defocus offsets are the n stratified
+    quantiles of a Gaussian, shuffled and rescaled to exactly FOCAL_SPREAD_A rms; the source offsets are Gaussian
+    draws, centred and rescaled per axis to exactly the source's rms (FWHM / 2.355) -- so neither the mean focus nor
+    the mean probe position moves, and the spreads are what was asked for even at n = 16."""
+    from scipy.stats import norm
+    rng = np.random.default_rng(COHERENCE_SEED if seed is None else seed)
+    ddf = np.zeros(n); dr = np.zeros((n, 2))
+    if FOCAL_SPREAD_A > 0 and n > 1:
+        q = norm.ppf((np.arange(n) + 0.5) / n); q = q / q.std()
+        ddf = rng.permutation(q) * FOCAL_SPREAD_A
+    if SOURCE_SIZE_FWHM_A > 0 and n > 1:
+        s = SOURCE_SIZE_FWHM_A / (2 * np.sqrt(2 * np.log(2)))
+        d = rng.standard_normal((n, 2)); d -= d.mean(0); d /= d.std(0)
+        dr = d * s
+    return ddf, dr
+
+
+def _scan_partially_coherent(probe, atoms, scan, detector, scan_one):
+    """Phonons, focal spread and source size sampled jointly, one configuration at a time (see FOCAL_SPREAD_A)."""
+    n = N_PHONONS if N_PHONONS and N_PHONONS > 0 else COHERENCE_SAMPLES
+    if N_PHONONS and N_PHONONS > 0:
+        sigmas = PHONON_SIGMA_BY_SPECIES if PER_SPECIES_SIGMA else PHONON_SIGMA_A
+        configs = list(abtem.FrozenPhonons(atoms, num_configs=n, sigmas=sigmas, seed=PHONON_SEED))
+        print(f"[phonons] {n} configs, sigma={sigmas} Å ({'per-species' if PER_SPECIES_SIGMA else 'scalar'})")
+    else:
+        configs = [atoms] * n
+        print(f"[phonons] OFF; {n} configurations of the undisplaced crystal for the coherence average")
+    ddf, dr = coherence_offsets(n)
+    print(f"[coherence] focal spread rms {FOCAL_SPREAD_A:.3f} A (samples {np.round(np.sort(ddf), 2).tolist()}); "
+          f"source FWHM {SOURCE_SIZE_FWHM_A:.3f} A (offsets rms x {dr[:, 0].std():.3f}, y {dr[:, 1].std():.3f} A)")
+    base = np.asarray(scan.get_positions()).reshape(-1, 2)      # y-fastest; recorded positions stay these
+    acc = None
+    for i, cfg in enumerate(configs):
+        pot = build_potential(cfg, announce=(i == 0))
+        pr = build_probe(pot, ddf=float(ddf[i]), quiet=True)
+        sc = abtem.CustomScan(base + dr[i]) if SOURCE_SIZE_FWHM_A > 0 else scan
+        arr_i, n_b, n_u, n_c = scan_one(pr, pot, sc, detector)
+        if acc is None:
+            acc = arr_i
+        else:
+            acc += arr_i                                          # in place: one 26 GB buffer, not three, at 1419 px
+        del arr_i
+        print(f"[coherence] config {i + 1}/{n}: defocus {ddf[i]:+.2f} A, source offset "
+              f"({dr[i, 0]:+.3f}, {dr[i, 1]:+.3f}) A", flush=True)
+    arr = (acc / n).astype(np.float32)
+    print(f"[bin] detector {n_u} -> crop {n_c} -> {BIN_FACTOR}×{BIN_FACTOR} "
+          f"{'point-sampled' if DETECTOR_SAMPLING == 'point' else 'summed'} -> N_b = {n_b}")
+    return arr
+
+
 def run_scan_binned(probe, atoms, scan):
     """Scan -> binned (M, N_b, N_b). Frozen phonons are processed ONE CONFIG AT A TIME
     (build that config's potential, scan, bin, accumulate the incoherent average), so
@@ -592,6 +659,8 @@ def run_scan_binned(probe, atoms, scan):
     for the 16-config OOM. Same total work as the ensemble path; just memory-bounded."""
     scan_one = _scan_one_config_batched if REGION_SIDE_A else _scan_one_config   # [region] bounded GPU memory
     detector = abtem.PixelatedDetector(max_angle=DETECTOR_RECORD_MRAD or DETECTOR_MAX_ANGLE_MRAD)
+    if FOCAL_SPREAD_A > 0 or SOURCE_SIZE_FWHM_A > 0:
+        return _scan_partially_coherent(probe, atoms, scan, detector, scan_one)
     if N_PHONONS and N_PHONONS > 0:
         sigmas = PHONON_SIGMA_BY_SPECIES if PER_SPECIES_SIGMA else PHONON_SIGMA_A
         print(f"[phonons] {N_PHONONS} configs, sigma={sigmas} Å "
@@ -771,6 +840,10 @@ def write_driver_geometry(n_b: int, box_a: float, beam_thickness_a: float,
         "n_phonons": int(N_PHONONS),
         "phonon_sigma_A": float(PHONON_SIGMA_A),
         "phonon_per_species": int(PER_SPECIES_SIGMA),
+        "focal_spread_A": float(FOCAL_SPREAD_A),
+        "source_size_fwhm_A": float(SOURCE_SIZE_FWHM_A),
+        "coherence_samples": int(N_PHONONS if N_PHONONS and N_PHONONS > 0 else
+                                 (COHERENCE_SAMPLES if FOCAL_SPREAD_A > 0 or SOURCE_SIZE_FWHM_A > 0 else 0)),
         "ADU": 1.0,
     }
     savemat(str(out_dir / "sim_meta.mat"), {"meta": meta})
@@ -791,6 +864,7 @@ def write_driver_geometry(n_b: int, box_a: float, beam_thickness_a: float,
 # MAIN
 # ======================================================================
 def main(argv=None) -> int:
+    global FOCAL_SPREAD_A, SOURCE_SIZE_FWHM_A, COHERENCE_SAMPLES
     global DEVICE, SLICE_THICKNESS_A, SCAN_STEP_A, DOSE_E, N_PHONONS, PHONON_SIGMA_A, PER_SPECIES_SIGMA, PHONON_SEED, SCAN_WINDOW_A, ABERRATED, PROBE_INITIAL_ABERRATED, BIN_FACTOR, DETECTOR_SAMPLING, REGION_SIDE_A, DETECTOR_RECORD_MRAD, SCAN_CENTER_X_A, SCAN_CENTER_Y_A, CONVERGENCE_MRAD, DEFOCUS_A, NOMINAL_DEFOCUS_A, ABERRATIONS, RECON_FULL_BOX, Z_VACUUM_A, GRID_BOX_Z
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--test", action="store_true",
@@ -838,6 +912,15 @@ def main(argv=None) -> int:
                     help="use per-species RMS thermal displacements (Pb/Sr/Ti/O, RT) "
                          "instead of one --phonon-sigma for all atoms — more faithful TDS.")
     ap.add_argument("--phonon-seed", type=int, default=PHONON_SEED)
+    ap.add_argument("--focal-spread", type=float, default=None,
+                    help="[coherence] rms defocus spread [A] (partial temporal coherence)")
+    ap.add_argument("--energy-spread-ev", type=float, default=None,
+                    help="[coherence] gun energy spread FWHM [eV]; with --cc-mm gives the focal spread")
+    ap.add_argument("--cc-mm", type=float, default=None, help="[coherence] objective chromatic aberration Cc [mm]")
+    ap.add_argument("--source-size-fwhm", type=float, default=0.0,
+                    help="[coherence] effective source FWHM [A] (partial spatial coherence)")
+    ap.add_argument("--coherence-samples", type=int, default=COHERENCE_SAMPLES,
+                    help="[coherence] configurations when phonons are off")
     ap.add_argument("--scan-tile", default=None,
                     help='HPC tiling: run only scan x-band I of N, as "I/N" (0-indexed). '
                          'Each tile is an independent job; sim/merge_tiles.py reassembles '
@@ -901,6 +984,14 @@ def main(argv=None) -> int:
     PHONON_SIGMA_A = args.phonon_sigma
     PER_SPECIES_SIGMA = args.per_species_sigma
     PHONON_SEED = args.phonon_seed
+    if args.focal_spread is not None:
+        FOCAL_SPREAD_A = float(args.focal_spread)
+    elif args.energy_spread_ev is not None and args.cc_mm is not None:
+        e0 = 510998.95; E = ENERGY_EV
+        FOCAL_SPREAD_A = args.cc_mm * 1e7 * (args.energy_spread_ev / (2 * np.sqrt(2 * np.log(2))) / E) \
+            * (1 + E / e0) / (1 + E / (2 * e0))
+    SOURCE_SIZE_FWHM_A = float(args.source_size_fwhm)
+    COHERENCE_SAMPLES = int(args.coherence_samples)
     SCAN_WINDOW_A = args.scan_window
     ABERRATED = args.aberrated
     PROBE_INITIAL_ABERRATED = (args.probe_initial == "true")
