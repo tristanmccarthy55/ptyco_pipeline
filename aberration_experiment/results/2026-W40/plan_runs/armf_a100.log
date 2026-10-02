@@ -1,0 +1,2 @@
+  alpha=100  C1=-1732.4A  C3=-55.40um  d50/d90/d99=70.4/208.2/374.1  window=105 loss=23.06% (outside region 7.26%) BIN=2 det=133 N=1419  (search box 1090 A, 12224 px; start -802 A / -40.05 um)
+wrote aberration_experiment/results/2026-W40/plan_runs/armf_a100.tsv

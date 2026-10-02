@@ -25,7 +25,7 @@ newer.
 - **RUNNING ON BLYTHE (2026-10-02 12:00)** -- block 2 (armf_a040..a090, kicks 40/60/80): pack 1301450, analysis 1301451
   (pulled the analysis fix first). Hail mary: sims 1301883/86/89 (16 configs x ~17.5 min), noise 1301884/87/90, kicked
   recons 1301885/88/91, pack 1301892, analysis 1301893. Block-1 pack 1296796 was HELD -- check it was released.
-  NOT SUBMITTED: armf_a100 -- its plan runs locally, output aberration_experiment/results/2026-W40/plan_runs/armf_a100.*
+  armf_a100 PLANNED 2026-10-02 (d90 208, d99 374 A; 23 % outside 105 A, 7.3 % outside the 210 A region -- the sim wraps it) and HANDED OVER (block in chat; analysis tarball analysis_armf_a100_2*.tgz). Was: its plan ran locally, output aberration_experiment/results/2026-W40/plan_runs/armf_a100.*
   (the scratchpad dies with a session; write plans here). Next: append its row to ceos_sweep.tsv under the BLOCK 2 header
   (the row line in armf_a100.tsv), dry-run, submit LABELS=armf_a100 KICK_LABELS=armf_a100 GROUPING="32;16" RTIME=36:00:00.
 - **HAIL MARY (2026-10-02): armf_a080 with everything real** -- PHONONS=16 PER_SPECIES=1, partial coherence (ARM200F
