@@ -22,6 +22,15 @@ newer.
   100 18.29 / 1.08; **calibration `ceosopt_a080_f20_b4`** (the working 80 mrad probe at BIN 4 = 52.5 Å, N 709) loses 5.54 %
   — about ARM 80's loss, on a probe that reconstructs at 105 Å (100/67/75 %, 0.48 Å). Est. 1–8 h per recon.
   Judge on the object and the residual, and look at the phase images (`<out>/phase/`).
+- **HAIL MARY (2026-10-02): armf_a080 with everything real** -- PHONONS=16 PER_SPECIES=1, partial coherence (ARM200F
+  cold FEG 0.3 eV FWHM -- 0.26-0.4 eV measured for this gun; STEM objective Cc 1.4 mm (JEM-ARM200cF spec) -> 7.29 A rms
+  focal spread at 300 kV = 1.19 waves rms at the 80 mrad edge; source 40 pm FWHM, the cold-FEG mid estimate of Quigley et
+  al. 2021), DOSES=1e7 e/A^2, and KICK_ALL=1 (lab, Pb, Ti all from C1/C3/A1 x 1.05, probe released, 4 modes, "8;4", 48 h).
+  Coherence is sampled jointly with the phonons (simulate_4dstem `_scan_partially_coherent`). Dirs
+  `*_ph16_coh_dose1e7`, analysis SUFFIX=_ph16_coh_dose1e7. Risk: probe update on the single-plane Pb/Ti grids may not
+  hold -- if the kernels fail, block 2's known-probe armf_a080 kernels are the fallback for atomfind.
+  The user, on species: below ~70 mrad species labels are not expected to be reliable -- that is the point of the sweep.
+  First kicked result: armf_a040_kick start overlap 0.985 -> recovered 0.998, mode 1 = 97 % of the power.
 - **BLOCK 2 = THE ARM SET WE MOVE FORWARD WITH (the user, 2026-10-01; replaces the CEOS-approx data going forward).** ARM200F
   tableau at 300 kV in lengths, the knobs the user is SURE the ARM's CEOS tuning moves set for the smallest probe: C1, C3,
   B2 (against B4) and A1 (against S3) -- `plan_probe.py --arm --fight B2 A1` (90/100 --quick). A2, S3, A3 held at run3
