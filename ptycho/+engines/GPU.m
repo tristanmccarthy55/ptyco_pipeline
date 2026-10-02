@@ -80,7 +80,9 @@ function [p_out, fdb] = GPU(p)
         % 64 at 1282 px x 28 slices) ran ~8000 "Failed due to GPU issue" retries over 17 h and never reached iteration
         % 1. Now: at most GPU_MAX_RETRY out-of-memory retries and GPU_MAX_WAIT_S of waiting for free memory, then an
         % error, so the job ends at once and the log says to lower GROUPING.
-        n_retry = 0; t_wait0 = tic; 
+        % (waited counts only the pauses below: the solver runs inside this loop, so a clock started here would
+        % charge solver time as waiting and end a long run at its first wait after a mid-run retry)
+        n_retry = 0; waited = 0; 
         max_retry = 3;   e = getenv('GPU_MAX_RETRY');  if ~isempty(e); max_retry = str2double(e); end
         max_wait = 600;  e = getenv('GPU_MAX_WAIT_S'); if ~isempty(e); max_wait = str2double(e); end
         while  param.use_gpu
@@ -163,13 +165,14 @@ function [p_out, fdb] = GPU(p)
                 error('Too large memory requirements for selected GPU, try to reduce grouping')
             end
             % otherwise keep waiting -- but not forever
-            if toc(t_wait0) > max_wait
+            if waited >= max_wait
                 error('GPU:waitExhausted', ['required %.1f GB never became free in %.0f s (grouping %g): giving up -- ', ...
-                      'lower GROUPING ("g_presolve;g_full")'], required_mem / 1e9, toc(t_wait0), param.grouping);
+                      'lower GROUPING ("g_presolve;g_full")'], required_mem / 1e9, waited, param.grouping);
             end
             wait_time = 5;
             warning('Low memory on GPU %i, waiting %is ...',gpu_id, wait_time)
             pause(wait_time)
+            waited = waited + wait_time;
             
         end
         if ~param.use_gpu

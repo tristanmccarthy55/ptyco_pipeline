@@ -842,8 +842,9 @@ def write_driver_geometry(n_b: int, box_a: float, beam_thickness_a: float,
         "phonon_per_species": int(PER_SPECIES_SIGMA),
         "focal_spread_A": float(FOCAL_SPREAD_A),
         "source_size_fwhm_A": float(SOURCE_SIZE_FWHM_A),
-        "coherence_samples": int(N_PHONONS if N_PHONONS and N_PHONONS > 0 else
-                                 (COHERENCE_SAMPLES if FOCAL_SPREAD_A > 0 or SOURCE_SIZE_FWHM_A > 0 else 0)),
+        # configurations the coherence average used (= the phonon configs when both are on); 0 = fully coherent
+        "coherence_samples": int((N_PHONONS if N_PHONONS and N_PHONONS > 0 else COHERENCE_SAMPLES)
+                                 if FOCAL_SPREAD_A > 0 or SOURCE_SIZE_FWHM_A > 0 else 0),
         "ADU": 1.0,
     }
     savemat(str(out_dir / "sim_meta.mat"), {"meta": meta})
