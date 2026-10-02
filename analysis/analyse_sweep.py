@@ -171,8 +171,17 @@ def main():
         print(f"{label}: ok | Pb/Ti/O bulk {pct('Pb_recall_bulk')}/{pct('Ti_recall_bulk')}/{pct('O_recall_bulk')} % "
               f"| z-RMS {float(r['z_rms']):.3f} A | precision {float(r['precision']):.3f}", flush=True)
 
+    def write_summary():
+        path = os.path.join(a.out, "summary.csv")
+        with open(path, "w", newline="") as fh:
+            w = csv.DictWriter(fh, fieldnames=COLS, extrasaction="ignore"); w.writeheader(); w.writerows(rows)
+        return path
+    write_summary()                    # the known-probe labels are safe on disk before any kick leg is touched
+
     # KICK legs: the probe released from a kicked start -- did it come back to the true probe, and what did the object
-    # pay? Same kernels as the label's known-probe legs (the matched PSF of the true probe is the reference).
+    # pay? Same kernels as the label's known-probe legs (the matched PSF of the true probe is the reference). Every kick
+    # leg is fenced: a failure here is reported in its row and never costs the summary (2026-10-02: an unpacking error
+    # in this pass once lost a whole summary.csv).
     import kick_probe
     for label in a.labels:
         kd = newest(glob.glob(os.path.join(a.root, f"recon_af_{label}_kick_NL*")))
@@ -186,40 +195,41 @@ def main():
                 row.update(ov_final=f"{k['ov_final']:.4f}", mode1_power=f"{k['mode_power'][0]:.3f}")
         except Exception as e:
             print(f"{label}_kick: probe comparison failed ({e})")
-        kh = recon_h5(kd)
-        if not kh:
-            row["status"] = "NO H5"; rows.append(row); print(f"{label}_kick: NO H5"); continue
         try:
-            render_phase.render(kh, os.path.join(a.out, "phase"), a.z_vacuum, 27.525)
+            kh = recon_h5(kd)
+            if not kh:
+                row["status"] = "NO H5"; rows.append(row); print(f"{label}_kick: NO H5"); continue
+            try:
+                render_phase.render(kh, os.path.join(a.out, "phase"), a.z_vacuum, 27.525)
+            except Exception as e:
+                print(f"{label}_kick: phase image failed ({e})")
+            hh = triage_recon.object_health(kh)            # (wrapped fraction, phase std, layers)
+            row["wrapped"], row["phase_std"] = f"{hh[0]:.2e}", f"{hh[1]:.3f}"
+            if hh[0] > triage_recon.WRAP_FRAC_MAX or hh[1] > triage_recon.STD_MAX:
+                row["status"] = "SATURATED"; rows.append(row); print(f"{label}_kick: SATURATED"); continue
+            psf = {el: os.path.join(a.out, "psf", f"psf_{el}_{label}_vol.npy") for el in ("Pb", "Ti")}
+            if not all(os.path.exists(v) for v in psf.values()):
+                row["status"] = "NO KERNELS (the label's Pb/Ti legs)"; rows.append(row); print(f"{label}_kick: {row['status']}"); continue
+            g = geometry(kd, kh, a.z_vacuum)
+            row.update(alpha=g["alpha"], NL=g["NL"], dx_A=f"{g['dx_A']:.5f}", dz_A=f"{g['dz_A']:.4f}", zdrop=g["zdrop"])
+            outd = os.path.join(a.out, f"atomfind_{label}_kick")
+            cmd = [a.python, finder, "--preset", "thin", "--recon", kh, "--dz", f"{g['dz_A']:.6f}",
+                   "--data-dir", a.gt, "--single-atom-vol", psf["Pb"], "--ti-kernel-vol", psf["Ti"], "--out", outd,
+                   "--set", f"dx={g['dx_A']:.6f}"]
+            if g["scan_centre"] is not None:
+                cmd += ["--set", f"scan_center_xy={g['scan_centre'][0]:g},{g['scan_centre'][1]:g}"]
+            rc = run(cmd, os.path.join(a.out, "logs", f"atomfind_{label}_kick.log"))
+            if rc or not os.path.exists(os.path.join(outd, "report.json")):
+                row["status"] = f"ATOMFIND FAILED (logs/atomfind_{label}_kick.log)"; rows.append(row); continue
+            r = relaxation_ladder.ladder_row(outd, "-", label + "_kick", "", None, int(round(g["alpha"])))
+            row.update(status="ok", **{k_: r.get(k_) for k_ in COLS if k_ in r and k_ not in ("label", "alpha")})
+            rows.append(row)
+            print(f"{label}_kick: ok | probe overlap start {row.get('ov_start')} -> {row.get('ov_final')} | "
+                  f"z-RMS {float(r['z_rms']):.3f} A", flush=True)
         except Exception as e:
-            print(f"{label}_kick: phase image failed ({e})")
-        wrap, std = triage_recon.object_health(kh)
-        row["wrapped"], row["phase_std"] = f"{wrap:.2e}", f"{std:.3f}"
-        if wrap > triage_recon.WRAP_FRAC_MAX or std > triage_recon.STD_MAX:
-            row["status"] = "SATURATED"; rows.append(row); print(f"{label}_kick: SATURATED"); continue
-        psf = {el: os.path.join(a.out, "psf", f"psf_{el}_{label}_vol.npy") for el in ("Pb", "Ti")}
-        if not all(os.path.exists(v) for v in psf.values()):
-            row["status"] = "NO KERNELS (the label's Pb/Ti legs)"; rows.append(row); print(f"{label}_kick: {row['status']}"); continue
-        g = geometry(kd, kh, a.z_vacuum)
-        row.update(alpha=g["alpha"], NL=g["NL"], dx_A=f"{g['dx_A']:.5f}", dz_A=f"{g['dz_A']:.4f}", zdrop=g["zdrop"])
-        outd = os.path.join(a.out, f"atomfind_{label}_kick")
-        cmd = [a.python, finder, "--preset", "thin", "--recon", kh, "--dz", f"{g['dz_A']:.6f}",
-               "--data-dir", a.gt, "--single-atom-vol", psf["Pb"], "--ti-kernel-vol", psf["Ti"], "--out", outd,
-               "--set", f"dx={g['dx_A']:.6f}"]
-        if g["scan_centre"] is not None:
-            cmd += ["--set", f"scan_center_xy={g['scan_centre'][0]:g},{g['scan_centre'][1]:g}"]
-        rc = run(cmd, os.path.join(a.out, "logs", f"atomfind_{label}_kick.log"))
-        if rc or not os.path.exists(os.path.join(outd, "report.json")):
-            row["status"] = f"ATOMFIND FAILED (logs/atomfind_{label}_kick.log)"; rows.append(row); continue
-        r = relaxation_ladder.ladder_row(outd, "-", label + "_kick", "", None, int(round(g["alpha"])))
-        row.update(status="ok", **{k_: r.get(k_) for k_ in COLS if k_ in r and k_ not in ("label", "alpha")})
-        rows.append(row)
-        print(f"{label}_kick: ok | probe overlap start {row.get('ov_start')} -> {row.get('ov_final')} | "
-              f"z-RMS {float(r['z_rms']):.3f} A", flush=True)
+            row["status"] = f"KICK ANALYSIS FAILED: {type(e).__name__}: {e}"; rows.append(row); print(f"{label}_kick: {row['status']}")
 
-    path = os.path.join(a.out, "summary.csv")
-    with open(path, "w", newline="") as fh:
-        w = csv.DictWriter(fh, fieldnames=COLS, extrasaction="ignore"); w.writeheader(); w.writerows(rows)
+    path = write_summary()
     print(f"wrote {path} ({sum(r.get('status') == 'ok' for r in rows)} of {len(rows)} labels ok)")
     return 0 if all(r.get("status") == "ok" for r in rows) else 1
 
