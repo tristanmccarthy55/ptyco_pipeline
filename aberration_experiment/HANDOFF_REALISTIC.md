@@ -25,6 +25,8 @@ newer.
 - **RUNNING ON BLYTHE (2026-10-02 12:00)** -- block 2 (armf_a040..a090, kicks 40/60/80): pack 1301450, analysis 1301451
   (pulled the analysis fix first). Hail mary: sims 1301883/86/89 (16 configs x ~17.5 min), noise 1301884/87/90, kicked
   recons 1301885/88/91, pack 1301892, analysis 1301893. Block-1 pack 1296796 was HELD -- check it was released.
+  (12:05 commit 15203bc came from a SECOND Claude session still open since 2026-10-01 23:36; armf_a100's job ids were
+  given there, not recorded here -- ask the user for them.)
   armf_a100 PLANNED 2026-10-02 (d90 208, d99 374 A; 23 % outside 105 A, 7.3 % outside the 210 A region -- the sim wraps it) and HANDED OVER (block in chat; analysis tarball analysis_armf_a100_2*.tgz). Was: its plan ran locally, output aberration_experiment/results/2026-W40/plan_runs/armf_a100.*
   (the scratchpad dies with a session; write plans here). Next: append its row to ceos_sweep.tsv under the BLOCK 2 header
   (the row line in armf_a100.tsv), dry-run, submit LABELS=armf_a100 KICK_LABELS=armf_a100 GROUPING="32;16" RTIME=36:00:00.
@@ -34,7 +36,22 @@ newer.
   al. 2021), DOSES=1e7 e/A^2, and KICK_ALL=1 (lab, Pb, Ti all from C1/C3/A1 x 1.05, probe released, 4 modes, "8;4", 48 h).
   Coherence is sampled jointly with the phonons (simulate_4dstem `_scan_partially_coherent`). Dirs
   `*_ph16_coh_dose1e7`, analysis SUFFIX=_ph16_coh_dose1e7. Risk: probe update on the single-plane Pb/Ti grids may not
-  hold -- if the kernels fail, block 2's known-probe armf_a080 kernels are the fallback for atomfind.
+  hold -- if the kernels fail, block 2's known-probe armf_a080 kernels are the fallback for atomfind:
+  `PSF_DIR=$(ls -d $SHARE/phucrh/analysis_armf_a040-armf_a050-armf_a060-*/psf | tail -1) PSF_TAG=armf_a080 LABELS=armf_a080
+  SUFFIX=_ph16_coh_dose1e7 GT_REGION=210 bash campaign/run_analysis.sh` (2cf4204; tarball `..._kern-armf_a080_<ts>.tgz`;
+  those kernels are NOT from the lab leg's operator -- say so beside any number).
+  **Code check of the hail-mary chain (2026-10-02 afternoon, all local CPU tests):** the configuration average equals a
+  direct abTEM reference (each phonon config with its own defocus and its own shifted CustomScan) to 1.1e-6 on the
+  batched region path (batch boundaries inside the scan) and 4e-8 on the lazy path; `build_probe(pot, ddf)` differs from
+  the central probe by exactly pi lambda ddf k^2 with the full armf_a080 tableau on; 0.3 eV + Cc 1.4 mm -> 7.294 A in
+  sim_meta; recorded positions identical to a coherent run; the true probe written is the central coherent one (shape
+  overlap 1 - 2e-13); the DOSES chain (sim -> noise afterok -> kick afterok), CLEANDATA (noiseless AND noisy dirs),
+  PROBE_SCALE in the environment, make_probe's C1 convention (abTEM defocus, x 1.05) and the noise step's links
+  (aberrations.json, probe_initial_true.mat) all read right. Fixed: GPU.m's 600 s wait clock counted solver time
+  (503309c); sim_meta coherence_samples now 0 when coherent. **Reading the kick result with coherence on:** kick_probe
+  compares mode 1 with the CENTRAL coherent probe, which is not the mixed state's dominant mode (1.19 waves rms of focal
+  spread at the edge), so ov_final < 1 even for a perfect recovery -- compare with the block-2 coherent armf_a080 kick
+  and read the mode powers, do not read ov_final against 1. (A mixed-state reference was not computed: blocked.)
   The user, on species: below ~70 mrad species labels are not expected to be reliable -- that is the point of the sweep.
   First kicked result: armf_a040_kick start overlap 0.985 -> recovered 0.998, mode 1 = 97 % of the power.
 - **BLOCK 2 = THE ARM SET WE MOVE FORWARD WITH (the user, 2026-10-01; replaces the CEOS-approx data going forward).** ARM200F
