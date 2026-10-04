@@ -46,6 +46,20 @@ newer.
   the probe far worse than the kick -- the outer search (C1 search precedent: +-1-3 A = 0.2-0.5 waves at 80) is required.
   **User rule from 2026-10-04 (memory probe-update-always-on): probe update ON in every recon; fixed probe only as a side
   control; method = outer search then probe update + modes; the 80 mrad hail mary passes or fails on the refined kick.**
+- **BLOCK 3 (built 045ed51, handed over 2026-10-04 evening; ids to record when the user pastes them).** Three submissions:
+  (1) HM2 = the hail-mary physics re-simulated (raw data deleted before; CLEANDATA=0 now, ~117 GB kept for re-runs) at
+  1e7 AND 1e8: per dose the fixed-probe twins (_fixed, lab/Pb/Ti, 200 it), the outer search on the lab data (7 x 7 grid,
+  C1 and C3 x 0.91..1.09 in 3 % steps of the KICKED values -- the truth sits at 1/1.05 = 0.952, inside -- fixed probe,
+  50 it, job array, 88G), select_trial.py -> search_af_<leg>/search_best.{json,txt,png}, then the refined kicks (_rk,
+  lab/Pb/Ti from the lab's answer, 4 modes, 500 it, "8;4", ~37 h). Tarballs atomfind_results_armf_a080_dose1e7-1e8_ph16_coh_
+  <ts> + analyses analysis_armf_a080_ph16_coh_dose1e{7,8}_{rk,fixed}_<ts>. (2) coherent armf_a080 kicks for iterations vs
+  modes: _long_m3 (3 modes, 500 it, "8;4") and _long_m6 (6 modes, 250 it, "4;2" -- 6 x 500 would not fit 48 h); analysed
+  with block 2's known-probe kernels (_kern-armf_a080). (3) window test armf_a080_b4 / _b3 (fixed, lab/Pb/Ti).
+  TRIAGE: search_best.json (status, edge flags; f_c1/f_c3 vs sim_record_only 0.952), search_surface.png; the rk legs'
+  kick/*.json ov_start = how close the SEARCH got, ov_final = after refinement; mode powers; phase images; compare _rk with
+  _fixed at the same dose. If the rk Pb/Ti kernels fail, the matched-physics fallback is the _fixed legs' kernels:
+  PSF_DIR=<analysis_..._fixed_<ts>/psf> PSF_TAG=armf_a080_ph16_coh_dose1e7_fixed. At 1e7 the residual is shot-noise
+  dominated (~1.2 e/px): if the 1e7 surface is flat and 1e8's is not, the search needs the higher dose.
 
 - **The user's rule (2026-09-30, [memory: dense-scan-not-big-window])**: large probes need dense scan points, not bigger
   windows, regions or smaller fields. 20 Å at 0.5 Å (1600 positions) everywhere, never cut to 10–15 Å; denser (0.4 Å,
