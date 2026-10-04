@@ -461,7 +461,9 @@ def _print_verdict(reports, frep, frep_blind, frep_spike, frep_pkraw, frep_pkrl,
         cf = frep["confusion"]
         offd = sum(cf[f"{a}->{b}"] for a in (82, 22, 8) for b in (82, 22, 8) if a != b)
         diag = sum(cf[f"{a}->{a}"] for a in (82, 22, 8))
-        print(f"  species confusion (found->matched GT), off-diagonal {offd}/{offd+diag} = {offd/(offd+diag):.1%}:")
+        # max(.., 1): a run that matched nothing (e.g. a failed kicked-probe recon) prints 0/0 instead of crashing after
+        # its report.json was written -- the crash made analyse_sweep call a finished run FAILED (armf_a100_kick, 2026-10)
+        print(f"  species confusion (found->matched GT), off-diagonal {offd}/{offd+diag} = {offd/max(offd+diag, 1):.1%}:")
         for pz, nm in [(82, "found Pb"), (22, "found Ti"), (8, "found O ")]:
             print(f"    {nm}: ->Pb {cf[f'{pz}->82']:4d}  ->Ti {cf[f'{pz}->22']:4d}  "
                   f"->O {cf[f'{pz}->8']:4d}  ->none {cf[f'{pz}->none']:4d}")
