@@ -30,6 +30,22 @@ newer.
   V-shaped crossings; Pb/Ti grids: atoms in the entrance AND exit vacuum layers -> extract_psf found 0 grid atoms -> no
   atomfind. Its eps 0.004 is on another scale (its failed grids score below block 2's good ones), not comparable. The
   hail mary failed at probe recovery, so it says nothing yet about phonons / coherence / dose at 80 mrad.
+  Fallback (block 2's known-probe armf_a080 kernels on the hail-mary lab, analysis 1305024, ~/Desktop/arm_hailmary_kern):
+  21/11/4 %, precision 0.48, xy 0.40 A, z 0.94 A -- the recon fails, not the kernels. Hail-mary sims: 16 configs, defocus
+  samples +-14.1 A (rms 7.29), source offsets rms 0.170 A, 4.6 h each; raw data DELETED (CLEANDATA). At 1e7 e/A^2 a pattern
+  holds 2.5e6 e over 1420^2 px (~1.2 e/px): its error trace is flat because shot noise dominates it.
+  **2026-10-04 findings for the next block.** (1) The 80 mrad coherent kick was STILL CONVERGING at NITER 200 (error -12 %
+  over the last 40 iterations; 6.27 -> 2.75 vs known 1.83); 60 and 100 -3 to -4 %. Kick legs need more iterations (80 mrad:
+  11.2 h per 200 iterations at "8;4" x 3 modes -> 500 iterations ~28 h; known-probe lab 4.9 h per 200). (2) Window losses
+  (plan_probe.window_loss, about the axis): armf_a080 52.5/70/105/140 A -> 15.0/9.0/3.3/0.8 %; armf_a090 105/129/140/210 A ->
+  13.6/7.0/5.1/0.7 % (0.75 % outside the 210 A region); armf_a100 105 A 23.1 %, region 7.3 %. 90/100 fail WITH THE PROBE
+  KNOWN, so the cause there is not probe fitting; best guess the window (onset between ~6 % and ~14 % lost; ARM 90's damage
+  is one-sided). Decisive test: armf_a080 at BIN 4 (52.5 A, 15 % lost = ARM 90's) and BIN 3 (9 %). (3) The 5 % kick as
+  phase over the aperture (waves rms / peak-to-valley): 40 0.03/0.1, 60 0.23/1.0, 80 1.1/4.4, 100 4.7/19. The ARM's own
+  run3 95 % intervals at the 80 mrad edge: C1 6.4, A1 9.6, B2 4.9, C3 4.2 waves (B4/D4/A5/C5 tens): the tableau alone knows
+  the probe far worse than the kick -- the outer search (C1 search precedent: +-1-3 A = 0.2-0.5 waves at 80) is required.
+  **User rule from 2026-10-04 (memory probe-update-always-on): probe update ON in every recon; fixed probe only as a side
+  control; method = outer search then probe update + modes; the 80 mrad hail mary passes or fails on the refined kick.**
 
 - **The user's rule (2026-09-30, [memory: dense-scan-not-big-window])**: large probes need dense scan points, not bigger
   windows, regions or smaller fields. 20 Å at 0.5 Å (1600 positions) everywhere, never cut to 10–15 Å; denser (0.4 Å,
