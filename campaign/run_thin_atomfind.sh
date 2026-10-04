@@ -38,6 +38,13 @@
 # ONE submission: sim (when its data are missing) -> Poisson copy -> recon. KICK_ALL=1 runs EVERY leg (lab, Pb, Ti) as a
 # kick leg -- start probe kicked, probe released, KICK_MODES modes -- so the kernels come out of the same reconstruction
 # operator as the lab leg (PSF_KERNELS.md: byte-identical except the object).
+# OUTER SEARCH + REFINED KICK (2026-10-04, the experiment-like route; probe update ON): SEARCH_C1F / SEARCH_C3F (factors on
+# the kicked C1 / C3) run a job array of fixed-probe trials on the lab data, campaign/select_trial.py picks the start, and
+# every leg runs as a kick leg from it (_rk). FIXED_TWIN=1 adds true-probe-fixed legs (_fixed); RTAG tags recon dirs;
+# KICK_MODES / KICK_NITER / KICK_GROUPING take lists (one kick leg per entry, _m<modes>). Details above search_job().
+#   LABELS=armf_a080 TSV=campaign/ceos_sweep.tsv PHONONS=16 PER_SPECIES=1 ENERGY_SPREAD_EV=0.3 CC_MM=1.4 SOURCE_FWHM=0.4 \
+#     DOSES="1e7 1e8" FIXED_TWIN=1 SEARCH_C1F="0.91 0.94 0.97 1 1.03 1.06 1.09" SEARCH_C3F="<same>" KICK_MODES=4 \
+#     KICK_NITER=500 GROUPING="32;16" bash campaign/run_thin_atomfind.sh
 # Then (when done): extract each PSF and run atomfind (see the echo at the end).
 set -euo pipefail
 REPO_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"; cd "${REPO_DIR}"; mkdir -p logs
@@ -76,7 +83,7 @@ KICK_ALL="${KICK_ALL:-0}"
 PYBIN="${CONDA_ENV:-${SHARE:-}/phucrh/envs/abtem}/bin/python"
 # Tarball name to the second, tagged by alphas (+doses): submissions pasted together must not share one.
 TS="$(date +%Y%m%d_%H%M%S)"
-TAG="$([ -n "$LABELS" ] && echo "$(echo ${LABELS} | tr ' ' '-')" || echo "a$(echo ${ALPHAS} | tr ' ' '-')")${DOSES:+_dose$(echo ${DOSES} | tr ' ' '-')}${SFX}"
+TAG="$([ -n "$LABELS" ] && echo "$(echo ${LABELS} | tr ' ' '-')" || echo "a$(echo ${ALPHAS} | tr ' ' '-')")${DOSES:+_dose$(echo ${DOSES} | tr ' ' '-')}${SFX}${RTAG:-}"   # RTAG: a re-run's tarball is told apart too
 PACK="${SHARE:+$SHARE/$USER}"; PACK="${PACK:-$REPO_DIR}/atomfind_results_${TAG}_${TS}.tgz"   # own subdir, not the shared group dir
 DIRS_FILE="${REPO_DIR}/logs/af_pack_${TAG}_${TS}.dirs"; : >"${DIRS_FILE}"   # this submission's recon dirs only
 WHAT="alphas: ${ALPHAS}"; [ -n "$LABELS" ] && WHAT="labels: ${LABELS}"   # ${X:+a}${X:-b} prints BOTH when X is set
@@ -177,23 +184,107 @@ recon_job(){ # $1 name $2 datadir $3 bin $4 nl $5 dep -> jobid  (true probe fixe
 
 KICK_LABELS="${KICK_LABELS:-}"; KICK="${KICK:-1.05}"; KICK_MODES="${KICK_MODES:-3}"; KICK_PSTART="${KICK_PSTART:-40}"
 KICK_PSTART2="${KICK_PSTART2:-20}"; KICK_GROUPING="${KICK_GROUPING:-8;4}"; KICK_RTIME="${KICK_RTIME:-48:00:00}"
-kick_job(){ # $1 name $2 lab sim dir $3 bin $4 nl $5 dep $6 c1 $7 c3 -> jobid  (kicked start probe, probe RELEASED)
-    local name="$1" datadir="$2" bin="$3" nl="$4" dep="$5" c1="$6" c3="$7"
+KICK_NITER="${KICK_NITER:-}"
+# KICK_MODES / KICK_NITER / KICK_GROUPING may be LISTS (2026-10-04), e.g. KICK_MODES="3 6" KICK_NITER="500 250"
+# KICK_GROUPING="8;4 4;2": one kick leg per KICK_MODES entry, tagged _m<modes> when there is more than one (a single entry
+# keeps the old names); a missing KICK_NITER / KICK_GROUPING entry falls back to NITER / the first grouping. Time scales
+# with the modes (80 mrad, 1420 px, NL 18: 11.2 h per 200 iterations at 3 modes, 14.7 h at 4).
+read -r -a KM <<<"$KICK_MODES"; read -r -a KN <<<"$KICK_NITER"; read -r -a KG <<<"$KICK_GROUPING"
+dep_arg_for(){ # a job id (-> afterok) or a whole dependency expression ("afterok:1,afterany:2") -> the --dependency option
+    case "$1" in "") ;; *[!0-9]*) echo "--dependency=$1";; *) echo "--dependency=afterok:$1";; esac; }
+kick_job(){ # $1 name $2 sim dir $3 bin $4 nl $5 dep $6 c1 $7 c3 $8 modes $9 niter $10 grouping [$11 start file] -> jobid
+    # kicked start probe, probe RELEASED. With a start file (an outer search's search_best.txt, see SEARCH below) the start
+    # probe's C1/C3 are read from it IN THE JOB (PROBE_FROM in run_recon_synthetic_ML.slurm) instead of c1/c3 x KICK
+    local name="$1" datadir="$2" bin="$3" nl="$4" dep="$5" c1="$6" c3="$7" modes="$8" niter="$9" grp="${10}" from="${11:-}"
     local rdir="${REPO_DIR}/recon_af_${name}_NL${nl}"; mkdir -p "${rdir}/01"
     echo "recon_af_${name}_NL${nl}" >>"${DIRS_FILE}"
     if [ -d "${rdir}/analysis" ]; then mv "${rdir}/analysis" "${rdir}/analysis.prev_$(date +%Y%m%d_%H%M%S)"; fi
     # the writer needs aberrations.json (the tableau) and the true probe (its overlap record); the in-job probe must be
     # the only probe_initial.mat (make_probe.py refuses to write through a symlink)
     local f; for f in "${INPUTS[@]}" aberrations.json probe_initial_true.mat; do ln -sf "${datadir}/01/${f}" "${rdir}/01/${f}"; done
-    rm -f "${rdir}/01/probe_initial.mat" "${rdir}/01/probe_initial.json"
-    local k1 k3; k1=$(awk "BEGIN{printf \"%.4f\", ${c1}*${KICK}}"); k3=$(awk "BEGIN{printf \"%.2f\", ${c3}*${KICK}}")
-    local cls; cls="$(res_class "$bin")"
-    local dep_arg=(); [ -n "$dep" ] && dep_arg=(--dependency="afterok:${dep}")
+    rm -f "${rdir:?}/01/probe_initial.mat" "${rdir:?}/01/probe_initial.json"
+    local start k1 k3
+    if [ -n "$from" ]; then start="PROBE_FROM=${from}"
+    else k1=$(awk "BEGIN{printf \"%.4f\", ${c1}*${KICK}}"); k3=$(awk "BEGIN{printf \"%.2f\", ${c3}*${KICK}}"); start="PROBE_C1=${k1},PROBE_C3=${k3}"; fi
+    local cls da; cls="$(res_class "$bin")"; da=$(dep_arg_for "$dep")
     # PROBE_SCALE rides in the environment (its value holds '='), as ABERRATIONS_JSON does for the sims
     PROBE_SCALE="C12=${KICK}" sbatch --parsable --job-name="af_kick_${name}" --time="${KICK_RTIME}" --mem="$(mem_for "$cls")" \
-        ${dep_arg[@]+"${dep_arg[@]}"} --output="${rdir}/slurm_%j.out" --error="${rdir}/slurm_%j.err" \
-        --export=ALL,NLAYERS="${nl}",SIM_BASE="${rdir}/",REGLAYER=0,PROBE_MODES="${KICK_MODES}",NITER="${NITER}",SAVE_EVERY="${SAVE}",BETA_LSQ="${BETA_LSQ}",GROUPING="${KICK_GROUPING}",PROBE_C1="${k1}",PROBE_C3="${k3}",PROBE_START="${KICK_PSTART}",PROBE_START2="${KICK_PSTART2}",PROBE_SUPPORT_FFT=1 \
+        ${da:+"$da"} --output="${rdir}/slurm_%j.out" --error="${rdir}/slurm_%j.err" \
+        --export=ALL,NLAYERS="${nl}",SIM_BASE="${rdir}/",REGLAYER=0,PROBE_MODES="${modes}",NITER="${niter}",SAVE_EVERY="${SAVE_EVERY:-$niter}",BETA_LSQ="${BETA_LSQ}",GROUPING="${grp}",${start},PROBE_START="${KICK_PSTART}",PROBE_START2="${KICK_PSTART2}",PROBE_SUPPORT_FFT=1 \
         run_recon_synthetic_ML.slurm
+}
+kick_variants(){ # $1 name $2 sim dir $3 bin $4 nl $5 dep $6 c1 $7 c3 [$8 start file] -> job ids, space separated
+    local i tag ids=""
+    for i in "${!KM[@]}"; do
+        tag=""; [ ${#KM[@]} -gt 1 ] && tag="_m${KM[$i]}"
+        ids="${ids} $(kick_job "$1${tag}" "$2" "$3" "$4" "$5" "$6" "$7" "${KM[$i]}" "${KN[$i]:-$NITER}" "${KG[$i]:-${KG[0]}}" "${8:-}")"
+    done
+    echo $ids
+}
+
+# OUTER SEARCH (2026-10-04; the user: the experiment-like route is an outer search over the knobs into a probe refinement
+# on the reconstruction -- probe update ON). SEARCH_C1F / SEARCH_C3F are factors on the KICKED start's C1 / C3 (c x KICK x f;
+# one axis alone is allowed). Per label, and per dose with DOSES, the lab leg gets ONE job array of fixed-probe trials, one
+# per (f_c1, f_c3) pair, SEARCH_NITER iterations each (50 ranked trials as 200 did, step 1 2026-09-18), on the very data the
+# legs reconstruct; then campaign/select_trial.py (CPU, afterany on the array) writes search_af_<leg>/search_best.{json,txt}:
+# the minimum of the trials' final error (a quadratic about the best grid point). Then EVERY leg in MODES (lab first; Pb and
+# Ti take the lab leg's answer: one probe per instrument) runs as a kick leg from that start, tagged _rk, with KICK_MODES /
+# KICK_NITER / KICK_GROUPING; A1 stays at its kicked tableau value. select always writes its files (with too few trials it
+# falls back to the kicked start and says so) and a refined leg whose start file is missing fails at once, so a broken chain
+# still reaches the pack. SEARCH_MEM 88G: a 1420 px, 1600-position fixed-probe recon peaks ~4x its 13 GB of data, so two
+# trials share a 192 GB node. SEARCH_RTIME 04:00:00 (50 iterations ~1.2 h at 80 mrad).
+# FIXED_TWIN=1: every leg ALSO runs with the true probe fixed, tagged _fixed -- the side control ("possible at all?").
+# RTAG=<tag> is appended to every recon dir name (never the sims), so a re-run cannot land in an earlier run's dirs.
+SEARCH_C1F="${SEARCH_C1F:-}"; SEARCH_C3F="${SEARCH_C3F:-}"; SEARCH_NITER="${SEARCH_NITER:-50}"
+SEARCH_MEM="${SEARCH_MEM:-88G}"; SEARCH_RTIME="${SEARCH_RTIME:-04:00:00}"; FIXED_TWIN="${FIXED_TWIN:-0}"; RTAG="${RTAG:-}"
+SEARCH=0
+if [ -n "${SEARCH_C1F}${SEARCH_C3F}" ]; then
+    SEARCH=1; SEARCH_C1F="${SEARCH_C1F:-1}"; SEARCH_C3F="${SEARCH_C3F:-1}"
+    [ "${MODES%% *}" = lab ] || { echo "SEARCH needs MODES to start with lab (Pb and Ti take the lab leg's answer)" >&2; exit 1; }
+    [ -x "${PYBIN}" ] || { echo "SEARCH set but no abtem env python at ${PYBIN} (campaign/select_trial.py)" >&2; exit 1; }
+fi
+search_job(){ # $1 name (the lab leg) $2 sim dir $3 bin $4 nl $5 dep $6 c1 $7 c3 -> "<array id> <select id> <start file>"
+    local name="$1" datadir="$2" bin="$3" nl="$4" dep="$5" c1="$6" c3="$7"
+    local sd="search_af_${name}"; mkdir -p "${REPO_DIR}/${sd}"; echo "${sd}" >>"${DIRS_FILE}"
+    local man="${REPO_DIR}/${sd}/trials.tsv" i=0 f1 f3 k1 k3 rd f
+    printf 'idx\tf_c1\tf_c3\tc1_A\tc3_A\trecon_dir\n' >"$man"
+    for f1 in $SEARCH_C1F; do for f3 in $SEARCH_C3F; do
+        k1=$(awk "BEGIN{printf \"%.4f\", ${c1}*${KICK}*${f1}}"); k3=$(awk "BEGIN{printf \"%.2f\", ${c3}*${KICK}*${f3}}")
+        rd="recon_af_${name}_t${i}_NL${nl}"; mkdir -p "${REPO_DIR}/${rd}/01"; echo "${rd}" >>"${DIRS_FILE}"
+        if [ -d "${REPO_DIR}/${rd}/analysis" ]; then mv "${REPO_DIR}/${rd}/analysis" "${REPO_DIR}/${rd}/analysis.prev_$(date +%Y%m%d_%H%M%S)"; fi
+        for f in "${INPUTS[@]}" aberrations.json probe_initial_true.mat; do ln -sf "${datadir}/01/${f}" "${REPO_DIR}/${rd}/01/${f}"; done
+        rm -f "${REPO_DIR:?}/${rd:?}/01/probe_initial.mat" "${REPO_DIR:?}/${rd:?}/01/probe_initial.json"
+        printf '%d\t%s\t%s\t%s\t%s\t%s\n' "$i" "$f1" "$f3" "$k1" "$k3" "$rd" >>"$man"; i=$((i + 1))
+    done; done
+    local cls grp da A S; cls="$(res_class "$bin")"; grp="$(grp_for "$cls")"; da=$(dep_arg_for "$dep")
+    A=$(PROBE_SCALE="C12=${KICK}" sbatch --parsable --array="0-$((i - 1))" --job-name="af_srch_${name}" --time="${SEARCH_RTIME}" \
+        --mem="${SEARCH_MEM}" ${da:+"$da"} \
+        --output="${REPO_DIR}/recon_af_${name}_t%a_NL${nl}/slurm_%A_%a.out" --error="${REPO_DIR}/recon_af_${name}_t%a_NL${nl}/slurm_%A_%a.err" \
+        --export=ALL,SEARCH_MANIFEST="${man}",NLAYERS="${nl}",REGLAYER=0,PROBE_MODES=1,NITER="${SEARCH_NITER}",SAVE_EVERY="${SEARCH_NITER}",BETA_LSQ="${BETA_LSQ}"${grp:+,GROUPING=${grp}} \
+        campaign/search_trial.sh); A="${A%%;*}"
+    S=$(sbatch --parsable --job-name="af_select_${name}" --time=00:30:00 --mem=8G --cpus-per-task=1 --dependency="afterany:${A}" \
+        --output="${REPO_DIR}/${sd}/slurm_select_%j.out" --error="${REPO_DIR}/${sd}/slurm_select_%j.err" \
+        --wrap="'${PYBIN}' '${REPO_DIR}/campaign/select_trial.py' --manifest '${man}' --out '${REPO_DIR}/${sd}'")
+    echo "${A} ${S} ${REPO_DIR}/${sd}/search_best.txt"
+}
+SELS=(); BESTS=()                  # per dose index: the lab leg's select job and its start file (Pb and Ti read them)
+submit_legs(){ # $1 base name (<leg>_<mode><SFX>[_dose<D>]) $2 sim dir $3 dep $4 mode $5 dose index; appends to RIDS and line
+    local base="$1" dd="$2" dep="$3" m="$4" di="$5" ids A S B
+    if [ "$FIXED_TWIN" = 1 ]; then
+        ids=$(recon_job "${base}${RTAG}_fixed" "$dd" "$bin" "$nl" "$dep"); RIDS+=($ids); line+=" ${m}:fixed=${ids}"
+    fi
+    if [ "$SEARCH" = 1 ]; then
+        if [ "$m" = lab ]; then
+            read -r A S B < <(search_job "${base}${RTAG}" "$dd" "$bin" "$nl" "$dep" "$c1" "$c3")
+            SELS[$di]="$S"; BESTS[$di]="$B"; RIDS+=("$A" "$S"); line+=" ${m}:search=${A}>select=${S}"
+        fi
+        ids=$(kick_variants "${base}${RTAG}_rk" "$dd" "$bin" "$nl" "${dep:+afterok:${dep},}afterany:${SELS[$di]}" "$c1" "$c3" "${BESTS[$di]}")
+        RIDS+=($ids); line+=" ${m}:rk=$(echo $ids | tr ' ' '+')"
+    elif [ "$KICK_ALL" = 1 ]; then
+        ids=$(kick_variants "${base}${RTAG}" "$dd" "$bin" "$nl" "$dep" "$c1" "$c3"); RIDS+=($ids); line+=" ${m}=$(echo $ids | tr ' ' '+')"
+    else
+        ids=$(recon_job "${base}${RTAG}" "$dd" "$bin" "$nl" "$dep"); RIDS+=($ids); line+=" ${m}=${ids}"
+    fi
 }
 
 RIDS=(); SIM_DIRS=()          # SIM_DIRS: this submission's own sim dirs, for CLEANDATA
@@ -230,16 +321,13 @@ for a in $ROWS; do
                 S=$(sim_job "$D" "$alpha" "$bin" "$c3" "$c1" "$m" "$aj"); SIM_DIRS+=("$D"); line+=" ${m}:sim=${S}"
             fi
             case "$m" in lab) so=0;; Pb) so=1;; *) so=2;; esac
+            di=0
             for dose in $DOSES; do
                 DN="${D}_dose${dose}"
                 N=$(noise_job "$D" "$DN" "$dose" $(( DOSE_SEED + so )) "$S")
-                if [ "$KICK_ALL" = 1 ]; then
-                    R=$(kick_job "${leg}_${m}${SFX}_dose${dose}" "$DN" "$bin" "$nl" "$N" "$c1" "$c3")
-                else
-                    R=$(recon_job "${leg}_${m}${SFX}_dose${dose}" "$DN" "$bin" "$nl" "$N")
-                fi
-                RIDS+=("$R"); SIM_DIRS+=("$DN"); line+=" ${m}@${dose}=${N}>${R}"   # $DN, not $D: the
-                # noiseless original is the SOURCE for every other dose in this submission
+                SIM_DIRS+=("$DN"); line+=" ${m}@${dose}:noise=${N}"   # $DN, not $D: the noiseless
+                # original is the SOURCE for every other dose in this submission
+                submit_legs "${leg}_${m}${SFX}_dose${dose}" "$DN" "$N" "$m" "$di"; di=$((di + 1))
             done
             continue
         fi
@@ -259,15 +347,11 @@ for a in $ROWS; do
             fi
             S=$(sim_job "$D" "$alpha" "$bin" "$c3" "$c1" "$m" "$aj")
         fi
-        if [ "$KICK_ALL" = 1 ]; then
-            R=$(kick_job "${leg}_${m}${SFX}" "$D" "$bin" "$nl" "$S" "$c1" "$c3")
-        else
-            R=$(recon_job "${leg}_${m}${SFX}" "$D" "$bin" "$nl" "$S")
-        fi
-        RIDS+=("$R"); SIM_DIRS+=("$D"); line+=" ${m}=${R}"
-        if [ "$KICK_ALL" != 1 ] && [ "$m" = lab ] && [ -n "$LABELS" ] && [[ " ${KICK_LABELS} " == *" ${leg} "* ]]; then
-            K=$(kick_job "${leg}_kick${SFX}" "$D" "$bin" "$nl" "$S" "$c1" "$c3")
-            RIDS+=("$K"); line+=" kick=${K}"
+        SIM_DIRS+=("$D")
+        submit_legs "${leg}_${m}${SFX}" "$D" "$S" "$m" 0
+        if [ "$KICK_ALL" != 1 ] && [ "$SEARCH" != 1 ] && [ "$m" = lab ] && [ -n "$LABELS" ] && [[ " ${KICK_LABELS} " == *" ${leg} "* ]]; then
+            K=$(kick_variants "${leg}_kick${SFX}${RTAG}" "$D" "$bin" "$nl" "$S" "$c1" "$c3")
+            RIDS+=($K); line+=" kick=$(echo $K | tr ' ' '+')"
         fi
     done
     echo "$line"

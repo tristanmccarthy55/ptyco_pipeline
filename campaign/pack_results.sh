@@ -37,6 +37,8 @@ if [ ${#RDIRS[@]} -gt 0 ]; then
     find "${RDIRS[@]}" -path '*/01/probe_initial.json' -type f 2>/dev/null >>"$list" || true
     find "${RDIRS[@]}" -path '*/01/probe_initial.mat'  -type f 2>/dev/null >>"$list" || true
     find "${RDIRS[@]}" -name 'slurm_*.out'                    2>/dev/null >>"$list" || true
+    # an outer search's own dir (search_af_<leg>/, listed beside its trials): the grid, the choice and its figure
+    find "${RDIRS[@]}" -maxdepth 1 -type f \( -name 'search_*' -o -name 'trials.tsv' \) 2>/dev/null >>"$list" || true
 fi
 # sim provenance (small). Real files only: a Poisson copy links these back to its noiseless sim,
 # which is packed itself. With PACK_DIRS_FILE, only the sims THIS submission's recons read: a recon's

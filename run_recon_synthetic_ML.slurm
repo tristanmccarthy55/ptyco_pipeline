@@ -58,6 +58,20 @@ echo "SIM_BASE : ${SIM_BASE}"
 echo "NLAYERS  : ${NLAYERS}"
 echo "GPU      : ${CUDA_VISIBLE_DEVICES:-<unset>}"
 
+# --- optional: the START probe from an OUTER SEARCH (campaign/run_thin_atomfind.sh SEARCH_*, 2026-10-04). PROBE_FROM is
+# the search's search_best.txt ("<C1 A> <C3 A>"), written by campaign/select_trial.py once every trial had ended; its
+# values become this job's PROBE_C1 / PROBE_C3 and the writer below builds the probe from them. A missing or empty file
+# fails HERE, at once, so a broken search chain still lets the submission reach its pack.
+if [ -n "${PROBE_FROM:-}" ]; then
+    PROBE_C1=""; PROBE_C3=""
+    [ -f "${PROBE_FROM}" ] && read -r PROBE_C1 PROBE_C3 _ <"${PROBE_FROM}"
+    if [ -z "${PROBE_C1}" ] || [ -z "${PROBE_C3}" ]; then
+        echo "PREFLIGHT FAIL: no C1/C3 in PROBE_FROM=${PROBE_FROM} (did the search's select job run?)"; exit 1
+    fi
+    export PROBE_C1 PROBE_C3
+    echo "PROBE    : start from the outer search ${PROBE_FROM}: C1 ${PROBE_C1} A, C3 ${PROBE_C3} A"
+fi
+
 # --- optional: write the TRIAL probe (C1 defocus search, aberration_experiment/NEXT_PHASE.md
 # step 1). When PROBE_C1 is set, sim/make_probe.py builds ${SIM_BASE}01/probe_initial.mat for this
 # trial's C1 (C3/C5 from the sim's aberrations.json unless PROBE_C3/PROBE_C5 override them) through
