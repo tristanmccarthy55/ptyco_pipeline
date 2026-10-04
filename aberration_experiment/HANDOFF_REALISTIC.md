@@ -10,6 +10,27 @@ newer.
 
 **Read this block first; it overrides the numbers further down where they differ.**
 
+- **RESULTS 2026-10-04 (block 2 + armf_a100 + hail mary; pulled to ~/Desktop/arm_block2, arm_a100, arm_hailmary; phase images
+  all viewed).** eps = final error x 1420 / 2e5, reference ceosopt_a080_f20 0.013.
+  KNOWN PROBE (lab eps, Pb/Ti/O bulk %, z-RMS A): 40 0.064, phase only (NL 4, atomfind cannot run), clean lattice ·
+  50 0.035, 49/57/41, 0.85 · 60 0.022, 89/88/81, 0.91 · 65 0.021, 91/81/81, 0.84 · 70 0.0136, 100/68/68, 0.52 · 75 0.0128,
+  100/68/74, 0.53 · 80 0.0130, 100/67/74, 0.45 (clean; corner streak) · 90 0.026, 91/64/30, 0.42 (left third fringed) ·
+  100 0.049, 33/58/5, 0.61, confusion 57 % (lattice in plane over the whole window; depth scrambled, leaning crossed
+  streaks in x-z). => the ARM200F tableau with C1/C3/B2/A1 tuned works 50-80 mrad, degrades at 90, fails in depth at 100.
+  KICKS (C1/C3/A1 x 1.05; overlap start -> mode 1, mode-1 power, eps kick vs known): 40 0.985 -> 0.998, 0.97, 0.034 vs 0.064,
+  identical image · 60 0.487 -> 0.780, 0.98, 0.019 vs 0.022, in plane identical, 93/81/85 %, z 1.03 (vs 0.91): the object
+  moved into the EXIT vacuum slice (std 0.132 vs 0.022) -- the C1/depth trade-off · 80 0.239 -> 0.403, 0.77, 0.0195 vs
+  0.013, 98/47/56 %, z 0.54: lattice kept, crosshatch in every slice, lattice in the entrance vacuum, columns lean ·
+  100 0.058 -> 0.175, 0.55, 0.077 vs 0.049: object in the exit vacuum, atomfind 0 atoms (its print crashed on 0/0 after
+  writing report.json: fixed 00db16b). A kick's eps can be LOWER than the known probe's (40, 60): residual cannot certify
+  a probe here. Modes 2/3 overlap the true probe better than mode 1 at 80 (0.46/0.47 vs 0.40) -- mode-1 overlap
+  understates; a span overlap (true probe projected on all recovered modes, one common shift) needs the h5s (Blythe).
+  HAIL MARY (80, phonons 16 + coherence + 1e7 + KICK_ALL): probe 0.239 -> 0.222, modes 0.39/0.24/0.20/0.17 (per-mode
+  overlaps 0.22/0.36/0.39/0.24); lab: lattice in plane (peak 1.8 rad vs 3.3), depth in the entrance vacuum (std 0.144) and
+  V-shaped crossings; Pb/Ti grids: atoms in the entrance AND exit vacuum layers -> extract_psf found 0 grid atoms -> no
+  atomfind. Its eps 0.004 is on another scale (its failed grids score below block 2's good ones), not comparable. The
+  hail mary failed at probe recovery, so it says nothing yet about phonons / coherence / dose at 80 mrad.
+
 - **The user's rule (2026-09-30, [memory: dense-scan-not-big-window])**: large probes need dense scan points, not bigger
   windows, regions or smaller fields. 20 Å at 0.5 Å (1600 positions) everywhere, never cut to 10–15 Å; denser (0.4 Å,
   2500 positions) fits at 1419 px. "Loses ≤ 0.31 %" is the most any run has lost, not a limit — test it by cropping.
