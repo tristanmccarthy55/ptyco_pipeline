@@ -46,6 +46,14 @@ newer.
   the probe far worse than the kick -- the outer search (C1 search precedent: +-1-3 A = 0.2-0.5 waves at 80) is required.
   **User rule from 2026-10-04 (memory probe-update-always-on): probe update ON in every recon; fixed probe only as a side
   control; method = outer search then probe update + modes; the 80 mrad hail mary passes or fails on the refined kick.**
+- **BLOCK 4 = THE FINAL CRACK (the user, 2026-10-06: "the best possible shot before we put a nail in it"; built 8c9e27f,
+  handed over).** (1) TRUE START + PROBE UPDATE + 4 MODES at 80 mrad on the kept hail-mary data, 1e8 only (user), lab/Pb/Ti,
+  500 it, "8;4", RTAG _true4 -- the ceiling for the refined kick and whether modes absorb partial coherence. If it fails,
+  next is cooling (LN2 phonon sigmas), not before (user). (2) FINAL RUN: armf_a090_w140 = 90 mrad in a 280 A region, 140 A
+  window (5.1 % outside; 100 mrad needs 210-280 A = 2560-3400 px, infeasible), detector +-108 mrad, N ~1536, NL 23;
+  phonons 16 + coherence + 1e8; true start + 4 modes, NITER_PRE 50 + 250 full (~25-35 h), "2;2", PSTART 20; FIXED_TWIN
+  (1 mode, 200 it, "8;8") as insurance kernels. GT_REGION=280 (built in the first analysis; the second waits on it).
+  Not run (user): the phonon-only / coherence-only split. Atomfind improvements for Ti: later, where depth exists (b3).
 - **BLOCK 3 RESULTS IN (2026-10-06; ~/Desktop/arm_block3_window, arm_block3_fixed; phase images viewed, sheets
   phase_window.png / phase_fixed.png there).** WINDOW TEST -- the same armf_a080 probe, only the window changed:
   105 A (3.3 % outside) 100/67/74 %, z 0.45 · 70 A (9.0 %) 100/67/74 %, z 0.52, but the lower-right corner damaged and
