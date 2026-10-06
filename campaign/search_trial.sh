@@ -1,4 +1,16 @@
 #!/usr/bin/env bash
+#SBATCH --job-name=af_srch
+#SBATCH --partition=gpu
+#SBATCH --account=physics
+#SBATCH --gres=gpu:lovelace_l40:1
+#SBATCH --nodes=1
+#SBATCH --ntasks=1
+#SBATCH --cpus-per-task=8
+#SBATCH --mem=88G
+#SBATCH --time=04:00:00
+# (The resource lines above mirror run_recon_synthetic_ML.slurm's. Slurm reads #SBATCH only from the script it is handed,
+# so the recon script's own header does NOT apply when this wrapper is the job: without these lines the first search
+# (2026-10-04, arrays 1305039 / 1305044) ran on CPU nodes with no GPU and 0 of 98 trials finished.)
 # [campaign] One trial of an outer search (campaign/run_thin_atomfind.sh SEARCH_C1F / SEARCH_C3F), run as one task of a
 # job array: row SLURM_ARRAY_TASK_ID of SEARCH_MANIFEST (search_af_<leg>/trials.tsv: idx f_c1 f_c3 c1_A c3_A recon_dir)
 # names the trial's recon dir and its probe's C1 / C3. The reconstruction itself is run_recon_synthetic_ML.slurm,
@@ -7,6 +19,8 @@
 # every trial's final error.
 set -euo pipefail
 : "${SEARCH_MANIFEST:?set by run_thin_atomfind.sh}" "${SLURM_ARRAY_TASK_ID:?run as a job array task}"
+# no GPU -> stop now: MATLAB would otherwise fall back to its CPU solver and run into the walltime
+[ -n "${CUDA_VISIBLE_DEVICES:-}" ] || { echo "search trial: no GPU allocated (CUDA_VISIBLE_DEVICES empty) -- check the #SBATCH --gres line" >&2; exit 1; }
 REPO_DIR="${SLURM_SUBMIT_DIR:-$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)}"
 row=$(awk -F'\t' -v i="${SLURM_ARRAY_TASK_ID}" 'NR > 1 && $1 == i' "${SEARCH_MANIFEST}")
 [ -n "$row" ] || { echo "search trial: no row ${SLURM_ARRAY_TASK_ID} in ${SEARCH_MANIFEST}" >&2; exit 1; }

@@ -324,8 +324,13 @@ for a in $ROWS; do
             di=0
             for dose in $DOSES; do
                 DN="${D}_dose${dose}"
-                N=$(noise_job "$D" "$DN" "$dose" $(( DOSE_SEED + so )) "$S")
-                SIM_DIRS+=("$DN"); line+=" ${m}@${dose}:noise=${N}"   # $DN, not $D: the noiseless
+                if [ "${RECON_ONLY:-0}" = "1" ] && [ -e "${DN}/01/data_dp.hdf5" ]; then
+                    N=""; line+=" ${m}@${dose}:reuse"   # RECON_ONLY: the Poisson copy is there (CLEANDATA=0 kept it) --
+                    # re-noising would rewrite data_dp.hdf5 under any job still reading it
+                else
+                    N=$(noise_job "$D" "$DN" "$dose" $(( DOSE_SEED + so )) "$S"); line+=" ${m}@${dose}:noise=${N}"
+                fi
+                SIM_DIRS+=("$DN")   # $DN, not $D: the noiseless
                 # original is the SOURCE for every other dose in this submission
                 submit_legs "${leg}_${m}${SFX}_dose${dose}" "$DN" "$N" "$m" "$di"; di=$((di + 1))
             done
@@ -376,7 +381,7 @@ fi
 PJ=$(sbatch --parsable --job-name="af_pack" --time=00:30:00 --mem=8G --dependency="afterany:${DEP}" \
     --output="logs/af_pack_%j.out" --error="logs/af_pack_%j.err" --export=ALL,PACK_DIRS_FILE="${DIRS_FILE}" \
     --wrap="bash '${REPO_DIR}/campaign/pack_results.sh' af '${PACK}' '${TSV}'${CLEAN}")
-echo; echo "pack ${PJ} -> ${PACK}  (recon_af_* .h5 + logs)${CLEANDATA:+ then deletes the raw 4D data of this submission}"
+echo; echo "pack ${PJ} -> ${PACK}  (recon_af_* .h5 + logs)$([ "${CLEANDATA:-0}" = 1 ] && echo " then deletes the raw 4D data of this submission" || true)"
 echo "scp -O 'phucrh@blythe.scrtp.warwick.ac.uk:${PACK}' ~/Desktop/"
 echo "now check the group root stayed clean:  ls /springbrook/share/physics/"
 echo "then analyse ON BLYTHE (kernels + atomfind + summary.csv, geometry read from each leg):"
