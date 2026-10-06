@@ -46,6 +46,18 @@ newer.
   the probe far worse than the kick -- the outer search (C1 search precedent: +-1-3 A = 0.2-0.5 waves at 80) is required.
   **User rule from 2026-10-04 (memory probe-update-always-on): probe update ON in every recon; fixed probe only as a side
   control; method = outer search then probe update + modes; the 80 mrad hail mary passes or fails on the refined kick.**
+- **BLOCK 3 RESULTS IN (2026-10-06; ~/Desktop/arm_block3_window, arm_block3_fixed; phase images viewed, sheets
+  phase_window.png / phase_fixed.png there).** WINDOW TEST -- the same armf_a080 probe, only the window changed:
+  105 A (3.3 % outside) 100/67/74 %, z 0.45 · 70 A (9.0 %) 100/67/74 %, z 0.52, but the lower-right corner damaged and
+  columns broken past x ~42 A (ARM 90's one-sided onset) · 52.5 A (15.0 %) 83/32/12 %, z 0.62, confusion 42 %, crosshatch
+  over the field and crossing diagonal streaks in x-z (ARM 100's signature). => 90/100 mrad fail because of the 105 A
+  WINDOW, not probe fitting and not the aperture's physics; keep the loss below ~5 % (90 mrad: 140 A loses 5.1 %, needs a
+  280 A region at BIN 2 and N ~1536-1891 px). FIXED PROBE, FULL PHYSICS (true coherent probe fixed, 1 mode, phonons 16 +
+  coherence + dose): 1e7 79/37/21 %, z 1.01, confusion 29 %; 1e8 73/36/9 %, z 0.91, 22 % -- dose is NOT the limit. In plane a
+  clean lattice (peak 1.2 rad vs 3.3 coherent); in depth both vacuum layers carry lattice (the dumping ground taking what a
+  single fixed coherent probe cannot model) and each column is one elongated blob. Step 4 (2026-09-21, round probes)
+  saw similar phonon-only costs (z 0.8-1.0, O 10-17 %), so phonons may account for most of it: separate them
+  (phonon-only, coherence-only fixed legs) and give the coherent part modes (true start + 4 modes) -- proposed, not built.
 - **BLOCK 3 STATUS 2026-10-06.** Ids: HM2 sims/noise/fixed 1305036-60 (fixed legs DONE; early fixed analyses 1308493/94),
   search arrays 1305039 / 1305044 FAILED -- my bug: search_trial.sh had no #SBATCH GPU header, trials ran on CPU nodes
   (0/98 finished; fixed 45f36a2), so both selects FELL BACK to the kicked start and the "_rk" legs 1305041/46/50/53/57/60 are
