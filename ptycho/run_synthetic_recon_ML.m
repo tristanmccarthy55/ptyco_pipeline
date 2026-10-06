@@ -77,6 +77,12 @@ fprintf('grouping (per engine) = [%d %d]\n', grouping(1), grouping(2));
 % heavy deep/fine runs fit walltime (e.g. NITER=120 for 70-layer ~1 A slices).
 ni_env = getenv('NITER');
 if ~isempty(ni_env); Niter = [round(str2double(ni_env)), round(str2double(ni_env))]; else; Niter = [200, 200]; end
+% NITER_PRE (2026-10-06) sets the presolve's iterations alone, NITER the full engine's. Where the presolve cannot be
+% smaller than the full grid (a detector recorded to 1.2 alpha leaves nothing to crop), its iterations cost as much as
+% the full engine's, and fewer of them buy full-engine iterations inside the 48 h walltime.
+np_env = getenv('NITER_PRE');
+if ~isempty(np_env); Niter(1) = round(str2double(np_env)); end
+fprintf('iterations (per engine) = [%d %d]\n', Niter(1), Niter(2));
 % Probe update start. CONFIRMED: the fixed-probe 7-layer run reproduced the refined
 % run's lattice to-a-tee, so the simulated probe we hand in is CORRECT. For synthetic
 % data we therefore DON'T refine it — fixing the (true) probe is both accurate and
