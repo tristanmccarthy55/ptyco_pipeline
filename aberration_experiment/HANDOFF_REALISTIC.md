@@ -46,7 +46,14 @@ newer.
   the probe far worse than the kick -- the outer search (C1 search precedent: +-1-3 A = 0.2-0.5 waves at 80) is required.
   **User rule from 2026-10-04 (memory probe-update-always-on): probe update ON in every recon; fixed probe only as a side
   control; method = outer search then probe update + modes; the 80 mrad hail mary passes or fails on the refined kick.**
-- **BLOCK 3 (built 045ed51, handed over 2026-10-04 evening; ids to record when the user pastes them).** Three submissions:
+- **BLOCK 3 STATUS 2026-10-06.** Ids: HM2 sims/noise/fixed 1305036-60 (fixed legs DONE; early fixed analyses 1308493/94),
+  search arrays 1305039 / 1305044 FAILED -- my bug: search_trial.sh had no #SBATCH GPU header, trials ran on CPU nodes
+  (0/98 finished; fixed 45f36a2), so both selects FELL BACK to the kicked start and the "_rk" legs 1305041/46/50/53/57/60 are
+  plain kicks at 500 it (start overlap 0.239). Long kicks 1305067 (m3) / 1305068 (m6), pack 1305069, analyses 1305070/71.
+  Window test DONE (analysis_ / atomfind_results_armf_a080_b4-armf_a080_b3_20261004_212422.tgz). HM2 pack 1305061,
+  analyses 1305062-65. Rerun of the search handed over as RTAG=_s2 (RECON_ONLY on the kept data); recommended keeping
+  1305041 (lab 1e7, the no-search baseline at 500 it) and cancelling the other five fallback legs.
+- **BLOCK 3 (built 045ed51, handed over 2026-10-04 evening).** Three submissions:
   (1) HM2 = the hail-mary physics re-simulated (raw data deleted before; CLEANDATA=0 now, ~117 GB kept for re-runs) at
   1e7 AND 1e8: per dose the fixed-probe twins (_fixed, lab/Pb/Ti, 200 it), the outer search on the lab data (7 x 7 grid,
   C1 and C3 x 0.91..1.09 in 3 % steps of the KICKED values -- the truth sits at 1/1.05 = 0.952, inside -- fixed probe,
