@@ -51,8 +51,12 @@ newer.
   (0/98 finished; fixed 45f36a2), so both selects FELL BACK to the kicked start and the "_rk" legs 1305041/46/50/53/57/60 are
   plain kicks at 500 it (start overlap 0.239). Long kicks 1305067 (m3) / 1305068 (m6), pack 1305069, analyses 1305070/71.
   Window test DONE (analysis_ / atomfind_results_armf_a080_b4-armf_a080_b3_20261004_212422.tgz). HM2 pack 1305061,
-  analyses 1305062-65. Rerun of the search handed over as RTAG=_s2 (RECON_ONLY on the kept data); recommended keeping
-  1305041 (lab 1e7, the no-search baseline at 500 it) and cancelling the other five fallback legs.
+  analyses 1305062-65. Confirmed: trial 1305039_0 ran on partition compute ([CPU-MLs] 460 s/it, TIMEOUT), the rest FAILED
+  9:0 (OOM-killed) in 3-5 min. User kept 1305041 (lab 1e7 fallback = the no-search baseline at 500 it), cancelled
+  1305046/50/53/57/60. **RERUN _s2 SUBMITTED 2026-10-06 13:19** (RECON_ONLY on the kept data): search arrays 1308514 (1e7) /
+  1308517 (1e8), selects 1308515 / 1308518, refined kicks lab 1308516 / 1308519, Pb 1308520 / 1308521, Ti 1308522 / 1308523,
+  pack 1308524 (atomfind_results_armf_a080_dose1e7-1e8_ph16_coh_s2_20261006_131924.tgz), analyses 1308525 / 1308526
+  (SUFFIX _ph16_coh_dose1e{7,8}_s2_rk) -> pull to ~/Desktop/arm_block3_s2.
 - **BLOCK 3 (built 045ed51, handed over 2026-10-04 evening).** Three submissions:
   (1) HM2 = the hail-mary physics re-simulated (raw data deleted before; CLEANDATA=0 now, ~117 GB kept for re-runs) at
   1e7 AND 1e8: per dose the fixed-probe twins (_fixed, lab/Pb/Ti, 200 it), the outer search on the lab data (7 x 7 grid,
