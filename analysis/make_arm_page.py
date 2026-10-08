@@ -898,6 +898,113 @@ def part_renders(R):
     return dict(FRAG_RENDERS=tabs("tabs-renders", panes, default=0) if panes else "<p>No renders pulled yet.</p>")
 
 
+# =========================================================================================== reproduce (appendix B)
+SIM = os.path.join(REPO, "sim", "simulate_4dstem.py")
+DRIVER = os.path.join(REPO, "campaign", "run_thin_atomfind.sh")
+
+
+def _driver_default(name):
+    """A run_thin_atomfind.sh default, read from its NAME="${NAME:-value}" line (never retyped here)."""
+    m = re.search(r'%s="\$\{%s:-([^}]*)\}"' % (name, name), open(DRIVER).read())
+    return m.group(1) if m else None
+
+
+def _sim_constants():
+    """Beam energy and the room-temperature B factors exactly as the simulator holds them."""
+    import ast
+    src = open(SIM).read()
+    E = float(re.search(r"^ENERGY_EV\s*=\s*([0-9.e+]+)", src, re.M).group(1))
+    B = ast.literal_eval(re.search(r"^_B_BY_SPECIES\s*=\s*(\{[^}]*\})", src, re.M).group(1))
+    return E, B
+
+
+def _env(cmd, name):
+    m = re.search(r'(?:^|\s)%s=("([^"]*)"|(\S+))' % name, cmd)
+    return (m.group(2) if m.group(2) is not None else m.group(3)) if m else None
+
+
+def part_reproduce(R, T):
+    rp = R.man["reproduce"]
+    E, B = _sim_constants()
+    e0 = 510998.95
+    import abtem  # noqa: F401  (only for the wavelength, as the simulator computes it)
+    from abtem.core.energy import energy2wavelength
+    lam = float(energy2wavelength(E))
+    cmd = rp["physics_cmd"]
+    dE, cc, src = float(_env(cmd, "ENERGY_SPREAD_EV")), float(_env(cmd, "CC_MM")), float(_env(cmd, "SOURCE_FWHM"))
+    nph, doses = int(_env(cmd, "PHONONS")), _env(cmd, "DOSES").split()
+    rel = (1 + E / e0) / (1 + E / (2 * e0))
+    focal = cc * 1e7 * (dE / (2 * np.sqrt(2 * np.log(2))) / E) * rel           # the simulator's own formula
+    E200 = 200e3
+    focal200 = cc * 1e7 * (dE / (2 * np.sqrt(2 * np.log(2))) / E200) * (1 + E200 / e0) / (1 + E200 / (2 * e0))
+    edge = focal * (0.080 ** 2) / (2 * lam)                                     # waves of defocus phase at the 80 mrad edge
+    step = float(_driver_default("STEP"))
+    sp = " · ".join(f"{k} {B[k]:.2f} Å²" for k in ("Pb", "Ti", "O", "Sr"))
+    u1 = " · ".join(f"{k} {np.sqrt(B[k] / (8 * np.pi ** 2)):.3f}" for k in ("Pb", "Ti", "O"))
+    sg = " · ".join(f"{k} {np.sqrt(3 * B[k] / (8 * np.pi ** 2)):.3f}" for k in ("Pb", "Ti", "O"))
+    phys = table(["", "coherent (§3–5)", "full physics (§6–8)"], [
+        f"<tr><td>phonons</td><td>none (static crystal)</td><td class='wrap'>{nph} frozen configurations, room-temperature B: {sp}; "
+        f"per-axis rms displacement {u1} Å (abTEM <code>sigmas</code> = √3 × that: {sg} Å)</td></tr>",
+        f"<tr><td>energy spread</td><td>none</td><td class='wrap'>cold FEG {dE:g} eV FWHM through Cc {cc:g} mm → focal spread "
+        f"{focal:.2f} Å rms at {E / 1e3:.0f} kV ({edge:.2f} waves rms at the 80 mrad edge)</td></tr>",
+        f"<tr><td>source size</td><td>none</td><td>{100 * src:.0f} pm FWHM, Gaussian</td></tr>",
+        f"<tr><td>sampling</td><td>–</td><td class='wrap'>one defocus and one source shift per phonon configuration (stratified Gaussian "
+        f"quantiles); the recorded scan positions stay nominal</td></tr>",
+        f"<tr><td>shot noise</td><td>none</td><td>Poisson, {' and '.join(doses)} e/Å² ({' and '.join(f'{float(d) * step ** 2:.1e}' for d in doses)} "
+        f"electrons a pattern)</td></tr>",
+        f"<tr><td>probe given to the reconstruction</td><td colspan='2' class='wrap'>the central coherent probe of the tableau, as the start "
+        f"(known/fixed) or with C1, C3, A1 × {KICK:g} (kicked); see each run's settings below</td></tr>"],
+        f"Source of the gun numbers: {dE:g} eV is JEOL's specification for the ARM200F cold FEG (0.26–0.4 eV measured); Cc {cc:g} mm "
+        f"is the JEM-ARM200cF figure recorded in the campaign. The simulations run at {E / 1e3:.0f} kV with the tableau's "
+        f"coefficients in length units; the instrument's tableau was taken at 200 kV, where the same gun gives {focal200:.1f} Å rms.")
+    # the probe: tuned terms per aperture, then the held terms
+    rows = [dict(T[l], label=l) for l in rp["probe_labels"] if l in T]
+    hdr = ["label", "α (mrad)", "defocus Δf = −C1 (Å)", "C3 (µm)", "A1 = C12 (Å, °)", "B2: C21 (Å, °)", "C5 (mm)", "window (Å)"]
+    trs = []
+    for t in rows:
+        ab = cf.aberrations(t)
+        js = json.loads(t["aber_json"])
+        win = float(t["side"]) / float(t["bin"])
+        trs.append(f"<tr><td><code>{t['label']}</code></td><td>{float(t['alpha']):g}</td><td>{float(t['c1']):.1f}</td>"
+                   f"<td>{js['C30'] / 1e4:.2f}</td><td>{js['C12']:.1f} ∠ {np.degrees(js['phi12']):.1f}</td>"
+                   f"<td>{js['C21']:.0f} ∠ {np.degrees(js['phi21']):.1f}</td><td>{js['C50'] / 1e7:g}</td><td>{win:g}</td></tr>")
+    tuned = table(hdr, trs, "Tuned per aperture (campaign/ceos_sweep.tsv, the aber_json column passed to abTEM; Krivanek "
+                            "notation, angle as abTEM takes it). Haider/CEOS: B2 = C21 / 3.")
+    ref = json.loads(T["armf_a080"]["aber_json"])
+    held = [("A2", "C23"), ("S3", "C32"), ("A3", "C34"), ("A4", "C45"), ("B4", "C41"), ("D4", "C43"), ("A5", "C56")]
+    held_tr = "".join(f"<tr><td>{h} · {k}</td><td>{ref[k]:.4g} Å ∠ {np.degrees(ref['phi' + k[1:]]):.1f}°</td></tr>" for h, k in held)
+    held_tab = table(["held term (Haider · Krivanek)", "value"], [held_tr],
+                     "Held at the measured tableau for every aperture (run3, with B4, D4, A5 from the 1998 reference; "
+                     "Haider/CEOS: S3 = C32/4, B4 = C41/5, D4 = C43/5).")
+    # the fixed settings
+    slice_sim = _driver_default("SLICE"); thin = _driver_default("THIN"); zvac = _driver_default("ZVAC")
+    cellz = _driver_default("CELL_Z"); beta = _driver_default("BETA_LSQ"); niter = _driver_default("NITER")
+    boxz = int(thin) * float(cellz) + 2 * float(zvac)
+    fixed = table(["stage", "setting"], [
+        f"<tr><td>simulation</td><td class='wrap'>abTEM 1.0.5, {E / 1e3:.0f} kV (λ {lam:.6f} Å); PTO/STO labyrinth, {thin} cells along the beam "
+        f"({int(thin) * float(cellz):.2f} Å) + {zvac} Å vacuum each side ({boxz:.3f} Å box); potential slices {slice_sim} Å; scan 20 Å at "
+        f"{step:g} Å (1600 positions); detector cut per row (sweep table), sampled at the reconstruction's own grid</td></tr>",
+        f"<tr><td>reconstruction</td><td class='wrap'>PtychoShelves LSQ-ML on GPU, multislice; slices = Nyquist over the {boxz:.3f} Å box "
+        f"(thickness ≤ λ/2α²); window = region / bin; β<sub>LSQ</sub> {beta}; no regularisation between layers; {niter} iterations "
+        f"unless stated; a kicked or released probe is updated from iteration {_driver_default('KICK_PSTART')} (presolve) / "
+        f"{_driver_default('KICK_PSTART2')} (full engine) under the aperture constraint</td></tr>",
+        "<tr><td>atom finder</td><td class='wrap'>analysis/atomfind, thin preset; kernels from Pb and Ti sparse grids put through the "
+        "same simulation and reconstruction as the specimen; scored by make_arm_page.atom_scores (§2)</td></tr>"])
+    fam = "".join(f"<tr><td class='wrap'>{html.escape(f['name'])}</td><td>{f['sec']}</td><td>{'full' if f['physics'] == 'full' else 'coherent'}</td>"
+                  f"<td class='wrap'><code>{html.escape(f['cmd'])}</code><br><span class='muted-s'>{html.escape(f['how'])}</span></td></tr>"
+                  for f in rp["families"])
+    fams = table(["runs", "page", "physics", "launch (campaign/run_thin_atomfind.sh, from the repo root)"], [fam],
+                 "Each line builds the whole chain on the cluster: simulation (and Poisson copies), reconstruction legs (specimen, "
+                 "Pb and Ti kernel grids), pack; analysis then runs analyse_sweep.py on the pack.")
+    try:
+        commit = subprocess.run(["git", "rev-parse", "--short", "HEAD"], cwd=REPO, capture_output=True, text=True).stdout.strip()
+    except Exception:
+        commit = "?"
+    return dict(FRAG_REPRO=f"<h3>Physics</h3>{phys}<h3>The probe</h3>{tuned}{held_tab}<h3>Fixed settings</h3>{fixed}"
+                           f"<h3>Every run</h3>{fams}<p class='small-note'>Code: ptychoshelves-clean at <code>{commit}</code> "
+                           f"when this page was built.</p>")
+
+
 # =========================================================================================== main
 def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
@@ -929,6 +1036,7 @@ def main():
     frag.update(part_final(R, T, cuts))
     frag.update(part_status(R))
     frag.update(part_renders(R))
+    frag.update(part_reproduce(R, T))
     page = open(TEMPLATE).read()
     for k, v in frag.items():
         if "{{%s}}" % k not in page:

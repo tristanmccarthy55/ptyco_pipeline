@@ -346,6 +346,8 @@
   .ledger li { margin-bottom: 3px; }
   .tab-pane img { display: block; width: 100%; max-width: 100%; height: auto; background: #fff; }
   .small-note { font-family: var(--sans); font-size: 13px; color: var(--ink-3); margin-top: 18px; }
+  .muted-s { font-family: var(--sans); font-size: 12px; color: var(--ink-3); }
+  #reproduce td code { font-size: 12px; }
 </style>
 <header class="mast">
   <div class="mast-in"><div class="mast-col">
@@ -368,6 +370,7 @@
       <a href="#s8">The final run</a>
       <a href="#s9">For discussion</a>
       <a href="#appendix">Every run</a>
+      <a href="#reproduce">Reproduce</a>
     </nav>
   </div></div>
 </header>
@@ -422,9 +425,9 @@
         <tr><td>scan, detector</td><td class="wrap">20 Å at 0.5 Å; ±133 mrad (±108 mrad for the final run)</td><td class="wrap">sweep table</td></tr>
         <tr><td>reconstruction</td><td class="wrap">multislice, slices at half of λ/α², 200 iterations unless stated</td><td class="wrap">run_thin_atomfind.sh</td></tr>
         <tr><td>kicked start</td><td class="wrap">C1, C3, A1 × 1.05; probe released after 40 / 20 iterations, 3–6 modes</td><td class="wrap">KICK_* settings</td></tr>
-        <tr><td>phonons</td><td class="wrap">16 frozen configurations, room temperature (Pb 0.185, Ti 0.131, O 0.174 Å)</td><td class="wrap">sim log</td></tr>
-        <tr><td>partial coherence</td><td class="wrap">cold FEG: 7.29 Å rms focal spread, 40 pm source, sampled with the phonons</td><td class="wrap">simulate_4dstem</td></tr>
-        <tr><td>dose</td><td class="wrap">1e7 and 1e8 e/Å² (about 1.2 and 12 electrons per detector pixel)</td><td class="wrap">add_poisson_noise.py</td></tr>
+        <tr><td>physics</td><td class="wrap"><b>Coherent (§3–5):</b> no phonons, no energy spread or source size, no shot noise.
+          <b>Full physics (§6–8):</b> 16 phonon configurations at room temperature, the cold FEG's 0.3 eV energy spread and
+          source size, and shot noise at 1e7 or 1e8 e/Å². Every value in §B.</td><td class="wrap">sim/simulate_4dstem.py</td></tr>
         <tr><td>atoms</td><td class="wrap">kernels from Pb and Ti grids reconstructed the same way as the specimen</td><td class="wrap">analyse_sweep.py</td></tr>
       </tbody>
       <caption>Atom numbers, per species over the bulk: <b>right place</b>, real atoms with a found atom of the same element
@@ -446,7 +449,8 @@
   <section id="s3">
     <div class="sec-head"><span class="sec-num">03</span><h2>Probe known, 40 to 100 mrad</h2></div>
     <p>
-      With the probe known exactly, 50–80 mrad reconstruct, and 80 mrad matches the CEOS result. Below 70 mrad the depth
+      Coherent data (no phonons, energy spread or noise) and the probe known exactly: 50–80 mrad reconstruct, and 80 mrad
+      matches the CEOS result. Below 70 mrad the depth
       sections still show bars (λ/α² is 5.5 Å at 60 mrad). 90 and 100 mrad fail for the reason in §4.
     </p>
     <figure class="wide">
@@ -497,7 +501,7 @@
   <section id="s5">
     <div class="sec-head"><span class="sec-num">05</span><h2>A probe off by 5 %, coherent data</h2></div>
     <p>
-      The reconstruction starts with C1, C3 and A1 5 % off and refines the probe: about a wave of error at 80 mrad, five at
+      Coherent data as in §3; the reconstruction starts with C1, C3 and A1 5 % off and refines the probe: about a wave of error at 80 mrad, five at
       100. At 80 mrad the atoms come back with 500 iterations or 6 modes, with more wrong elements than the known probe.
       This start is harder than an experimenter's: the search in §7 corrects C1 and C3, and A1's 5 % is only 0.04 waves.
     </p>
@@ -511,6 +515,7 @@
   <section id="s6">
     <div class="sec-head"><span class="sec-num">06</span><h2>Realistic physics: phonons, partial coherence, shot noise</h2></div>
     <p>
+      The same 80 mrad probe with phonons, the cold FEG's energy spread and source size, and shot noise (values in §B).
       With the true coherent probe held fixed, the reconstruction puts what it cannot explain into the vacuum layers and
       each column smears in depth. The finder still finds the columns, but its depths are barely better than guessing,
       and its own 95 % bars widen to about ±1.9 Å. Ten times the dose changes nothing. A kicked probe released into the
@@ -609,6 +614,13 @@
         Top left: summed phase over the whole window; small panels: each slice; bottom: a depth cut through the centre.
       </figcaption>
     </figure>
+  </section>
+
+  <section id="reproduce">
+    <div class="sec-head"><span class="sec-num">B</span><h2>Reproduce</h2></div>
+    <p>Everything needed to rerun the page's results: the physics of each family, the probe coefficients, the fixed
+      settings and the launch line of every run. Numbers here are read from the simulator, the driver and the sweep table.</p>
+    {{FRAG_REPRO}}
     <p class="small-note">
       Rebuilt from the run outputs by <code>analysis/make_arm_page.py</code> (run list
       <code>aberration_experiment/page/arm_results.json</code>); filling in and republishing:

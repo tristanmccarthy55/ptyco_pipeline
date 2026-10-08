@@ -4,7 +4,9 @@ Built 2026-10-08 for the meeting of 2026-10-09. Published URL: see below.
 
 PUBLISHED: https://claude.ai/artifact/MUkJ7yYrsek3nTLXcZgCrk (version 1, 2026-10-08 evening: everything to the search; refined, true-start and final runs pending.
 Version 2, same evening: atoms scored as "right place" against a guessing level, the finder's own depth bars drawn, misplaced atoms highlighted -- see "The atom numbers" below.
-Version 3: text trimmed ~40 % at the user's request; the 5 % kick section cut to one paragraph, one table, one figure. Keep new prose as short.)
+Version 3: text trimmed ~40 % at the user's request; the 5 % kick section cut to one paragraph, one table, one figure. Keep new prose as short.
+Version 4: appendix B "Reproduce" (part_reproduce): coherent vs full physics, every probe coefficient, the fixed settings and
+each run family's launch line -- add a family to the manifest's "reproduce" list when a new kind of run lands.)
 
 The page is generated, not hand-edited: figures, judged tables and tab viewers come from the run outputs; the prose
 lives in the template. Runs that have not landed show as marked "pending" placeholders, so the page can be republished
