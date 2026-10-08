@@ -2,7 +2,9 @@
 
 Built 2026-10-08 for the meeting of 2026-10-09. Published URL: see below.
 
-PUBLISHED: https://claude.ai/artifact/MUkJ7yYrsek3nTLXcZgCrk (version 1, 2026-10-08 evening: everything to the search; refined, true-start and final runs pending)
+PUBLISHED: https://claude.ai/artifact/MUkJ7yYrsek3nTLXcZgCrk (version 1, 2026-10-08 evening: everything to the search; refined, true-start and final runs pending.
+Version 2, same evening: atoms scored as "right place" against a guessing level, the finder's own depth bars drawn, misplaced atoms highlighted -- see "The atom numbers" below.
+Version 3: text trimmed ~40 % at the user's request; the 5 % kick section cut to one paragraph, one table, one figure. Keep new prose as short.)
 
 The page is generated, not hand-edited: figures, judged tables and tab viewers come from the run outputs; the prose
 lives in the template. Runs that have not landed show as marked "pending" placeholders, so the page can be republished
@@ -43,17 +45,36 @@ folder it will be pulled to). Then use it in the relevant `part_*` function of `
 ## Conventions kept
 
 - One colour per species everywhere (Pb `#2a78d6`, Ti `#eb6834`, O `#1baf7a`); never for anything else.
-- Real atoms are dots, found atoms small rings, vacuum edges light-blue dashes; depth runs downward.
+- Real atoms are dots, found atoms small rings with the finder's own 95 % depth bar (`halfwidth95_z_A`), vacuum edges
+  light-blue dashes; depth runs downward. Ring states (`atom_states()`): element colour = within 0.5 Å of a true atom of
+  its element; faded = further, but its bar reaches one; white with a black edge = misplaced (its bar misses, or no atom
+  of that element there). Depth sections take their colour scale from the slab's slices only (`xz_section()`).
 - No number typed into a figure: everything comes from summary.csv, kick records, error traces, the sweep table, the
   plan JSONs or the measured tableau.
-- Verdicts (`verdict()`): good = Pb ≥ 95 %, Ti and O ≥ 60 %, depth ≤ 0.6 Å, precision ≥ 0.9; okay = Pb ≥ 80 %, O ≥ 25 %,
-  depth ≤ 1.1 Å; off otherwise. Stated on the page under the setup table.
+- Verdicts (`verdict()`), on Pb and Ti in the right place: good = Pb ≥ 80 % and Ti ≥ 45 %; okay = Pb ≥ 50 %; off
+  otherwise. Oxygen is reported, not judged. Stated on the page under the setup table.
 - Tab images and renders go in as JPEG at moderate width to keep the page small; figures stay PNG.
+
+## The atom numbers (since version 2)
+
+`atom_scores()` in make_arm_page.py, cached in `results/arm_page_cache/atom_scores.json` by found-atoms file and time:
+
+- **right place**, per species over the bulk: share of real atoms with a found atom of the SAME element within 0.6 Å in
+  plane and 0.5 Å in depth (the finder's greedy matcher, one element at a time).
+- **guessing**: the same found atoms slid along their columns to 16 evenly spread depths over the 3.9 Å period, scored
+  the same way and averaged. Pb by guessing is ~26 % of its in-plane hits.
+- **wrong element**: the finder's own confusion figure (its 0.6 Å / 2 Å match, any element), as in its log warnings.
+- **95 % depth bar**: median of the finder's calibrated per-atom half-widths.
+
+Why: summary.csv's recall matches within 2 Å in depth and any element, so along a Pb column almost any depth passes;
+the full-physics runs looked "okay" on it with no depth information (aberration_experiment/results/2026-W41/atomfind_honesty/).
+Runs that shipped no volume (block 2's kick legs) are scored in the frame recovered from their own found_atoms.csv,
+accepted only when it reproduces their summary.csv recall within 2 points.
 
 ## Known gaps
 
-- Block 2's kick legs shipped no volume (the kick pass saves none), so their rows show a "no volume" panel; their full
-  renders are in the appendix.
+- Block 2's kick legs shipped no volume (the kick pass saves none): they appear in the kick table only (scored from their
+  own export), with full renders in the appendix.
 - The 1e7 no-search baseline has atoms only once analysis 1310612 is pulled (tag `..._rk_kern-..._dose1e7_fixed`); until
   then it shows its volume only.
 - The kick-record overlap compares with the central coherent probe; under partial coherence even a perfect recovery

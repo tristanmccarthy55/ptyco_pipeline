@@ -39,6 +39,7 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 from matplotlib.lines import Line2D
 from matplotlib.patches import Rectangle
+import matplotlib.patheffects as pe
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 REPO = os.path.dirname(HERE)
@@ -142,20 +143,177 @@ def num(r, k, scale=1.0):
         return None
 
 
-def verdict(r):
-    """good / okay / off from the atom finder's numbers (stated on the page):
-    good  Pb >= 95 %, Ti and O >= 60 %, depth error <= 0.6 A, precision >= 0.9  (the known-probe 80 mrad standard)
-    okay  Pb >= 80 %, O >= 25 %, depth error <= 1.1 A  (lattice and Pb right; species, depth or false hits weaker)
-    off   anything else.  None when the finder did not run."""
-    pb, ti, o, z, pr = (num(r, "Pb_recall_bulk", 100), num(r, "Ti_recall_bulk", 100), num(r, "O_recall_bulk", 100),
-                        num(r, "z_rms"), num(r, "precision"))
-    if None in (pb, ti, o, z, pr):
+def verdict(s):
+    """good / okay / off from atom_scores (stated on the page), on Pb and Ti found as the right element within 0.5 A
+    of the true depth; oxygen is reported but not judged (with the full physics it is not expected):
+    good  Pb >= 80 % and Ti >= 45 %   (the known-probe 70-80 mrad standard)
+    okay  Pb >= 50 %                  (Pb depths clearly recovered: guessing gives at most ~26 %)
+    off   anything else.  None when the run has no scored atoms."""
+    if not s:
         return None
-    if pb >= 95 and ti >= 60 and o >= 60 and z <= 0.6 and pr >= 0.9:
+    pb, ti = 100 * s["right"][82], 100 * s["right"][22]
+    if pb >= 80 and ti >= 45:
         return "good"
-    if pb >= 80 and o >= 25 and z <= 1.1:
+    if pb >= 50:
         return "okay"
     return "off"
+
+
+# =========================================================================================== the atom numbers
+_RUNS = [None]                 # the page's Runs, set by main (scores of runs without a volume need the reference run)
+STRICT_Z = 0.5                 # A: a found atom is in the right place when within this depth of a true atom of its element
+PERIOD = 3.9                   # A: the Pb (and Ti) period down a column; the guessing level slides by fractions of it
+N_SLIDE = 16
+SCORE_CACHE = os.path.join(CACHE, "atom_scores.json")
+_SCORES = {}
+
+
+def _match(found, gr, gc, gl, gZ, gwin, dx, dz, txy, tol_z, sp):
+    """validate.match_found_to_gt (greedy, brightest first, 0.6 A in plane), restricted to one element on both sides,
+    with depth tolerance tol_z. GT already mapped into the volume's frame. Returns (match per found atom, claimed GT)."""
+    gi = np.where(gwin & (gZ == sp))[0]
+    gx, gy, gz = gc[gi] * dx, gr[gi] * dx, gl[gi] * dz
+    fi = np.where(found["species"] == sp)[0]
+    claimed = np.zeros(len(gi), bool)
+    match = np.full(len(found), -1)
+    for f in fi[np.argsort(-found["amp"][fi])]:
+        ok = (~claimed) & (np.hypot(gx - found["col"][f] * dx, gy - found["row"][f] * dx) <= txy) & \
+             (np.abs(gz - found["layer"][f] * dz) <= tol_z)
+        if ok.any():
+            cand = np.where(ok)[0]
+            j = cand[np.argmin(np.hypot(gx[cand] - found["col"][f] * dx, gy[cand] - found["row"][f] * dx)
+                               + np.abs(gz[cand] - found["layer"][f] * dz))]
+            claimed[j] = True; match[f] = gi[j]
+    out = np.zeros(len(gZ), bool); out[gi[claimed]] = True
+    return match, out
+
+
+def atom_frame(info, R=None):
+    """(found, pos, Z, al, cfg, how) in the frame the run's own numbers were scored in. With a shipped volume this is
+    load_leg's (registered on the volume, refined on the run's atoms, as run_atomfind did). Without one (block 2's kick
+    legs) the reference run's frame is refined on this run's atoms, and accepted only if it reproduces the run's own
+    summary.csv recall to within 3 points per species ('how' says which)."""
+    if not info.get("af"):
+        return None
+    from atomfind import align, validate
+    found = np.load(os.path.join(info["af"], "found_atoms.npy"))
+    lg = load_leg(info) if info.get("fd") else None
+    if lg is not None:
+        return found, lg["pos"], lg["Z"], lg["al"], lg["cfg"], "own volume"
+    if R is None or info.get("row") is None or not os.path.exists(os.path.join(info["af"], "found_atoms.csv")):
+        return None
+    # no volume: the run's own map, recovered from its export (found_atoms.csv holds index_to_site / layer_to_z of
+    # every atom), on the reference run's GT and window (same region); accepted only if it reproduces summary.csv
+    import copy
+    rows = list(csv.DictReader(open(os.path.join(info["af"], "found_atoms.csv"))))
+    if len(rows) != len(found) or len(found) < 10:
+        return None
+    X = np.array([[float(r["X_A"]), float(r["Y_A"]), float(r["Z_A"])] for r in rows])
+    ref = load_leg(R.find(R.man["reference"]))
+    al = _FitFrame(found, X)
+    cfg = copy.copy(ref["cfg"]); cfg.dz = num(info["row"], "dz_A")
+    al.dx = num(info["row"], "dx_A") or ref["al"].dx
+    rep, _ = validate.finder_report(found, ref["pos"], ref["Z"], al, cfg)
+    for nm in ("Pb", "Ti", "O"):
+        want = num(info["row"], f"{nm}_recall_bulk")
+        if want is None or not abs(rep[nm]["recall_bulk"] - want) <= 0.02:
+            return None
+    return found, ref["pos"], ref["Z"], al, cfg, "frame from its exported coordinates (reproduces its summary)"
+
+
+class _FitFrame:
+    """The recon<->GT map of a run that shipped no volume, fitted from its own export: in plane an affine
+    (row, col) -> (X, Y), in depth a line layer -> Z. Provides what the scorer uses: site_to_index and dx."""
+
+    def __init__(self, found, X):
+        A = np.c_[found["row"], found["col"], np.ones(len(found))]
+        self.cx, *_ = np.linalg.lstsq(A, X[:, 0], rcond=None)
+        self.cy, *_ = np.linalg.lstsq(A, X[:, 1], rcond=None)
+        self.cz = np.polyfit(found["layer"], X[:, 2], 1)
+        self.dx = None
+
+    def site_to_index(self, x, y, z):
+        M = np.array([self.cx[:2], self.cy[:2]])
+        rc = np.linalg.solve(M, np.vstack([np.asarray(x) - self.cx[2], np.asarray(y) - self.cy[2]]))
+        return rc[0], rc[1], (np.asarray(z) - self.cz[1]) / self.cz[0]
+
+
+def atom_scores(info, R=None):
+    """The page's atom numbers for one run (cached on disk by the found-atoms file and its time).
+    right[sp]  share of the real bulk atoms of element sp with a found atom of the SAME element within 0.6 A in plane and
+               0.5 A in depth (the finder's own greedy matcher, one element at a time).
+    guess[sp]  the same, for the same found atoms slid along their columns by 16 evenly spread fractions of 3.9 A and
+               averaged: what the run would score if its depths were guesses (~26 % of in-plane hits for Pb).
+    wrong      share of found atoms whose match under the finder's own check (0.6 A / 2 A, any element) is another
+               element: the species-confusion figure the finder prints with its health warnings.
+    bar        median of the finder's own calibrated 95 % depth half-widths (found_atoms.csv), A.
+    ok, hw     per found atom: strictly matched; its 95 % depth half-width (A, NaN if not exported).
+    dzn        per found atom: depth distance to the nearest true atom of its element within 0.6 A in plane (NaN: none)."""
+    if not info.get("af") or not info.get("primary", True):
+        return None
+    R = R or _RUNS[0]
+    fpath = os.path.join(info["af"], "found_atoms.npy")
+    key = f"{fpath}|{os.path.getmtime(fpath):.0f}"
+    if key in _SCORES:
+        return _SCORES[key]
+    disk = json.load(open(SCORE_CACHE)) if os.path.exists(SCORE_CACHE) else {}
+    fr = atom_frame(info, R)
+    if fr is None:
+        return None
+    found, pos, Z, al, cfg, how = fr
+    hw = np.full(len(found), np.nan)
+    csvp = os.path.join(info["af"], "found_atoms.csv")
+    if os.path.exists(csvp):
+        rows = list(csv.DictReader(open(csvp)))
+        if len(rows) == len(found) and all(int(r["col_id"]) == c for r, c in zip(rows, found["col_id"])):
+            hw = np.array([float(r["halfwidth95_z_A"]) for r in rows])
+    if key in disk and "dzn" in disk[key]:
+        s = disk[key]
+        s["right"] = {int(k): v for k, v in s["right"].items()}; s["guess"] = {int(k): v for k, v in s["guess"].items()}
+        s["ok"] = np.array(s["ok"], bool); s["hw"] = hw
+        s["dzn"] = np.array([np.nan if v is None else v for v in s["dzn"]], float)
+        _SCORES[key] = s
+        return s
+    from atomfind import align, validate
+    gwin = align.in_window(pos, cfg)
+    gr, gc, gl = al.site_to_index(pos[:, 0], pos[:, 1], pos[:, 2])
+    bulk = gwin & (gl * cfg.dz >= cfg.bulk_z_A[0]) & (gl * cfg.dz <= cfg.bulk_z_A[1])
+
+    def strict(f):
+        ok, rec = np.zeros(len(f), bool), {}
+        for sp in (82, 22, 8):
+            m, claimed = _match(f, gr, gc, gl, Z, gwin, al.dx, cfg.dz, cfg.match_tol_xy_A, STRICT_Z, sp)
+            ok |= m >= 0
+            sel = bulk & (Z == sp)
+            rec[sp] = float(claimed[sel].sum() / sel.sum()) if sel.any() else float("nan")
+        return rec, ok
+
+    right, ok = strict(found)
+    # per found atom: depth distance to the nearest true atom of ITS element within 0.6 A in plane (not one-to-one);
+    # NaN when there is none (a phantom or a wrong element)
+    dzn = np.full(len(found), np.nan)
+    gx, gy, gz = gc * al.dx, gr * al.dx, gl * cfg.dz
+    for k_ in range(len(found)):
+        near = gwin & (Z == found["species"][k_]) & \
+               (np.hypot(gx - found["col"][k_] * al.dx, gy - found["row"][k_] * al.dx) <= cfg.match_tol_xy_A)
+        if near.any():
+            dzn[k_] = float(np.min(np.abs(gz[near] - found["layer"][k_] * cfg.dz)))
+    slides = []
+    for k in range(N_SLIDE):
+        f = found.copy(); f["layer"] = f["layer"] + (k + 0.5) * PERIOD / N_SLIDE / cfg.dz
+        slides.append(strict(f)[0])
+    guess = {sp: float(np.mean([s_[sp] for s_ in slides])) for sp in (82, 22, 8)}
+    _, m = validate.finder_report(found, pos, Z, al, cfg)
+    mi = m["match_gi"]
+    wrong = float(np.mean(Z[mi[mi >= 0]] != found["species"][mi >= 0])) if (mi >= 0).any() else float("nan")
+    s = dict(right=right, guess=guess, wrong=wrong, bar=float(np.nanmedian(hw)) if np.isfinite(hw).any() else float("nan"),
+             n=int(len(found)), how=how, ok=ok.tolist(), dzn=[None if not np.isfinite(v) else float(v) for v in dzn])
+    disk[key] = s
+    os.makedirs(CACHE, exist_ok=True)
+    json.dump(disk, open(SCORE_CACHE, "w"))
+    s = dict(s, ok=ok, hw=hw, dzn=dzn)
+    _SCORES[key] = s
+    return s
 
 
 # =========================================================================================== shared geometry
@@ -185,12 +343,12 @@ def load_leg(info):
     region = int(round(2 * centre[0]))                       # the scan sits at the region's centre
     cfg = figdata.config_for(os.path.join(info["fd"], "phase_vol.npy"), gt_dir(region), dz, dx, centre)
     pos, Z = align.load_gt(cfg)
-    found = gtidx = None
+    found = gtidx = al = None
     if info["af"]:
         found = np.load(os.path.join(info["af"], "found_atoms.npy"))
         al = align.refine_with_atoms(align.register(V, dx, pos, Z, cfg), found, pos, Z, cfg)
         gtidx = al.site_to_index(pos[:, 0], pos[:, 1], pos[:, 2])
-    lg = dict(V=V, dx=dx, dz=dz, pos=pos, Z=Z, found=found, gt=gtidx, cfg=cfg)
+    lg = dict(V=V, dx=dx, dz=dz, pos=pos, Z=Z, found=found, gt=gtidx, cfg=cfg, al=al, info=info)
     _LEGS[info["fd"]] = lg
     return lg
 
@@ -206,14 +364,14 @@ def cuts_from(lg):
     return out
 
 
-def numbers_line(r):
-    if r is None:
+def numbers_line(sc):
+    """The line under a run's title: Pb / Ti / O found as the right element within 0.5 A, what guessing the depths
+    would give, and the finder's own wrong-element share."""
+    if not sc:
         return ""
-    pb, ti, o, z = num(r, "Pb_recall_bulk", 100), num(r, "Ti_recall_bulk", 100), num(r, "O_recall_bulk", 100), num(r, "z_rms")
-    if None in (pb, ti, o, z):
-        return "atoms: finder not run"
-    pr = num(r, "precision")
-    return f"Pb {pb:.0f} / Ti {ti:.0f} / O {o:.0f} %, depth {z:.2f} Å" + (f", precision {pr:.2f}" if pr is not None else "")
+    f = lambda d: " / ".join(f"{100 * d[z]:.0f}" for z in (82, 22, 8))
+    return (f"right place, Pb / Ti / O: {f(sc['right'])} %\n"
+            f"guessing the depth: {f(sc['guess'])} %  ·  wrong element {100 * sc['wrong']:.0f} %")
 
 
 def run_row(fig, gs, i, info, title, cuts, seen, ncols=3):
@@ -233,19 +391,89 @@ def run_row(fig, gs, i, info, title, cuts, seen, ncols=3):
         ax.axhline(rA - top, color="white", lw=0.8, ls=(0, (4, 3)), alpha=0.8)
     ax.plot([-9.2, -4.2], [8.9, 8.9], color="white", lw=3, solid_capstyle="butt")      # 5 A scale bar
     ax.text(-6.7, 8.4, "5 Å", color="white", ha="center", va="bottom", fontsize=9)
-    nums = numbers_line(info["row"] if info["primary"] else None)
+    sc = atom_scores(info)
+    nums = numbers_line(sc)
     ax.set_title(title + (f"\n{nums}" if nums else ""), fontsize=10.5, loc="left")
     nx = lg["V"].shape[2]
     for j, (cut, rA) in enumerate(cuts):
         ax = fig.add_subplot(gs[i, 1 + j])
-        seen |= cf.xz_small(ax, lg, rA / lg["dx"], sfig, xlim=(nx * lg["dx"] / 2 - 8, nx * lg["dx"] / 2 + 8), show_y=(j == 0))
+        seen |= xz_section(ax, lg, sc, rA / lg["dx"], xlim=(nx * lg["dx"] / 2 - 8, nx * lg["dx"] / 2 + 8), show_y=(j == 0))
         ax.set_title(f"{cut}  ·  {lg['V'].shape[0]} slices of {lg['dz']:.2f} Å" if j == 0 else cut, fontsize=9.5, loc="left")
         ax.set_xlabel("x (Å)", fontsize=9)
 
 
+MISS = "white"                                                  # a found atom in the wrong place (never a species colour)
+
+
+def atom_states(sc, n):
+    """Per found atom: 'right' (a true atom of its element within 0.6 A in plane and 0.5 A in depth -- it counts in the
+    'right place' number), 'unsure' (further than 0.5 A, but its own 95 % depth bar reaches a true atom of its element),
+    'miss' (its bar does not: wrong depth beyond its own uncertainty, or no atom of that element there at all)."""
+    if not sc:
+        return np.array(["right"] * n)
+    reach = np.isfinite(sc["dzn"]) & np.isfinite(sc["hw"]) & (sc["dzn"] <= sc["hw"])
+    return np.where(sc["ok"], "right", np.where(reach, "unsure", "miss"))
+_STROKE = [pe.withStroke(linewidth=2.4, foreground="black")]
+
+
+def xz_section(ax, lg, sc, row, half_A=0.25, xlim=None, show_y=True, ms_gt=3.4, ms_ring=5.2):
+    """A depth section through one row of the volume, with the truth and the finder's answer on it.
+    Image: the phase averaged over +-half_A about the row, its colour scale set by the slab's layers only (the vacuum
+    layers of a full-physics run hold bright junk that would otherwise black out the specimen). Dots: atoms in the
+    structure. Rings: atoms the finder reported, with their own calibrated 95 % depth bar; a ring in the species colour
+    is in the right place (a true atom of that element within 0.6 A in plane and 0.5 A in depth), a white ring is not
+    (wrong depth or wrong element). Returns the species drawn."""
+    V, dx, dz, cfg = lg["V"], lg["dx"], lg["dz"], lg["cfg"]
+    nL, ny, nx = V.shape
+    hp = half_A / dx
+    sec = V[:, max(int(round(row - hp)), 0):min(int(round(row + hp)) + 1, ny), :].mean(1)
+    zc = (np.arange(nL) + 0.5) * dz
+    slab = sec[(zc > cfg.trim_z_A[0]) & (zc < cfg.trim_z_A[1])]
+    ax.imshow(sec, cmap="magma", aspect="equal", origin="upper", extent=[0, nx * dx, nL * dz, 0],
+              vmin=np.percentile(slab, 1), vmax=np.percentile(slab, 99.7), interpolation="nearest")
+    seen = set()
+    if lg["gt"] is not None:
+        gr, gc, gl = lg["gt"]
+        m = np.abs(gr - row) <= hp
+        for z_, col, sp in zip(gl[m], gc[m], lg["Z"][m]):
+            if sp in SP:
+                ax.plot(col * dx, (z_ + 0.5) * dz, ".", color=SP[sp][1], ms=ms_gt, alpha=.95, zorder=3)
+                seen.add(int(sp))
+    f = lg["found"]
+    if f is not None:
+        st = atom_states(sc, len(f))
+        hw = sc["hw"] if sc else np.full(len(f), np.nan)
+        for k in np.where(np.abs(f["row"] - row) <= hp * 2.2)[0]:
+            x, z = f["col"][k] * dx, (f["layer"][k] + 0.5) * dz
+            c = MISS if st[k] == "miss" else SP.get(int(f["species"][k]), (None, MISS))[1]
+            eff = _STROKE if st[k] == "miss" else None
+            alpha = 0.55 if st[k] == "unsure" else 0.95
+            if np.isfinite(hw[k]):
+                ax.plot([x, x], [z - hw[k], z + hw[k]], color=c, lw=0.8, zorder=4, alpha=alpha, path_effects=eff)
+                ax.plot([x - 0.22, x + 0.22, np.nan, x - 0.22, x + 0.22], [z - hw[k]] * 2 + [np.nan] + [z + hw[k]] * 2,
+                        color=c, lw=0.8, zorder=4, alpha=alpha, path_effects=eff)
+            ax.plot(x, z, "o", mfc="none", mec=c, mew=1.1, ms=ms_ring, zorder=5, alpha=alpha, path_effects=eff)
+    for zb in (sfig.ZVAC, sfig.BOXZ - sfig.ZVAC):
+        ax.axhline(zb, color="#7fd4ff", lw=0.8, ls=(0, (4, 3)), alpha=.85)
+    if xlim:
+        ax.set_xlim(*xlim)
+    ax.set_ylim(sfig.BOXZ, 0); ax.grid(False)
+    ax.set_xlabel("x (Å)")
+    if show_y:
+        ax.set_ylabel("depth z (Å)")
+    else:
+        ax.set_yticklabels([])
+    return seen
+
+
 def legend_handles(seen):
     h = [Line2D([], [], ls="none", marker=".", color=c, ms=11, label=f"{n} in the structure") for z, (n, c) in SP.items() if z in seen]
-    h += [Line2D([], [], ls="none", marker="o", mfc="none", mec=INK2, mew=1.3, ms=8, label="atom the finder reported"),
+    h += [Line2D([0, 0], [0, 1], ls="-", lw=0.9, marker="o", mfc="none", mec=INK2, color=INK2, mew=1.2, ms=8,
+                 label="found: colour = its element, bar = its own 95 % depth error; within 0.5 Å of the truth"),
+          Line2D([0, 0], [0, 1], ls="-", lw=0.9, marker="o", mfc="none", mec=INK2, color=INK2, mew=1.2, ms=8, alpha=0.5,
+                 label="found, off by more than 0.5 Å but its bar reaches the truth (faded)"),
+          Line2D([], [], ls="none", marker="o", mfc="none", mec=MISS, mew=1.2, ms=8, path_effects=_STROKE,
+                 label="found, misplaced: its bar misses, or no atom of that element there (white)"),
           Line2D([], [], color="#7fd4ff", ls=(0, (4, 3)), lw=1.2, label="vacuum edge"),
           Line2D([], [], color=INK2, ls=(0, (4, 3)), lw=1.0, label="where the sections cut (left image)")]
     return h
@@ -254,13 +482,13 @@ def legend_handles(seen):
 def compare_fig(name, items, cuts):
     """Rows of runs, each: depth-summed phase + Pb-row and B-site-row sections. items: [(title, info), ...]."""
     n = len(items)
-    H = 4.45 * n + 1.1                                        # inches: rows plus a strip for the legend
+    H = 4.6 * n + 1.5                                         # inches: rows plus a strip for the legend
     fig = plt.figure(figsize=(10.6, H))
-    gs = fig.add_gridspec(n, 3, width_ratios=[1.35, 0.78, 0.78], wspace=0.16, hspace=0.42, top=1 - 0.55 / H, bottom=1.25 / H)
+    gs = fig.add_gridspec(n, 3, width_ratios=[1.35, 0.78, 0.78], wspace=0.16, hspace=0.5, top=1 - 0.75 / H, bottom=1.6 / H)
     seen = set()
     for i, (title, info) in enumerate(items):
         run_row(fig, gs, i, info, title, cuts, seen)
-    fig.legend(handles=legend_handles(seen or {82, 22, 8}), loc="lower center", ncol=3, fontsize=9.5, bbox_to_anchor=(0.5, 0.0))
+    fig.legend(handles=legend_handles(seen or {82, 22, 8}), loc="lower center", ncol=2, fontsize=9.5, bbox_to_anchor=(0.5, 0.0))
     return save(fig, name)
 
 
@@ -332,12 +560,16 @@ def vcell(v):
     return f'<td class="{CHIP[v][1]}"><span class="chip {CHIP[v][0]}">{v}</span></td>'
 
 
-def atoms_cells(r):
-    pb, ti, o, z, pr = (num(r, "Pb_recall_bulk", 100), num(r, "Ti_recall_bulk", 100), num(r, "O_recall_bulk", 100),
-                        num(r, "z_rms"), num(r, "precision"))
-    if None in (pb, ti, o, z):
-        return "<td>–</td><td>–</td><td>–</td>"
-    return f"<td>{pb:.0f} / {ti:.0f} / {o:.0f}</td><td>{z:.2f}</td><td>{pr:.2f}</td>"
+ATOM_HEAD = ["right place: Pb / Ti / O (%)", "guessing (%)", "wrong element (%)", "95 % depth bar (Å)"]
+
+
+def atoms_cells(sc):
+    """Table cells for ATOM_HEAD from atom_scores (dashes when the run has no scored atoms)."""
+    if not sc:
+        return "<td>–</td><td>–</td><td>–</td><td>–</td>"
+    f = lambda d: " / ".join(f"{100 * d[z]:.0f}" for z in (82, 22, 8))
+    return (f"<td>{f(sc['right'])}</td><td class='muted'>{f(sc['guess'])}</td><td>{100 * sc['wrong']:.0f}</td>"
+            f"<td>{sc['bar']:.2f}</td>")
 
 
 def table(head, rows_html, caption="", cls=""):
@@ -416,16 +648,20 @@ def part_known(R, T):
     keys = [k for k in R.man["runs"] if k.startswith("known_")]
     infos = {k: R.find(k) for k in keys}
     rows = {k: infos[k]["row"] for k in keys}
-    # chart: atoms and depth against aperture
+    # chart: atoms in the right place, and the finder's own depth bar, against aperture
     al = [float(R.man["runs"][k]["short"]) for k in keys]
+    scs = [atom_scores(infos[k]) for k in keys]
     fig, (a1, a2) = plt.subplots(1, 2, figsize=(11, 3.9))
-    for sp, key in ((82, "Pb_recall_bulk"), (22, "Ti_recall_bulk"), (8, "O_recall_bulk")):
-        v = [num(rows[k], key, 100) for k in keys]
-        a1.plot([a for a, x in zip(al, v) if x is not None], [x for x in v if x is not None], "o-", color=SP[sp][1], label=SP[sp][0])
-    a1.set_ylim(0, 108); a1.set_xlabel("α (mrad)"); a1.set_ylabel("atoms found, bulk (%)"); a1.legend(loc="lower center", ncol=3)
-    z = [num(rows[k], "z_rms") for k in keys]
-    a2.plot([a for a, x in zip(al, z) if x is not None], [x for x in z if x is not None], "o-", color=INK)
-    a2.set_xlabel("α (mrad)"); a2.set_ylabel("depth error of found atoms, rms (Å)"); a2.set_ylim(0, None)
+    for sp in (82, 22, 8):
+        pts = [(a, 100 * s_["right"][sp], 100 * s_["guess"][sp]) for a, s_ in zip(al, scs) if s_]
+        a1.plot([p_[0] for p_ in pts], [p_[1] for p_ in pts], "o-", color=SP[sp][1], label=SP[sp][0])
+        a1.plot([p_[0] for p_ in pts], [p_[2] for p_ in pts], ":", color=SP[sp][1], lw=1.2, alpha=0.8)
+    a1.plot([], [], ":", color=INK2, label="guessing the depth")
+    a1.set_ylim(0, 108); a1.set_xlabel("α (mrad)"); a1.set_ylabel("right element within 0.5 Å, bulk (%)")
+    a1.legend(loc="upper left", ncol=2, fontsize=9)
+    pts = [(a, s_["bar"]) for a, s_ in zip(al, scs) if s_]
+    a2.plot([p_[0] for p_ in pts], [p_[1] for p_ in pts], "o-", color=INK)
+    a2.set_xlabel("α (mrad)"); a2.set_ylabel("finder's 95 % depth bar, median (Å)"); a2.set_ylim(0, None)
     for a in (a1, a2):
         a.set_xticks(al)
         a.axvspan(85, 105, color="#c2490a", alpha=0.06, lw=0)
@@ -436,6 +672,7 @@ def part_known(R, T):
     trs = []
     for k in keys:
         r, info = rows[k], infos[k]
+        sc = atom_scores(info)
         t = T.get(info["tag"] or "", {})
         w, l = loss_from_note(t.get("note"))
         tr = R.trace(R.man["runs"][k]["leg"])
@@ -443,8 +680,8 @@ def part_known(R, T):
         cls = ' class="ref"' if k == R.man["reference"] else ""
         trs.append(f"<tr{cls}><td>{R.man['runs'][k]['short']}</td><td>{float(t['side']) / float(t['bin']) if t else 0:g}</td>"
                    f"<td>{'–' if l is None else f'{l:.2f}'}</td><td>{num(r, 'NL') and int(num(r, 'NL')) or '–'}</td>"
-                   f"{atoms_cells(r)}<td>{eps}</td>{vcell(verdict(r))}</tr>")
-    tab = table(["α (mrad)", "window (Å)", "probe outside (%)", "slices", "Pb / Ti / O (%)", "depth (Å)", "precision", "ε", "verdict"],
+                   f"{atoms_cells(sc)}<td>{eps}</td>{vcell(verdict(sc))}</tr>")
+    tab = table(["α (mrad)", "window (Å)", "probe outside (%)", "slices", *ATOM_HEAD, "ε", "verdict"],
                 trs, "ε = final residual × pattern width / 2·10⁵ (comparable across runs of different size). The tinted row is "
                      "the reference every later section is measured against.")
     # tabs: one figure per aperture
@@ -457,7 +694,12 @@ def part_known(R, T):
             panes.append((R.man["runs"][k]["short"], pending_box(info))); continue
         p = compare_fig(f"tab_known_{k}.png", [(R.man["runs"][k]["name"], info)], cuts)
         panes.append((R.man["runs"][k]["short"], img(p, R.man["runs"][k]["name"], maxw=1300, jpeg=86)))
-    return dict(FIG_KNOWN=img(fchart, "atoms found and depth error against aperture, probe known"), FRAG_KNOWN_TABLE=tab,
+    rs = atom_scores(infos[R.man["reference"]])
+    f3 = lambda d: " / ".join(f"{100 * d[z]:.0f}" for z in (82, 22, 8))
+    ref_line = (f"Probe known, {R.man['runs'][R.man['reference']]['short']} mrad: <em>{f3(rs['right'])} %</em> of Pb / Ti / O "
+                f"in the right place (guessing the depth: {f3(rs['guess'])} %)") if rs else "Probe known: atoms pending"
+    return dict(REF_LINE=ref_line,
+                FIG_KNOWN=img(fchart, "atoms in the right place and the finder's depth bar against aperture, probe known"), FRAG_KNOWN_TABLE=tab,
                 FRAG_KNOWN_TABS=tabs("tabs-known", panes, default=keys.index(R.man["reference"]), unit="mrad")), cuts
 
 
@@ -470,8 +712,8 @@ def part_window(R, T, cuts):
         info = R.find(k); t = T.get(info["tag"] or "", {})
         w, l = loss_from_note(t.get("note"))
         trs.append(f"<tr><td>{html.escape(R.man['runs'][k]['short'])}</td><td>{'–' if l is None else f'{l:.1f}'}</td>"
-                   f"{atoms_cells(info['row'])}{vcell(verdict(info['row']))}</tr>")
-    tab = table(["run", "probe outside the window (%)", "Pb / Ti / O (%)", "depth (Å)", "precision", "verdict"], trs,
+                   f"{atoms_cells(atom_scores(info))}{vcell(verdict(atom_scores(info)))}</tr>")
+    tab = table(["run", "probe outside the window (%)", *ATOM_HEAD, "verdict"], trs,
                 "The share outside the window is plan_probe.window_loss for that row's probe, about the beam axis.")
     panes = []
     for k in keys + ["win_a090", "win_a100"]:
@@ -482,50 +724,33 @@ def part_window(R, T, cuts):
 
 
 def part_kicks(R, T, cuts):
-    # table: the start's error in waves, how far the probe came back, the atoms
+    """Section 5, kept short on purpose: one table (start error, probe overlap, atoms) and one figure (the reference and
+    the two 80 mrad kicks that recover; block 2's 200-iteration kick shipped no volume, so it is in the table only)."""
     trs = []
     for k in ["kick_a040", "kick_a060", "kick_a080", "kick_a100", "long_m3", "long_m6"]:
         info = R.find(k); spec = R.man["runs"][k]
         lab = "armf_a" + re.search(r"(\d{3})", spec.get("leg", "")).group(1) if re.search(r"a(\d{3})", spec.get("leg", "")) else None
         t = T.get(lab, {})
         ab = cf.aberrations(t) if t else {}
-        rms = pv = None
+        rms = None
         if t:
-            rms, pv = phase_error_waves(float(t["alpha"]), (KICK - 1) * float(t["c1"]), (KICK - 1) * ab.get("C30", 0.0),
-                                        (KICK - 1) * ab.get("C12", 0.0), ab.get("phi12", 0.0))
+            rms, _ = phase_error_waves(float(t["alpha"]), (KICK - 1) * float(t["c1"]), (KICK - 1) * ab.get("C30", 0.0),
+                                       (KICK - 1) * ab.get("C12", 0.0), ab.get("phi12", 0.0))
         kj, _ = R.kick(spec["leg"])
         ov = f"{kj['ov_start']:.2f} → {kj['ov_final']:.2f}" if kj and "ov_final" in kj else "–"
-        m1 = f"{kj['mode_power'][0]:.2f}" if kj and kj.get("mode_power") else "–"
-        trs.append(f"<tr><td>{html.escape(spec['name'])}</td><td>{'–' if rms is None else f'{rms:.2f} / {pv:.1f}'}</td>"
-                   f"<td>{ov}</td><td>{m1}</td>{atoms_cells(info['row'])}{vcell(verdict(info['row']))}</tr>")
+        sc = atom_scores(info)
+        trs.append(f"<tr><td>{html.escape(spec['name'])}</td><td>{'–' if rms is None else f'{rms:.2f}'}</td>"
+                   f"<td>{ov}</td>{atoms_cells(sc)}{vcell(verdict(sc))}</tr>")
     ref = R.find(R.man["reference"])
-    trs.insert(0, f'<tr class="ref"><td>80 mrad, probe known (reference)</td><td>0</td><td>–</td><td>–</td>{atoms_cells(ref["row"])}'
-                  f'{vcell(verdict(ref["row"]))}</tr>')
-    tab = table(["run", "start error, waves (rms / p-v)", "probe overlap, start → end", "mode 1 power", "Pb / Ti / O (%)",
-                 "depth (Å)", "precision", "verdict"], trs,
-                "Start error: the phase the kicked start gets wrong across the aperture (C1, C3, A1 × 1.05), piston removed. "
-                "Overlap: |⟨start or recovered mode 1, true probe⟩|, best over shifts; it falls to ~0.2 for any smooth ~1-wave "
-                "error, so read it with the start error. 40 mrad: 4 slices, too few for the atom finder.")
-    # convergence: the residual against iteration
-    fig, ax = plt.subplots(figsize=(8.6, 4.2))
-    for leg, lab, col, ls in (("armf_a080_lab", "probe known", LINES["known"], "--"), ("armf_a080_kick", "kick, 3 modes, 200 it", LINES["k200"], "-"),
-                              ("armf_a080_lab_long_m3", "kick, 3 modes, 500 it", LINES["k500"], "-"),
-                              ("armf_a080_lab_long_m6", "kick, 6 modes, 250 it", LINES["m6"], "-")):
-        tr = R.trace(leg)
-        if tr:
-            ax.plot(tr[0], tr[1], ls=ls, color=col, label=f"{lab} (end {tr[1][-1]:.4f})")
-    ax.set_xlabel("iteration (full-resolution engine)"); ax.set_ylabel("ε = residual × N / 2·10⁵")
-    ax.legend(fontsize=9); ax.set_ylim(0.008, None); ax.set_yscale("log")
-    fconv = save(fig, "fig_kick_convergence.png")
-    pc = compare_fig("fig_kicks.png", [("80 mrad, probe known", R.find("known_a080")), ("5 % kick, 3 modes, 200 iterations", R.find("kick_a080")),
-                                        ("5 % kick, 3 modes, 500 iterations", R.find("long_m3")), ("5 % kick, 6 modes, 250 iterations", R.find("long_m6"))], cuts)
-    # probe-recovery tabs
-    panes = []
-    for k in ["kick_a040", "kick_a060", "kick_a080", "kick_a100", "long_m3", "long_m6"]:
-        kj, png = R.kick(R.man["runs"][k]["leg"])
-        panes.append((R.man["runs"][k]["short"], img(png, R.man["runs"][k]["name"], maxw=1100, jpeg=84) if png and os.path.exists(png) else pending_box(R.find(k))))
-    return dict(FRAG_KICK_TABLE=tab, FIG_KICK_CONV=img(fconv, "residual against iteration for the known probe and three kicked runs"),
-                FIG_KICKS=img(pc, "80 mrad: probe known against kicked runs"), FRAG_KICK_TABS=tabs("tabs-kick", panes, default=2, unit="mrad"))
+    trs.insert(0, f'<tr class="ref"><td>80 mrad, probe known (reference)</td><td>0</td><td>–</td>{atoms_cells(atom_scores(ref))}'
+                  f'{vcell(verdict(atom_scores(ref)))}</tr>')
+    tab = table(["run", "start error (waves rms)", "probe overlap, start → end", *ATOM_HEAD, "verdict"], trs,
+                "Start error: the phase the kicked start gets wrong across the aperture, piston removed. Overlap with the "
+                "true probe falls to ~0.2 for any smooth one-wave error, so read it with the start error. 40 mrad: 4 slices, "
+                "too few for the atom finder.")
+    pc = compare_fig("fig_kicks.png", [("80 mrad, probe known", R.find("known_a080")), ("5 % kick, 3 modes, 500 iterations", R.find("long_m3")),
+                                        ("5 % kick, 6 modes, 250 iterations", R.find("long_m6"))], cuts)
+    return dict(FRAG_KICK_TABLE=tab, FIG_KICKS=img(pc, "80 mrad: probe known against the kicked runs that recover"))
 
 
 def part_physics(R, T, cuts):
@@ -539,9 +764,9 @@ def part_physics(R, T, cuts):
         ov = f"{kj['ov_start']:.2f} → {kj['ov_final']:.2f}" if kj and "ov_final" in kj else "–"
         m1 = " / ".join(f"{x:.2f}" for x in kj["mode_power"]) if kj and kj.get("mode_power") else "–"
         note = "" if info["primary"] or not info["found"] else " <span class='chip c-none'>volume only</span>"
-        trs.append(f"<tr><td>{html.escape(title)}{note}</td><td>{ov}</td><td>{m1}</td>{atoms_cells(info['row'] if info['primary'] else None)}"
-                   f"{vcell(verdict(info['row']) if info['primary'] else None)}</tr>")
-    tab = table(["run", "probe overlap", "mode powers", "Pb / Ti / O (%)", "depth (Å)", "precision", "verdict"], trs,
+        trs.append(f"<tr><td>{html.escape(title)}{note}</td><td>{ov}</td><td>{m1}</td>{atoms_cells(atom_scores(info))}"
+                   f"{vcell(verdict(atom_scores(info)))}</tr>")
+    tab = table(["run", "probe overlap", "mode powers", *ATOM_HEAD, "verdict"], trs,
                 "Fixed-probe runs use their own matched kernels (same physics, same operator). The 200-iteration kick is read "
                 "with block 2's coherent known-probe kernels (its own grids failed); the 500-iteration one with the fixed-probe "
                 "1e7 kernels once analysis 1310612 is pulled.")
@@ -609,13 +834,13 @@ def part_refined(R, T, cuts):
     trs = []
     for title, info in items + [("1e7, searched start, its own kernels", R.find("refined_1e7_own"))]:
         if not info["found"]:
-            trs.append(f"<tr><td>{html.escape(title)}</td><td colspan='6'>{pending_box(info)}</td></tr>"); continue
+            trs.append(f"<tr><td>{html.escape(title)}</td><td colspan='7'>{pending_box(info)}</td></tr>"); continue
         kj, _ = R.kick(info["spec"].get("leg", ""))
         ov = f"{kj['ov_start']:.2f} → {kj['ov_final']:.2f}" if kj and "ov_final" in kj else "–"
         m1 = " / ".join(f"{x:.2f}" for x in kj["mode_power"]) if kj and kj.get("mode_power") else "–"
-        r = info["row"] if info["primary"] else None
-        trs.append(f"<tr><td>{html.escape(title)}</td><td>{ov}</td><td>{m1}</td>{atoms_cells(r)}{vcell(verdict(r))}</tr>")
-    tab = table(["run", "probe overlap", "mode powers", "Pb / Ti / O (%)", "depth (Å)", "precision", "verdict"], trs,
+        sc = atom_scores(info)
+        trs.append(f"<tr><td>{html.escape(title)}</td><td>{ov}</td><td>{m1}</td>{atoms_cells(sc)}{vcell(verdict(sc))}</tr>")
+    tab = table(["run", "probe overlap", "mode powers", *ATOM_HEAD, "verdict"], trs,
                 "All rows read with the same fixed-probe 1e7 kernels where that analysis exists (like for like); "
                 "'its own kernels' uses the refined Pb/Ti grid legs.")
     panes = []
@@ -632,9 +857,9 @@ def part_final(R, T, cuts):
     trs = []
     for title, info in items:
         if not info["found"]:
-            trs.append(f"<tr><td>{html.escape(title)}</td><td colspan='5'>{pending_box(info)}</td></tr>"); continue
-        trs.append(f"<tr><td>{html.escape(title)}</td>{atoms_cells(info['row'])}{vcell(verdict(info['row']))}<td></td></tr>")
-    tab = table(["run", "Pb / Ti / O (%)", "depth (Å)", "precision", "verdict", ""], trs)
+            trs.append(f"<tr><td>{html.escape(title)}</td><td colspan='6'>{pending_box(info)}</td></tr>"); continue
+        trs.append(f"<tr><td>{html.escape(title)}</td>{atoms_cells(atom_scores(info))}{vcell(verdict(atom_scores(info)))}<td></td></tr>")
+    tab = table(["run", *ATOM_HEAD, "verdict", ""], trs)
     return dict(FIG_FINAL=img(p, "90 mrad in a 140 Å window with the full physics"), FRAG_FINAL_TABLE=tab)
 
 
@@ -681,6 +906,7 @@ def main():
     a = ap.parse_args()
     man = json.load(open(MANIFEST))
     R = Runs(man)
+    _RUNS[0] = R
     print(f"searching {len(R.dirs)} folders, {len(R.analyses)} analyses")
     for k, spec in man["runs"].items():
         if "search" in spec:
