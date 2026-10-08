@@ -46,6 +46,15 @@ newer.
   the probe far worse than the kick -- the outer search (C1 search precedent: +-1-3 A = 0.2-0.5 waves at 80) is required.
   **User rule from 2026-10-04 (memory probe-update-always-on): probe update ON in every recon; fixed probe only as a side
   control; method = outer search then probe update + modes; the 80 mrad hail mary passes or fails on the refined kick.**
+- **2026-10-08.** OUTER SEARCH WORKS (_s2, 49/49 trials both doses, quadratic interior): 1e7 C1 -960.9 A (true -958.6),
+  C3 -40.55 um (true -40.66); 1e8 C1 -959.9, C3 -40.52 -- 15-30x finer than the corrector's 95 % intervals (40 A, 0.8 um);
+  residual ~1 wave p-v at the 80 mrad edge (the kick: 4.4). make_probe's start overlap reads 0.199 (kick 0.239): the plain
+  overlap saturates near 0.2 for any smooth ~1-wave error -- judge the start in WAVES, the result on the object.
+  _s2 refined 1e7 legs 1308516/20/22 running (~10-19 h left), 1e8 1308519/21/23 queued (CPU quota). _true4 1308548/49/50:
+  self-check PASS, ~9 h left; pack 1308551, analysis 1308552. FINAL RUN SIMS 1308553/57/61 FAILED in 11-23 s: GPU OOM (45.5 GB
+  allocated + 4.6 GB asked) on the 8477 = 7^2 x 173 grid at batch 8 -> fixed: 7-smooth grid (d11b35a, 8505) and batch 2
+  above 7000 px (measured peak ~15.6 + 4.3 x batch waves on CPU). Stranded noise/recons/pack/analyses cancelled; the
+  final run is resubmitted with the same command (block 4).
 - **BLOCK 4 = THE FINAL CRACK (the user, 2026-10-06: "the best possible shot before we put a nail in it"; built 8c9e27f,
   handed over).** (1) TRUE START + PROBE UPDATE + 4 MODES at 80 mrad on the kept hail-mary data, 1e8 only (user), lab/Pb/Ti,
   500 it, "8;4", RTAG _true4 -- the ceiling for the refined kick and whether modes absorb partial coherence. If it fails,
