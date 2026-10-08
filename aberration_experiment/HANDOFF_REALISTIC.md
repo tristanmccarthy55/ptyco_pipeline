@@ -46,6 +46,12 @@ newer.
   the probe far worse than the kick -- the outer search (C1 search precedent: +-1-3 A = 0.2-0.5 waves at 80) is required.
   **User rule from 2026-10-04 (memory probe-update-always-on): probe update ON in every recon; fixed probe only as a side
   control; method = outer search then probe update + modes; the 80 mrad hail mary passes or fails on the refined kick.**
+- **2026-10-08 evening: THROUGHPUT.** gpu QOS = 160 CPUs + 15 GPUs per user; CPUs are allocated by --mem (175G -> 24 CPUs),
+  so ~6 recons ran at once. Measured peak 55 GB (1305041, 1420 px, 4 modes) = 4.3 x data -> the driver now asks 1.3 x 4.3 x
+  data for region rows (73G / 85G / 32G; 214dd86). Pending jobs were offered a scontrol MinMemoryNode decrease. Queue ids:
+  final-run sims 1310307 (lab, running, ~30 min/config) / 1310311 / 1310315, noise 1310308/12/16, fixed 1310309/13/17,
+  kicks 1310310/14/18, pack 1310319, analyses 1310320/21; early _s2 1e7 analysis 1310609; same-kernel analyses 1310612
+  (no-search baseline) / 1310613 (refined lab, after 1308516), both with the _fixed 1e7 kernels.
 - **2026-10-08 midday (~/Desktop/arm_meeting; sheets phase_kicks.png, search_surfaces.png).** COHERENT 80 mrad, 5 % kick,
   block-2 known-probe kernels: 3 modes x 500 it 100/63/67 %, z 0.45, precision 0.77, probe 0.24 -> 0.44 (mode 1 0.90),
   eps 0.0111; 6 modes x 250 it 100/73/75 %, z 0.49, precision 0.79, probe 0.24 -> 0.31, eps 0.0120 (known probe: 100/67/74,
