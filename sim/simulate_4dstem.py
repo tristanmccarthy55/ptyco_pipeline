@@ -607,11 +607,18 @@ def _scan_one_config_batched(probe, potential, scan, detector, dtype=np.float64)
     GPU memory = the potential (5 GB) + one batch; host memory = one batch of fine patterns + the reduced result."""
     import dask
     positions = np.asarray(scan.get_positions()).reshape(-1, 2)     # y-fastest, the order the lazy path returns
+    # Batch size by grid: measured on CPU (2026-10-08) one batch peaks at ~15.6 + 4.3 x batch full-grid waves (the float32
+    # potential, then per position the wave, its FFT temporaries and the detector output; transmission functions go slice
+    # by slice). The GPU carries more on top: the 280 A region (8477^2, 0.58 GB a wave) at batch 8 had 45.5 GB allocated and
+    # died asking for 4.6 GB more (1308553). Above 7000 px a batch of 2 (~14 GB on CPU); the 210 A region (6358 px) keeps 8.
+    batch = SCAN_BATCH if potential.gpts[0] <= 7000 else 2
+    if batch != SCAN_BATCH:
+        print(f"[scan] grid {potential.gpts[0]} px: positions in batches of {batch} (GPU memory)", flush=True)
     with dask.config.set(scheduler="synchronous"):
         pot = potential.build(lazy=False)
         out, n_b, n_u, n_c = None, None, None, None
-        for i in range(0, len(positions), SCAN_BATCH):
-            meas = probe.scan(pot, scan=abtem.CustomScan(positions[i:i + SCAN_BATCH]), detectors=detector, lazy=False)
+        for i in range(0, len(positions), batch):
+            meas = probe.scan(pot, scan=abtem.CustomScan(positions[i:i + batch]), detectors=detector, lazy=False)
             a = meas.array
             if hasattr(a, "compute"): a = a.compute()          # a dask array, if abTEM left it lazy
             if hasattr(a, "get"): a = a.get()                  # a CuPy array, if the detector kept it on the GPU
@@ -630,7 +637,7 @@ def _scan_one_config_batched(probe, potential, scan, detector, dtype=np.float64)
             else:
                 red = crop.reshape(-1, n_b, BIN_FACTOR, n_b, BIN_FACTOR).sum(axis=(2, 4))
             out[i:i + len(a)] = red
-            if i == 0 or (i // SCAN_BATCH) % 25 == 0:
+            if i == 0 or (i // batch) % 25 == 0:
                 print(f"[scan] positions {i + len(a)}/{len(positions)}", flush=True)
     return out, n_b, n_u, n_c
 
