@@ -99,7 +99,15 @@ if [ -n "$DOSES" ] && [ ! -x "${PYBIN}" ]; then echo "DOSES set but no abtem env
 # override cannot overwrite the Nyquist run. (2026-09-22)
 nl_full(){ [ -n "${NL:-}" ] && { echo "$NL"; return; }
            awk "BEGIN{n=int(${BOXZ}*2*($1/1000)^2/${LAM}+0.5); if(n<1)n=1; print n}"; }
-mem_for(){   case "$1" in 1) echo 175G;; 2) echo 96G;; *) echo 48G;; esac; }
+# --mem (2026-10-08): a recon peaks at ~4.3x its raw patterns -- measured, 1305041 (4 modes, 1420 px, 1600 positions, 500 it):
+# MaxRSS 55 GB on 12.9 GB of data -- and Blythe allocates CPUs in proportion to --mem (175G -> 24 CPUs against the gpu QOS's
+# 160 CPUs per user: ~6 recons at once). Region rows therefore ask for 1.3 x 4.3 x their own data (at least 32G): ~72G at
+# 1420 px, ~85G at 1536 px, about twice as many running at once. RMEM=<n>G overrides; rows without a region keep the table.
+mem_for(){ [ -n "${RMEM:-}" ] && { echo "$RMEM"; return; }
+           if [ -z "${ROW_SIDE:-}" ]; then case "$1" in 1) echo 175G;; 2) echo 96G;; *) echo 48G;; esac; return; fi
+           awk -v s="$ROW_SIDE" -v b="$bin" -v t="${ROW_DETMAX:-200}" -v w="${ROW_WIN:-$WIN}" -v st="${ROW_STEP:-$STEP}" -v l="$LAM" \
+               'BEGIN{n = 2*t/1000*(s/b)/l; np = int(w/st + 1e-9); np = np*np; g = int(1.3*4.3*np*n*n*4/1e9 + 0.999)
+                      if (g < 32) g = 32; printf "%dG", g}'; }
 grp_for(){   [ -n "${GROUPING:-}" ] && { echo "$GROUPING"; return; }; case "$1" in 1) echo 16;;  2) echo 32;; *) echo "";; esac; }
 rtime_for(){ [ -n "${RTIME:-}" ] && { echo "$RTIME"; return; }; case "$1" in 1) echo 24:00:00;; 2) echo 10:00:00;; *) echo 05:00:00;; esac; }
 # [region] rows carry their own box side / scan / recorded angle (cols 11-14 of the tsv: side win step detmax).
@@ -231,12 +239,12 @@ kick_variants(){ # $1 name $2 sim dir $3 bin $4 nl $5 dep $6 c1 $7 c3 [$8 start 
 # Ti take the lab leg's answer: one probe per instrument) runs as a kick leg from that start, tagged _rk, with KICK_MODES /
 # KICK_NITER / KICK_GROUPING; A1 stays at its kicked tableau value. select always writes its files (with too few trials it
 # falls back to the kicked start and says so) and a refined leg whose start file is missing fails at once, so a broken chain
-# still reaches the pack. SEARCH_MEM 88G: a 1420 px, 1600-position fixed-probe recon peaks ~4x its 13 GB of data, so two
-# trials share a 192 GB node. SEARCH_RTIME 04:00:00 (50 iterations ~1.2 h at 80 mrad).
+# still reaches the pack. SEARCH_MEM: default the leg's own --mem (mem_for, ~72G at 1420 px).
+# SEARCH_RTIME 04:00:00 (50 iterations ~1.2 h at 80 mrad).
 # FIXED_TWIN=1: every leg ALSO runs with the true probe fixed, tagged _fixed -- the side control ("possible at all?").
 # RTAG=<tag> is appended to every recon dir name (never the sims), so a re-run cannot land in an earlier run's dirs.
 SEARCH_C1F="${SEARCH_C1F:-}"; SEARCH_C3F="${SEARCH_C3F:-}"; SEARCH_NITER="${SEARCH_NITER:-50}"
-SEARCH_MEM="${SEARCH_MEM:-88G}"; SEARCH_RTIME="${SEARCH_RTIME:-04:00:00}"; FIXED_TWIN="${FIXED_TWIN:-0}"; RTAG="${RTAG:-}"
+SEARCH_MEM="${SEARCH_MEM:-}"; SEARCH_RTIME="${SEARCH_RTIME:-04:00:00}"; FIXED_TWIN="${FIXED_TWIN:-0}"; RTAG="${RTAG:-}"
 SEARCH=0
 if [ -n "${SEARCH_C1F}${SEARCH_C3F}" ]; then
     SEARCH=1; SEARCH_C1F="${SEARCH_C1F:-1}"; SEARCH_C3F="${SEARCH_C3F:-1}"
@@ -258,7 +266,7 @@ search_job(){ # $1 name (the lab leg) $2 sim dir $3 bin $4 nl $5 dep $6 c1 $7 c3
     done; done
     local cls grp da A S; cls="$(res_class "$bin")"; grp="$(grp_for "$cls")"; da=$(dep_arg_for "$dep")
     A=$(PROBE_SCALE="C12=${KICK}" sbatch --parsable --array="0-$((i - 1))" --job-name="af_srch_${name}" --time="${SEARCH_RTIME}" \
-        --mem="${SEARCH_MEM}" ${da:+"$da"} \
+        --mem="${SEARCH_MEM:-$(mem_for "$cls")}" ${da:+"$da"} \
         --output="${REPO_DIR}/recon_af_${name}_t%a_NL${nl}/slurm_%A_%a.out" --error="${REPO_DIR}/recon_af_${name}_t%a_NL${nl}/slurm_%A_%a.err" \
         --export=ALL,SEARCH_MANIFEST="${man}",NLAYERS="${nl}",REGLAYER=0,PROBE_MODES=1,NITER="${SEARCH_NITER}",SAVE_EVERY="${SEARCH_NITER}",BETA_LSQ="${BETA_LSQ}"${grp:+,GROUPING=${grp}} \
         campaign/search_trial.sh); A="${A%%;*}"
