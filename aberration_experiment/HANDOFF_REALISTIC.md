@@ -46,6 +46,12 @@ newer.
   the probe far worse than the kick -- the outer search (C1 search precedent: +-1-3 A = 0.2-0.5 waves at 80) is required.
   **User rule from 2026-10-04 (memory probe-update-always-on): probe update ON in every recon; fixed probe only as a side
   control; method = outer search then probe update + modes; the 80 mrad hail mary passes or fails on the refined kick.**
+- **RESULTS PAGE (2026-10-08 evening, for the meeting of 2026-10-09): https://claude.ai/artifact/MUkJ7yYrsek3nTLXcZgCrk**
+  -- generated, not hand-edited: analysis/make_arm_page.py builds every figure / judged table / tab viewer from the runs
+  listed in aberration_experiment/page/arm_results.json (pending runs drawn as marked placeholders) into
+  page/built/arm_page_built.html. HOW TO FILL IT IN AND REPUBLISH: aberration_experiment/page/ARM_PAGE.md (pull into a
+  folder in search_dirs -> make_arm_page.py --list -> rebuild -> write the FILL blocks in page/arm_2026-10-09.html ->
+  rebuild -> publish with url=). Pending at first publish: refined 1e7 (own + same kernels), refined 1e8, true4, final run.
 - **2026-10-08 evening: THROUGHPUT.** gpu QOS = 160 CPUs + 15 GPUs per user; CPUs are allocated by --mem (175G -> 24 CPUs),
   so ~6 recons ran at once. Measured peak 55 GB (1305041, 1420 px, 4 modes) = 4.3 x data -> the driver now asks 1.3 x 4.3 x
   data for region rows (73G / 85G / 32G; 214dd86). Pending jobs were offered a scontrol MinMemoryNode decrease. Queue ids:

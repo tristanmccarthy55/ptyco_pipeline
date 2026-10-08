@@ -1,0 +1,700 @@
+<!-- ARM200F results page TEMPLATE. Do not publish this file: analysis/make_arm_page.py fills every double-brace placeholder
+     from the run outputs and writes page/built/arm_page_built.html, which is what gets published. Prose for runs that
+     have not landed sits in blocks marked FILL; see aberration_experiment/page/ARM_PAGE.md. -->
+<title>ARM200F at 80 mrad</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Serif:ital,wght@0,400;0,500;1,400&display=swap">
+<style>
+  :root {
+    /* neutrals carry a slight blue bias, toward the accent and toward the dark field of a Ronchigram */
+    --paper:    #eef1f5;
+    --surface:  #ffffff;
+    --sunk:     #e4e9ef;
+    --ink:      #131820;
+    --ink-2:    #4d5765;
+    --ink-3:    #6f7b8a;
+    --rule:     #d5dce4;
+    --rule-2:   #c2ccd7;
+    /* the campaign's own figure palette (Okabe-Ito), so page and figures are one system */
+    --accent:   #0072b2;   /* Pb / structural blue */
+    --ok:       #00795c;   /* flat, works, settled */
+    --warn:     #a97400;   /* unreliable, watch it */
+    --stop:     #c2490a;   /* fails, not reachable */
+    --probe:    #a8438a;   /* flatness / probe-phase accent */
+    --tint:     #e8f1f8;   /* tinted reference row */
+    --shadow:   0 1px 2px rgba(19,24,32,.06), 0 6px 18px rgba(19,24,32,.05);
+    --mono: "IBM Plex Mono", ui-monospace, "SF Mono", Menlo, monospace;
+    --sans: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+    --serif: "IBM Plex Serif", Georgia, "Times New Roman", serif;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --paper:   #0c1016;
+      --surface: #141a22;
+      --sunk:    #1b222c;
+      --ink:     #e7edf4;
+      --ink-2:   #a7b3c1;
+      --ink-3:   #7d8a99;
+      --rule:    #26303c;
+      --rule-2:  #32404f;
+      --accent:  #58aee2;
+      --ok:      #43c7a1;
+      --warn:    #e8b13f;
+      --stop:    #ff8348;
+      --probe:   #dd8fc4;
+      --tint:    #16242f;
+      --shadow:  0 1px 2px rgba(0,0,0,.4), 0 8px 24px rgba(0,0,0,.28);
+    }
+  }
+  :root[data-theme="dark"] {
+    --paper:   #0c1016;
+    --surface: #141a22;
+    --sunk:    #1b222c;
+    --ink:     #e7edf4;
+    --ink-2:   #a7b3c1;
+    --ink-3:   #7d8a99;
+    --rule:    #26303c;
+    --rule-2:  #32404f;
+    --accent:  #58aee2;
+    --ok:      #43c7a1;
+    --warn:    #e8b13f;
+    --stop:    #ff8348;
+    --probe:   #dd8fc4;
+    --tint:    #16242f;
+    --shadow:  0 1px 2px rgba(0,0,0,.4), 0 8px 24px rgba(0,0,0,.28);
+  }
+
+  html { scroll-behavior: smooth; }
+  @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
+
+  body {
+    background: var(--paper);
+    color: var(--ink);
+    font-family: var(--serif);
+    font-size: 16.5px;
+    line-height: 1.62;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* ---- masthead --------------------------------------------------------------- */
+  header.mast {
+    border-bottom: 1px solid var(--rule);
+    background: var(--surface);
+    padding-block: 26px 20px;
+  }
+  .mast-in, main, footer.foot > .foot-in {
+    width: min(100% - 32px, 1120px);
+    margin-inline: auto;
+  }
+  /* masthead and footer text sit on the reading column, so the h1 and the prose share a left edge */
+  .mast-col, footer.foot .foot-in > span { display: block; width: min(70ch, 100%); margin-inline: auto; }
+  .eyebrow {
+    font-family: var(--mono); font-size: 11.5px; font-weight: 500;
+    letter-spacing: .13em; text-transform: uppercase; color: var(--ink-3);
+  }
+  h1 {
+    font-family: var(--sans); font-weight: 700; font-size: clamp(30px, 5.2vw, 44px);
+    line-height: 1.06; letter-spacing: -.021em; margin: 8px 0 0; text-wrap: balance;
+  }
+  .standfirst {
+    max-width: 62ch; margin-top: 12px; color: var(--ink-2); font-size: 17px;
+  }
+  .mast-meta {
+    display: flex; flex-wrap: wrap; gap: 8px 22px; margin-top: 18px;
+    font-family: var(--mono); font-size: 12px; color: var(--ink-3);
+  }
+  .mast-meta b { color: var(--ink-2); font-weight: 500; }
+  nav.jump {
+    display: flex; flex-wrap: wrap; gap: 6px 14px; margin-top: 18px;
+    font-family: var(--mono); font-size: 12px;
+  }
+  nav.jump a { color: var(--ink-2); text-decoration: none; border-bottom: 1px solid var(--rule-2); padding-bottom: 1px; }
+  nav.jump a:hover { color: var(--accent); border-color: var(--accent); }
+
+  /* ---- reading column, with wide blocks breaking out --------------------------- */
+  main {
+    display: grid;
+    grid-template-columns: 1fr min(70ch, 100%) 1fr;
+    row-gap: 0;
+    padding-block: 8px 56px;
+  }
+  main > * { grid-column: 2; }
+  main > .wide { grid-column: 1 / -1; }
+
+  section { padding-top: 40px; }
+  .sec-head { display: flex; align-items: baseline; gap: 12px; margin-bottom: 4px; }
+  .sec-num {
+    font-family: var(--mono); font-size: 12px; font-weight: 600; color: var(--accent);
+    letter-spacing: .06em; padding-top: 3px;
+  }
+  h2 {
+    font-family: var(--sans); font-weight: 600; font-size: clamp(21px, 3vw, 27px);
+    letter-spacing: -.014em; line-height: 1.2; margin: 0; text-wrap: balance;
+  }
+  h3 {
+    font-family: var(--sans); font-weight: 600; font-size: 16px; letter-spacing: -.005em;
+    margin: 26px 0 6px; color: var(--ink);
+  }
+  p { margin: 0 0 14px; }
+  p + h3 { margin-top: 24px; }
+  a { color: var(--accent); text-underline-offset: 2px; }
+  strong { font-weight: 600; }
+  em.term { font-style: italic; color: var(--ink-2); }
+  code, .m {
+    font-family: var(--mono); font-size: .855em;
+    background: var(--sunk); padding: 1px 5px; border-radius: 3px;
+    overflow-wrap: anywhere;
+  }
+  ul, ol { margin: 0 0 14px; padding-left: 22px; }
+  li { margin-bottom: 7px; }
+  li::marker { color: var(--ink-3); }
+
+  /* ---- chips ------------------------------------------------------------------- */
+  .chip {
+    display: inline-block; font-family: var(--mono); font-size: 10.5px; font-weight: 500;
+    letter-spacing: .07em; text-transform: uppercase; padding: 2px 7px; border-radius: 3px;
+    border: 1px solid currentColor; white-space: nowrap; vertical-align: 1px;
+  }
+  .c-ok   { color: var(--ok); }
+  .c-warn { color: var(--warn); }
+  .c-stop { color: var(--stop); }
+  .c-open { color: var(--accent); }
+  .c-none { color: var(--ink-3); }
+
+  /* ---- tables ------------------------------------------------------------------ */
+  .tablewrap { overflow-x: auto; margin: 18px 0 8px; }
+  table {
+    border-collapse: collapse; width: 100%; font-family: var(--sans); font-size: 13.5px;
+    font-variant-numeric: tabular-nums;
+  }
+  th, td { text-align: left; padding: 7px 12px 7px 0; border-bottom: 1px solid var(--rule); white-space: nowrap; }
+  th .raw { text-transform: none; letter-spacing: 0; font-size: 12.5px; }
+  th {
+    font-size: 11px; font-weight: 600; letter-spacing: .07em; text-transform: uppercase;
+    color: var(--ink-3); border-bottom-color: var(--rule-2);
+  }
+  td.wrap, th.wrap { white-space: normal; min-width: 22ch; }
+  tr.ref td { background: var(--tint); }
+  tr.ref td:first-child { box-shadow: inset 3px 0 0 var(--accent); padding-left: 9px; }
+  caption {
+    caption-side: bottom; text-align: left; font-family: var(--sans); font-size: 12.5px;
+    color: var(--ink-3); padding-top: 10px; white-space: normal;
+  }
+
+  /* ---- figure blocks ----------------------------------------------------------- */
+  figure {
+    margin: 26px 0 8px; background: var(--surface); border: 1px solid var(--rule);
+    border-radius: 4px; box-shadow: var(--shadow); overflow: hidden;
+  }
+  figure img { display: block; width: 100%; max-width: 100%; height: auto; background: #fff; }
+  figcaption { padding: 14px 18px 16px; border-top: 1px solid var(--rule); font-family: var(--sans); font-size: 13.5px; color: var(--ink-2); }
+  figcaption .fig-name {
+    font-family: var(--mono); font-size: 11.5px; letter-spacing: .01em;
+    color: var(--ink-3); display: block; margin-bottom: 5px; overflow-wrap: anywhere;
+  }
+  .howto {
+    margin-top: 11px; padding-top: 11px; border-top: 1px dashed var(--rule-2);
+    font-size: 13px; color: var(--ink-2);
+  }
+  .howto b { font-family: var(--mono); font-size: 10.5px; letter-spacing: .08em; text-transform: uppercase; color: var(--ink-3); font-weight: 500; }
+
+  /* ---- callout ----------------------------------------------------------------- */
+  .call {
+    margin: 20px 0; padding: 14px 16px; background: var(--surface);
+    border: 1px solid var(--rule); border-left: 3px solid var(--accent); border-radius: 3px;
+    font-family: var(--sans); font-size: 14px; color: var(--ink-2);
+  }
+  .call b { color: var(--ink); font-weight: 600; }
+  .call.stop { border-left-color: var(--stop); }
+  .call.ok   { border-left-color: var(--ok); }
+
+  /* ---- ledger ------------------------------------------------------------------ */
+  .ledger { display: grid; gap: 1px; background: var(--rule); border: 1px solid var(--rule); border-radius: 4px; overflow: hidden; margin: 20px 0; }
+  .ledger > div { background: var(--surface); padding: 12px 15px; display: grid; grid-template-columns: 1fr auto; gap: 4px 14px; align-items: start; }
+  .ledger .lg-t { font-family: var(--sans); font-weight: 600; font-size: 14.5px; }
+  .ledger .lg-d { font-family: var(--sans); font-size: 13.5px; color: var(--ink-2); grid-column: 1 / -1; }
+
+  /* ---- footer ------------------------------------------------------------------ */
+  footer.foot { border-top: 1px solid var(--rule); background: var(--surface); padding-block: 22px 34px; margin-top: 20px; }
+  footer.foot .foot-in { font-family: var(--mono); font-size: 12px; color: var(--ink-3); }
+
+  @media (max-width: 640px) {
+    body { font-size: 16px; }
+    main { grid-template-columns: 0 100% 0; }
+    .ledger > div { grid-template-columns: 1fr; }
+  }
+
+  /* ---- the specification panel: this page leads with one number, so it gets one block ---- */
+  .spec {
+    margin: 22px 0 6px; background: var(--surface); border: 1px solid var(--rule-2);
+    border-left: 4px solid var(--stop); border-radius: 4px; box-shadow: var(--shadow);
+    padding: 20px 22px 18px;
+  }
+  .spec .spec-k {
+    font-family: var(--mono); font-size: 11px; font-weight: 600; letter-spacing: .13em;
+    text-transform: uppercase; color: var(--ink-3);
+  }
+  .spec .spec-v {
+    font-family: var(--mono); font-weight: 600; font-size: clamp(22px, 4.2vw, 31px);
+    line-height: 1.16; letter-spacing: -.01em; color: var(--ink); margin: 9px 0 0;
+    font-variant-numeric: tabular-nums;
+  }
+  .spec .spec-v em { font-style: normal; color: var(--stop); }
+  .spec p { font-family: var(--sans); font-size: 14px; color: var(--ink-2); margin: 12px 0 0; }
+  .spec .spec-grid {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 14px 26px;
+    margin-top: 16px; padding-top: 15px; border-top: 1px solid var(--rule);
+  }
+  .spec .spec-grid div { display: grid; gap: 3px; }
+  .spec .spec-grid b {
+    font-family: var(--mono); font-size: 16px; font-weight: 600; color: var(--ink);
+    font-variant-numeric: tabular-nums;
+  }
+  .spec .spec-grid span { font-family: var(--sans); font-size: 12.5px; color: var(--ink-3); }
+
+  /* the numbered run of work: the only place a number means a sequence on this page */
+  ol.did { counter-reset: step; list-style: none; padding-left: 0; margin: 20px 0 8px; }
+  ol.did > li {
+    counter-increment: step; position: relative; padding-left: 46px; margin-bottom: 18px;
+  }
+  ol.did > li::before {
+    content: counter(step); position: absolute; left: 0; top: 1px;
+    font-family: var(--mono); font-size: 12px; font-weight: 600; color: var(--accent);
+    border: 1px solid var(--rule-2); border-radius: 50%;
+    width: 28px; height: 28px; display: grid; place-items: center;
+  }
+  ol.did b { font-family: var(--sans); font-size: 15px; display: block; margin-bottom: 2px; }
+  ol.did span { font-family: var(--sans); font-size: 14px; color: var(--ink-2); }
+  .verdict {
+    display: inline-block; font-family: var(--mono); font-size: 11px; font-weight: 500;
+    letter-spacing: .06em; text-transform: uppercase; margin-left: 8px; vertical-align: 2px;
+  }
+  /* ---- this page: sections are grids too, so wide figures break out of the reading column ---- */
+  main > section { grid-column: 1 / -1; display: grid; grid-template-columns: 1fr min(70ch, 100%) 1fr; }
+  main > section > * { grid-column: 2; }
+  main > section > .wide { grid-column: 1 / -1; width: min(100%, 1480px); justify-self: center; }
+  .spec.good { border-left-color: var(--ok); }
+  .spec.good .spec-v em { color: var(--ok); }
+  .spec-grid b small { font-size: 12px; font-weight: 500; color: var(--ink-3); }
+  .ledger .lg-s { font-family: var(--mono); font-size: 11px; color: var(--ink-3); }
+  @media (max-width: 640px) { main > section { grid-template-columns: 0 100% 0; } }
+
+  /* ---- the setup explorer --------------------------------------------------------------------- */
+  .xp { background: var(--surface); border: 1px solid var(--rule); border-radius: 4px; box-shadow: var(--shadow);
+        padding: 16px 18px 18px; margin: 18px 0 6px; }
+  .xp-bar { display: flex; flex-wrap: wrap; gap: 10px 18px; align-items: center; justify-content: space-between;
+            margin-bottom: 14px; }
+  .xp-tabs { display: flex; flex-wrap: wrap; gap: 4px; align-items: center; }
+  .xp-tabs button, .xp-seg button {
+    font-family: var(--mono); font-size: 13px; font-variant-numeric: tabular-nums; cursor: pointer;
+    padding: 6px 11px; border: 1px solid var(--rule-2); background: var(--surface); color: var(--ink-2); border-radius: 3px; }
+  .xp-tabs button:hover, .xp-seg button:hover { border-color: var(--ink-3); color: var(--ink); }
+  .xp-tabs button[aria-selected="true"] { background: var(--ink); border-color: var(--ink); color: var(--surface); }
+  .xp-seg { display: inline-flex; }
+  .xp-seg button { border-radius: 0; font-family: var(--sans); font-size: 13px; }
+  .xp-seg button:first-child { border-radius: 3px 0 0 3px; }
+  .xp-seg button:last-child { border-radius: 0 3px 3px 0; margin-left: -1px; }
+  .xp-seg button[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: var(--surface); }
+  .xp-seg button + button { margin-left: -1px; }
+  .xp-seg button:disabled { opacity: .38; cursor: not-allowed; }
+  .xp-flag { flex-basis: 100%; color: var(--stop); font-size: 12.5px; }
+  .xp button:focus-visible, .xp input:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .xp-unit { font-family: var(--mono); font-size: 12px; color: var(--ink-3); margin-left: 6px; }
+  .xp-body { display: grid; grid-template-columns: minmax(0, 1.08fr) minmax(0, 1fr); gap: 20px; }
+  .xp-meta { font-family: var(--sans); font-size: 14.5px; display: flex; flex-wrap: wrap; gap: 2px 12px; margin-bottom: 8px; }
+  .xp-meta span { color: var(--ink-3); font-size: 13px; }
+  .xp-tablewrap { overflow-x: auto; }
+  .xp-table { font-size: 13px; }
+  .xp-table td, .xp-table th { padding: 6px 10px 6px 0; vertical-align: top; }
+  .xp-table td:first-child, .xp-table th:first-child { padding-left: 8px; width: 1%; }
+  .xp-table tr.xp-ceos td { background: var(--tint); }
+  .xp-table tr.xp-ceos td:first-child { box-shadow: inset 3px 0 0 var(--accent); }
+  .xp-table label { cursor: pointer; }
+  .xp-k { font-family: var(--mono); font-size: 11px; color: var(--ink-3); margin-left: 3px; }
+  .xp-name, .xp-why { display: block; white-space: normal; font-size: 11.5px; color: var(--ink-3); margin-top: 1px; }
+  .xp-num { font-family: var(--mono); text-align: right; }
+  .xp-note { font-family: var(--sans); font-size: 12.5px; color: var(--ink-3); margin: 10px 0 0; }
+  .xp-maps { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px 10px; align-content: start; }
+  figure.xp-f { margin: 0; border: 0; border-radius: 0; box-shadow: none; background: transparent; overflow: visible; }
+  .xp-f canvas, .xp-f img { display: block; width: 100%; max-width: 100%; height: auto; aspect-ratio: 1; }
+  .xp-f img { background: #000; }
+  .xp-f figcaption { padding: 5px 0 0; border-top: 0; font-size: 12px; color: var(--ink-3); }
+  .xp-f figcaption b { display: block; color: var(--ink); font-weight: 600; font-size: 12.5px; }
+  .xp-key { grid-column: 1 / -1; font-family: var(--sans); font-size: 12px; color: var(--ink-3); margin: 0; }
+  .xp-sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+  @media (max-width: 900px) { .xp-body { grid-template-columns: minmax(0, 1fr); } }
+  figure > .xp { border: 0; border-radius: 0; box-shadow: none; margin: 0; padding: 14px 16px 6px; }
+  .rx-img img { display: block; width: 100%; max-width: 100%; height: auto; background: #fff; }
+  td.v-good { background: color-mix(in srgb, var(--ok) 15%, transparent); }
+  td.v-ok   { background: color-mix(in srgb, var(--warn) 17%, transparent); }
+  td.v-bad  { background: color-mix(in srgb, var(--stop) 17%, transparent); }
+  @media (max-width: 520px) { .xp-maps { grid-template-columns: repeat(2, minmax(0, 1fr)); } .xp { padding: 12px; } }
+  /* ---- one width for everything (the user's call, 2026-09-29): text, tables and figures share the figures' column --- */
+  main { grid-template-columns: minmax(0, 1fr); }
+  main > *, main > section, main > section > *, main > section > .wide { grid-column: 1 / -1; }
+  main > section { display: block; }
+  main > section > .wide { width: 100%; }
+  .mast-col, footer.foot .foot-in > span { width: 100%; }
+  .standfirst { max-width: 110ch; }
+
+  /* ---- this page (ARM200F results, 2026-10-09): pending runs and the tab panes ---------------------------------- */
+  .pend { padding: 14px 16px; font-family: var(--sans); font-size: 13.5px; color: var(--ink-2); line-height: 1.5; }
+  .pend b { color: var(--ink); font-weight: 600; }
+  td .pend { padding: 2px 0; white-space: normal; }
+  .call.pending { border-left-color: var(--warn); }
+  .ledger ul { margin: 6px 0 0; padding-left: 18px; font-size: 13px; }
+  .ledger li { margin-bottom: 3px; }
+  .tab-pane img { display: block; width: 100%; max-width: 100%; height: auto; background: #fff; }
+  .small-note { font-family: var(--sans); font-size: 13px; color: var(--ink-3); margin-top: 18px; }
+</style>
+<header class="mast">
+  <div class="mast-in"><div class="mast-col">
+    <div class="eyebrow">Aberration campaign · ARM200F tableau · results to 2026-10-08 · for the meeting of 2026-10-09</div>
+    <h1>ARM200F at 80 mrad</h1>
+    <p class="standfirst">
+      The CEOS page asked whether an older corrector opened far past its design aperture still gives depth-resolved
+      ptychography with the probe known. This page puts in the user's own ARM200F as measured, finds what limits the
+      largest apertures, and then takes the probe away: first a probe known only to a few per cent, then phonons, partial
+      coherence and shot noise on top, and finally a probe found from the data by a search followed by refinement.
+    </p>
+    <div class="mast-meta"><span><b>built</b> {{BUILT}}</span><span><b>source</b> analysis/make_arm_page.py</span>
+      <span><b>runs</b> aberration_experiment/page/arm_results.json</span></div>
+    <nav class="jump">
+      <a href="#s1">Where we are</a>
+      <a href="#s2">The setup</a>
+      <a href="#s3">Probe known</a>
+      <a href="#s4">The window limit</a>
+      <a href="#s5">A kicked probe</a>
+      <a href="#s6">Realistic physics</a>
+      <a href="#s7">Finding the probe</a>
+      <a href="#s8">The final run</a>
+      <a href="#s9">For discussion</a>
+      <a href="#appendix">Every run</a>
+    </nav>
+  </div></div>
+</header>
+
+<main>
+
+  <section id="s1">
+    <div class="sec-head"><span class="sec-num">01</span><h2>Where we are</h2></div>
+    <!-- FILL headline: when the refined and true-start runs land (sec 07), rewrite this panel's sentence and the
+         'pending' tile with the result, e.g. "searched probe + refinement restores depth to X / Y / Z %, Z.ZZ A". -->
+    <div class="spec good">
+      <div class="spec-k">The result so far</div>
+      <p class="spec-v">Probe known, 80 mrad: <em>100 / 67 / 74 %</em> of Pb / Ti / O, depth error <em>0.45 Å</em></p>
+      <p>
+        The measured ARM200F tableau, with the four terms its operator tunes set for the smallest probe, reconstructs
+        from 50 to 80 mrad when the probe is known. Above 80 mrad the probe outgrows the reconstruction window. From
+        realistic data, with phonons, partial coherence and shot noise, a search over defocus and C3 finds both far more
+        precisely than the corrector measures them; whether the probe refined from there brings back the depth
+        information lands on the morning of 9 October.
+      </p>
+      <div class="spec-grid">
+        <div><b>50–80 mrad</b><span>reconstructs with the probe known (§3)</span></div>
+        <div><b>≤ ~5 % outside</b><span>the share of the probe the window may lose (§4)</span></div>
+        <div><b>C1 to 2.3 Å, C3 to 0.14 µm</b><span>found by the outer search from realistic data; the corrector measures them to ±40 Å and ±0.8 µm (§7)</span></div>
+        <div><b>pending</b><span>depth from a searched, refined probe; 90 mrad in a 140 Å window (§7, §8)</span></div>
+      </div>
+    </div>
+
+    <h3>What is in and what is still running</h3>
+    {{FRAG_STATUS}}
+
+    <h3>The findings, in the order the page builds them</h3>
+    <ul>
+      <li><b>Probe known.</b> 50–80 mrad reconstruct. Depth error falls from about 0.9 Å at 50–65 mrad to 0.45 Å at 80.
+        Species labels below about 70 mrad were not expected to be reliable, and they are not.</li>
+      <li><b>The window, not the aperture, stops 90 and 100 mrad.</b> The 80 mrad probe, which works in a 105 Å window,
+        fails in exactly the way 90 and 100 mrad do once its window is shrunk until it loses as much of the probe.</li>
+      <li><b>A probe 5 % off in C1, C3 and A1 comes back with coherent data</b>, given enough iterations (500) or modes (6):
+        the atoms match the known-probe run; false detections stay higher.</li>
+      <li><b>With phonons, partial coherence and shot noise, depth is lost</b> whether the true probe is held fixed or a
+        kicked probe is updated. Ten times the dose changes nothing.</li>
+      <li><b>An outer search finds the probe from that realistic data:</b> a grid of fixed-probe trials over C1 and C3
+        lands within 2.3 Å and 0.14 µm of the truth at both doses.</li>
+    </ul>
+  </section>
+
+  <section id="s2">
+    <div class="sec-head"><span class="sec-num">02</span><h2>The setup</h2></div>
+    <p>
+      Everything not listed here is as on the CEOS page: the same labyrinth specimen and region, the same scan, the same
+      reconstruction and atom finder. The probe is the ARM200F's, from its measured tableau, at 300 kV.
+    </p>
+    <div class="tablewrap"><table>
+      <thead><tr><th>what</th><th class="wrap">setting</th><th class="wrap">where it comes from</th></tr></thead>
+      <tbody>
+        <tr><td>corrector</td><td class="wrap">ARM200F tableau (run3, with B4, D4, A5 from the 1998 reference), C5 = 4 mm fixed</td><td class="wrap">campaign/arm200f_tableau.tsv</td></tr>
+        <tr><td>tuned per aperture</td><td class="wrap">C1, C3, B2 (against B4) and A1 (against S3), for the smallest probe; A2, S3, A3 held at run3</td><td class="wrap">plan_probe.py --arm --fight B2 A1</td></tr>
+        <tr><td>specimen</td><td class="wrap">5 PTO/STO cells, 19.5 Å, with 4 Å of vacuum each side (27.5 Å box), cut from the tiled crystal: a 210 Å region (280 Å for the final run)</td><td class="wrap">simulate_4dstem --region-side</td></tr>
+        <tr><td>scan</td><td class="wrap">20 Å at 0.5 Å, 1600 positions</td><td class="wrap">the CEOS page, §5</td></tr>
+        <tr><td>detector</td><td class="wrap">±133 mrad (±108 mrad for the final run), sampled at the reconstruction grid</td><td class="wrap">sweep table, column detmax</td></tr>
+        <tr><td>reconstruction</td><td class="wrap">multislice, slices at half the depth of field λ/α², 200 iterations unless stated; window = region / bin</td><td class="wrap">run_thin_atomfind.sh</td></tr>
+        <tr><td>kicked start</td><td class="wrap">C1, C3 and A1 × 1.05; probe released from iteration 40 (coarse) / 20 (full), aperture constraint, 3–6 modes</td><td class="wrap">KICK_* settings</td></tr>
+        <tr><td>phonons</td><td class="wrap">16 frozen configurations, room-temperature displacements per species: Pb 0.185, Sr 0.145, Ti 0.131, O 0.174 Å</td><td class="wrap">sim log</td></tr>
+        <tr><td>partial coherence</td><td class="wrap">cold FEG, 0.3 eV FWHM through Cc 1.4 mm: 7.29 Å rms focal spread, 1.2 waves rms at the 80 mrad edge; source 40 pm FWHM. Sampled together with the phonons, one defocus and one source shift per configuration</td><td class="wrap">simulate_4dstem _scan_partially_coherent</td></tr>
+        <tr><td>dose</td><td class="wrap">1e7 and 1e8 e/Å²: 2.5·10⁶ and 2.5·10⁷ electrons a pattern, about 1.2 and 12 per detector pixel</td><td class="wrap">add_poisson_noise.py</td></tr>
+        <tr><td>atoms</td><td class="wrap">matched kernels from Pb and Ti grids reconstructed the same way as the specimen; numbers are bulk recall per species, depth error of found atoms (rms), precision</td><td class="wrap">analyse_sweep.py</td></tr>
+      </tbody>
+      <caption>The verdict in every table: <span class="chip c-ok">good</span> Pb ≥ 95 %, Ti and O ≥ 60 %, depth ≤ 0.6 Å,
+        precision ≥ 0.9 (the known-probe 80 mrad standard) · <span class="chip c-warn">okay</span> Pb ≥ 80 %, O ≥ 25 %,
+        depth ≤ 1.1 Å · <span class="chip c-stop">off</span> otherwise.</caption>
+    </table></div>
+
+    <figure class="wide">
+      {{FIG_PROBES}}
+      <figcaption><span class="fig-name">fig_probe_window.png · plan_probe.py sizes, sweep-table windows and losses</span>
+        The probe grows from 4 Å to 200 Å across the sweep, because the tuned terms can no longer hold the higher orders
+        together. The reconstruction window is set per aperture, up to 105 Å.
+        <div class="howto"><b>How to read it</b> Black circles: the diameter holding 90 % of the probe's intensity; grey
+          squares: 99 %. Purple step: the window each run used; the labels give the share of the probe's intensity that
+          falls outside it. Open diamond: the final run's 140 Å window at 90 mrad. Log scale.</div>
+      </figcaption>
+    </figure>
+  </section>
+
+  <section id="s3">
+    <div class="sec-head"><span class="sec-num">03</span><h2>Probe known, 40 to 100 mrad</h2></div>
+    <p>
+      With the probe handed to the reconstruction exactly, the ARM200F tableau reconstructs from 50 to 80 mrad. At 80 mrad
+      it matches the CEOS-approximation result of the last page. Below 70 mrad the depth sections still show bars rather
+      than separate atoms, as expected from the depth of field (λ/α² is 5.5 Å at 60 mrad), and the species labels are
+      not reliable there. 90 mrad degrades on one side of the field and 100 mrad loses the depth information; §4 shows why.
+    </p>
+    <figure class="wide">
+      {{FIG_KNOWN}}
+      <figcaption><span class="fig-name">fig_known_numbers.png · summary.csv of each run</span>
+        <div class="howto"><b>How to read it</b> Left: share of the atoms in the bulk the finder recovered, per species
+          (Pb blue, Ti orange, O green). Right: rms depth error of the atoms it found. The shaded band marks the
+          apertures whose probe overflows the window (§4).</div>
+      </figcaption>
+    </figure>
+    {{FRAG_KNOWN_TABLE}}
+    <figure class="wide">
+      {{FRAG_KNOWN_TABS}}
+      <figcaption><span class="fig-name">tab_known_*.png · one reconstruction per aperture</span>
+        <div class="howto"><b>How to read it</b> Left: the phase summed over every slice, over the 20 Å scanned field;
+          the dashed white lines mark where the two depth sections cut. Middle: a Pb row in depth (Pb every 3.9 Å down
+          the column, nothing between). Right: a B-site row (Ti and O alternating every 1.95 Å, the hardest depth
+          target). Depth runs downward. Dots: atoms in the structure; rings: atoms the finder reported; light-blue
+          dashes: the vacuum edges. The line under the middle panel gives that run's numbers.</div>
+      </figcaption>
+    </figure>
+  </section>
+
+  <section id="s4">
+    <div class="sec-head"><span class="sec-num">04</span><h2>What stops 90 and 100 mrad: the window</h2></div>
+    <p>
+      Both large apertures fail with the probe known, so the probe fit cannot be the cause. What changes is how much of
+      the probe falls outside the 105 Å window the reconstruction works in: 3.3 % at 80 mrad, 13.6 % at 90 and 23 % at
+      100. To test that alone, the 80 mrad probe was reconstructed in smaller windows, with nothing else changed.
+    </p>
+    <figure class="wide">
+      {{FIG_WINDOW}}
+      <figcaption><span class="fig-name">fig_window.png · armf_a080 at bin 2 / 3 / 4</span>
+        Over the scanned field, 70 Å still reconstructs like 105 Å; 52.5 Å does not. The damage at 70 Å sits outside the
+        scanned field, in one corner of the window; the full renders below show it.
+        <div class="howto"><b>How to read it</b> As in §3, one run per row.</div>
+      </figcaption>
+    </figure>
+    {{FRAG_WINDOW_TABLE}}
+    <figure class="wide">
+      {{FRAG_WINDOW_TABS}}
+      <figcaption><span class="fig-name">render_phase.py · the whole reconstruction window</span>
+        Compare the 70 Å window with 90 mrad at 105 Å (similar share outside, one side damaged), and the 52.5 Å window
+        with 100 mrad at 105 Å (crossed streaks in depth instead of columns).
+        <div class="howto"><b>How to read it</b> Top left: phase summed over every slice, over the whole window. Small
+          panels: each slice, blue labels for the vacuum slices. Bottom: a cut in depth through the centre of the
+          window; dashed lines are the vacuum edges.</div>
+      </figcaption>
+    </figure>
+    <div class="call ok">
+      <b>Rule from this test:</b> keep the share of the probe outside the window below about 5 %. 90 mrad needs a 140 Å
+      window (5.1 % outside), which fits in a 280 Å region at about 1540 px patterns: that is the final run (§8). 100 mrad
+      needs 210–280 Å (7.3 % and 1.8 %), 2560–3400 px patterns, past the 48 h limit and the node's memory today.
+    </div>
+  </section>
+
+  <section id="s5">
+    <div class="sec-head"><span class="sec-num">05</span><h2>A probe known to 5 %: coherent data</h2></div>
+    <p>
+      The reconstruction now starts from the tableau with C1, C3 and A1 off by 5 % and is left to refine the probe. A 5 %
+      error is a wave or more at 80 mrad, and about five at 100: the table gives it per aperture. With coherent data the
+      probe comes back at 40 mrad, mostly at 60 (the object slides in depth to absorb part of the defocus error, the
+      trade-off the C1 search found earlier), and at 80 mrad only partly within 200 iterations. Given 500 iterations, or 6
+      modes, the 80 mrad atoms match the known-probe run, with more false detections.
+    </p>
+    {{FRAG_KICK_TABLE}}
+    <figure class="wide">
+      {{FIG_KICK_CONV}}
+      <figcaption><span class="fig-name">fig_kick_convergence.png · error traces of the 80 mrad runs</span>
+        Both longer runs end below the known-probe residual and were still falling. A residual below the known probe's
+        means the extra freedom fits the data better, not that the probe is right, so the residual alone cannot certify
+        a probe here.
+        <div class="howto"><b>How to read it</b> Residual of the full-resolution engine against iteration, as ε (residual
+          × pattern width / 2·10⁵). Dashed black: the true probe held fixed. Log scale.</div>
+      </figcaption>
+    </figure>
+    <figure class="wide">
+      {{FIG_KICKS}}
+      <figcaption><span class="fig-name">fig_kicks.png · 80 mrad, probe known against kicked runs</span>
+        The block-2 kick run shipped no volume (only its full render, in the appendix).
+        <div class="howto"><b>How to read it</b> As in §3, one run per row.</div>
+      </figcaption>
+    </figure>
+    <figure class="wide">
+      {{FRAG_KICK_TABS}}
+      <figcaption><span class="fig-name">kick_probe.py · the probe each run recovered</span>
+        <div class="howto"><b>How to read it</b> Columns: the true probe, the kicked start, and the strongest recovered
+          mode. Top row amplitude, bottom row phase. Each probe is centred on its brightest pixel, so an apparent shift
+          between columns is the display, not the probe. The title gives the overlaps with the true probe and the share
+          of power in each mode.</div>
+      </figcaption>
+    </figure>
+  </section>
+
+  <section id="s6">
+    <div class="sec-head"><span class="sec-num">06</span><h2>Realistic physics: phonons, partial coherence, shot noise</h2></div>
+    <p>
+      The 80 mrad data are now simulated with 16 frozen-phonon configurations, a focal spread and source size of a cold
+      field emitter, and Poisson noise at 1e7 or 1e8 e/Å². Held fixed, the true coherent probe can no longer describe
+      what the detector sees: the reconstruction puts what it cannot explain into the vacuum layers, and each column
+      comes out as one smeared blob in depth. In plane the lattice is still clean. Ten times the dose changes nothing, so
+      the counting noise is not the limit. A kicked probe released into the same data does not move towards the truth
+      (overlap 0.24 → 0.22 in 200 iterations, 0.26 in 500).
+    </p>
+    <figure class="wide">
+      {{FIG_PHYSICS}}
+      <figcaption><span class="fig-name">fig_physics.png · 80 mrad, coherent reference against the realistic runs</span>
+        <div class="howto"><b>How to read it</b> As in §3, one run per row. Rows marked pending carry no atoms yet.</div>
+      </figcaption>
+    </figure>
+    {{FRAG_PHYSICS_TABLE}}
+  </section>
+
+  <section id="s7">
+    <div class="sec-head"><span class="sec-num">07</span><h2>Finding the probe from the data</h2></div>
+    <p>
+      A probe update alone does not recover a 5 % error at 80 mrad from realistic data. An experimenter would first narrow
+      the probe down using the data themselves, then refine it. That is what this run does:
+    </p>
+    <ol class="did">
+      <li><b>Search.</b><span>Reconstruct the same lab data 49 times, each time with a fixed trial probe whose C1 and C3
+        are 0.91–1.09 times the kicked values (3 % steps), 50 iterations each.</span></li>
+      <li><b>Choose.</b><span>Take the trial with the lowest final residual and refine its position with a quadratic fit
+        to the 3 × 3 trials around it.</span></li>
+      <li><b>Refine.</b><span>Release the probe from that start, with 4 modes, for 500 iterations; the Pb and Ti grids that
+        make the atom-finding kernels start from the same answer.</span></li>
+    </ol>
+    <figure class="wide">
+      {{FIG_SEARCH}}
+      <figcaption><span class="fig-name">fig_search.png · search_trials.csv and search_best.json</span>
+        Both surfaces show a diagonal valley, because C1 and C3 trade off against each other across the aperture, and the
+        chosen start sits on the truth. At 1e7 the residual is mostly counting noise (about one electron per pixel), yet
+        the valley is still clear.
+        <div class="howto"><b>How to read it</b> Each square is one trial: its C1 and C3 as fractions of the kicked start,
+          its colour the final residual (darker is better). White +: the chosen start. Red ×: the simulation's true values
+          (recorded, never used by the choice). Dashed box: the corrector's own 95 % measurement interval for C1 and C3,
+          drawn around the truth.</div>
+      </figcaption>
+    </figure>
+    {{FRAG_SEARCH_TABLE}}
+
+    <h3>The refined probe</h3>
+    <!-- FILL refined: when refined_1e7 (and later refined_1e8, true4_1e8) show IN in make_arm_page.py --list, replace
+         the 'pending' callout below with 3-5 plain sentences: does the searched start + refinement restore the depth
+         sections (look at the B-site row and the vacuum layers in fig_refined first), how its numbers compare with the
+         fixed-probe and plain-kick rows (same kernels), and how close the true start (true4) gets -- that is the ceiling.
+         Then update the headline panel in section 01. -->
+    <div class="call pending">
+      <b>Pending, lands 2026-10-09 morning.</b> The refined runs at 1e7 (lab, Pb and Ti) and the run that starts from the
+      true probe with 4 modes at 1e8 are the test of whether the realistic data can give depth at all once the probe is
+      found from them. The 1e8 refined run follows about two days later. Rows fill in below as they land.
+    </div>
+    <figure class="wide">
+      {{FIG_REFINED}}
+      <figcaption><span class="fig-name">fig_refined.png · same kernels for every row where available</span>
+        <div class="howto"><b>How to read it</b> As in §3, one run per row. Grey panels are runs still in the queue.</div>
+      </figcaption>
+    </figure>
+    {{FRAG_REFINED_TABLE}}
+    <figure class="wide">
+      {{FRAG_REFINED_TABS}}
+      <figcaption><span class="fig-name">kick_probe.py · the probe each realistic run recovered</span>
+        <div class="howto"><b>How to read it</b> As the probe tabs in §5. Here the comparison is against the central
+          coherent probe, while the true illumination is a mix of probes (focal spread and source size), so even a perfect
+          recovery scores below 1; read the start error in waves and the object instead.</div>
+      </figcaption>
+    </figure>
+  </section>
+
+  <section id="s8">
+    <div class="sec-head"><span class="sec-num">08</span><h2>The final run: 90 mrad in a 140 Å window</h2></div>
+    <p>
+      The best shot before calling the large-aperture question: 90 mrad (depth of field λ/α² = 2.4 Å, against 3.1 Å at
+      80) in the largest window the cluster can reconstruct, 140 Å, losing 5.1 % of the probe. The specimen region grows
+      to 280 Å, so that the simulation's own periodic box holds the probe, and the detector is cut to ±108 mrad (1.2 times
+      the aperture) to keep the patterns near 1540 px. Phonons, partial coherence and 1e8 e/Å², a true-probe start with
+      4 modes and probe update, and fixed-probe twins whose grids give kernels even if the refined grids fail.
+    </p>
+    <!-- FILL final: when final90 and final90_fixed show IN, replace the callout with the verdict in 2-4 sentences and
+         update section 01. -->
+    <div class="call pending">
+      <b>Pending, about 2.5–3 days.</b> The 280 Å simulations first ran out of GPU memory; the grid and batch size were
+      fixed and they are running (about 8 h each), then the reconstructions (about 30 h).
+    </div>
+    <figure class="wide">
+      {{FIG_FINAL}}
+      <figcaption><span class="fig-name">fig_final90.png</span>
+        <div class="howto"><b>How to read it</b> As in §3.</div>
+      </figcaption>
+    </figure>
+    {{FRAG_FINAL_TABLE}}
+  </section>
+
+  <section id="s9">
+    <div class="sec-head"><span class="sec-num">09</span><h2>For discussion</h2></div>
+    <!-- FILL discussion: revise once sec 07 and 08 are in. -->
+    <div class="ledger">
+      <div><span class="lg-t">Probe known, the ARM200F works to 80 mrad</span><span class="chip c-ok">supported</span>
+        <span class="lg-d">50–80 mrad reconstruct with the four routinely tuned terms set for the smallest probe; 80 mrad
+          matches the idealised CEOS result of the last page.</span></div>
+      <div><span class="lg-t">Beyond 80 mrad the reconstruction window is the limit</span><span class="chip c-ok">supported</span>
+        <span class="lg-d">Same probe, smaller window, same failure. Larger windows cost pattern size: 140 Å at 90 mrad
+          is being tried; 100 mrad needs 2560+ px patterns.</span></div>
+      <div><span class="lg-t">A few-per-cent probe error is recoverable with coherent data</span><span class="chip c-ok">supported</span>
+        <span class="lg-d">Needs 500 iterations or 6 modes at 80 mrad; false detections stay at ~20 %.</span></div>
+      <div><span class="lg-t">With realistic physics the probe must be found from the data first</span><span class="chip c-open">being tested</span>
+        <span class="lg-d">The search finds C1 and C3 to within 2.3 Å and 0.14 µm; whether the refined probe restores depth is the
+          result due tomorrow. If even the true start with 4 modes fails, the next step is a colder specimen (smaller
+          phonon displacements), not more iterations.</span></div>
+      <div><span class="lg-t">Titanium and oxygen labels</span><span class="chip c-warn">open</span>
+        <span class="lg-d">Where depth is present (70 Å window, 80 mrad) the finder still recovers only two thirds of Ti;
+          an improved finder for the B-site column is worth doing on its own.</span></div>
+      <div><span class="lg-t">What a real corrector leaves unknown</span><span class="chip c-warn">open</span>
+        <span class="lg-d">The search here moves C1 and C3; the corrector's own uncertainty at 80 mrad is several waves in
+          A1 and B2 and tens of waves in the fourth- and fifth-order terms. Searching more knobs is the next step if the
+          two-knob search works.</span></div>
+    </div>
+  </section>
+
+  <section id="appendix">
+    <div class="sec-head"><span class="sec-num">A</span><h2>Every run, whole window</h2></div>
+    <p>The full reconstruction of every run that has landed, as the analysis renders it on the cluster.</p>
+    <figure class="wide">
+      {{FRAG_RENDERS}}
+      <figcaption><span class="fig-name">render_phase.py</span>
+        <div class="howto"><b>How to read it</b> As the renders in §4.</div>
+      </figcaption>
+    </figure>
+    <p class="small-note">
+      This page is rebuilt from the run outputs by <code>analysis/make_arm_page.py</code>, from the run list in
+      <code>aberration_experiment/page/arm_results.json</code>; the steps to fill in pending runs and republish are in
+      <code>aberration_experiment/page/ARM_PAGE.md</code>.
+    </p>
+  </section>
+</main>
+
+<footer class="foot">
+  <div class="foot-in"><span>ARM200F at 80 mrad · built {{BUILT}} · aberration campaign, ptychoshelves-clean</span></div>
+</footer>

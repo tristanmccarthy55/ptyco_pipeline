@@ -50,3 +50,8 @@ report/*.blg
 report/*.fls
 report/*.fdb_latexmk
 report/*.synctex.gz
+
+# ARM200F results page: built output (regenerable) and region GT caches
+aberration_experiment/page/built/
+aberration_experiment/results/arm_page_cache/
+aberration_experiment/figs/arm_page/tab_*.png
