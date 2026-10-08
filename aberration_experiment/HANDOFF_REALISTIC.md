@@ -46,6 +46,15 @@ newer.
   the probe far worse than the kick -- the outer search (C1 search precedent: +-1-3 A = 0.2-0.5 waves at 80) is required.
   **User rule from 2026-10-04 (memory probe-update-always-on): probe update ON in every recon; fixed probe only as a side
   control; method = outer search then probe update + modes; the 80 mrad hail mary passes or fails on the refined kick.**
+- **2026-10-08 midday (~/Desktop/arm_meeting; sheets phase_kicks.png, search_surfaces.png).** COHERENT 80 mrad, 5 % kick,
+  block-2 known-probe kernels: 3 modes x 500 it 100/63/67 %, z 0.45, precision 0.77, probe 0.24 -> 0.44 (mode 1 0.90),
+  eps 0.0111; 6 modes x 250 it 100/73/75 %, z 0.49, precision 0.79, probe 0.24 -> 0.31, eps 0.0120 (known probe: 100/67/74,
+  0.45, 0.97, eps 0.0130; 3 modes x 200 it: 98/47/56, 0.54). => iterations (or modes) bring the atoms to the known-probe
+  level; false positives stay ~20 %; both residuals sit BELOW the known probe's and were still falling ~6 % per last fifth.
+  Images: left half clean vertical columns, right half (x > 33 A, edge of the scan field) leaning/doubled.
+  FULL PHYSICS 1e7 NO-SEARCH BASELINE (1305041, kick, 4 modes, 500 it): probe 0.24 -> 0.26 (modes 0.39/0.26/0.20/0.15),
+  depth gone (V-shapes, loaded entrance layer) like the hail mary; no kernels (Pb/Ti cancelled). SEARCH SURFACES: a clear
+  diagonal C1-C3 valley at both doses, the chosen start on the truth.
 - **2026-10-08.** OUTER SEARCH WORKS (_s2, 49/49 trials both doses, quadratic interior): 1e7 C1 -960.9 A (true -958.6),
   C3 -40.55 um (true -40.66); 1e8 C1 -959.9, C3 -40.52 -- 15-30x finer than the corrector's 95 % intervals (40 A, 0.8 um);
   residual ~1 wave p-v at the 80 mrad edge (the kick: 4.4). make_probe's start overlap reads 0.199 (kick 0.239): the plain
