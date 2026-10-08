@@ -402,18 +402,52 @@ def build_potential(atoms, announce=False):
     (one config in memory at a time) rather than wrapping FrozenPhonons here, which
     would force abTEM to hold all configs at once -> OOM at 16 configs."""
     sampling = potential_sampling_a()
+    grid = dict(sampling=sampling)
+    if REGION_SIDE_A:
+        # [region] a grid with a large prime factor sends every GPU FFT down cuFFT's slow general-size path (more time and
+        # more memory): the 280 A region's natural 8477 = 7^2 x 173 did, where 210 A's 6358 = 2 x 11 x 17^2 ran normally.
+        # Above a factor of 31 the grid is rounded UP to the next 7-smooth size (sampling a little finer, band limit kept).
+        # Grids that never had such a factor -- every run before 2026-10-08 -- are untouched.
+        n_nat = int(np.ceil(float(atoms.cell.lengths()[0]) / sampling - 1e-9))
+        if _largest_prime_factor(n_nat) > 31:
+            n = _next_smooth(n_nat)
+            grid = dict(gpts=(n, n))
+            if announce:
+                print(f"[potential] grid {n_nat} has prime factor {_largest_prime_factor(n_nat)} -> {n} (7-smooth)")
     pot = abtem.Potential(
         atoms,
-        sampling=sampling,
         slice_thickness=SLICE_THICKNESS_A,
         parametrization="lobato",
         projection="infinite",
         device=DEVICE,
+        **grid,
     )
     if announce:
-        print(f"[potential] sampling = {sampling:.4f} Å  ->  gpts = {pot.gpts}  "
+        print(f"[potential] sampling = {pot.sampling[0]:.4f} Å  ->  gpts = {pot.gpts}  "
               f"({pot.num_slices} slices)")
     return pot
+
+
+def _largest_prime_factor(n):
+    f, d = 1, 2
+    while d * d <= n:
+        while n % d == 0:
+            f, n = d, n // d
+        d += 1
+    return max(f, n) if n > 1 else f
+
+
+def _next_smooth(n, primes=(2, 3, 5, 7)):
+    """Smallest m >= n whose prime factors are all in primes (fast sizes for cuFFT and numpy)."""
+    m = n
+    while True:
+        r = m
+        for p in primes:
+            while r % p == 0:
+                r //= p
+        if r == 1:
+            return m
+        m += 1
 
 
 def _defocus():
