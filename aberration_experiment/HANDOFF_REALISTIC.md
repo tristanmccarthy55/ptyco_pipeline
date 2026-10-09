@@ -65,6 +65,9 @@ newer.
   FINAL-RUN LAB KICK 1310310 DIVERGED: 'Convergence failed, error contains NaNs' (LSQML line 224) in the full engine (its
   trace has 20 rows = the 50 presolve iterations; probe released there at PSTART2 20, GROUPING 2). The old blind-fit note
   (run_synthetic_recon_ML.m) already says the full engine's probe update can NaN on these thin slabs.
+  User cancelled 1310314/18 (its Pb/Ti legs) and analyses 1310320/21 on 2026-10-09; pack 1310319 ran. Rerun 90 mrad
+  only if the split / cooling shows a way through, with the probe released in the presolve only or larger GROUPING.
+  Queue at 2026-10-09 ~14:00: _s2 1e8 legs 1308519/21/23 running ~19.5 h; split sims starting; the rest waits on Priority.
 - **2026-10-09 afternoon: BLOCK 5 handed over (8fad876 sim/driver, b934ac7 page v7).** (a) the split at 80 mrad, all
   noiseless, true probe fixed, same random draws: phonons only (_ph16), partial coherence only (_coh), both on the kept
   noiseless hail-mary sims (RECON_ONLY, RTAG=_fixed -> _ph16_coh_fixed); (b) phonons only at 100 K (simulate_4dstem
