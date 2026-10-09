@@ -769,8 +769,21 @@ def part_physics(R, T, cuts):
     tab = table(["run", "probe overlap", "mode powers", *ATOM_HEAD, "verdict"], trs,
                 "Fixed-probe runs use their own matched kernels (same physics, same operator). The 200-iteration kick is read "
                 "with block 2's coherent known-probe kernels (its own grids failed); the 500-iteration one with the fixed-probe "
-                "1e7 kernels once analysis 1310612 is pulled.")
-    return dict(FIG_PHYSICS=img(p, "full physics against the coherent reference"), FRAG_PHYSICS_TABLE=tab)
+                "1e7 kernels.")
+    # the split (2026-10-09): one effect at a time, all noiseless with the true probe fixed, so each row differs from the
+    # coherent reference by one thing; the 1e8 row is the full-physics run of the table above
+    srows = []
+    for title, k in (("coherent (reference)", "known_a080"), ("phonons only", "split_ph"), ("partial coherence only", "split_coh"),
+                     ("both, noiseless", "split_both"), ("both, 1e8", "fixed_1e8")):
+        info = R.find(k)
+        if not info["found"]:
+            srows.append(f"<tr><td>{html.escape(title)}</td><td colspan='5'>{pending_box(info)}</td></tr>"); continue
+        sc = atom_scores(info)
+        srows.append(f"<tr><td>{html.escape(title)}</td>{atoms_cells(sc)}{vcell(verdict(sc))}</tr>")
+    split = table(["what is switched on", *ATOM_HEAD, "verdict"], srows,
+                  "80 mrad, true probe fixed, matched kernels per row; phonons 16 room-temperature configurations, partial "
+                  "coherence the cold FEG's 7.3 Å focal spread and 0.4 Å source (§B); the same random draws in every row.")
+    return dict(FIG_PHYSICS=img(p, "full physics against the coherent reference"), FRAG_PHYSICS_TABLE=tab, FRAG_SPLIT_TABLE=split)
 
 
 def part_search(R, T):
@@ -867,6 +880,7 @@ def part_status(R):
     groups = [("Probe known, 40–100 mrad", [k for k in R.man["runs"] if k.startswith("known_")]),
               ("Window test", ["win_070", "win_052"]), ("Coherent kicks", ["kick_a040", "kick_a060", "kick_a080", "kick_a100", "long_m3", "long_m6"]),
               ("Full physics, fixed probe and plain kick", ["fixed_1e7", "fixed_1e8", "hail_1e7", "nosearch_1e7"]),
+              ("Physics split: one effect at a time", ["split_ph", "split_coh", "split_both"]),
               ("Outer search and refined probe", ["search_1e7", "search_1e8", "refined_1e7", "refined_1e7_own", "refined_1e8", "true4_1e8"]),
               ("Final run, 90 mrad in a 140 Å window", ["final90", "final90_fixed"])]
     out = []

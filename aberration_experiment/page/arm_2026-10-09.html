@@ -386,15 +386,16 @@
       <div class="spec-k">The result so far</div>
       <p class="spec-v">{{REF_LINE}}</p>
       <p>
-        With the probe known, the tableau reconstructs from 50 to 80 mrad; above that the probe outgrows the window. With
-        realistic physics depth is lost, and an outer search finds C1 and C3 from the data far more precisely than the
-        corrector measures them. Whether refining from there restores depth lands on 9 October.
+        With the probe known, the tableau reconstructs from 50 to 80 mrad; above that the probe outgrows the window. An
+        outer search finds C1 and C3 from realistic data far more precisely than the corrector measures them. But with
+        phonons and the cold FEG's partial coherence, depth is lost even when the reconstruction starts from the true
+        probe: the probe is not the limit. A run with each effect on its own is under way to find which one does it.
       </p>
       <div class="spec-grid">
         <div><b>50–80 mrad</b><span>reconstructs with the probe known (§3)</span></div>
         <div><b>≤ ~5 % outside</b><span>of the probe, or the window fails (§4)</span></div>
         <div><b>C1 to 2.3 Å, C3 to 0.14 µm</b><span>outer search, realistic data; the corrector: ±40 Å, ±0.8 µm (§7)</span></div>
-        <div><b>pending</b><span>depth from the refined probe; 90 mrad in 140 Å (§7, §8)</span></div>
+        <div><b>Pb 17 %, guessing 12 %</b><span>realistic physics, true probe as the start, 4 modes: depth lost (§7)</span></div>
       </div>
     </div>
 
@@ -406,10 +407,14 @@
       <li><b>Probe known:</b> at 70–80 mrad, 90 % of Pb and about half the Ti are found in the right place; guessing the
         depth would place about a quarter.</li>
       <li><b>90 and 100 mrad</b> fail because the probe outgrows the window, not because of the aperture.</li>
-      <li><b>Coherent data:</b> a 5 % probe error comes back with 500 iterations or 6 modes.</li>
+      <li><b>Coherent data:</b> a 5 % probe error mostly comes back with 500 iterations or 6 modes (Pb 66–80 %, Ti
+        33–47 % in the right place, against 90 / 58 % with the probe known).</li>
       <li><b>Phonons, partial coherence, shot noise:</b> depth is lost. The finder still finds the columns, but its depths
         are barely better than guessing (Pb 23 % against 16–19 %). Ten times the dose changes nothing.</li>
       <li><b>Outer search:</b> finds C1 and C3 from the realistic data to within 2.3 Å and 0.14 µm.</li>
+      <li><b>Refining the probe does not bring depth back</b>, not even from the true probe with 4 modes (Pb 17 % against
+        12 % by guessing). 90 mrad in a 140 Å window, probe fixed, is no better.</li>
+      <li><b>Next:</b> phonons alone and partial coherence alone (§6), to decide whether a colder specimen can help.</li>
     </ul>
   </section>
 
@@ -502,7 +507,7 @@
     <div class="sec-head"><span class="sec-num">05</span><h2>A probe off by 5 %, coherent data</h2></div>
     <p>
       Coherent data as in §3; the reconstruction starts with C1, C3 and A1 5 % off and refines the probe: about a wave of error at 80 mrad, five at
-      100. At 80 mrad the atoms come back with 500 iterations or 6 modes, with more wrong elements than the known probe.
+      100. At 80 mrad most atoms come back with 500 iterations or 6 modes, short of the known probe and with more wrong elements.
       This start is harder than an experimenter's: the search in §7 corrects C1 and C3, and A1's 5 % is only 0.04 waves.
     </p>
     {{FRAG_KICK_TABLE}}
@@ -526,6 +531,13 @@
       <figcaption><span class="fig-name">fig_physics.png</span> Read as in §3.</figcaption>
     </figure>
     {{FRAG_PHYSICS_TABLE}}
+    <h3>Which effect removes the depth</h3>
+    <p>
+      Running since 9 October: phonons alone and partial coherence alone, each noiseless with the true probe fixed, and
+      both together without noise, so each row changes one thing. If phonons do it, a colder specimen is the next step;
+      if partial coherence does, cooling will not help.
+    </p>
+    {{FRAG_SPLIT_TABLE}}
   </section>
 
   <section id="s7">
@@ -550,9 +562,11 @@
     <!-- FILL refined: when refined_1e7 / true4_1e8 (later refined_1e8) show IN in make_arm_page.py --list, replace the
          callout with 2-4 plain sentences: does depth come back (look at fig_refined first), right place against guessing
          for refined vs fixed-probe vs no-search rows, and how close true4 (the ceiling) gets. Then update section 01. -->
-    <div class="call pending">
-      <b>Pending, 9 October morning:</b> the refined 1e7 run, and a run starting from the true probe with 4 modes at 1e8,
-      the ceiling: if that fails, the probe is not the limit. Refined 1e8 follows about two days later.
+    <div class="call stop">
+      <b>Refining does not restore depth.</b> From the searched start the probe barely moves (overlap 0.25 → 0.27) and
+      the atoms stay near guessing (Pb / Ti 19 / 22 % against 13 / 8 %). Starting from the true probe with 4 modes, the
+      probe stays at the truth (0.997) and the atoms are still at guessing (17 / 4 % against 12 / 2 %): with this physics
+      the probe is not what limits depth. The refined 1e8 run lands in about a day.
     </div>
     <figure class="wide">
       {{FIG_REFINED}}
@@ -576,7 +590,12 @@
     </p>
     <!-- FILL final: when final90 and final90_fixed show IN, replace the callout with the verdict in 2-3 sentences and
          update section 01. -->
-    <div class="call pending"><b>Pending, about 2.5–3 days.</b></div>
+    <div class="call stop">
+      <b>The fixed-probe twin is no better than at 80 mrad.</b> In plane the lattice is clean across the field, without
+      the window damage of the 105 Å run; in depth the columns smear as before (Pb / Ti 6 / 0 % in the right place,
+      9 / 0 % by guessing). Of the true-start legs, the lab one stopped with an error after 10 hours (being checked);
+      Pb and Ti are still running.
+    </div>
     <figure class="wide">
       {{FIG_FINAL}}
       <figcaption><span class="fig-name">fig_final90.png</span> Read as in §3.</figcaption>
@@ -591,12 +610,20 @@
       <div><span class="lg-t">Probe known, the ARM200F works to 80 mrad</span><span class="chip c-ok">supported</span>
         <span class="lg-d">With the four routinely tuned terms; 80 mrad matches the CEOS result.</span></div>
       <div><span class="lg-t">Beyond 80 mrad the window is the limit</span><span class="chip c-ok">supported</span>
-        <span class="lg-d">Same probe, smaller window, same failure; 140 Å at 90 mrad is running.</span></div>
+        <span class="lg-d">Same probe, smaller window, same failure. At 90 mrad a 140 Å window shows no window damage in plane (§8).</span></div>
       <div><span class="lg-t">A few-per-cent probe error is recoverable with coherent data</span><span class="chip c-ok">supported</span>
         <span class="lg-d">500 iterations or 6 modes: Pb 66–80 %, Ti 33–47 % in the right place (90 / 58 % with the probe known).</span></div>
-      <div><span class="lg-t">With realistic physics, find the probe from the data first</span><span class="chip c-open">being tested</span>
-        <span class="lg-d">The search finds C1 and C3 to 2.3 Å and 0.14 µm. If even the true start with 4 modes fails, the
-          next step is a colder specimen, not more iterations.</span></div>
+      <div><span class="lg-t">The outer search finds the probe from realistic data</span><span class="chip c-ok">supported</span>
+        <span class="lg-d">C1 and C3 to 2.3 Å and 0.14 µm at both doses; the corrector measures ±40 Å and ±0.8 µm.</span></div>
+      <div><span class="lg-t">With phonons and partial coherence, depth is lost whatever the probe</span><span class="chip c-stop">supported</span>
+        <span class="lg-d">True probe fixed, true start with 4 modes, searched start: all at the guessing level at 80 mrad,
+          and at 90 mrad in a 140 Å window. Ten times the dose changes nothing.</span></div>
+      <div><span class="lg-t">Which effect: phonons or partial coherence?</span><span class="chip c-open">running</span>
+        <span class="lg-d">Each alone, noiseless, probe fixed (§6). Phonons point to a colder specimen; partial coherence
+          (a 17 Å spread of focus against 3.1 Å depth resolution) would not be helped by cooling.</span></div>
+      <div><span class="lg-t">300 kV with the ARM200F's corrector</span><span class="chip c-warn">open</span>
+        <span class="lg-d">The ARM200F runs at 200 kV; its measured tableau stands in for a CEOS-corrected 300 kV column.
+          At 200 kV the same gun spreads focus by 10.4 Å, not 7.3 Å. A 300 kV tableau (a Titan's) would be a direct check.</span></div>
       <div><span class="lg-t">Titanium</span><span class="chip c-warn">open</span>
         <span class="lg-d">With the probe known, 90–95 % of Pb but 56–58 % of Ti land in the right place; the B-site finder
           is worth improving on its own.</span></div>

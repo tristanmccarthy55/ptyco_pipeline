@@ -1,361 +1,410 @@
 {
-  "_doc": "Manifest for the ARM200F results page (analysis/make_arm_page.py). Each run is found by its TAG (an analysis tarball's summary.csv label / figdata/<tag> / atomfind_<tag>) and its LEG (the recon dir name recon_af_<leg>_NL<n>: phase render, kick record, error trace), searched in every folder of search_dirs (analysis/*/ and results/ inside each). A run whose tag is not found yet is drawn as 'pending' with its 'pending' text. To fill the page in: pull the tarballs into one of search_dirs (or add the folder here), then rerun make_arm_page.py. See aberration_experiment/page/ARM_PAGE.md.",
-  "search_dirs": [
-    "~/Desktop/arm_block2",
-    "~/Desktop/arm_a100",
-    "~/Desktop/arm_hailmary",
-    "~/Desktop/arm_hailmary_kern",
-    "~/Desktop/arm_block3_window",
-    "~/Desktop/arm_block3_fixed",
-    "~/Desktop/arm_meeting",
-    "~/Desktop/arm_true4",
-    "~/Desktop/arm_s2_1e7",
-    "~/Desktop/arm_samekern",
-    "~/Desktop/arm_block3_s2",
-    "~/Desktop/arm_block3_long",
-    "~/Desktop/arm_final90"
-  ],
-  "reference": "known_a080",
-  "runs": {
-    "known_a040": {
-      "tag": [
-        "armf_a040"
-      ],
-      "leg": "armf_a040_lab",
-      "short": "40",
-      "name": "40 mrad, probe known"
-    },
-    "known_a050": {
-      "tag": [
-        "armf_a050"
-      ],
-      "leg": "armf_a050_lab",
-      "short": "50",
-      "name": "50 mrad, probe known"
-    },
-    "known_a060": {
-      "tag": [
-        "armf_a060"
-      ],
-      "leg": "armf_a060_lab",
-      "short": "60",
-      "name": "60 mrad, probe known"
-    },
-    "known_a065": {
-      "tag": [
-        "armf_a065"
-      ],
-      "leg": "armf_a065_lab",
-      "short": "65",
-      "name": "65 mrad, probe known"
-    },
-    "known_a070": {
-      "tag": [
-        "armf_a070"
-      ],
-      "leg": "armf_a070_lab",
-      "short": "70",
-      "name": "70 mrad, probe known"
-    },
-    "known_a075": {
-      "tag": [
-        "armf_a075"
-      ],
-      "leg": "armf_a075_lab",
-      "short": "75",
-      "name": "75 mrad, probe known"
-    },
-    "known_a080": {
-      "tag": [
-        "armf_a080"
-      ],
-      "leg": "armf_a080_lab",
-      "short": "80",
-      "name": "80 mrad, probe known"
-    },
-    "known_a090": {
-      "tag": [
-        "armf_a090"
-      ],
-      "leg": "armf_a090_lab",
-      "short": "90",
-      "name": "90 mrad, probe known"
-    },
-    "known_a100": {
-      "tag": [
-        "armf_a100"
-      ],
-      "leg": "armf_a100_lab",
-      "short": "100",
-      "name": "100 mrad, probe known"
-    },
-    "win_105": {
-      "tag": [
-        "armf_a080"
-      ],
-      "leg": "armf_a080_lab",
-      "short": "80 mrad · 105 Å",
-      "name": "80 mrad in a 105 Å window"
-    },
-    "win_070": {
-      "tag": [
-        "armf_a080_b3"
-      ],
-      "leg": "armf_a080_b3_lab",
-      "short": "80 mrad · 70 Å",
-      "name": "80 mrad in a 70 Å window"
-    },
-    "win_052": {
-      "tag": [
-        "armf_a080_b4"
-      ],
-      "leg": "armf_a080_b4_lab",
-      "short": "80 mrad · 52.5 Å",
-      "name": "80 mrad in a 52.5 Å window"
-    },
-    "win_a090": {
-      "tag": [
-        "armf_a090"
-      ],
-      "leg": "armf_a090_lab",
-      "short": "90 mrad · 105 Å",
-      "name": "90 mrad in a 105 Å window"
-    },
-    "win_a100": {
-      "tag": [
-        "armf_a100"
-      ],
-      "leg": "armf_a100_lab",
-      "short": "100 mrad · 105 Å",
-      "name": "100 mrad in a 105 Å window"
-    },
-    "kick_a040": {
-      "tag": [
-        "armf_a040_kick"
-      ],
-      "leg": "armf_a040_kick",
-      "short": "40",
-      "name": "40 mrad, 5 % kick, 3 modes, 200 iterations"
-    },
-    "kick_a060": {
-      "tag": [
-        "armf_a060_kick"
-      ],
-      "leg": "armf_a060_kick",
-      "short": "60",
-      "name": "60 mrad, 5 % kick, 3 modes, 200 iterations"
-    },
-    "kick_a080": {
-      "tag": [
-        "armf_a080_kick"
-      ],
-      "leg": "armf_a080_kick",
-      "short": "80",
-      "name": "80 mrad, 5 % kick, 3 modes, 200 iterations"
-    },
-    "kick_a100": {
-      "tag": [
-        "armf_a100_kick"
-      ],
-      "leg": "armf_a100_kick",
-      "short": "100",
-      "name": "100 mrad, 5 % kick, 3 modes, 200 iterations"
-    },
-    "long_m3": {
-      "tag": [
-        "armf_a080_long_m3_kern-armf_a080"
-      ],
-      "leg": "armf_a080_lab_long_m3",
-      "short": "80 · 3 modes · 500 it",
-      "name": "80 mrad, 5 % kick, 3 modes, 500 iterations"
-    },
-    "long_m6": {
-      "tag": [
-        "armf_a080_long_m6_kern-armf_a080"
-      ],
-      "leg": "armf_a080_lab_long_m6",
-      "short": "80 · 6 modes · 250 it",
-      "name": "80 mrad, 5 % kick, 6 modes, 250 iterations"
-    },
-    "fixed_1e7": {
-      "tag": [
-        "armf_a080_ph16_coh_dose1e7_fixed"
-      ],
-      "leg": "armf_a080_lab_ph16_coh_dose1e7_fixed",
-      "short": "fixed · 1e7",
-      "name": "full physics, 1e7, true probe fixed (1 mode)"
-    },
-    "fixed_1e8": {
-      "tag": [
-        "armf_a080_ph16_coh_dose1e8_fixed"
-      ],
-      "leg": "armf_a080_lab_ph16_coh_dose1e8_fixed",
-      "short": "fixed · 1e8",
-      "name": "full physics, 1e8, true probe fixed (1 mode)"
-    },
-    "hail_1e7": {
-      "tag": [
-        "armf_a080_ph16_coh_dose1e7_kern-armf_a080",
-        "armf_a080_ph16_coh_dose1e7"
-      ],
-      "leg": "armf_a080_lab_ph16_coh_dose1e7",
-      "short": "kick · 200 it",
-      "name": "full physics, 1e7, 5 % kick, 4 modes, 200 iterations (the first hail mary; atoms with block-2 kernels)"
-    },
-    "nosearch_1e7": {
-      "tag": [
-        "armf_a080_ph16_coh_dose1e7_rk_kern-armf_a080_ph16_coh_dose1e7_fixed",
-        "armf_a080_ph16_coh_dose1e7_rk"
-      ],
-      "leg": "armf_a080_lab_ph16_coh_dose1e7_rk",
-      "short": "kick · 500 it",
-      "name": "full physics, 1e7, 5 % kick, no search, 4 modes, 500 iterations",
-      "pending": "atoms with the fixed-probe 1e7 kernels: analysis 1310612 (pull to ~/Desktop/arm_s2_1e7)"
-    },
-    "search_1e7": {
-      "search": "search_af_armf_a080_lab_ph16_coh_dose1e7_s2",
-      "short": "1e7",
-      "name": "outer search on the 1e7 data"
-    },
-    "search_1e8": {
-      "search": "search_af_armf_a080_lab_ph16_coh_dose1e8_s2",
-      "short": "1e8",
-      "name": "outer search on the 1e8 data"
-    },
-    "refined_1e7": {
-      "tag": [
-        "armf_a080_ph16_coh_dose1e7_s2_rk_kern-armf_a080_ph16_coh_dose1e7_fixed",
-        "armf_a080_ph16_coh_dose1e7_s2_rk"
-      ],
-      "leg": "armf_a080_lab_ph16_coh_dose1e7_s2_rk",
-      "short": "search → refine · 1e7",
-      "name": "full physics, 1e7, searched start, 4 modes, 500 iterations",
-      "pending": "legs 1308516/20/22 (done ~2026-10-09 morning); analyses 1310609 (own kernels) and 1310613 (fixed-probe kernels), pull to ~/Desktop/arm_s2_1e7"
-    },
-    "refined_1e7_own": {
-      "tag": [
-        "armf_a080_ph16_coh_dose1e7_s2_rk"
-      ],
-      "leg": "armf_a080_lab_ph16_coh_dose1e7_s2_rk",
-      "short": "own kernels",
-      "name": "full physics, 1e7, searched start, atoms with its own refined kernels",
-      "pending": "analysis 1310609, pull to ~/Desktop/arm_s2_1e7"
-    },
-    "refined_1e8": {
-      "tag": [
-        "armf_a080_ph16_coh_dose1e8_s2_rk"
-      ],
-      "leg": "armf_a080_lab_ph16_coh_dose1e8_s2_rk",
-      "short": "search → refine · 1e8",
-      "name": "full physics, 1e8, searched start, 4 modes, 500 iterations",
-      "pending": "legs 1308519/21/23 (~2 days); pack 1308524, analysis 1308526, pull to ~/Desktop/arm_block3_s2"
-    },
-    "true4_1e8": {
-      "tag": [
-        "armf_a080_ph16_coh_dose1e8_true4"
-      ],
-      "leg": "armf_a080_lab_ph16_coh_dose1e8_true4",
-      "short": "true start · 1e8",
-      "name": "full physics, 1e8, TRUE probe as the start, 4 modes, 500 iterations",
-      "pending": "legs 1308548/49/50, pack 1308551, analysis 1308552 (~2026-10-09 morning), pull to ~/Desktop/arm_true4"
-    },
-    "final90": {
-      "tag": [
-        "armf_a090_w140_ph16_coh_dose1e8"
-      ],
-      "leg": "armf_a090_w140_lab_ph16_coh_dose1e8",
-      "short": "90 · start true · 4 modes",
-      "name": "90 mrad, 140 Å window, full physics, 1e8, true start, 4 modes",
-      "pending": "sims 1310307/11/15 -> kicks 1310310/14/18, pack 1310319, analysis 1310320 (~2.5-3 days), pull to ~/Desktop/arm_final90"
-    },
-    "final90_fixed": {
-      "tag": [
-        "armf_a090_w140_ph16_coh_dose1e8_fixed"
-      ],
-      "leg": "armf_a090_w140_lab_ph16_coh_dose1e8_fixed",
-      "short": "90 · fixed",
-      "name": "90 mrad, 140 Å window, full physics, 1e8, true probe fixed",
-      "pending": "fixed legs 1310309/13/17, analysis 1310321, pull to ~/Desktop/arm_final90"
-    }
+ "_doc": "Manifest for the ARM200F results page (analysis/make_arm_page.py). Each run is found by its TAG (an analysis tarball's summary.csv label / figdata/<tag> / atomfind_<tag>) and its LEG (the recon dir name recon_af_<leg>_NL<n>: phase render, kick record, error trace), searched in every folder of search_dirs (analysis/*/ and results/ inside each). A run whose tag is not found yet is drawn as 'pending' with its 'pending' text. To fill the page in: pull the tarballs into one of search_dirs (or add the folder here), then rerun make_arm_page.py. See aberration_experiment/page/ARM_PAGE.md.",
+ "search_dirs": [
+  "~/Desktop/arm_block2",
+  "~/Desktop/arm_a100",
+  "~/Desktop/arm_hailmary",
+  "~/Desktop/arm_hailmary_kern",
+  "~/Desktop/arm_block3_window",
+  "~/Desktop/arm_block3_fixed",
+  "~/Desktop/arm_meeting",
+  "~/Desktop/arm_true4",
+  "~/Desktop/arm_s2_1e7",
+  "~/Desktop/arm_samekern",
+  "~/Desktop/arm_block3_s2",
+  "~/Desktop/arm_block3_long",
+  "~/Desktop/arm_final90",
+  "~/Desktop/arm_split"
+ ],
+ "reference": "known_a080",
+ "runs": {
+  "known_a040": {
+   "tag": [
+    "armf_a040"
+   ],
+   "leg": "armf_a040_lab",
+   "short": "40",
+   "name": "40 mrad, probe known"
   },
-  "reproduce": {
-    "probe_labels": [
-      "armf_a040",
-      "armf_a050",
-      "armf_a060",
-      "armf_a065",
-      "armf_a070",
-      "armf_a075",
-      "armf_a080",
-      "armf_a090",
-      "armf_a100",
-      "armf_a090_w140"
-    ],
-    "physics_cmd": "PHONONS=16 PER_SPECIES=1 ENERGY_SPREAD_EV=0.3 CC_MM=1.4 SOURCE_FWHM=0.4 DOSES=\"1e7 1e8\"",
-    "families": [
-      {
-        "name": "Probe known, 40-90 mrad, and 5 % kicks at 40/60/80",
-        "sec": "§3, §5",
-        "physics": "coherent",
-        "how": "settings as recorded (HANDOFF_REALISTIC.md, block 2); not the verbatim line",
-        "cmd": "LABELS=\"armf_a040 armf_a050 armf_a060 armf_a065 armf_a070 armf_a075 armf_a080 armf_a090\" KICK_LABELS=\"armf_a040 armf_a060 armf_a080\" TSV=campaign/ceos_sweep.tsv GROUPING=\"32;16\" RTIME=36:00:00 bash campaign/run_thin_atomfind.sh"
-      },
-      {
-        "name": "Probe known, 100 mrad, and its 5 % kick",
-        "sec": "§3, §5",
-        "physics": "coherent",
-        "how": "as submitted",
-        "cmd": "LABELS=armf_a100 KICK_LABELS=armf_a100 TSV=campaign/ceos_sweep.tsv GROUPING=\"32;16\" RTIME=36:00:00 CLEANDATA=1 PACK_H5=0 bash campaign/run_thin_atomfind.sh"
-      },
-      {
-        "name": "Window test, 80 mrad at 70 and 52.5 Å",
-        "sec": "§4",
-        "physics": "coherent",
-        "how": "as submitted",
-        "cmd": "LABELS=\"armf_a080_b4 armf_a080_b3\" TSV=campaign/ceos_sweep.tsv GROUPING=\"32;16\" CLEANDATA=1 PACK_H5=0 bash campaign/run_thin_atomfind.sh"
-      },
-      {
-        "name": "Long kicks, 80 mrad: 3 modes x 500 it, 6 modes x 250 it",
-        "sec": "§5",
-        "physics": "coherent",
-        "how": "as submitted",
-        "cmd": "LABELS=armf_a080 TSV=campaign/ceos_sweep.tsv MODES=lab KICK_ALL=1 KICK_MODES=\"3 6\" KICK_NITER=\"500 250\" KICK_GROUPING=\"8;4 4;2\" RTAG=_long GROUPING=\"32;16\" CLEANDATA=1 PACK_H5=0 bash campaign/run_thin_atomfind.sh"
-      },
-      {
-        "name": "Full physics, 5 % kick, 200 it, 1e7",
-        "sec": "§6",
-        "physics": "full",
-        "how": "settings as recorded (HANDOFF_REALISTIC.md, hail mary); not the verbatim line",
-        "cmd": "LABELS=armf_a080 TSV=campaign/ceos_sweep.tsv PHONONS=16 PER_SPECIES=1 ENERGY_SPREAD_EV=0.3 CC_MM=1.4 SOURCE_FWHM=0.4 DOSES=1e7 KICK_ALL=1 KICK_MODES=4 KICK_GROUPING=\"8;4\" bash campaign/run_thin_atomfind.sh"
-      },
-      {
-        "name": "Full physics: true probe fixed (1e7, 1e8); search; kicked start, no search (its search fell back)",
-        "sec": "§6, §7",
-        "physics": "full",
-        "how": "as submitted",
-        "cmd": "G=\"0.91 0.94 0.97 1 1.03 1.06 1.09\"; LABELS=armf_a080 TSV=campaign/ceos_sweep.tsv PHONONS=16 PER_SPECIES=1 ENERGY_SPREAD_EV=0.3 CC_MM=1.4 SOURCE_FWHM=0.4 DOSES=\"1e7 1e8\" FIXED_TWIN=1 SEARCH_C1F=\"$G\" SEARCH_C3F=\"$G\" KICK_MODES=4 KICK_NITER=500 GROUPING=\"32;16\" CLEANDATA=0 PACK_H5=0 bash campaign/run_thin_atomfind.sh"
-      },
-      {
-        "name": "Full physics: outer search and refined probe, 1e7 and 1e8",
-        "sec": "§7",
-        "physics": "full",
-        "how": "as submitted (re-run on the kept data)",
-        "cmd": "G=\"0.91 0.94 0.97 1 1.03 1.06 1.09\"; RECON_ONLY=1 LABELS=armf_a080 TSV=campaign/ceos_sweep.tsv PHONONS=16 PER_SPECIES=1 ENERGY_SPREAD_EV=0.3 CC_MM=1.4 SOURCE_FWHM=0.4 DOSES=\"1e7 1e8\" SEARCH_C1F=\"$G\" SEARCH_C3F=\"$G\" KICK_MODES=4 KICK_NITER=500 RTAG=_s2 GROUPING=\"32;16\" CLEANDATA=0 PACK_H5=0 bash campaign/run_thin_atomfind.sh"
-      },
-      {
-        "name": "Full physics: true probe as the start, 4 modes, 1e8",
-        "sec": "§7",
-        "physics": "full",
-        "how": "as submitted (re-run on the kept data)",
-        "cmd": "RECON_ONLY=1 LABELS=armf_a080 TSV=campaign/ceos_sweep.tsv PHONONS=16 PER_SPECIES=1 ENERGY_SPREAD_EV=0.3 CC_MM=1.4 SOURCE_FWHM=0.4 DOSES=1e8 KICK_ALL=1 KICK=1.0 KICK_MODES=4 KICK_NITER=500 RTAG=_true4 GROUPING=\"32;16\" CLEANDATA=0 PACK_H5=0 bash campaign/run_thin_atomfind.sh"
-      },
-      {
-        "name": "Final run: 90 mrad, 140 Å window, true start + 4 modes (250 it) and true probe fixed, 1e8",
-        "sec": "§8",
-        "physics": "full",
-        "how": "as submitted",
-        "cmd": "LABELS=armf_a090_w140 TSV=campaign/ceos_sweep.tsv PHONONS=16 PER_SPECIES=1 ENERGY_SPREAD_EV=0.3 CC_MM=1.4 SOURCE_FWHM=0.4 DOSES=1e8 FIXED_TWIN=1 KICK_ALL=1 KICK=1.0 KICK_MODES=4 KICK_NITER=250 NITER_PRE=50 KICK_PSTART=20 KICK_GROUPING=\"2;2\" GROUPING=\"8;8\" CLEANDATA=0 PACK_H5=0 bash campaign/run_thin_atomfind.sh"
-      }
-    ]
+  "known_a050": {
+   "tag": [
+    "armf_a050"
+   ],
+   "leg": "armf_a050_lab",
+   "short": "50",
+   "name": "50 mrad, probe known"
+  },
+  "known_a060": {
+   "tag": [
+    "armf_a060"
+   ],
+   "leg": "armf_a060_lab",
+   "short": "60",
+   "name": "60 mrad, probe known"
+  },
+  "known_a065": {
+   "tag": [
+    "armf_a065"
+   ],
+   "leg": "armf_a065_lab",
+   "short": "65",
+   "name": "65 mrad, probe known"
+  },
+  "known_a070": {
+   "tag": [
+    "armf_a070"
+   ],
+   "leg": "armf_a070_lab",
+   "short": "70",
+   "name": "70 mrad, probe known"
+  },
+  "known_a075": {
+   "tag": [
+    "armf_a075"
+   ],
+   "leg": "armf_a075_lab",
+   "short": "75",
+   "name": "75 mrad, probe known"
+  },
+  "known_a080": {
+   "tag": [
+    "armf_a080"
+   ],
+   "leg": "armf_a080_lab",
+   "short": "80",
+   "name": "80 mrad, probe known"
+  },
+  "known_a090": {
+   "tag": [
+    "armf_a090"
+   ],
+   "leg": "armf_a090_lab",
+   "short": "90",
+   "name": "90 mrad, probe known"
+  },
+  "known_a100": {
+   "tag": [
+    "armf_a100"
+   ],
+   "leg": "armf_a100_lab",
+   "short": "100",
+   "name": "100 mrad, probe known"
+  },
+  "win_105": {
+   "tag": [
+    "armf_a080"
+   ],
+   "leg": "armf_a080_lab",
+   "short": "80 mrad · 105 Å",
+   "name": "80 mrad in a 105 Å window"
+  },
+  "win_070": {
+   "tag": [
+    "armf_a080_b3"
+   ],
+   "leg": "armf_a080_b3_lab",
+   "short": "80 mrad · 70 Å",
+   "name": "80 mrad in a 70 Å window"
+  },
+  "win_052": {
+   "tag": [
+    "armf_a080_b4"
+   ],
+   "leg": "armf_a080_b4_lab",
+   "short": "80 mrad · 52.5 Å",
+   "name": "80 mrad in a 52.5 Å window"
+  },
+  "win_a090": {
+   "tag": [
+    "armf_a090"
+   ],
+   "leg": "armf_a090_lab",
+   "short": "90 mrad · 105 Å",
+   "name": "90 mrad in a 105 Å window"
+  },
+  "win_a100": {
+   "tag": [
+    "armf_a100"
+   ],
+   "leg": "armf_a100_lab",
+   "short": "100 mrad · 105 Å",
+   "name": "100 mrad in a 105 Å window"
+  },
+  "kick_a040": {
+   "tag": [
+    "armf_a040_kick"
+   ],
+   "leg": "armf_a040_kick",
+   "short": "40",
+   "name": "40 mrad, 5 % kick, 3 modes, 200 iterations"
+  },
+  "kick_a060": {
+   "tag": [
+    "armf_a060_kick"
+   ],
+   "leg": "armf_a060_kick",
+   "short": "60",
+   "name": "60 mrad, 5 % kick, 3 modes, 200 iterations"
+  },
+  "kick_a080": {
+   "tag": [
+    "armf_a080_kick"
+   ],
+   "leg": "armf_a080_kick",
+   "short": "80",
+   "name": "80 mrad, 5 % kick, 3 modes, 200 iterations"
+  },
+  "kick_a100": {
+   "tag": [
+    "armf_a100_kick"
+   ],
+   "leg": "armf_a100_kick",
+   "short": "100",
+   "name": "100 mrad, 5 % kick, 3 modes, 200 iterations"
+  },
+  "long_m3": {
+   "tag": [
+    "armf_a080_long_m3_kern-armf_a080"
+   ],
+   "leg": "armf_a080_lab_long_m3",
+   "short": "80 · 3 modes · 500 it",
+   "name": "80 mrad, 5 % kick, 3 modes, 500 iterations"
+  },
+  "long_m6": {
+   "tag": [
+    "armf_a080_long_m6_kern-armf_a080"
+   ],
+   "leg": "armf_a080_lab_long_m6",
+   "short": "80 · 6 modes · 250 it",
+   "name": "80 mrad, 5 % kick, 6 modes, 250 iterations"
+  },
+  "fixed_1e7": {
+   "tag": [
+    "armf_a080_ph16_coh_dose1e7_fixed"
+   ],
+   "leg": "armf_a080_lab_ph16_coh_dose1e7_fixed",
+   "short": "fixed · 1e7",
+   "name": "full physics, 1e7, true probe fixed (1 mode)"
+  },
+  "fixed_1e8": {
+   "tag": [
+    "armf_a080_ph16_coh_dose1e8_fixed"
+   ],
+   "leg": "armf_a080_lab_ph16_coh_dose1e8_fixed",
+   "short": "fixed · 1e8",
+   "name": "full physics, 1e8, true probe fixed (1 mode)"
+  },
+  "hail_1e7": {
+   "tag": [
+    "armf_a080_ph16_coh_dose1e7_kern-armf_a080",
+    "armf_a080_ph16_coh_dose1e7"
+   ],
+   "leg": "armf_a080_lab_ph16_coh_dose1e7",
+   "short": "kick · 200 it",
+   "name": "full physics, 1e7, 5 % kick, 4 modes, 200 iterations (the first hail mary; atoms with block-2 kernels)"
+  },
+  "nosearch_1e7": {
+   "tag": [
+    "armf_a080_ph16_coh_dose1e7_rk_kern-armf_a080_ph16_coh_dose1e7_fixed",
+    "armf_a080_ph16_coh_dose1e7_rk"
+   ],
+   "leg": "armf_a080_lab_ph16_coh_dose1e7_rk",
+   "short": "kick · 500 it",
+   "name": "full physics, 1e7, 5 % kick, no search, 4 modes, 500 iterations",
+   "pending": "atoms with the fixed-probe 1e7 kernels: analysis 1310612 (pull to ~/Desktop/arm_s2_1e7)"
+  },
+  "search_1e7": {
+   "search": "search_af_armf_a080_lab_ph16_coh_dose1e7_s2",
+   "short": "1e7",
+   "name": "outer search on the 1e7 data"
+  },
+  "search_1e8": {
+   "search": "search_af_armf_a080_lab_ph16_coh_dose1e8_s2",
+   "short": "1e8",
+   "name": "outer search on the 1e8 data"
+  },
+  "refined_1e7": {
+   "tag": [
+    "armf_a080_ph16_coh_dose1e7_s2_rk_kern-armf_a080_ph16_coh_dose1e7_fixed",
+    "armf_a080_ph16_coh_dose1e7_s2_rk"
+   ],
+   "leg": "armf_a080_lab_ph16_coh_dose1e7_s2_rk",
+   "short": "search → refine · 1e7",
+   "name": "full physics, 1e7, searched start, 4 modes, 500 iterations",
+   "pending": "legs 1308516/20/22 (done ~2026-10-09 morning); analyses 1310609 (own kernels) and 1310613 (fixed-probe kernels), pull to ~/Desktop/arm_s2_1e7"
+  },
+  "refined_1e7_own": {
+   "tag": [
+    "armf_a080_ph16_coh_dose1e7_s2_rk"
+   ],
+   "leg": "armf_a080_lab_ph16_coh_dose1e7_s2_rk",
+   "short": "own kernels",
+   "name": "full physics, 1e7, searched start, atoms with its own refined kernels",
+   "pending": "analysis 1310609, pull to ~/Desktop/arm_s2_1e7"
+  },
+  "refined_1e8": {
+   "tag": [
+    "armf_a080_ph16_coh_dose1e8_s2_rk"
+   ],
+   "leg": "armf_a080_lab_ph16_coh_dose1e8_s2_rk",
+   "short": "search → refine · 1e8",
+   "name": "full physics, 1e8, searched start, 4 modes, 500 iterations",
+   "pending": "legs 1308519/21/23 running (~1 day); pack 1308524, analysis 1308526, pull to ~/Desktop/arm_block3_s2"
+  },
+  "true4_1e8": {
+   "tag": [
+    "armf_a080_ph16_coh_dose1e8_true4"
+   ],
+   "leg": "armf_a080_lab_ph16_coh_dose1e8_true4",
+   "short": "true start · 1e8",
+   "name": "full physics, 1e8, TRUE probe as the start, 4 modes, 500 iterations",
+   "pending": "legs 1308548/49/50, pack 1308551, analysis 1308552 (~2026-10-09 morning), pull to ~/Desktop/arm_true4"
+  },
+  "final90": {
+   "tag": [
+    "armf_a090_w140_ph16_coh_dose1e8"
+   ],
+   "leg": "armf_a090_w140_lab_ph16_coh_dose1e8",
+   "short": "90 · start true · 4 modes",
+   "name": "90 mrad, 140 Å window, full physics, 1e8, true start, 4 modes",
+   "pending": "lab leg 1310310 stopped with an error after 10 h (being checked); Pb / Ti legs 1310314 / 18 running, pack 1310319, analysis 1310320, pull to ~/Desktop/arm_final90"
+  },
+  "final90_fixed": {
+   "tag": [
+    "armf_a090_w140_ph16_coh_dose1e8_fixed"
+   ],
+   "leg": "armf_a090_w140_lab_ph16_coh_dose1e8_fixed",
+   "short": "90 · fixed",
+   "name": "90 mrad, 140 Å window, full physics, 1e8, true probe fixed",
+   "pending": "fixed legs 1310309/13/17, analysis 1310321, pull to ~/Desktop/arm_final90"
+  },
+  "split_ph": {
+   "tag": [
+    "armf_a080_ph16"
+   ],
+   "leg": "armf_a080_lab_ph16",
+   "short": "phonons only",
+   "name": "80 mrad, phonons only (room temperature), noiseless, true probe fixed",
+   "pending": "submitted 2026-10-09, ~1 day (two 5 h sims, then fixed-probe recons), pull to ~/Desktop/arm_split"
+  },
+  "split_coh": {
+   "tag": [
+    "armf_a080_coh"
+   ],
+   "leg": "armf_a080_lab_coh",
+   "short": "coherence only",
+   "name": "80 mrad, partial coherence only (cold FEG), noiseless, true probe fixed",
+   "pending": "submitted 2026-10-09, ~1 day (two 5 h sims, then fixed-probe recons), pull to ~/Desktop/arm_split"
+  },
+  "split_both": {
+   "tag": [
+    "armf_a080_ph16_coh_fixed"
+   ],
+   "leg": "armf_a080_lab_ph16_coh_fixed",
+   "short": "both, noiseless",
+   "name": "80 mrad, phonons + partial coherence, noiseless, true probe fixed",
+   "pending": "submitted 2026-10-09 on the kept noiseless sims (no new simulation), pull to ~/Desktop/arm_split"
   }
+ },
+ "reproduce": {
+  "probe_labels": [
+   "armf_a040",
+   "armf_a050",
+   "armf_a060",
+   "armf_a065",
+   "armf_a070",
+   "armf_a075",
+   "armf_a080",
+   "armf_a090",
+   "armf_a100",
+   "armf_a090_w140"
+  ],
+  "physics_cmd": "PHONONS=16 PER_SPECIES=1 ENERGY_SPREAD_EV=0.3 CC_MM=1.4 SOURCE_FWHM=0.4 DOSES=\"1e7 1e8\"",
+  "families": [
+   {
+    "name": "Probe known, 40-90 mrad, and 5 % kicks at 40/60/80",
+    "sec": "§3, §5",
+    "physics": "coherent",
+    "how": "settings as recorded (HANDOFF_REALISTIC.md, block 2); not the verbatim line",
+    "cmd": "LABELS=\"armf_a040 armf_a050 armf_a060 armf_a065 armf_a070 armf_a075 armf_a080 armf_a090\" KICK_LABELS=\"armf_a040 armf_a060 armf_a080\" TSV=campaign/ceos_sweep.tsv GROUPING=\"32;16\" RTIME=36:00:00 bash campaign/run_thin_atomfind.sh"
+   },
+   {
+    "name": "Probe known, 100 mrad, and its 5 % kick",
+    "sec": "§3, §5",
+    "physics": "coherent",
+    "how": "as submitted",
+    "cmd": "LABELS=armf_a100 KICK_LABELS=armf_a100 TSV=campaign/ceos_sweep.tsv GROUPING=\"32;16\" RTIME=36:00:00 CLEANDATA=1 PACK_H5=0 bash campaign/run_thin_atomfind.sh"
+   },
+   {
+    "name": "Window test, 80 mrad at 70 and 52.5 Å",
+    "sec": "§4",
+    "physics": "coherent",
+    "how": "as submitted",
+    "cmd": "LABELS=\"armf_a080_b4 armf_a080_b3\" TSV=campaign/ceos_sweep.tsv GROUPING=\"32;16\" CLEANDATA=1 PACK_H5=0 bash campaign/run_thin_atomfind.sh"
+   },
+   {
+    "name": "Long kicks, 80 mrad: 3 modes x 500 it, 6 modes x 250 it",
+    "sec": "§5",
+    "physics": "coherent",
+    "how": "as submitted",
+    "cmd": "LABELS=armf_a080 TSV=campaign/ceos_sweep.tsv MODES=lab KICK_ALL=1 KICK_MODES=\"3 6\" KICK_NITER=\"500 250\" KICK_GROUPING=\"8;4 4;2\" RTAG=_long GROUPING=\"32;16\" CLEANDATA=1 PACK_H5=0 bash campaign/run_thin_atomfind.sh"
+   },
+   {
+    "name": "Full physics, 5 % kick, 200 it, 1e7",
+    "sec": "§6",
+    "physics": "full",
+    "how": "settings as recorded (HANDOFF_REALISTIC.md, hail mary); not the verbatim line",
+    "cmd": "LABELS=armf_a080 TSV=campaign/ceos_sweep.tsv PHONONS=16 PER_SPECIES=1 ENERGY_SPREAD_EV=0.3 CC_MM=1.4 SOURCE_FWHM=0.4 DOSES=1e7 KICK_ALL=1 KICK_MODES=4 KICK_GROUPING=\"8;4\" bash campaign/run_thin_atomfind.sh"
+   },
+   {
+    "name": "Full physics: true probe fixed (1e7, 1e8); search; kicked start, no search (its search fell back)",
+    "sec": "§6, §7",
+    "physics": "full",
+    "how": "as submitted",
+    "cmd": "G=\"0.91 0.94 0.97 1 1.03 1.06 1.09\"; LABELS=armf_a080 TSV=campaign/ceos_sweep.tsv PHONONS=16 PER_SPECIES=1 ENERGY_SPREAD_EV=0.3 CC_MM=1.4 SOURCE_FWHM=0.4 DOSES=\"1e7 1e8\" FIXED_TWIN=1 SEARCH_C1F=\"$G\" SEARCH_C3F=\"$G\" KICK_MODES=4 KICK_NITER=500 GROUPING=\"32;16\" CLEANDATA=0 PACK_H5=0 bash campaign/run_thin_atomfind.sh"
+   },
+   {
+    "name": "Full physics: outer search and refined probe, 1e7 and 1e8",
+    "sec": "§7",
+    "physics": "full",
+    "how": "as submitted (re-run on the kept data)",
+    "cmd": "G=\"0.91 0.94 0.97 1 1.03 1.06 1.09\"; RECON_ONLY=1 LABELS=armf_a080 TSV=campaign/ceos_sweep.tsv PHONONS=16 PER_SPECIES=1 ENERGY_SPREAD_EV=0.3 CC_MM=1.4 SOURCE_FWHM=0.4 DOSES=\"1e7 1e8\" SEARCH_C1F=\"$G\" SEARCH_C3F=\"$G\" KICK_MODES=4 KICK_NITER=500 RTAG=_s2 GROUPING=\"32;16\" CLEANDATA=0 PACK_H5=0 bash campaign/run_thin_atomfind.sh"
+   },
+   {
+    "name": "Full physics: true probe as the start, 4 modes, 1e8",
+    "sec": "§7",
+    "physics": "full",
+    "how": "as submitted (re-run on the kept data)",
+    "cmd": "RECON_ONLY=1 LABELS=armf_a080 TSV=campaign/ceos_sweep.tsv PHONONS=16 PER_SPECIES=1 ENERGY_SPREAD_EV=0.3 CC_MM=1.4 SOURCE_FWHM=0.4 DOSES=1e8 KICK_ALL=1 KICK=1.0 KICK_MODES=4 KICK_NITER=500 RTAG=_true4 GROUPING=\"32;16\" CLEANDATA=0 PACK_H5=0 bash campaign/run_thin_atomfind.sh"
+   },
+   {
+    "name": "Final run: 90 mrad, 140 Å window, true start + 4 modes (250 it) and true probe fixed, 1e8",
+    "sec": "§8",
+    "physics": "full",
+    "how": "as submitted",
+    "cmd": "LABELS=armf_a090_w140 TSV=campaign/ceos_sweep.tsv PHONONS=16 PER_SPECIES=1 ENERGY_SPREAD_EV=0.3 CC_MM=1.4 SOURCE_FWHM=0.4 DOSES=1e8 FIXED_TWIN=1 KICK_ALL=1 KICK=1.0 KICK_MODES=4 KICK_NITER=250 NITER_PRE=50 KICK_PSTART=20 KICK_GROUPING=\"2;2\" GROUPING=\"8;8\" CLEANDATA=0 PACK_H5=0 bash campaign/run_thin_atomfind.sh"
+   },
+   {
+    "name": "Physics split: phonons only",
+    "sec": "§6",
+    "physics": "phonons only, noiseless",
+    "how": "as submitted",
+    "cmd": "LABELS=armf_a080 TSV=campaign/ceos_sweep.tsv GROUPING=\"32;16\" PACK_H5=0 PHONONS=16 PER_SPECIES=1 CLEANDATA=1 bash campaign/run_thin_atomfind.sh"
+   },
+   {
+    "name": "Physics split: partial coherence only",
+    "sec": "§6",
+    "physics": "partial coherence only, noiseless",
+    "how": "as submitted",
+    "cmd": "LABELS=armf_a080 TSV=campaign/ceos_sweep.tsv GROUPING=\"32;16\" PACK_H5=0 ENERGY_SPREAD_EV=0.3 CC_MM=1.4 SOURCE_FWHM=0.4 CLEANDATA=1 bash campaign/run_thin_atomfind.sh"
+   },
+   {
+    "name": "Physics split: both, noiseless",
+    "sec": "§6",
+    "physics": "phonons + partial coherence, noiseless",
+    "how": "as submitted",
+    "cmd": "RECON_ONLY=1 LABELS=armf_a080 TSV=campaign/ceos_sweep.tsv GROUPING=\"32;16\" PACK_H5=0 PHONONS=16 PER_SPECIES=1 ENERGY_SPREAD_EV=0.3 CC_MM=1.4 SOURCE_FWHM=0.4 RTAG=_fixed CLEANDATA=0 bash campaign/run_thin_atomfind.sh"
+   }
+  ]
+ }
 }

@@ -2,7 +2,7 @@
 
 Built 2026-10-08 for the meeting of 2026-10-09. Published URL: see below.
 
-PUBLISHED: https://claude.ai/artifact/MUkJ7yYrsek3nTLXcZgCrk (version 1, 2026-10-08 evening: everything to the search; refined, true-start and final runs pending.
+PUBLISHED: https://claude.ai/artifact/MUkJ7yYrsek3nTLXcZgCrk (version 5, 2026-10-09: true-start ceiling, refined 1e7, 90 mrad fixed twin and the physics split filled in. Version 1, 2026-10-08 evening: everything to the search; refined, true-start and final runs pending.
 Version 2, same evening: atoms scored as "right place" against a guessing level, the finder's own depth bars drawn, misplaced atoms highlighted -- see "The atom numbers" below.
 Version 3: text trimmed ~40 % at the user's request; the 5 % kick section cut to one paragraph, one table, one figure. Keep new prose as short.
 Version 4: appendix B "Reproduce" (part_reproduce): coherent vs full physics, every probe coefficient, the fixed settings and
