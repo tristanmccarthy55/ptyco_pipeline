@@ -125,6 +125,32 @@ _B_BY_SPECIES = {"Pb": 0.90, "Sr": 0.55, "Ti": 0.45, "O": 0.80}     # RT isotrop
 PHONON_SIGMA_BY_SPECIES = {k: float(np.sqrt(3.0 * b / (8.0 * np.pi ** 2)))
                            for k, b in _B_BY_SPECIES.items()}
 PER_SPECIES_SIGMA = False   # False = scalar PHONON_SIGMA_A; True = the per-species dict
+# --phonon-temperature T (2026-10-09, cooled specimens): the per-species B at T from a Debye model (zero-point motion
+# included) whose Debye temperature is fitted, per species, to the room-temperature B above at PHONON_T_REF_K. At 100 K
+# (a specimen in an LN2-cooled holder) B falls to 0.35 (Pb) - 0.51 (O) of its room-temperature value.
+PHONON_T_REF_K = 295.0
+PHONON_TEMPERATURE_K = None
+_AMU = {"Pb": 207.2, "Sr": 87.62, "Ti": 47.867, "O": 15.999}
+
+
+def debye_B(theta, mass_amu, T):
+    """Isotropic Debye-Waller B [A^2] in the Debye model with zero-point motion:
+    B = 6 h^2 T / (m kB theta^2) [phi(x) + x/4], x = theta / T, phi(x) = (1/x) int_0^x t / (e^t - 1) dt."""
+    from scipy.integrate import quad
+    h, kB, amu = 6.62607015e-34, 1.380649e-23, 1.66053907e-27
+    x = theta / T
+    phi = quad(lambda t: t / np.expm1(t), 0, x)[0] / x
+    return 6 * h ** 2 * T / (mass_amu * amu * kB * theta ** 2) * (phi + x / 4) * 1e20
+
+
+def B_at_temperature(T):
+    """{species: B [A^2] at T}, each species' Debye temperature fitted to its room-temperature B at PHONON_T_REF_K."""
+    from scipy.optimize import brentq
+    out = {}
+    for k, b_rt in _B_BY_SPECIES.items():
+        theta = brentq(lambda t: debye_B(t, _AMU[k], PHONON_T_REF_K) - b_rt, 20.0, 3000.0)
+        out[k] = float(debye_B(theta, _AMU[k], float(T)))
+    return out
 
 # --- device ---
 DEVICE = "gpu"   # "gpu" on the HPC L40; "cpu" for a laptop test
@@ -885,6 +911,7 @@ def write_driver_geometry(n_b: int, box_a: float, beam_thickness_a: float,
         "n_phonons": int(N_PHONONS),
         "phonon_sigma_A": float(PHONON_SIGMA_A),
         "phonon_per_species": int(PER_SPECIES_SIGMA),
+        "phonon_temperature_K": float(PHONON_TEMPERATURE_K if PHONON_TEMPERATURE_K is not None else PHONON_T_REF_K),
         "focal_spread_A": float(FOCAL_SPREAD_A),
         "source_size_fwhm_A": float(SOURCE_SIZE_FWHM_A),
         # configurations the coherence average used (= the phonon configs when both are on); 0 = fully coherent
@@ -910,7 +937,7 @@ def write_driver_geometry(n_b: int, box_a: float, beam_thickness_a: float,
 # MAIN
 # ======================================================================
 def main(argv=None) -> int:
-    global FOCAL_SPREAD_A, SOURCE_SIZE_FWHM_A, COHERENCE_SAMPLES
+    global FOCAL_SPREAD_A, SOURCE_SIZE_FWHM_A, COHERENCE_SAMPLES, PHONON_TEMPERATURE_K, PHONON_SIGMA_BY_SPECIES
     global DEVICE, SLICE_THICKNESS_A, SCAN_STEP_A, DOSE_E, N_PHONONS, PHONON_SIGMA_A, PER_SPECIES_SIGMA, PHONON_SEED, SCAN_WINDOW_A, ABERRATED, PROBE_INITIAL_ABERRATED, BIN_FACTOR, DETECTOR_SAMPLING, REGION_SIDE_A, DETECTOR_RECORD_MRAD, SCAN_CENTER_X_A, SCAN_CENTER_Y_A, CONVERGENCE_MRAD, DEFOCUS_A, NOMINAL_DEFOCUS_A, ABERRATIONS, RECON_FULL_BOX, Z_VACUUM_A, GRID_BOX_Z
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--test", action="store_true",
@@ -958,6 +985,9 @@ def main(argv=None) -> int:
                     help="use per-species RMS thermal displacements (Pb/Sr/Ti/O, RT) "
                          "instead of one --phonon-sigma for all atoms — more faithful TDS.")
     ap.add_argument("--phonon-seed", type=int, default=PHONON_SEED)
+    ap.add_argument("--phonon-temperature", type=float, default=None,
+                    help="specimen temperature [K] for --per-species-sigma: B from a Debye model fitted to the "
+                         "room-temperature table (e.g. 100 for an LN2-cooled holder); default room temperature")
     ap.add_argument("--focal-spread", type=float, default=None,
                     help="[coherence] rms defocus spread [A] (partial temporal coherence)")
     ap.add_argument("--energy-spread-ev", type=float, default=None,
@@ -1030,6 +1060,14 @@ def main(argv=None) -> int:
     PHONON_SIGMA_A = args.phonon_sigma
     PER_SPECIES_SIGMA = args.per_species_sigma
     PHONON_SEED = args.phonon_seed
+    if args.phonon_temperature is not None:
+        if not PER_SPECIES_SIGMA:
+            ap.error("--phonon-temperature needs --per-species-sigma")
+        PHONON_TEMPERATURE_K = float(args.phonon_temperature)
+        b_t = B_at_temperature(PHONON_TEMPERATURE_K)
+        PHONON_SIGMA_BY_SPECIES = {k: float(np.sqrt(3.0 * b / (8.0 * np.pi ** 2))) for k, b in b_t.items()}
+        print(f"[phonons] specimen at {PHONON_TEMPERATURE_K:g} K (Debye model fitted at {PHONON_T_REF_K:g} K): B "
+              + ", ".join(f"{k} {_B_BY_SPECIES[k]:.2f} -> {b_t[k]:.3f}" for k in b_t) + " A^2")
     if args.focal_spread is not None:
         FOCAL_SPREAD_A = float(args.focal_spread)
     elif args.energy_spread_ev is not None and args.cc_mm is not None:

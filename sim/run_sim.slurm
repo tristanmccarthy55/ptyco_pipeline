@@ -131,6 +131,8 @@ CONV_ARG=(); [ -n "${CONVERGENCE:-}" ] && CONV_ARG=(--convergence "${CONVERGENCE
 
 # per-species RMS thermal displacements (Pb/Sr/Ti/O) instead of one sigma for all
 PS_ARG=(); [ "${PER_SPECIES_SIGMA:-0}" = "1" ] && PS_ARG=(--per-species-sigma)
+# a cooled specimen (Debye model fitted to the room-temperature table): PHONON_TEMPERATURE=100 for an LN2-cooled holder
+[ -n "${PHONON_TEMPERATURE:-}" ] && PS_ARG+=(--phonon-temperature "${PHONON_TEMPERATURE}")
 
 # [thin-ab] thin slab + settable defocus + round-only Cs/C5 (defocus-balanced compact probe).
 # Use --opt=value so NEGATIVE values (e.g. --cs=-4e4) aren't mis-read as flags by argparse.

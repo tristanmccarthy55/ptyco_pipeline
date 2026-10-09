@@ -73,6 +73,12 @@ DOSES="${DOSES:-}"; DOSE_SEED="${DOSE_SEED:-0}"
 PHONONS="${PHONONS:-0}"; PHONON_SIGMA="${PHONON_SIGMA:-0.08}"; PER_SPECIES="${PER_SPECIES:-0}"; PHONON_SEED="${PHONON_SEED:-1}"
 LABELS="${LABELS:-}"                      # non-empty: select TSV rows by label (col 1), not alpha
 SFX=""; [ "$PHONONS" != 0 ] && SFX="_ph${PHONONS}"; [ "$THIN" != 5 ] && SFX="${SFX}_thin${THIN}"   # sim + recon dir suffix
+# PHONON_T=<K>: a cooled specimen (simulate_4dstem --phonon-temperature; needs PER_SPECIES=1), dirs gain _T<K>
+PHONON_T="${PHONON_T:-}"
+if [ -n "$PHONON_T" ]; then
+    [ "$PHONONS" != 0 ] && [ "$PER_SPECIES" = 1 ] || { echo "PHONON_T needs PHONONS>0 and PER_SPECIES=1" >&2; exit 1; }
+    SFX="${SFX}_T${PHONON_T}"
+fi
 COH_EXP=""                            # [coherence] partial-coherence settings for the sim; any of them adds _coh
 for v in FOCAL_SPREAD ENERGY_SPREAD_EV CC_MM SOURCE_FWHM COHERENCE_SAMPLES; do
     [ -n "${!v:-}" ] && COH_EXP="${COH_EXP},${v}=${!v}"
@@ -126,7 +132,7 @@ sim_job(){   # $1 dir $2 alpha $3 bin $4 c3 $5 c1 $6 mode(lab|Pb|Ti) [$7 aber_js
     # round trip on 2026-09-22 working out which simulation a failed recon had been waiting on.
     local jn="af_sim_$(basename "$dir" | sed 's/^sim_out_af_//')"
     local exp="ALL,JOB_DIR=${dir},SLICE_THICKNESS=${SLICE},SCAN_STEP=${ROW_STEP:-$STEP},CONVERGENCE=${alpha}"
-    exp="${exp},PHONONS=${PHONONS},PHONON_SIGMA=${PHONON_SIGMA},PER_SPECIES_SIGMA=${PER_SPECIES},PHONON_SEED=${PHONON_SEED}${COH_EXP}"
+    exp="${exp},PHONONS=${PHONONS},PHONON_SIGMA=${PHONON_SIGMA},PER_SPECIES_SIGMA=${PER_SPECIES},PHONON_SEED=${PHONON_SEED}${PHONON_T:+,PHONON_TEMPERATURE=${PHONON_T}}${COH_EXP}"
     # a non-round row's JSON has commas, so it cannot ride in --export's list: run_sim.slurm reads it from
     # the environment (ALL) instead, as campaign/run_campaign.sh does for its json legs
     if [ -n "$aj" ] && [ "$aj" != "-" ]; then export ABERRATIONS_JSON="$aj"; else unset ABERRATIONS_JSON; fi
