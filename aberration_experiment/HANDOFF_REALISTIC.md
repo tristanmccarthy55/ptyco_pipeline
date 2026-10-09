@@ -58,6 +58,18 @@ newer.
   final-run sims 1310307 (lab, running, ~30 min/config) / 1310311 / 1310315, noise 1310308/12/16, fixed 1310309/13/17,
   kicks 1310310/14/18, pack 1310319, analyses 1310320/21; early _s2 1e7 analysis 1310609; same-kernel analyses 1310612
   (no-search baseline) / 1310613 (refined lab, after 1308516), both with the _fixed 1e7 kernels.
+- **2026-10-09 RESULTS (honest scores: right element within 0.5 A, against guessing; make_arm_page atom_scores).**
+  THE CEILING FAILED: _true4 (80 mrad, full physics 1e8, TRUE start + probe update + 4 modes, 500 it) Pb/Ti/O 17/4/4 % vs
+  guessing 12/2/6, wrong element 46 %; probe stayed at the truth (0.997, modes 0.84/0.06/0.05/0.04); eps 0.0050 vs the fixed
+  probe's 0.0051 -- modes absorbed almost nothing. Searched start + refine 1e7: 19/22/11 vs guessing 13/8/8 (no-search
+  16/12/5 vs 14/12/6), probe 0.25 -> 0.27 (does not close the last wave); own Ti kernel failed (0 grid atoms). 90 mrad /
+  140 A window, full physics, fixed probe: 6/0/2 vs 9/0/5. Images: clean lattice in plane, one blob per column in depth,
+  both vacuum layers loaded -- same as the fixed hail mary. => under RT phonons + CFEG coherence the probe is NOT the limit.
+  Coherent runs re-scored honestly: known 80 90/58/59 (good); long kick 3 modes 80/33/52, 6 modes 66/47/66 (okay, not the
+  known-probe level the loose summary.csv suggested); 70 A window 95/56/55 (good). Final-run lab kick 1310310 crashed
+  (MATLAB error after ~20 trace rows, 10 h; error line not yet read); Pb/Ti kicks 1310314/18 still running.
+  Leads (hypotheses, untested): modes not lowering the residual + step 4's phonon-only confusion (22-42 %) point at phonons
+  (cooling); the focal spread (17 A FWHM vs 3.1 A depth resolution, slab 19.5 A) points at coherence (cooling won't help).
 - **2026-10-08 midday (~/Desktop/arm_meeting; sheets phase_kicks.png, search_surfaces.png).** COHERENT 80 mrad, 5 % kick,
   block-2 known-probe kernels: 3 modes x 500 it 100/63/67 %, z 0.45, precision 0.77, probe 0.24 -> 0.44 (mode 1 0.90),
   eps 0.0111; 6 modes x 250 it 100/73/75 %, z 0.49, precision 0.79, probe 0.24 -> 0.31, eps 0.0120 (known probe: 100/67/74,
