@@ -713,7 +713,11 @@ def run_scan_binned(probe, atoms, scan):
         for i, cfg in enumerate(configs):
             arr_i, n_b, n_u, n_c = scan_one(
                 probe, build_potential(cfg, announce=(i == 0)), scan, detector)
-            acc = arr_i if acc is None else acc + arr_i
+            if acc is None:
+                acc = arr_i
+            else:
+                acc += arr_i            # in place, as the coherence path: at 1419 px acc + arr_i held three 26 GB buffers
+            del arr_i
             print(f"[phonons] config {i+1}/{N_PHONONS} done")
         arr = (acc / N_PHONONS).astype(np.float32)
     else:
