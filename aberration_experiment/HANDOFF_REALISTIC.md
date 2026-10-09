@@ -58,6 +58,16 @@ newer.
   final-run sims 1310307 (lab, running, ~30 min/config) / 1310311 / 1310315, noise 1310308/12/16, fixed 1310309/13/17,
   kicks 1310310/14/18, pack 1310319, analyses 1310320/21; early _s2 1e7 analysis 1310609; same-kernel analyses 1310612
   (no-search baseline) / 1310613 (refined lab, after 1308516), both with the _fixed 1e7 kernels.
+- **2026-10-09 afternoon: BLOCK 5 handed over (8fad876 sim/driver, b934ac7 page v7).** (a) the split at 80 mrad, all
+  noiseless, true probe fixed, same random draws: phonons only (_ph16), partial coherence only (_coh), both on the kept
+  noiseless hail-mary sims (RECON_ONLY, RTAG=_fixed -> _ph16_coh_fixed); (b) phonons only at 100 K (simulate_4dstem
+  --phonon-temperature: Debye model fitted per species to the RT B at 295 K; Pb 0.90 -> 0.318, Ti 0.45 -> 0.203,
+  O 0.80 -> 0.409 A^2; driver PHONON_T=100, dirs _ph16_T100); (c) 70 mrad full physics 1e8, fixed twin + true start 4 modes
+  500 it (no RTAG: _ph16_coh_dose1e8[_fixed]) -- 70 is the lowest aperture with depth to lose (60/65 mrad known-probe Pb
+  36/35 % vs guessing 23/28); (d) optional coherent 90 mrad in the 140 A window (armf_a090_w140, GT_REGION=280), to show
+  depth directly. Pull folders ~/Desktop/arm_split, arm_low70, arm_coh90 (in the page manifest). User framing for the page
+  (2026-10-09): the 5 % kick was pessimistic (search 4x closer); 90 mrad is open, limited by window/compute; shot noise does
+  not break it; RT phonons AND partial coherence at 80 mrad do. 300 kV is deliberate (memory target-arm200f).
 - **2026-10-09 RESULTS (honest scores: right element within 0.5 A, against guessing; make_arm_page atom_scores).**
   THE CEILING FAILED: _true4 (80 mrad, full physics 1e8, TRUE start + probe update + 4 modes, 500 it) Pb/Ti/O 17/4/4 % vs
   guessing 12/2/6, wrong element 46 %; probe stayed at the truth (0.997, modes 0.84/0.06/0.05/0.04); eps 0.0050 vs the fixed
