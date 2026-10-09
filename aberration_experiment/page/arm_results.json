@@ -269,7 +269,7 @@
    "leg": "armf_a090_w140_lab_ph16_coh_dose1e8",
    "short": "90 · start true · 4 modes",
    "name": "90 mrad, 140 Å window, full physics, 1e8, true start, 4 modes",
-   "pending": "lab leg 1310310 stopped with an error after 10 h (being checked); Pb / Ti legs 1310314 / 18 running, pack 1310319, analysis 1310320, pull to ~/Desktop/arm_final90"
+   "pending": "lab leg 1310310 diverged: the solver's error went to NaN in the full-resolution stage, after the 50 presolve iterations; Pb / Ti legs 1310314 / 18 still running"
   },
   "final90_fixed": {
    "tag": [
@@ -287,7 +287,7 @@
    "leg": "armf_a080_lab_ph16",
    "short": "phonons only",
    "name": "80 mrad, phonons only (room temperature), noiseless, true probe fixed",
-   "pending": "submitted 2026-10-09, ~1 day (two 5 h sims, then fixed-probe recons), pull to ~/Desktop/arm_split"
+   "pending": "recons 1313978/80/82 (after their sims), pack 1313983, analysis 1313984 (~1 day), pull to ~/Desktop/arm_split"
   },
   "split_coh": {
    "tag": [
@@ -296,7 +296,7 @@
    "leg": "armf_a080_lab_coh",
    "short": "coherence only",
    "name": "80 mrad, partial coherence only (cold FEG), noiseless, true probe fixed",
-   "pending": "submitted 2026-10-09, ~1 day (two 5 h sims, then fixed-probe recons), pull to ~/Desktop/arm_split"
+   "pending": "recons 1313986/88/90 (after their sims), pack 1313991, analysis 1313992 (~1 day), pull to ~/Desktop/arm_split"
   },
   "split_both": {
    "tag": [
@@ -305,7 +305,7 @@
    "leg": "armf_a080_lab_ph16_coh_fixed",
    "short": "both, noiseless",
    "name": "80 mrad, phonons + partial coherence, noiseless, true probe fixed",
-   "pending": "submitted 2026-10-09 on the kept noiseless sims (no new simulation), pull to ~/Desktop/arm_split"
+   "pending": "recons 1313993/94/95 (no new sim), pack 1313996, analysis 1313997, pull to ~/Desktop/arm_split"
   },
   "split_ph100": {
    "tag": [
@@ -314,7 +314,7 @@
    "leg": "armf_a080_lab_ph16_T100",
    "short": "phonons only · 100 K",
    "name": "80 mrad, phonons only, specimen at 100 K (LN2 holder), noiseless, true probe fixed",
-   "pending": "submitted 2026-10-09, ~1 day, pull to ~/Desktop/arm_split"
+   "pending": "recons 1313999/1314001/03 (after their sims), pack 1314004, analysis 1314005 (~1 day), pull to ~/Desktop/arm_split"
   },
   "full70_fixed": {
    "tag": [
@@ -323,7 +323,7 @@
    "leg": "armf_a070_lab_ph16_coh_dose1e8_fixed",
    "short": "70 · fixed · 1e8",
    "name": "70 mrad, full physics, 1e8, true probe fixed",
-   "pending": "submitted 2026-10-09, ~1 day, pull to ~/Desktop/arm_low70"
+   "pending": "sims 1314006/10/14, fixed recons 1314008/12/16, pack 1314018, analysis 1314020 (~1-2 days), pull to ~/Desktop/arm_low70"
   },
   "full70_true4": {
    "tag": [
@@ -332,7 +332,7 @@
    "leg": "armf_a070_lab_ph16_coh_dose1e8",
    "short": "70 · true start · 1e8",
    "name": "70 mrad, full physics, 1e8, true start, 4 modes, 500 iterations",
-   "pending": "submitted 2026-10-09, ~2 days (500 iterations at 4 modes), pull to ~/Desktop/arm_low70"
+   "pending": "true-start recons 1314009/13/17 (500 it, 4 modes), pack 1314018, analysis 1314019 (~2-3 days), pull to ~/Desktop/arm_low70"
   },
   "coh90_w140": {
    "tag": [
@@ -341,7 +341,7 @@
    "leg": "armf_a090_w140_lab",
    "short": "90 · 140 Å · coherent",
    "name": "90 mrad, 140 Å window, coherent, probe known",
-   "pending": "optional, if submitted 2026-10-09: ~1 day, pull to ~/Desktop/arm_coh90"
+   "pending": "recons 1314022/24/26 (after their sims), pack 1314027, analysis 1314028 (~1 day), pull to ~/Desktop/arm_coh90"
   }
  },
  "reproduce": {

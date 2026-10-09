@@ -58,6 +58,13 @@ newer.
   final-run sims 1310307 (lab, running, ~30 min/config) / 1310311 / 1310315, noise 1310308/12/16, fixed 1310309/13/17,
   kicks 1310310/14/18, pack 1310319, analyses 1310320/21; early _s2 1e7 analysis 1310609; same-kernel analyses 1310612
   (no-search baseline) / 1310613 (refined lab, after 1308516), both with the _fixed 1e7 kernels.
+- **BLOCK 5 SUBMITTED 2026-10-09 13:32.** Split: phonons only recons 1313978/80/82, pack 1313983, analysis 1313984;
+  coherence only 1313986/88/90, 1313991, 1313992; both noiseless 1313993/94/95, 1313996, 1313997; 100 K 1313999/1314001/03,
+  1314004, 1314005. 70 mrad: sims 1314006/10/14, noise 07/11/15, fixed 08/12/16, true start 09/13/17, pack 1314018,
+  analyses 1314019 (true start) / 1314020 (fixed). Coherent 90/140: recons 1314022/24/26, pack 1314027, analysis 1314028.
+  FINAL-RUN LAB KICK 1310310 DIVERGED: 'Convergence failed, error contains NaNs' (LSQML line 224) in the full engine (its
+  trace has 20 rows = the 50 presolve iterations; probe released there at PSTART2 20, GROUPING 2). The old blind-fit note
+  (run_synthetic_recon_ML.m) already says the full engine's probe update can NaN on these thin slabs.
 - **2026-10-09 afternoon: BLOCK 5 handed over (8fad876 sim/driver, b934ac7 page v7).** (a) the split at 80 mrad, all
   noiseless, true probe fixed, same random draws: phonons only (_ph16), partial coherence only (_coh), both on the kept
   noiseless hail-mary sims (RECON_ONLY, RTAG=_fixed -> _ph16_coh_fixed); (b) phonons only at 100 K (simulate_4dstem

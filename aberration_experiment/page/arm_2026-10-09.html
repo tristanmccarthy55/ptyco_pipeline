@@ -609,8 +609,8 @@
     <div class="call stop">
       <b>The fixed-probe twin is no better than at 80 mrad.</b> In plane the lattice is clean across the field, without
       the window damage of the 105 Å run; in depth the columns smear as before (Pb / Ti 6 / 0 % in the right place,
-      9 / 0 % by guessing). Of the true-start legs, the lab one stopped with an error after 10 hours (being checked);
-      Pb and Ti are still running.
+      9 / 0 % by guessing). Of the true-start legs, the lab one diverged: once its probe was released at full
+      resolution the solver's error went to NaN (after 10 hours). Without it the true-start run cannot be scored.
     </div>
     <figure class="wide">
       {{FIG_FINAL}}
