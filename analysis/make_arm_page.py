@@ -937,22 +937,58 @@ def _env(cmd, name):
     return (m.group(2) if m.group(2) is not None else m.group(3)) if m else None
 
 
-def part_reproduce(R, T):
-    rp = R.man["reproduce"]
+def _physics(R):
+    """The realistic-physics numbers, from the simulator (beam energy, B factors), the manifest's launch line (gun, Cc,
+    source, phonons, doses) and the simulator's own focal-spread formula -- one source for §2 and §B."""
     E, B = _sim_constants()
     e0 = 510998.95
     import abtem  # noqa: F401  (only for the wavelength, as the simulator computes it)
     from abtem.core.energy import energy2wavelength
-    lam = float(energy2wavelength(E))
-    cmd = rp["physics_cmd"]
+    cmd = R.man["reproduce"]["physics_cmd"]
     dE, cc, src = float(_env(cmd, "ENERGY_SPREAD_EV")), float(_env(cmd, "CC_MM")), float(_env(cmd, "SOURCE_FWHM"))
-    nph, doses = int(_env(cmd, "PHONONS")), _env(cmd, "DOSES").split()
-    rel = (1 + E / e0) / (1 + E / (2 * e0))
-    focal = cc * 1e7 * (dE / (2 * np.sqrt(2 * np.log(2))) / E) * rel           # the simulator's own formula
-    E200 = 200e3
-    focal200 = cc * 1e7 * (dE / (2 * np.sqrt(2 * np.log(2))) / E200) * (1 + E200 / e0) / (1 + E200 / (2 * e0))
-    edge = focal * (0.080 ** 2) / (2 * lam)                                     # waves of defocus phase at the 80 mrad edge
-    step = float(_driver_default("STEP"))
+    focal_at = lambda e: cc * 1e7 * (dE / (2 * np.sqrt(2 * np.log(2))) / e) * (1 + e / e0) / (1 + e / (2 * e0))
+    lam, lam200 = float(energy2wavelength(E)), float(energy2wavelength(200e3))
+    return dict(E=E, B=B, lam=lam, lam200=lam200, dE=dE, cc=cc, src=src, nph=int(_env(cmd, "PHONONS")),
+                doses=_env(cmd, "DOSES").split(), focal=focal_at(E), focal200=focal_at(200e3),
+                edge=focal_at(E) * (0.080 ** 2) / (2 * lam), step=float(_driver_default("STEP")))
+
+
+def part_params(R):
+    """§2: the experimental parameters, with what each one does when the beam energy is 300 rather than 200 kV."""
+    P = _physics(R)
+    E, B = P["E"], P["B"]
+    sp = " · ".join(f"{k} {B[k]:.2f}" for k in ("Pb", "Ti", "O", "Sr"))
+    rows = [
+        ("beam energy", f"{E / 1e3:.0f} kV (λ {P['lam']:.5f} Å)",
+         "the choice: the ARM200F's measured corrector stands in for a CEOS-corrected 300 kV column", "chosen"),
+        ("aberration coefficients", "the ARM200F tableau, as lengths (Å, µm, mm), all ten terms (§B)",
+         f"kept as lengths; a length is {P['lam200'] / P['lam']:.2f}× more waves at {E / 1e3:.0f} kV than at 200 kV (slightly pessimistic)",
+         "measured (campaign/arm200f_tableau.tsv)"),
+        ("gun energy spread", f"{P['dE']:g} eV FWHM", "none: a property of the cold-field emitter, the same at any voltage",
+         "JEOL ARM200F cold FEG (0.26–0.4 eV measured)"),
+        ("chromatic aberration Cc", f"{P['cc']:g} mm", "taken unchanged (a lens constant; a 300 kV lens's Cc may differ somewhat)",
+         "JEM-ARM200cF specification"),
+        ("focal spread (derived)", f"{P['focal']:.2f} Å rms ({2.3548 * P['focal']:.1f} Å FWHM; {P['edge']:.2f} waves rms at the 80 mrad edge)",
+         f"computed at {E / 1e3:.0f} kV: Cc · (σ<sub>E</sub>/E) · (1 + E/E<sub>0</sub>)/(1 + E/2E<sub>0</sub>), σ<sub>E</sub> = FWHM/2.355; "
+         f"at 200 kV it would be {P['focal200']:.1f} Å", "simulate_4dstem.py, recorded in each sim's sim_meta.mat"),
+        ("source size", f"{100 * P['src']:.0f} pm FWHM, Gaussian (effective, at the specimen)",
+         "none: set by the condenser demagnification", "cold-FEG mid estimate (Quigley et al. 2021)"),
+        ("phonons", f"{P['nph']} frozen configurations, room-temperature B (Å²): {sp}", "none",
+         "tabulated room-temperature values (§B)"),
+        ("dose", f"{' and '.join(P['doses'])} e/Å² ({' and '.join(f'{float(d) * P['step'] ** 2:.1e}' for d in P['doses'])} electrons a pattern)",
+         "none", "chosen"),
+    ]
+    trs = [f"<tr><td>{a}</td><td class='wrap'>{b}</td><td class='wrap'>{c}</td><td class='wrap'>{d}</td></tr>" for a, b, c, d in rows]
+    return dict(FRAG_PARAMS=table(["parameter", "value used", "at 300 kV instead of 200 kV", "source"], trs,
+                                  "The coherent runs (§3–5) use the beam energy, aberrations and convergence angle only; the "
+                                  "full-physics runs (§6–8) add the rest. Every value is read from the simulator or the launch line."))
+
+
+def part_reproduce(R, T):
+    rp = R.man["reproduce"]
+    P = _physics(R)
+    E, B, lam, dE, cc, src = P["E"], P["B"], P["lam"], P["dE"], P["cc"], P["src"]
+    nph, doses, focal, focal200, edge, step = P["nph"], P["doses"], P["focal"], P["focal200"], P["edge"], P["step"]
     sp = " · ".join(f"{k} {B[k]:.2f} Å²" for k in ("Pb", "Ti", "O", "Sr"))
     u1 = " · ".join(f"{k} {np.sqrt(B[k] / (8 * np.pi ** 2)):.3f}" for k in ("Pb", "Ti", "O"))
     sg = " · ".join(f"{k} {np.sqrt(3 * B[k] / (8 * np.pi ** 2)):.3f}" for k in ("Pb", "Ti", "O"))
@@ -1051,6 +1087,7 @@ def main():
     frag.update(part_status(R))
     frag.update(part_renders(R))
     frag.update(part_reproduce(R, T))
+    frag.update(part_params(R))
     page = open(TEMPLATE).read()
     for k, v in frag.items():
         if "{{%s}}" % k not in page:
