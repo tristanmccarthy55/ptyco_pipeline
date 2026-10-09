@@ -774,7 +774,7 @@ def part_physics(R, T, cuts):
     # coherent reference by one thing; the 1e8 row is the full-physics run of the table above
     srows = []
     for title, k in (("coherent (reference)", "known_a080"), ("phonons only", "split_ph"), ("partial coherence only", "split_coh"),
-                     ("both, noiseless", "split_both"), ("both, 1e8", "fixed_1e8")):
+                     ("both, noiseless", "split_both"), ("both, 1e8", "fixed_1e8"), ("phonons only, specimen at 100 K", "split_ph100")):
         info = R.find(k)
         if not info["found"]:
             srows.append(f"<tr><td>{html.escape(title)}</td><td colspan='5'>{pending_box(info)}</td></tr>"); continue
@@ -783,7 +783,20 @@ def part_physics(R, T, cuts):
     split = table(["what is switched on", *ATOM_HEAD, "verdict"], srows,
                   "80 mrad, true probe fixed, matched kernels per row; phonons 16 room-temperature configurations, partial "
                   "coherence the cold FEG's 7.3 Å focal spread and 0.4 Å source (§B); the same random draws in every row.")
-    return dict(FIG_PHYSICS=img(p, "full physics against the coherent reference"), FRAG_PHYSICS_TABLE=tab, FRAG_SPLIT_TABLE=split)
+    lrows = []
+    for title, k in (("70 mrad, coherent, probe known (reference)", "known_a070"), ("70 mrad, full physics 1e8, true probe fixed", "full70_fixed"),
+                     ("70 mrad, full physics 1e8, true start, 4 modes", "full70_true4"),
+                     ("80 mrad, full physics 1e8, true start, 4 modes", "true4_1e8")):
+        info = R.find(k)
+        if not info["found"]:
+            lrows.append(f"<tr><td>{html.escape(title)}</td><td colspan='5'>{pending_box(info)}</td></tr>"); continue
+        sc = atom_scores(info)
+        lrows.append(f"<tr><td>{html.escape(title)}</td>{atoms_cells(sc)}{vcell(verdict(sc))}</tr>")
+    low = table(["run", *ATOM_HEAD, "verdict"], lrows,
+                "70 mrad is the lowest aperture with depth to lose: with the probe known, 60 and 65 mrad already sit near "
+                "the guessing level (§3).")
+    return dict(FIG_PHYSICS=img(p, "full physics against the coherent reference"), FRAG_PHYSICS_TABLE=tab, FRAG_SPLIT_TABLE=split,
+                FRAG_LOW_TABLE=low)
 
 
 def part_search(R, T):
@@ -865,7 +878,8 @@ def part_refined(R, T, cuts):
 
 
 def part_final(R, T, cuts):
-    items = [("90 mrad, 140 Å window, true probe fixed", R.find("final90_fixed")), ("90 mrad, 140 Å window, true start, 4 modes", R.find("final90"))]
+    items = [("90 mrad, 140 Å window, true probe fixed", R.find("final90_fixed")), ("90 mrad, 140 Å window, true start, 4 modes", R.find("final90")),
+             ("90 mrad, 140 Å window, coherent, probe known", R.find("coh90_w140"))]
     p = compare_fig("fig_final90.png", items, cuts)
     trs = []
     for title, info in items:
@@ -880,9 +894,10 @@ def part_status(R):
     groups = [("Probe known, 40–100 mrad", [k for k in R.man["runs"] if k.startswith("known_")]),
               ("Window test", ["win_070", "win_052"]), ("Coherent kicks", ["kick_a040", "kick_a060", "kick_a080", "kick_a100", "long_m3", "long_m6"]),
               ("Full physics, fixed probe and plain kick", ["fixed_1e7", "fixed_1e8", "hail_1e7", "nosearch_1e7"]),
-              ("Physics split: one effect at a time", ["split_ph", "split_coh", "split_both"]),
+              ("Physics split: one effect at a time, and a cooled specimen", ["split_ph", "split_coh", "split_both", "split_ph100"]),
+              ("Full physics at 70 mrad", ["full70_fixed", "full70_true4"]),
               ("Outer search and refined probe", ["search_1e7", "search_1e8", "refined_1e7", "refined_1e7_own", "refined_1e8", "true4_1e8"]),
-              ("Final run, 90 mrad in a 140 Å window", ["final90", "final90_fixed"])]
+              ("Final run, 90 mrad in a 140 Å window", ["final90", "final90_fixed", "coh90_w140"])]
     out = []
     for name, keys in groups:
         ok, pend = 0, []

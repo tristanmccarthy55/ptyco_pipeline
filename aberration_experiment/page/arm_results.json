@@ -14,7 +14,9 @@
   "~/Desktop/arm_block3_s2",
   "~/Desktop/arm_block3_long",
   "~/Desktop/arm_final90",
-  "~/Desktop/arm_split"
+  "~/Desktop/arm_split",
+  "~/Desktop/arm_low70",
+  "~/Desktop/arm_coh90"
  ],
  "reference": "known_a080",
  "runs": {
@@ -304,6 +306,42 @@
    "short": "both, noiseless",
    "name": "80 mrad, phonons + partial coherence, noiseless, true probe fixed",
    "pending": "submitted 2026-10-09 on the kept noiseless sims (no new simulation), pull to ~/Desktop/arm_split"
+  },
+  "split_ph100": {
+   "tag": [
+    "armf_a080_ph16_T100"
+   ],
+   "leg": "armf_a080_lab_ph16_T100",
+   "short": "phonons only · 100 K",
+   "name": "80 mrad, phonons only, specimen at 100 K (LN2 holder), noiseless, true probe fixed",
+   "pending": "submitted 2026-10-09, ~1 day, pull to ~/Desktop/arm_split"
+  },
+  "full70_fixed": {
+   "tag": [
+    "armf_a070_ph16_coh_dose1e8_fixed"
+   ],
+   "leg": "armf_a070_lab_ph16_coh_dose1e8_fixed",
+   "short": "70 · fixed · 1e8",
+   "name": "70 mrad, full physics, 1e8, true probe fixed",
+   "pending": "submitted 2026-10-09, ~1 day, pull to ~/Desktop/arm_low70"
+  },
+  "full70_true4": {
+   "tag": [
+    "armf_a070_ph16_coh_dose1e8"
+   ],
+   "leg": "armf_a070_lab_ph16_coh_dose1e8",
+   "short": "70 · true start · 1e8",
+   "name": "70 mrad, full physics, 1e8, true start, 4 modes, 500 iterations",
+   "pending": "submitted 2026-10-09, ~2 days (500 iterations at 4 modes), pull to ~/Desktop/arm_low70"
+  },
+  "coh90_w140": {
+   "tag": [
+    "armf_a090_w140"
+   ],
+   "leg": "armf_a090_w140_lab",
+   "short": "90 · 140 Å · coherent",
+   "name": "90 mrad, 140 Å window, coherent, probe known",
+   "pending": "optional, if submitted 2026-10-09: ~1 day, pull to ~/Desktop/arm_coh90"
   }
  },
  "reproduce": {
@@ -404,6 +442,27 @@
     "physics": "phonons + partial coherence, noiseless",
     "how": "as submitted",
     "cmd": "RECON_ONLY=1 LABELS=armf_a080 TSV=campaign/ceos_sweep.tsv GROUPING=\"32;16\" PACK_H5=0 PHONONS=16 PER_SPECIES=1 ENERGY_SPREAD_EV=0.3 CC_MM=1.4 SOURCE_FWHM=0.4 RTAG=_fixed CLEANDATA=0 bash campaign/run_thin_atomfind.sh"
+   },
+   {
+    "name": "Phonons only, specimen at 100 K",
+    "sec": "§6",
+    "physics": "phonons only (100 K), noiseless",
+    "how": "as submitted",
+    "cmd": "LABELS=armf_a080 TSV=campaign/ceos_sweep.tsv GROUPING=\"32;16\" PACK_H5=0 PHONONS=16 PER_SPECIES=1 PHONON_T=100 CLEANDATA=1 bash campaign/run_thin_atomfind.sh"
+   },
+   {
+    "name": "70 mrad, full physics: true probe fixed, and true start with 4 modes",
+    "sec": "§6",
+    "physics": "full, 1e8",
+    "how": "as submitted",
+    "cmd": "LABELS=armf_a070 TSV=campaign/ceos_sweep.tsv GROUPING=\"32;16\" PACK_H5=0 PHONONS=16 PER_SPECIES=1 ENERGY_SPREAD_EV=0.3 CC_MM=1.4 SOURCE_FWHM=0.4 DOSES=1e8 FIXED_TWIN=1 KICK_ALL=1 KICK=1.0 KICK_MODES=4 KICK_NITER=500 CLEANDATA=0 bash campaign/run_thin_atomfind.sh"
+   },
+   {
+    "name": "90 mrad, 140 Å window, coherent, probe known",
+    "sec": "§8",
+    "physics": "coherent",
+    "how": "as submitted",
+    "cmd": "LABELS=armf_a090_w140 TSV=campaign/ceos_sweep.tsv GROUPING=\"8;8\" CLEANDATA=1 PACK_H5=0 bash campaign/run_thin_atomfind.sh"
    }
   ]
  }
