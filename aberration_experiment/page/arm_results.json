@@ -269,7 +269,7 @@
    "leg": "armf_a090_w140_lab_ph16_coh_dose1e8",
    "short": "90 · start true · 4 modes",
    "name": "90 mrad, 140 Å window, full physics, 1e8, true start, 4 modes",
-   "pending": "lab leg 1310310 diverged: the solver's error went to NaN in the full-resolution stage, after the 50 presolve iterations; Pb / Ti legs 1310314 / 18 still running"
+   "pending": "not scored: the lab leg 1310310 diverged (the solver's error went to NaN once the probe was released at full resolution); its Pb / Ti legs were then stopped"
   },
   "final90_fixed": {
    "tag": [

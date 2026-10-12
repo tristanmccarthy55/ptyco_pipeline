@@ -58,6 +58,16 @@ newer.
   final-run sims 1310307 (lab, running, ~30 min/config) / 1310311 / 1310315, noise 1310308/12/16, fixed 1310309/13/17,
   kicks 1310310/14/18, pack 1310319, analyses 1310320/21; early _s2 1e7 analysis 1310609; same-kernel analyses 1310612
   (no-search baseline) / 1310613 (refined lab, after 1308516), both with the _fixed 1e7 kernels.
+- **BLOCK 5 RESULTS (2026-10-12; honest scores, right place vs guessing; phase images viewed: ~/Desktop/arm_split/
+  phase_split.png, phase_other.png).** Coherent 90 mrad in the 140 A window GOOD: Pb/Ti/O 92/50/54 vs 23/13/17, wrong 6 %,
+  depth bar 0.63 A (smallest of any run), eps 0.0126 vs 0.0257 at 105 A; Ti and O placed along B-site columns. => 90 mrad
+  open given the window. SPLIT at 80 mrad (noiseless, true probe fixed): phonons only (RT) 24/11/3 vs 18/14/4, wrong 33 %;
+  coherence only 23/7/4 vs 19/2/7, wrong 34 %; both 40/0/15 vs 14/0/7, wrong 22 % -- EACH ALONE removes depth. They fail
+  differently: coherence loads the vacuum layers + one blob per column; phonons give a clean recon with smooth streaks.
+  Phonons only at 100 K: 49/22/25 vs 29/19/18, wrong 8 % (eps 0.0218 vs 0.0236 RT) -- cooling recovers part. 70 mrad full
+  physics 1e8: fixed 12/0/5 vs 9/3/5, true start 4 modes 12/2/8 vs 7/2/5 (probe 0.996) -- no better than 80. Refined 1e8
+  (searched start, own kernels worked): 20/12/8 vs 11/10/9, probe 0.27 -> 0.29. Page v9 has all of it. Open, for the user
+  to choose: modes on coherence-only data; focal spread vs source size; colder than 100 K; the 90 mrad full-physics rerun.
 - **BLOCK 5 SUBMITTED 2026-10-09 13:32.** Split: phonons only recons 1313978/80/82, pack 1313983, analysis 1313984;
   coherence only 1313986/88/90, 1313991, 1313992; both noiseless 1313993/94/95, 1313996, 1313997; 100 K 1313999/1314001/03,
   1314004, 1314005. 70 mrad: sims 1314006/10/14, noise 07/11/15, fixed 08/12/16, true start 09/13/17, pack 1314018,

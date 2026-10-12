@@ -387,15 +387,15 @@
       <p class="spec-v">{{REF_LINE}}</p>
       <p>
         The ARM200F's own aberrations do not stop depth ptychography at large apertures: with the probe known, 80 mrad
-        works, and the limit beyond it is the window the reconstruction can afford. What stops it at 80 mrad is the
-        realistic physics: room-temperature phonons together with the cold FEG's partial coherence remove the depth
-        information, whatever probe the reconstruction is given.
+        works, and so does 90 mrad once the window holds the probe. What stops it is the realistic physics: at 80 mrad
+        room-temperature phonons and the cold FEG's partial coherence each remove the depth information on their own,
+        whatever probe the reconstruction is given. Cooling to 100 K recovers part of what the phonons take.
       </p>
       <div class="spec-grid">
-        <div><b>to 90 mrad</b><span>the window, not the aberrations, sets the limit; the cost rises steeply beyond (§4, §8)</span></div>
+        <div><b>90 mrad: good</b><span>probe known, 140 Å window: Pb / Ti 92 / 50 % in the right place (§8)</span></div>
         <div><b>4× closer</b><span>outer-search start: 0.28 waves rms at 80 mrad against 1.13 for a 5 % kick (§7)</span></div>
         <div><b>1e7 = 1e8</b><span>ten times the dose changes nothing: shot noise is not the cause (§6)</span></div>
-        <div><b>Pb 17 %, guessing 12 %</b><span>phonons + partial coherence at 80 mrad, even from the true probe (§6, §7)</span></div>
+        <div><b>each alone</b><span>phonons or partial coherence alone already leave depth at the guessing level (§6)</span></div>
       </div>
     </div>
 
@@ -408,20 +408,22 @@
         times closer (0.28 against 1.13 waves rms at the 80 mrad edge): C1 to 2.3 Å and C3 to 0.14 µm, where the corrector
         measures ±40 Å and ±0.8 µm.</li>
       <li><b>The aperture can open to 90 mrad with the ARM200F's aberrations.</b> With the probe known, at 70 and 80 mrad 90 % of
-        Pb land in the right place (guessing: a quarter). 90 and 100 mrad failed only because the probe outgrew the 105 Å
-        window: the same 80 mrad probe fails the same way in a smaller window (§4), and at 90 mrad a 140 Å window shows no
-        window damage (§8). Nothing tested stops larger apertures except compute: 100 mrad needs a 210–280 Å window,
-        patterns of 2560–3400 px, roughly 3–6 times the 90 mrad cost per iteration.</li>
+        Pb land in the right place (guessing: a quarter). At 90 mrad the 105 Å window degraded the result (Pb / Ti 76 / 32 %), and a 140 Å window fixes it:
+        Pb / Ti 92 / 50 % in the right place against 23 / 13 % by guessing, with the tightest depth bars of any run
+        (0.63 Å) and Ti and O placed along the B-site columns (§8). Nothing tested stops larger apertures except compute:
+        100 mrad needs a 210–280 Å window, patterns of 2560–3400 px, roughly 3–6 times the 90 mrad cost per iteration.</li>
       <li><b>Shot noise does not break it.</b> 1e7 and 1e8 e/Å² give the same result.</li>
-      <li><b>Room-temperature phonons and partial coherence together break it at 80 mrad.</b> With the true probe fixed,
-        refined from the true probe with 4 modes, or refined from the searched probe, the atoms' depths are no better than
-        guessing (Pb 17–23 % against 12–19 %); the lattice is still clean in plane.</li>
-    </ul>
-    <h3>Still to find out (running)</h3>
-    <ul>
-      <li><b>Which of the two:</b> phonons alone, partial coherence alone, and both without noise (§6).</li>
-      <li><b>A cooled specimen:</b> phonons only at 100 K, an LN2-cooled holder (§6).</li>
-      <li><b>A smaller aperture:</b> the full physics at 70 mrad, the lowest aperture that still has depth to lose (§6).</li>
+      <li><b>Room-temperature phonons and partial coherence break it at 80 mrad, each on its own.</b> With the true probe
+        fixed and no noise, phonons alone give Pb / Ti 24 / 11 % in the right place (guessing 18 / 14 %) and partial
+        coherence alone 23 / 7 % (guessing 19 / 2 %). With both, from any probe the reconstruction is given, no run reaches
+        even the "okay" level (at best Pb 40 % against 14 % by guessing, without noise); the lattice stays clean in plane.</li>
+      <li><b>The two fail differently.</b> Partial coherence pushes part of the signal into the vacuum layers and turns
+        each column into one blob. Phonons leave a clean reconstruction, but each column becomes a smooth streak without
+        atom-by-atom contrast.</li>
+      <li><b>Cooling helps the phonon part.</b> At 100 K (an LN2-cooled holder), phonons alone give Pb 49 % in the right
+        place against 29 % by guessing, and the wrong-element share falls from 33 % to 8 %. Not yet at the known-probe level.</li>
+      <li><b>A smaller aperture does not escape it.</b> At 70 mrad the full physics also leaves depth at the guessing
+        level (Pb 12 % against 7–9 %).</li>
     </ul>
   </section>
 
@@ -542,16 +544,19 @@
     {{FRAG_PHYSICS_TABLE}}
     <h3>Which effect removes the depth</h3>
     <p>
-      Running since 9 October: phonons alone and partial coherence alone, each noiseless with the true probe fixed, and
-      both together without noise, so each row changes one thing. If phonons do it, a colder specimen helps; the last row
-      cools the specimen to 100 K (an LN2-cooled holder), which shrinks the thermal displacements by about a third (28–41 %). If partial
-      coherence does it, cooling will not help.
+      Each row changes one thing: noiseless, with the true probe fixed. Phonons alone and partial coherence alone each
+      leave the depths at the guessing level, so either is enough to remove the depth information at 80 mrad. Cooling the
+      specimen to 100 K (an LN2-cooled holder), which shrinks the thermal displacements by about a third (28–41 %),
+      recovers part of it: Pb rises well above guessing and the finder's wrong-element share drops to 8 %. Cooling cannot
+      help the partial coherence.
     </p>
     {{FRAG_SPLIT_TABLE}}
     <h3>A smaller aperture</h3>
     <p>
       At 70 mrad the depth resolution is coarser (4.0 Å against 3.1 Å) and the focal spread costs less phase at the
-      aperture edge (0.91 against 1.18 waves rms). Same physics and dose as at 80 mrad.
+      aperture edge (0.91 against 1.18 waves rms). Same physics and dose as at 80 mrad. It is no better: with the probe
+      fixed or refined from the true probe with 4 modes, Pb sits at 12 % against 7–9 % by guessing, and the depth sections
+      show diagonal streaks rather than columns.
     </p>
     {{FRAG_LOW_TABLE}}
   </section>
@@ -606,11 +611,15 @@
     </p>
     <!-- FILL final: when final90 and final90_fixed show IN, replace the callout with the verdict in 2-3 sentences and
          update section 01. -->
+    <div class="call ok">
+      <b>With coherent data and the probe known, 90 mrad in the 140 Å window is good:</b> Pb / Ti 92 / 50 % in the right
+      place against 23 / 13 % by guessing, depth bars 0.63 Å, half the residual of the 105 Å run, and titanium and
+      oxygen placed along the B-site columns.
+    </div>
     <div class="call stop">
-      <b>The fixed-probe twin is no better than at 80 mrad.</b> In plane the lattice is clean across the field, without
-      the window damage of the 105 Å run; in depth the columns smear as before (Pb / Ti 6 / 0 % in the right place,
-      9 / 0 % by guessing). Of the true-start legs, the lab one diverged: once its probe was released at full
-      resolution the solver's error went to NaN (after 10 hours). Without it the true-start run cannot be scored.
+      <b>With the full physics it is no better than 80 mrad.</b> The fixed-probe run is clean in plane but at the guessing
+      level in depth (Pb / Ti 6 / 0 % against 9 / 0 %). The true-start run's lab leg diverged once its probe was released
+      at full resolution (the solver's error went to NaN after 10 hours), so it was stopped with its Pb and Ti legs.
     </div>
     <figure class="wide">
       {{FIG_FINAL}}
@@ -626,7 +635,8 @@
       <div><span class="lg-t">Probe known, the ARM200F works to 80 mrad</span><span class="chip c-ok">supported</span>
         <span class="lg-d">With the four routinely tuned terms; 80 mrad matches the CEOS result.</span></div>
       <div><span class="lg-t">Beyond 80 mrad the window is the limit</span><span class="chip c-ok">supported</span>
-        <span class="lg-d">Same probe, smaller window, same failure. At 90 mrad a 140 Å window shows no window damage in plane (§8).</span></div>
+        <span class="lg-d">Same probe, smaller window, same failure; at 90 mrad a 140 Å window reconstructs well (Pb / Ti
+          92 / 50 %). Larger apertures cost compute, not physics.</span></div>
       <div><span class="lg-t">A few-per-cent probe error is recoverable with coherent data</span><span class="chip c-ok">supported</span>
         <span class="lg-d">500 iterations or 6 modes: Pb 66–80 %, Ti 33–47 % in the right place (90 / 58 % with the probe known).</span></div>
       <div><span class="lg-t">The outer search finds the probe from realistic data</span><span class="chip c-ok">supported</span>
@@ -634,9 +644,14 @@
       <div><span class="lg-t">With phonons and partial coherence, depth is lost whatever the probe</span><span class="chip c-stop">supported</span>
         <span class="lg-d">True probe fixed, true start with 4 modes, searched start: all at the guessing level at 80 mrad,
           and at 90 mrad in a 140 Å window. Ten times the dose changes nothing.</span></div>
-      <div><span class="lg-t">Which effect: phonons or partial coherence?</span><span class="chip c-open">running</span>
-        <span class="lg-d">Each alone, noiseless, probe fixed (§6). Phonons point to a colder specimen; partial coherence
-          (a 17 Å spread of focus against 3.1 Å depth resolution) would not be helped by cooling.</span></div>
+      <div><span class="lg-t">Phonons and partial coherence each remove depth on their own</span><span class="chip c-stop">supported</span>
+        <span class="lg-d">Each alone, noiseless, probe fixed, at 80 mrad (§6); 70 mrad is no better.</span></div>
+      <div><span class="lg-t">A colder specimen</span><span class="chip c-warn">partly</span>
+        <span class="lg-d">100 K recovers part of the phonon loss (Pb 49 % against 29 % by guessing). Colder still, down to
+          the zero-point motion, is untested.</span></div>
+      <div><span class="lg-t">Partial coherence</span><span class="chip c-open">open</span>
+        <span class="lg-d">Cooling cannot help it. Untested: whether probe modes absorb it without phonons present, and
+          which part matters, the 17 Å FWHM spread of focus (against 3.1 Å depth resolution) or the 0.4 Å source.</span></div>
       <div><span class="lg-t">300 kV with the ARM200F's corrector</span><span class="chip c-warn">open</span>
         <span class="lg-d">The ARM200F runs at 200 kV; its measured tableau stands in for a CEOS-corrected 300 kV column.
           At 200 kV the same gun spreads focus by 10.4 Å, not 7.3 Å. A 300 kV tableau (a Titan's) would be a direct check.</span></div>
