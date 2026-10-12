@@ -126,17 +126,27 @@ focal spread 3.3×; whether that is past the wall is the first question. **Every
 pipeline runs as it is: no beam-energy change is needed (it is hard-coded at 300 kV in the simulator, planner, driver,
 make_probe and the atom finder's config — only matters if a 200 kV target comes back).
 
-## The first experiment (proposed; build after the user agrees)
+## The experiment (the user's decisions, 2026-10-12)
 
-At 80 mrad, ARM200F tableau, 210 Å region / 105 Å window, noiseless, true probe fixed (cheap), Pb/Ti kernels per leg:
-1. **Focal spread only** (no source size) at ΔE = 300, 200, 90, 50, 25 meV — which energy spread is the wall?
-2. **Source size only** at 0.4 Å and a larger Schottky-like value — does the spatial part matter on its own?
-3. **Temperature**: phonons at RT, 100 K and colder, each with the surviving energy spread.
-Then the realistic pipeline (search + refine with modes, dose 1e8) only on the survivors, and 90 mrad / 140 Å if 80 holds.
+- **Leave the corrector be**: the ARM200F tableau, rows `armf_a080` (and `armf_a090_w140` later), unchanged. No DCOR variant.
+- **Phase 1 — coherence**: scan the **focal spread** (Å rms; it lumps Cc × energy spread, and also high-tension ripple and lens-
+  current noise, which add in quadrature and set a floor once the beam is monochromated) and the **source size** (Å FWHM),
+  everything else as the coherent known-probe reference: 80 mrad, 210 Å region / 105 Å window, noiseless, true probe fixed
+  (cheap first). Suggested grid: focal spread 7.3, 5, 3.5, 2.5, 1.5, 0.75 Å with no source size, source size 0.2, 0.4, 0.8 Å
+  with no focal spread, then a few joint points near the wall. Then map instruments onto the wall (table in FINAL CHECK).
+- **Phase 2 — temperature**: add phonons (RT, 100 K, colder) at the coherence values that survived, to find the temperature
+  wall. Then the realistic pipeline (outer search + refine with modes, dose 1e8) on what survives both.
+- **Kernels carry the same physics — verified 2026-10-12**: the driver passes PHONONS / PER_SPECIES / PHONON_T and every
+  coherence setting to the Pb and Ti grid simulations exactly as to the lab one (sim_meta of the split, 100 K, 70 mrad and
+  true-start runs agree leg for leg), each grid using its own element's displacement. Keep it that way: never reuse kernels
+  from different physics except as a labelled fallback (`PSF_DIR`).
+- **Cc answered**: the 1.4 mm used for the ARM is the whole-instrument value. CEOS (Müller et al. 2006) report a TOTAL Cc of
+  1.42 mm, objective plus hexapole corrector, for a CEOS-corrected JEOL with the small-gap URP pole piece (A5 1.2 mm), the
+  ARM200F's class. Instruments are mapped by their total Cc (Titan standard gap: 2.4 mm total, 2.0 mm objective alone).
 
 **Build first — the driver cannot do a scan over coherence values yet**: any coherence setting adds the same `_coh` to the
-SIM directory (`campaign/run_thin_atomfind.sh` lines ~82–86), so two energy spreads would collide on one sim dir (`RTAG`
-tags only recon dirs). Make the suffix encode the values (e.g. `_dE90`, `_src4`), dry-run, and keep old names unchanged.
+SIM directory (`campaign/run_thin_atomfind.sh` lines ~82–86), so two focal spreads would collide on one sim dir (`RTAG`
+tags only recon dirs). Make the suffix encode the values (e.g. `_fs3.5`, `_src0.4`), dry-run, and keep old names unchanged.
 
 ## The tools, as they stand
 
