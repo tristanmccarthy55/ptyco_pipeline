@@ -60,6 +60,33 @@ Results page (generated, republished to one link): https://claude.ai/artifact/MU
 - The Wien/X-FEG sources are Schottky emitters: larger than a cold FEG, so the **source-size** term (0.4 Å FWHM so far) may
   be worse on these machines. It has never been tested on its own.
 
+## FINAL CHECK (2026-10-12, the user: "2019 is erring on too new") — target the Titan generation, scan the focal spread
+
+| generation | introduced | monochromator at 300 kV | probe corrector | how far it opens |
+|---|---|---|---|---|
+| FEI Titan 80-300 | 2005–06 | Wien filter: ~0.3 eV spec, ~0.1 eV measured at some sites | CEOS CESCOR (hexapole): intrinsic A5 ≈ 3.0 mm; total Cc 2.4 mm (objective 2.0 mm, standard 5 mm gap) | optimum ~25 mrad, up to ~35 mrad |
+| FEI Titan Themis | Aug 2013 | X-FEG + Wien monochromator, ~0.2–0.3 eV (Leeds ~0.25) | CEOS DCOR: all axial aberrations to 5th order (incl. B4, D4, A4, C5), A5 < 0.2 mm | "beyond 40 mrad", 30–300 kV |
+| Thermo Spectra 300 | Aug 2019 | X-FEG Mono <0.2 eV (Cambridge 90 meV); UltiMono <55 meV | S-CORR: corrects A5 and D6 | no published flat-phase angle found |
+
+Sources: Müller, Uhlemann, Hartel, Haider, Microsc. Microanal. 12, 442 (2006) (CEOS; the Titan 80-300 CESCOR numbers; the
+improved design needs A5 < 0.5 mm for 37.5 mrad at 300 kV; its monochromator gives 0.3 eV at half the current); CEOS DCOR page;
+Titan Themis launch (FEI, 1 Aug 2013); Titan 80-300 facility pages.
+- **None of these is flat to 80 mrad** (that is GRAND ARM 2 territory, excluded). At 80 mrad every one needs the C1/C3
+  balancing used for the ARM, against its own residuals.
+- **The ARM tableau is not pessimistic on every term**: against a CESCOR Titan 80-300 its A5 (1 mm, 1998 reference) is smaller
+  than the Titan's 3 mm and its Cc (1.4 mm) smaller than 2.4 mm. Against a DCOR Titan Themis it is pessimistic (DCOR corrects
+  B4, D4, C5; A5 < 0.2 mm).
+- **Cc matters as much as the energy spread.** Focal spread at 300 kV = 17.4 Å per (eV × mm) of ΔE·Cc:
+  ARM cold FEG 0.3 eV × 1.4 mm = 7.3 Å (fails) · Titan Wien mono 0.3 / 0.2 / 0.1 eV × 2.4 mm = 12.5 / 8.3 / 4.2 Å ·
+  Spectra Mono 90 meV × 1.4–2.4 mm = 2.2–3.8 Å · UltiMono 50 meV = 1.2–2.1 Å · unmonochromated X-FEG ~0.7 eV × 2.4 = 29 Å.
+- **So scan the FOCAL SPREAD in Å, not the energy spread** (e.g. 7.3, 5, 3.5, 2.5, 1.5, 0.75 Å rms), find the wall, and map it
+  onto instruments with the table above. That needs no Cc for any particular machine and cannot cherry-pick one.
+- Source size: the CEOS paper uses 45–60 pm (CESCOR example) and 24–26 pm (improved design, max current) at the specimen;
+  our 40 pm sits inside that range. Monochromated probe currents are ~pA (8 pA in the CEOS example).
+- Recommended target class for the write-up: **Titan Themis (2013) with DCOR and a Wien monochromator**: widespread, old
+  enough, 300 kV; aberrations: the ARM tableau (pessimistic for DCOR) or a DCOR-like variant (A5 0.2 mm, B4/D4 at measurement
+  noise) if no measured tableau is found.
+
 ## Is that cherry-picking? (checked 2026-10-12)
 
 - The Spectra 300 was unveiled in August 2019 (M&M 2019), so the fleet is 2020–2025. Installs found: Cambridge
@@ -154,6 +181,10 @@ reuses sim/, campaign/, analysis/ unchanged at 300 kV).
 - Spectra 300 launch (Aug 2019): https://www.technologynetworks.com/tn/product-news/thermo-fisher-scientific-introduces-revolutionary-stem-platform-323058
 - Jülich ER-C Spectra 300: https://er-c.org/index.php/facilities-2/tfs-spectra-300/ ; Imperial Spectra 300: https://www.imperial.ac.uk/materials/facilities/em/titan/
 - Lei & Wang, Multislice Hollow Ptychography: https://arxiv.org/abs/2506.22352
+- Müller et al. 2006, Advancing the hexapole Cs-corrector for the STEM: https://doi.org/10.1017/S1431927606060600 (CEOS PDF: https://www.ceos-gmbh.de/en/produkte/stemkorrektoren/dcor-ascor/Mueller2006a.pdf)
+- CEOS DCOR/ASCOR: https://www.ceos-gmbh.de/en/produkte/stemkorrektoren/dcor-ascor
+- Titan Themis launch (2013): https://www.globenewswire.com/news-release/2013/08/01/564108/11292/en/FEI-Revolutionizes-the-World-of-TEM-With-the-Introduction-of-Three-New-Systems.html
+- Titan 80-300 (Jülich, Chalmers): https://er-c.org/index.php/facilities-2/fei-titan-80-300-stem/ ; https://www.chalmers.se/en/infrastructure/cmal/instruments/electron-microscopy/tem-titan-80-300/
 - Leeds LEMAS (Titan3 Themis 300, ~0.25 eV): https://www.rms.org.uk/community/facilities-database/facilities-database-details.html?slug=lemas
 - Titan Themis Wien monochromator (~0.2–0.3 eV at 300 kV): https://afmm.iisc.ac.in/?p=1150
 - Imperial (monochromated Titan 80/300): https://www.imperial.ac.uk/engineering/departments/materials/facilities/em/
