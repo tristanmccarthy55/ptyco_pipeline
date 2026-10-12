@@ -144,9 +144,21 @@ make_probe and the atom finder's config — only matters if a 200 kV target come
   1.42 mm, objective plus hexapole corrector, for a CEOS-corrected JEOL with the small-gap URP pole piece (A5 1.2 mm), the
   ARM200F's class. Instruments are mapped by their total Cc (Titan standard gap: 2.4 mm total, 2.0 mm objective alone).
 
-**Build first — the driver cannot do a scan over coherence values yet**: any coherence setting adds the same `_coh` to the
-SIM directory (`campaign/run_thin_atomfind.sh` lines ~82–86), so two focal spreads would collide on one sim dir (`RTAG`
-tags only recon dirs). Make the suffix encode the values (e.g. `_fs3.5`, `_src0.4`), dry-run, and keep old names unchanged.
+**Built 2026-10-12 — sim dirs now carry the coherence values** (the bare `_coh` put every setting in one sim dir):
+`_fs<rms Å>` (FOCAL_SPREAD), `_dE<eV>_cc<mm>`, `_src<FWHM Å>`, `_cs<n>`, with `.` written `p` (`_fs3p5`: the engine's
+MATLAB `fileparts` would read a `.` as an extension). The cold-FEG setting every earlier run used (ENERGY_SPREAD_EV=0.3
+CC_MM=1.4 SOURCE_FWHM=0.4) keeps `_coh`. Settings the sim would ignore are refused (ENERGY_SPREAD_EV without CC_MM,
+FOCAL_SPREAD with it, COHERENCE_SAMPLES with phonons, zero or non-numbers). Dry run: `bash campaign/test_coh_names.sh`
+(26 cases); the 15 launch lines in the page manifest give byte-identical sbatch calls under the old and new drivers.
+
+**Phase 1 as proposed 2026-10-12 (awaiting the user's go)**: armf_a080, noiseless, true probe fixed, 1 mode, 200 it,
+`32;16`, PACK_H5=0, CLEANDATA=1, one submission per point with its analysis chained on its pack (GT_REGION=210).
+Focal spread alone 7.29 (= the old 0.3 eV × 1.4 mm, 7.294 Å, so with source 0.4 alone it splits the failed `_coh` run
+exactly), 5, 3.5, 2.5, 1.5, 0.75 Å; source alone 0.2, 0.4, 0.8 Å. Already in hand: coherent (0, 0) 90/58 vs 26/18 and
+`_coh` (7.29 + 0.4) 23/7 vs 19/2. Cost per point: 3 sims × 4.6 h (16 configurations, the hail-mary sims) + 3 recons ×
+5.3 h (measured on the coherence-only split: 1.25 h presolve + 4.0 h full) ≈ 30 GPU-h; 9 points ≈ 270 GPU-h. The CPU
+quota binds (sims ask 128G ≈ 18 CPUs, recons 73G ≈ 10, against 160): ≥ ~23 h wall for all nine. Raw data 39 GB a point,
+up to ~350 GB at once before the packs clean it.
 
 ## The tools, as they stand
 

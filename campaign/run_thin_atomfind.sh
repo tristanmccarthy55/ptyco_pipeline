@@ -34,7 +34,8 @@
 # true one (kick/) and runs atomfind on it with the label's known-probe kernels. Part of the same pack, so CLEANDATA
 # waits for it.
 # PARTIAL COHERENCE (2026-10-02): FOCAL_SPREAD (rms A) or ENERGY_SPREAD_EV + CC_MM, SOURCE_FWHM (A) and COHERENCE_SAMPLES
-# reach the sim (sim/simulate_4dstem.py: sampled jointly with PHONONS); dirs gain _coh. With DOSES the chain is built in
+# reach the sim (sim/simulate_4dstem.py: sampled jointly with PHONONS); dirs gain the values, e.g. _fs3p5, _src0p4,
+# _dE0p09_cc2p4 (the cold-FEG setting below keeps its old _coh; see COH_EXP). With DOSES the chain is built in
 # ONE submission: sim (when its data are missing) -> Poisson copy -> recon. KICK_ALL=1 runs EVERY leg (lab, Pb, Ti) as a
 # kick leg -- start probe kicked, probe released, KICK_MODES modes -- so the kernels come out of the same reconstruction
 # operator as the lab leg (PSF_KERNELS.md: byte-identical except the object).
@@ -45,6 +46,8 @@
 #   LABELS=armf_a080 TSV=campaign/ceos_sweep.tsv PHONONS=16 PER_SPECIES=1 ENERGY_SPREAD_EV=0.3 CC_MM=1.4 SOURCE_FWHM=0.4 \
 #     DOSES="1e7 1e8" FIXED_TWIN=1 SEARCH_C1F="0.91 0.94 0.97 1 1.03 1.06 1.09" SEARCH_C3F="<same>" KICK_MODES=4 \
 #     KICK_NITER=500 GROUPING="32;16" bash campaign/run_thin_atomfind.sh
+# A coherence scan point (noiseless, true probe fixed; dirs sim_out_af_armf_a080_<mode>_fs2p5):
+#   LABELS=armf_a080 TSV=campaign/ceos_sweep.tsv GROUPING="32;16" PACK_H5=0 FOCAL_SPREAD=2.5 CLEANDATA=1 bash campaign/run_thin_atomfind.sh
 # Then (when done): extract each PSF and run atomfind (see the echo at the end).
 set -euo pipefail
 REPO_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"; cd "${REPO_DIR}"; mkdir -p logs
@@ -79,11 +82,42 @@ if [ -n "$PHONON_T" ]; then
     [ "$PHONONS" != 0 ] && [ "$PER_SPECIES" = 1 ] || { echo "PHONON_T needs PHONONS>0 and PER_SPECIES=1" >&2; exit 1; }
     SFX="${SFX}_T${PHONON_T}"
 fi
-COH_EXP=""                            # [coherence] partial-coherence settings for the sim; any of them adds _coh
+# [coherence] partial-coherence settings for the sim. The dir suffix carries their VALUES (2026-10-12), so a scan over
+# focal spread or source size gets one sim dir per point -- the bare _coh it replaced put every setting in ONE dir:
+#   _fs<rms A> (FOCAL_SPREAD)  _dE<eV>_cc<mm> (ENERGY_SPREAD_EV + CC_MM)  _src<FWHM A> (SOURCE_FWHM)  _cs<n> (COHERENCE_SAMPLES)
+# in that order, each value as %g with '.' written 'p' (3.50 -> 3p5): the engine's MATLAB fileparts reads a '.' in a
+# path as an extension. The one setting every run before 2026-10-12 used, ENERGY_SPREAD_EV=0.3 CC_MM=1.4 SOURCE_FWHM=0.4
+# (the ARM200F's cold FEG: 7.29 A rms + a 0.4 A source), keeps its old name _coh, so those dirs, tarballs and page tags
+# still resolve. Settings the sim would silently ignore are refused, so a name cannot claim physics the data lack.
+COH_EXP=""
 for v in FOCAL_SPREAD ENERGY_SPREAD_EV CC_MM SOURCE_FWHM COHERENCE_SAMPLES; do
-    [ -n "${!v:-}" ] && COH_EXP="${COH_EXP},${v}=${!v}"
+    [ -n "${!v:-}" ] || continue
+    [[ "${!v}" =~ ^[0-9]*\.?[0-9]+([eE][-+]?[0-9]+)?$ ]] && awk -v x="${!v}" 'BEGIN{exit !(x > 0)}' \
+        || { echo "${v}=${!v}: a positive number, or leave it unset for none" >&2; exit 1; }
+    COH_EXP="${COH_EXP},${v}=${!v}"
 done
-[ -n "$COH_EXP" ] && SFX="${SFX}_coh"
+coh_num(){ awk -v x="$1" 'BEGIN{s = sprintf("%g", x); gsub(/\./, "p", s); print s}'; }
+if [ -n "$COH_EXP" ]; then
+    # the sim forms the focal spread from ENERGY_SPREAD_EV only WITH CC_MM, and FOCAL_SPREAD overrides both
+    { [ -n "${ENERGY_SPREAD_EV:-}" ] && [ -n "${CC_MM:-}" ]; } || { [ -z "${ENERGY_SPREAD_EV:-}" ] && [ -z "${CC_MM:-}" ]; } \
+        || { echo "ENERGY_SPREAD_EV and CC_MM go together (one alone gives no focal spread)" >&2; exit 1; }
+    [ -n "${FOCAL_SPREAD:-}" ] && [ -n "${ENERGY_SPREAD_EV:-}" ] \
+        && { echo "FOCAL_SPREAD or ENERGY_SPREAD_EV + CC_MM, not both (the sim would take FOCAL_SPREAD)" >&2; exit 1; }
+    if [ -n "${COHERENCE_SAMPLES:-}" ]; then   # the sim takes PHONONS configurations when phonons are on
+        [ "$PHONONS" = 0 ] || { echo "COHERENCE_SAMPLES is ignored with PHONONS>0 (configurations = PHONONS)" >&2; exit 1; }
+        [ -n "${FOCAL_SPREAD:-}${ENERGY_SPREAD_EV:-}${SOURCE_FWHM:-}" ] \
+            || { echo "COHERENCE_SAMPLES alone does nothing: set a focal spread or a source size" >&2; exit 1; }
+    fi
+    if [ -z "${FOCAL_SPREAD:-}${COHERENCE_SAMPLES:-}" ] && [ -n "${ENERGY_SPREAD_EV:-}" ] && [ -n "${SOURCE_FWHM:-}" ] \
+       && awk -v e="$ENERGY_SPREAD_EV" -v c="$CC_MM" -v s="$SOURCE_FWHM" 'BEGIN{exit !(e == 0.3 && c == 1.4 && s == 0.4)}'; then
+        SFX="${SFX}_coh"                                  # the pre-2026-10-12 name, kept for its runs
+    else
+        [ -n "${FOCAL_SPREAD:-}" ] && SFX="${SFX}_fs$(coh_num "$FOCAL_SPREAD")"
+        [ -n "${ENERGY_SPREAD_EV:-}" ] && SFX="${SFX}_dE$(coh_num "$ENERGY_SPREAD_EV")_cc$(coh_num "$CC_MM")"
+        [ -n "${SOURCE_FWHM:-}" ] && SFX="${SFX}_src$(coh_num "$SOURCE_FWHM")"
+        [ -n "${COHERENCE_SAMPLES:-}" ] && SFX="${SFX}_cs$(coh_num "$COHERENCE_SAMPLES")"
+    fi
+fi
 KICK_ALL="${KICK_ALL:-0}"
 # (never `VAR=$([ test ] && echo x)`: a false test fails the substitution and set -e exits the script)
 PYBIN="${CONDA_ENV:-${SHARE:-}/phucrh/envs/abtem}/bin/python"
