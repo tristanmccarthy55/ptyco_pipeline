@@ -60,6 +60,36 @@ Results page (generated, republished to one link): https://claude.ai/artifact/MU
 - The Wien/X-FEG sources are Schottky emitters: larger than a cold FEG, so the **source-size** term (0.4 Å FWHM so far) may
   be worse on these machines. It has never been tested on its own.
 
+## Is that cherry-picking? (checked 2026-10-12)
+
+- The Spectra 300 was unveiled in August 2019 (M&M 2019), so the fleet is 2020–2025. Installs found: Cambridge
+  (X-FEG Mono, 90 meV at 300 kV), Imperial (X-FEG UltiMono, <30 meV, K3 camera), Jülich ER-C (monochromated X-FEG, <0.03 eV
+  at 60 kV, double-corrected, EMPAD), LSU, Notre Dame, Stanford, PolyU, Twente, Stuttgart, several in China. No public sales
+  figures; some sites take the X-CFEG (no monochromator) instead.
+- **90 meV is Cambridge's best quoted figure, not the guaranteed spec** (X-FEG Mono: <0.2 eV). The widespread previous
+  generation (Titan Themis, Wien monochromator) gives ~0.2–0.3 eV. So do not adopt 90 meV as "typical": scan the energy spread
+  and place instruments on the result afterwards — 0.3 eV (cold FEG / Titan Wien), 0.2 eV (Mono spec), ~0.1 eV (Mono at its
+  best, Cambridge), ~0.05 eV (UltiMono at 300 kV: Imperial, Jülich-class), 0.025 eV.
+
+## The group's own study: Lei & Wang, arXiv 2506.22352 (Warwick; Yu Lei wrote the reconstruction code used here)
+
+Multislice hollow ptychography; the depth part is simulation only: abTEM, 300 kV, **80 mrad, aberration-free probe (defocus
+−0.7 nm only), fully coherent (no energy spread or source size anywhere in the paper)**, 8 nm PrScO3, 256² detector to
+160 mrad, Poisson 1e5–1e8 e/Å², frozen phonons at 300 / 90 / 4 K, LSQML with the probe updated from the first slice (no modes
+mentioned). Single-atom depth FWHM 9.5 / 3.5 / 2.8 Å at 20 / 40 / 80 mrad. Result: at 300 K only layers 8–9 Å apart are
+resolved (Pr, one O set); **at 90 K and 4 K every layer, oxygen included, is resolved at 1e8 e/Å²**; at 1e7 the 3–4 Å-spaced Sc
+and O layers are not, even at 90 K. Thermal model: per-axis σ = √(tr U / 3) at RT (Pr 0.097, Sc 0.087, O 0.103 Å), scaled by
+√(T/300) to 90 K (0.053 / 0.048 / 0.057 Å); 4 K taken as 23 % of RT (0.022–0.024 Å).
+How this campaign differs, and questions for Yu Lei:
+- Their microscope is ideal (no aberrations, coherent); ours adds the ARM tableau and a cold FEG. Their LN2 conclusion holds
+  only if the illumination is coherent enough — which is exactly the energy-spread question here.
+- Displacements: our 100 K (Debye fit with zero-point motion) per-axis u = Pb 0.064, Ti 0.051, O 0.072 Å, larger than their
+  90 K values; their 4 K (23 % of RT) is below the zero-point motion our Debye fit gives for O (~0.065 Å) — likely optimistic.
+- Our simulator's own check found abTEM 1.0.5's `sigmas` is the 3-D rms magnitude (per-axis = sigmas/√3; see the comment above
+  `_B_BY_SPECIES`). If their per-axis σ went into abTEM directly, their displacements were √3 smaller than intended. Ask.
+- Their metric is line profiles of layers; ours is atoms in the right place against guessing. Spacings differ (their Pr 8 Å,
+  our Pb 3.9 Å).
+
 ## What this means (computed; recheck)
 
 Focal spread = Cc (σE/E)(1+E/E0)/(1+E/2E0), σE = FWHM/2.355; at 300 kV with Cc 1.4 mm it is 7.29 Å rms × (ΔE / 0.3 eV):
@@ -121,6 +151,9 @@ reuses sim/, campaign/, analysis/ unchanged at 300 kV).
 - Cambridge Spectra 300: https://www.wems.msm.cam.ac.uk/electron-microscopy-equipment/tf-spectra-300
 - Spectra 300 datasheet (Thermo Fisher DS0297): https://www.utwente.nl/en/mesaplus/infrastructure/nanolab/analysis/facilities/tem/doc-1-spectra-300-stem-datasheet-ds0297.pdf
 - Spectra 300 product page: https://www.thermofisher.com/uk/en/home/electron-microscopy/products/transmission-electron-microscopes/spectra-300-tem.html
+- Spectra 300 launch (Aug 2019): https://www.technologynetworks.com/tn/product-news/thermo-fisher-scientific-introduces-revolutionary-stem-platform-323058
+- Jülich ER-C Spectra 300: https://er-c.org/index.php/facilities-2/tfs-spectra-300/ ; Imperial Spectra 300: https://www.imperial.ac.uk/materials/facilities/em/titan/
+- Lei & Wang, Multislice Hollow Ptychography: https://arxiv.org/abs/2506.22352
 - Leeds LEMAS (Titan3 Themis 300, ~0.25 eV): https://www.rms.org.uk/community/facilities-database/facilities-database-details.html?slug=lemas
 - Titan Themis Wien monochromator (~0.2–0.3 eV at 300 kV): https://afmm.iisc.ac.in/?p=1150
 - Imperial (monochromated Titan 80/300): https://www.imperial.ac.uk/engineering/departments/materials/facilities/em/
