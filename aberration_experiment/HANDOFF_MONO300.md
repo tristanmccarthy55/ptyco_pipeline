@@ -151,7 +151,7 @@ CC_MM=1.4 SOURCE_FWHM=0.4) keeps `_coh`. Settings the sim would ignore are refus
 FOCAL_SPREAD with it, COHERENCE_SAMPLES with phonons, zero or non-numbers). Dry run: `bash campaign/test_coh_names.sh`
 (26 cases); the 15 launch lines in the page manifest give byte-identical sbatch calls under the old and new drivers.
 
-**Phase 1 as proposed 2026-10-12 (awaiting the user's go)**: armf_a080, noiseless, true probe fixed, 1 mode, 200 it,
+**SUPERSEDED — current plan and status: `mono300/PHASE1.md` (top).** **Phase 1 as proposed 2026-10-12**: armf_a080, noiseless, true probe fixed, 1 mode, 200 it,
 `32;16`, PACK_H5=0, CLEANDATA=1, one submission per point with its analysis chained on its pack (GT_REGION=210).
 Focal spread alone 7.29 (= the old 0.3 eV × 1.4 mm, 7.294 Å, so with source 0.4 alone it splits the failed `_coh` run
 exactly), 5, 3.5, 2.5, 1.5, 0.75 Å; source alone 0.2, 0.4, 0.8 Å. Already in hand: coherent (0, 0) 90/58 vs 26/18 and

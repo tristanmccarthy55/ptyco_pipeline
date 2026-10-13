@@ -11,20 +11,22 @@ set -uo pipefail
 REPO_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 DRIVER="${1:-${REPO_DIR}/campaign/run_thin_atomfind.sh}"
 TMP="$(mktemp -d)"; trap 'rm -rf "$TMP"' EXIT
-mkdir -p "$TMP/bin" "$TMP/env/bin"
-cat >"$TMP/bin/sbatch" <<'EOF'
-#!/usr/bin/env bash
-n=$(( $(cat "$STUB_N" 2>/dev/null || echo 1000) + 1 )); echo "$n" >"$STUB_N"
-printf '%s\n' "$*" >>"$STUB_LOG"; echo "$n"
-EOF
-printf '#!/bin/sh\nexit 0\n' >"$TMP/env/bin/python"; chmod +x "$TMP/bin/sbatch" "$TMP/env/bin/python"
-COH_VARS=(FOCAL_SPREAD ENERGY_SPREAD_EV CC_MM SOURCE_FWHM COHERENCE_SAMPLES PHONONS PER_SPECIES PHONON_T DOSES RTAG)
+mkdir -p "$TMP/env/bin"; printf '#!/bin/sh\nexit 0\n' >"$TMP/env/bin/python"; chmod +x "$TMP/env/bin/python"
+# The stub sbatch is an exported FUNCTION, not a file on PATH: login nodes often mount /tmp noexec, and there a stub
+# file cannot run, so every case failed on Blythe (2026-10-13). A function also wins over any sbatch on PATH.
+sbatch(){ local n; n=$(( $(cat "$STUB_N" 2>/dev/null || echo 1000) + 1 )); echo "$n" >"$STUB_N"
+          printf '%s\n' "$*" >>"$STUB_LOG"; echo "$n"; }
+export -f sbatch
+# Every variable the driver reads (${NAME:-..} / ${NAME:+..} / ${NAME:=..}) is cleared, so nothing exported in the
+# caller's shell (MODES, NL, KICK_LABELS, ...) reaches a case; BASH_ENV / ENV so no startup file runs in the driver.
+DVARS=(); while IFS= read -r v; do DVARS+=("$v"); done < <(grep -oE '\$\{[A-Z][A-Z0-9_]*:[-+=]' "$DRIVER" \
+    | sed -E 's/^\$\{([A-Z0-9_]+).*/\1/' | sort -u)
 FAIL=0; N=0
 run_driver(){ # $1 root, then VAR=value ... -> the driver's exit status; the sbatch calls in $1/sbatch.log
     local root="$1"; shift; mkdir -p "$root/campaign"
     cp "$DRIVER" "$root/campaign/run_thin_atomfind.sh"; cp "$REPO_DIR/campaign/ceos_sweep.tsv" "$root/campaign/"
-    local u=(); for v in "${COH_VARS[@]}"; do u+=(-u "$v"); done
-    env "${u[@]}" PATH="$TMP/bin:$PATH" STUB_LOG="$root/sbatch.log" STUB_N="$root/n" CONDA_ENV="$TMP/env" SHARE= \
+    local u=(-u BASH_ENV -u ENV) v; for v in "${DVARS[@]}"; do u+=(-u "$v"); done
+    env "${u[@]}" STUB_LOG="$root/sbatch.log" STUB_N="$root/n" CONDA_ENV="$TMP/env" SHARE= \
         LABELS=armf_a080 TSV=campaign/ceos_sweep.tsv GROUPING="32;16" PACK_H5=0 "$@" \
         bash "$root/campaign/run_thin_atomfind.sh" >"$root/out.txt" 2>&1
 }
@@ -46,7 +48,7 @@ case_refused(){ # VAR=value ... that must be refused before any sbatch
     [ -s "$root/sbatch.log" ] && { echo "FAIL  $* : refused only after submitting"; FAIL=1; return; }
     echo "ok    refused  <-  $*   ($(tail -1 "$root/out.txt"))"
 }
-echo "driver: ${DRIVER}"
+echo "driver: ${DRIVER} (${#DVARS[@]} driver variables cleared per case)"
 # the old cold-FEG setting keeps its name, however the numbers are written
 case_ok _coh            ENERGY_SPREAD_EV=0.3 CC_MM=1.4 SOURCE_FWHM=0.4
 case_ok _coh            ENERGY_SPREAD_EV=0.30 CC_MM=1.40 SOURCE_FWHM=0.40

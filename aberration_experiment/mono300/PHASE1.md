@@ -1,8 +1,15 @@
-# Phase 1: focal spread and source size, with probe modes (submitted 2026-10-12)
+# Phase 1: focal spread and source size, with probe modes (designed 2026-10-12; NOT submitted as designed)
+
+**Status 2026-10-13 (the user's choice): two steps.** Step 1 = the controls only, `phase1_fixed_submit.sh`: the same ten
+points, the same `_<point>_fixed` dirs, the sims KEPT. Step 2 = the mode legs below, RECON_ONLY on those sims, at the points
+whose control fails, started from the exact mixed state (to build). Why not the design as it stands: the engine seeds each
+extra mode at `mode_start_pow` 0.02 (`ptycho/run_synthetic_recon_ML.m`), so an 8-mode leg starts with 0.86 in mode 1 against
+a true 0.30 at 7.29 A, and every mode run so far ended with mode 1 at 0.84-0.90 (`_true4` 0.94 -> 0.84 in 500 + 500 it;
+`_long_m3` / `_long_m6` 0.90); and its packs made the control wait for the 34 h legs. `phase1_submit.sh` is kept, unrun.
 
 Supersedes the fixed-probe-only proposal in `HANDOFF_MONO300.md` ("Phase 1 as proposed"). The user's rule: probe update
-with modes is the method, the fixed probe is the side control. Submitted with `phase1_submit.sh` (stub dry run: 120 sbatch
-calls, `campaign/test_coh_names.sh` 26/26 first).
+with modes is the method, the fixed probe is the side control. Stub dry run of `phase1_submit.sh`: 120 sbatch calls,
+`campaign/test_coh_names.sh` 26/26 first.
 
 ## Design
 
@@ -26,12 +33,13 @@ Each point: lab, Pb and Ti sims with the same coherence setting, then per sim tw
 | 0.2 | `_src0p2` | 8 | 4;2 | 26 / 30 % | 97.6 / 90.2 % |
 | 0.4 | `_src0p4` | 8 | 4;2 | 16.5 / 9.9 % | 78 / 53 % |
 
-M = the modes holding 99 % of the real-gun state, plus one, capped at 8 (8 modes at `4;2` is the most the GPU has run:
-same waves in flight as `_true4`). "sim" = the sim's own 16 configurations, "real gun" = a continuous Gaussian (1000
+M = the modes holding 99 % of the real-gun state, plus one, capped at 8 (8 modes have never run; at `4;2` they
+put the same waves in flight as `_true4`'s 4 modes at `8;4`, so the GPU memory should fit). "sim" = the sim's own 16 configurations, "real gun" = a continuous Gaussian (1000
 samples). Source: `mode_spectrum.py` -> `mode_spectrum.txt` (exact eigen-spectrum of the mixture; the common aberration
 phase cannot change it, so only aperture, wavelength and offsets matter). The source scan dropped 0.8 A (8 modes hold 62 % /
-20 %) and gained 0.05 and 0.1 A: at 80 mrad the probe is ~lambda/alpha = 0.25 A, so even a 0.2 A source leaves a quarter
-of the state in one mode.
+20 %) and gained 0.05 and 0.1 A: at 80 mrad the probe's finest detail is ~lambda/alpha = 0.25 A (the probe itself is
+~32 A across, d50), and a shift of that size stops it overlapping itself, so even a 0.2 A source leaves a quarter of the
+state in one mode. Real sources at the specimen are 0.24-0.6 A (CEOS 2006), i.e. the 0.2 and 0.4 A points.
 
 ## What to watch
 
