@@ -12,8 +12,8 @@ REPO_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 DRIVER="${1:-${REPO_DIR}/campaign/run_thin_atomfind.sh}"
 TMP="$(mktemp -d)"; trap 'rm -rf "$TMP"' EXIT
 mkdir -p "$TMP/env/bin"; printf '#!/bin/sh\nexit 0\n' >"$TMP/env/bin/python"; chmod +x "$TMP/env/bin/python"
-# The stub sbatch is an exported FUNCTION, not a file on PATH: login nodes often mount /tmp noexec, and there a stub
-# file cannot run, so every case failed on Blythe (2026-10-13). A function also wins over any sbatch on PATH.
+# The stub sbatch is an exported FUNCTION, not a file on PATH: it needs no executable file and wins over any real
+# sbatch on PATH, so the test can never submit.
 sbatch(){ local n; n=$(( $(cat "$STUB_N" 2>/dev/null || echo 1000) + 1 )); echo "$n" >"$STUB_N"
           printf '%s\n' "$*" >>"$STUB_LOG"; echo "$n"; }
 export -f sbatch
@@ -36,9 +36,10 @@ case_ok(){ # $1 expected suffix after the mode, then VAR=value ...
     got=$(grep -- '--job-name=af_sim_' "$root/sbatch.log" | sed -E 's/.*JOB_DIR=[^,]*\/(sim_out_af_[^,]*).*/\1/' | sort | tr '\n' ' ')
     exp=$(for m in Pb Ti lab; do echo "sim_out_af_armf_a080_${m}${want}"; done | sort | tr '\n' ' ')
     [ "$got" = "$exp" ] || { echo "FAIL  $* : sims [${got}] want [${exp}]"; FAIL=1; return; }
-    # the coherence part of each sim's export, in the driver's order: one value for all three legs
+    # the coherence part of each sim's export: every setting must appear once per leg (lab, Pb, Ti). No paste here:
+    # GNU paste -s turns empty input into one blank line, which failed every no-coherence case on Blythe (2026-10-13)
     local cohs; cohs=$(grep -- '--job-name=af_sim_' "$root/sbatch.log" \
-        | grep -oE '(FOCAL_SPREAD|ENERGY_SPREAD_EV|CC_MM|SOURCE_FWHM|COHERENCE_SAMPLES)=[^, ]*' | paste -sd, - | tr ',' '\n' | sort | uniq -c | awk '$1 != 3')
+        | grep -oE '(FOCAL_SPREAD|ENERGY_SPREAD_EV|CC_MM|SOURCE_FWHM|COHERENCE_SAMPLES)=[^, ]*' | sort | uniq -c | awk '$1 != 3')
     [ -z "$cohs" ] || { echo "FAIL  $* : lab / Pb / Ti sims got different coherence exports:"; echo "$cohs"; FAIL=1; return; }
     echo "ok    ${want:-<none>}  <-  $*"
 }
