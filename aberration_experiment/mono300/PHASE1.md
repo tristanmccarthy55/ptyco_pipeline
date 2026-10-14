@@ -44,6 +44,35 @@ Both references reproduce the page's numbers (coherent 90/58, `_coh` 23/7).
   (4.9 A) sit on it; the Spectra Mono at 90 meV (2.2-3.8 A) and UltiMono (1.2-2.1 A) are inside. Real sources at the
   specimen are 0.24-0.6 A (CEOS 2006): at or past the source wall, so the source image must be shrunk (current ~ size^2).
 
+## Step 2 (handed over 2026-10-14): joint points + probe-mode legs from the mixed state
+
+One script, `phase1_step2_submit.sh` (stub dry run: 55 sbatch calls; guards: exported job variables, both dry runs, half-
+deleted sims). **A, joint points** (true probe fixed, new sims kept, `_<point>_fixed`): focal spread 2.5 and 3.5 A, each
+with a 0.1 and a 0.2 A source -- a real instrument has both at once. Submitted first. **B, mode legs** (`_<point>_mix`):
+fs 5 A (7 modes), fs 7.29, src 0.2, src 0.4 (8 modes), probe released (PSTART 40 / 20, TEM aperture constraint), 250 it,
+`4;2`, 96G, 48 h, lab + Pb + Ti, on the step-1 sims (RECON_ONLY; re-simulated in the same submission if deleted).
+
+The start (`KICK_START=mixed` -> `PROBE_MIXED` in the job -> `sim/make_mixed_probe.py`): the top M eigenmodes of a
+continuous Gaussian focal spread / source with the sim's own values (sim_meta.mat) on the true probe, N x N x 1 x M
+(the live loader keeps a 4-D probe as modes; its 3-D reshape is commented out). Checked on the packed probes:
+occupancies match mode_spectrum.txt's real-gun rows within its sampling noise (7.29 A: 0.314/0.258/0.186; 0.4 A: 0.090);
+modes orthogonal to 1e-15, powers to 1e-13; their summed intensity matches a brute-force defocus average to its 2 %
+noise (the coherent probe is 48 % off). The start holds 100 / 99.8 / 90.7 / 50.6 % of the real-gun state and 100 /
+99.9 / 91.2 / 53.0 % of the sim's own 16-configuration state (fs 5 / 7.29 / src 0.2 / 0.4).
+Engine changes, for multi-mode starts only (a single probe takes the old lines): the TEM aperture mask is built from the
+modes' summed far-field intensity (`load_from_p.m`; per-mode masks would cut holes and a 4-D mask crashes the
+`custom_data_flip` permute) -- same aperture as the true probe's to 12 edge pixels of 573 297. `kick_probe.py` reads a
+multi-mode start (its strongest mode for ov_start) and records the start's mode powers. Not testable without MATLAB:
+the engine run itself -- a load / init failure shows within ~30 min of a leg starting (check line in the handover).
+
+Cost: A ~120 GPU-h; B ~400 GPU-h (1.31 x 250 x (29 + 43 M) s: 30 h at 7 modes, 34 h at 8), + 14 GPU-h per re-simulated
+point; ~2-3 days wall (12 mode legs at 96G take ~156 of the 160 CPUs). Disk: the joint sims, kept (4 x 39 GB); the four
+mode points' step-1 sims must stay until their legs finish (4 x 39 GB); the other six step-1 points' raw data (fs 0.75,
+1.5, 2.5, 3.5, src 0.05, 0.1: 6 x 39 GB) are no longer needed.
+What to judge: the mode legs against their fixed controls (step 1 above) on honest scores and the phase images; the
+recovered mode powers against the start's (kick/*.json `start_mode_power`): if they collapsed back toward one mode, the
+reconstruction left the mixed state -- say so before blaming the physics.
+
 ## Design
 
 armf_a080 (ARM tableau, 80 mrad, 210 A region, BIN 2, NL 18), noiseless, phonons off, 16 coherence configurations.

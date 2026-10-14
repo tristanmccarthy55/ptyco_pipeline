@@ -45,11 +45,21 @@ def compare(recon_dir, out=None):
                 key=os.path.getmtime)
     T = loadmat(os.path.join(recon_dir, "01", "probe_initial_true.mat"))["probe"].astype(np.complex128)
     S = loadmat(os.path.join(recon_dir, "01", "probe_initial.mat"))["probe"].astype(np.complex128)
+    start_power = None
+    if S.ndim > 2:            # a multi-mode start (sim/make_mixed_probe.py, N x N x 1 x M): compare its strongest mode
+        Sm = S.reshape(S.shape[0], S.shape[1], -1)
+        sp = (np.abs(Sm) ** 2).sum(axis=(0, 1)); start_power = [float(x) for x in np.sort(sp)[::-1] / sp.sum()]
+        S = Sm[:, :, int(np.argmax(sp))]
     res = dict(recon_dir=os.path.basename(os.path.normpath(recon_dir)), ov_start=shift_invariant_overlap(S, T))
+    if start_power is not None:
+        res["start_mode_power"] = start_power
     js = os.path.join(recon_dir, "01", "probe_initial.json")
     if os.path.exists(js):
         info = json.load(open(js))
         res.update(kick_c1_A=info.get("c1_A"), sim_c1_A=info.get("c1_sim_A"), scaled_terms=info.get("scaled_terms"))
+        for k in ("kind", "focal_spread_A", "source_fwhm_A", "occupancy_kept", "state_held", "sim16_state_held"):
+            if k in info:
+                res[f"start_{k}"] = info[k]
     if not h5:
         res["status"] = "NO H5"
         return res
@@ -79,7 +89,9 @@ def compare(recon_dir, out=None):
                 a_.set_xticks([]); a_.set_yticks([])
         ax[0, 0].set_ylabel("amplitude"); ax[1, 0].set_ylabel("phase")
         fig.suptitle(f"{res['recon_dir']}: overlap with the true probe, start {res['ov_start']:.3f} -> recovered "
-                     f"{res['ov_final']:.3f}; mode powers " + " / ".join(f"{x:.2f}" for x in res["mode_power"]), fontsize=10)
+                     f"{res['ov_final']:.3f}; mode powers " + " / ".join(f"{x:.2f}" for x in res["mode_power"])
+                     + ("\nstart (mixed state) " + " / ".join(f"{x:.2f}" for x in res["start_mode_power"])
+                        if res.get("start_mode_power") else ""), fontsize=10)
         fig.tight_layout()
         fig.savefig(os.path.join(out, res["recon_dir"] + ".png"), dpi=110)
         plt.close(fig)

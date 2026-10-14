@@ -48,6 +48,9 @@
 #     KICK_NITER=500 GROUPING="32;16" bash campaign/run_thin_atomfind.sh
 # A coherence scan point (noiseless, true probe fixed; dirs sim_out_af_armf_a080_<mode>_fs2p5):
 #   LABELS=armf_a080 TSV=campaign/ceos_sweep.tsv GROUPING="32;16" PACK_H5=0 FOCAL_SPREAD=2.5 CLEANDATA=1 bash campaign/run_thin_atomfind.sh
+# Its probe-mode leg from the sim's own MIXED STATE (KICK_START=mixed, details at KICK_START below), on the kept sim:
+#   RECON_ONLY=1 LABELS=armf_a080 TSV=campaign/ceos_sweep.tsv FOCAL_SPREAD=5 KICK_ALL=1 KICK_START=mixed KICK_MODES=7 \
+#     KICK_NITER=250 KICK_GROUPING="4;2" RTAG=_mix PACK_H5=0 bash campaign/run_thin_atomfind.sh
 # Then (when done): extract each PSF and run atomfind (see the echo at the end).
 set -euo pipefail
 REPO_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"; cd "${REPO_DIR}"; mkdir -p logs
@@ -233,6 +236,14 @@ recon_job(){ # $1 name $2 datadir $3 bin $4 nl $5 dep -> jobid  (true probe fixe
 KICK_LABELS="${KICK_LABELS:-}"; KICK="${KICK:-1.05}"; KICK_MODES="${KICK_MODES:-3}"; KICK_PSTART="${KICK_PSTART:-40}"
 KICK_PSTART2="${KICK_PSTART2:-20}"; KICK_GROUPING="${KICK_GROUPING:-8;4}"; KICK_RTIME="${KICK_RTIME:-48:00:00}"
 KICK_NITER="${KICK_NITER:-}"
+# KICK_START=mixed (2026-10-14): every kick leg starts from the MIXED STATE of its own sim instead of the tableau probe --
+# the top KICK_MODES eigenmodes of the focal spread / source size in its sim_meta.mat, on the true probe
+# (sim/make_mixed_probe.py, run in the job via PROBE_MIXED), so no mode starts at the 2 % seed. Needs a coherence setting;
+# not with an outer search (that one chooses C1 / C3 of a coherent start). KICK is then unused.
+KICK_START="${KICK_START:-tableau}"
+case "$KICK_START" in tableau) ;; mixed) [ -n "$COH_EXP" ] \
+    || { echo "KICK_START=mixed needs a coherence setting (FOCAL_SPREAD / ENERGY_SPREAD_EV+CC_MM / SOURCE_FWHM)" >&2; exit 1; };;
+    *) echo "KICK_START=${KICK_START}: tableau or mixed" >&2; exit 1;; esac
 # KICK_MODES / KICK_NITER / KICK_GROUPING may be LISTS (2026-10-04), e.g. KICK_MODES="3 6" KICK_NITER="500 250"
 # KICK_GROUPING="8;4 4;2": one kick leg per KICK_MODES entry, tagged _m<modes> when there is more than one (a single entry
 # keeps the old names); a missing KICK_NITER / KICK_GROUPING entry falls back to NITER / the first grouping. Time scales
@@ -253,6 +264,7 @@ kick_job(){ # $1 name $2 sim dir $3 bin $4 nl $5 dep $6 c1 $7 c3 $8 modes $9 nit
     rm -f "${rdir:?}/01/probe_initial.mat" "${rdir:?}/01/probe_initial.json"
     local start k1 k3
     if [ -n "$from" ]; then start="PROBE_FROM=${from}"
+    elif [ "$KICK_START" = mixed ]; then start="PROBE_MIXED=${modes}"
     else k1=$(awk "BEGIN{printf \"%.4f\", ${c1}*${KICK}}"); k3=$(awk "BEGIN{printf \"%.2f\", ${c3}*${KICK}}"); start="PROBE_C1=${k1},PROBE_C3=${k3}"; fi
     local cls da; cls="$(res_class "$bin")"; da=$(dep_arg_for "$dep")
     # PROBE_SCALE rides in the environment (its value holds '='), as ABERRATIONS_JSON does for the sims
@@ -288,6 +300,7 @@ SEARCH_MEM="${SEARCH_MEM:-}"; SEARCH_RTIME="${SEARCH_RTIME:-04:00:00}"; FIXED_TW
 SEARCH=0
 if [ -n "${SEARCH_C1F}${SEARCH_C3F}" ]; then
     SEARCH=1; SEARCH_C1F="${SEARCH_C1F:-1}"; SEARCH_C3F="${SEARCH_C3F:-1}"
+    [ "$KICK_START" = tableau ] || { echo "SEARCH chooses a coherent start's C1 / C3: not with KICK_START=${KICK_START}" >&2; exit 1; }
     [ "${MODES%% *}" = lab ] || { echo "SEARCH needs MODES to start with lab (Pb and Ti take the lab leg's answer)" >&2; exit 1; }
     [ -x "${PYBIN}" ] || { echo "SEARCH set but no abtem env python at ${PYBIN} (campaign/select_trial.py)" >&2; exit 1; }
 fi

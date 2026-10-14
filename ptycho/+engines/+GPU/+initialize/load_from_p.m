@@ -247,7 +247,15 @@ function [self, param, p] = load_from_p(param, p)
         self.probe_support_fft = max(0, min(1, self.probe_support_fft)); 
         verbose(1, 'Using farfield probe support constraint')
     elseif check_option(p,'probe_support_tem')  % TEM aperture mask by Zhen Chen
-        mask_dp=abs(fft2(p.probe_initial));
+        if size(p.probe_initial,3) * size(p.probe_initial,4) > 1
+            % a multi-mode start (sim/make_mixed_probe.py, N x N x 1 x M): ONE aperture mask from the modes' total
+            % far-field intensity. Per mode, a higher mode's nodes would cut holes in the aperture, and a 4-D mask
+            % stops the custom_data_flip permute below. A single probe keeps the line in the else branch. (2026-10-14)
+            pf = abs(fft2(p.probe_initial)).^2;
+            mask_dp = sqrt(sum(reshape(pf, size(pf,1), size(pf,2), []), 3));
+        else
+            mask_dp=abs(fft2(p.probe_initial));
+        end
         mask_dp(mask_dp>1.0)=1;
         mask_dp(mask_dp<0.1)=0;
         % Stored CENTRED (zero frequency at the array centre), like the default far-field support above.

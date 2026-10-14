@@ -58,6 +58,11 @@ echo "SIM_BASE : ${SIM_BASE}"
 echo "NLAYERS  : ${NLAYERS}"
 echo "GPU      : ${CUDA_VISIBLE_DEVICES:-<unset>}"
 
+# one start probe only: a mixed-state start (PROBE_MIXED, below) excludes the C1 writer's (PROBE_C1 / PROBE_FROM)
+if [ -n "${PROBE_MIXED:-}" ] && [ -n "${PROBE_C1:-}${PROBE_FROM:-}" ]; then
+    echo "PREFLIGHT FAIL: PROBE_MIXED with PROBE_C1 / PROBE_FROM (one start probe)"; exit 1
+fi
+
 # --- optional: the START probe from an OUTER SEARCH (campaign/run_thin_atomfind.sh SEARCH_*, 2026-10-04). PROBE_FROM is
 # the search's search_best.txt ("<C1 A> <C3 A>"), written by campaign/select_trial.py once every trial had ended; its
 # values become this job's PROBE_C1 / PROBE_C3 and the writer below builds the probe from them. A missing or empty file
@@ -92,6 +97,20 @@ if [ -n "${PROBE_C1:-}" ]; then
     ( module load CUDA/12.6.0 >/dev/null 2>&1 || echo "PROBE    : (CUDA module not loaded; writer runs on CPU anyway)"
       "${PYBIN}" "${REPO_DIR}/sim/make_probe.py" "${PW_ARG[@]}" ) \
         || { echo "PREFLIGHT FAIL: probe writer failed (see above)" >&2; exit 1; }
+fi
+
+# --- optional: a MULTI-MODE start (2026-10-14, aberration_experiment/mono300/PHASE1.md). PROBE_MIXED=<modes> writes
+# ${SIM_BASE}01/probe_initial.mat as the top <modes> eigenmodes of the partially coherent state the sim's own sim_meta.mat
+# describes (focal spread, source size), built on probe_initial_true.mat (sim/make_mixed_probe.py; numpy/scipy only), so
+# prepare_initial_probes keeps those modes instead of seeding Hermite modes at mode_start_pow 0.02. PROBE_MODES must equal it.
+if [ -n "${PROBE_MIXED:-}" ]; then
+    [ "${PROBE_MIXED}" = "${PROBE_MODES:-1}" ] \
+        || { echo "PREFLIGHT FAIL: PROBE_MIXED=${PROBE_MIXED} modes but PROBE_MODES=${PROBE_MODES:-1}"; exit 1; }
+    CONDA_ENV="${CONDA_ENV:-$SHARE/phucrh/envs/abtem}"; PYBIN="${CONDA_ENV}/bin/python"
+    [ -x "${PYBIN}" ] || { echo "PREFLIGHT FAIL: abtem env python not found at ${PYBIN}" >&2; exit 1; }
+    echo "PROBE    : mixed-state start, ${PROBE_MIXED} modes (sim/make_mixed_probe.py)"
+    "${PYBIN}" "${REPO_DIR}/sim/make_mixed_probe.py" --sim-dir "${SIM_BASE}01" --modes "${PROBE_MIXED}" \
+        --out "${SIM_BASE}01/probe_initial.mat" || { echo "PREFLIGHT FAIL: mixed-state writer failed (see above)" >&2; exit 1; }
 fi
 
 # Preflight: every input must resolve (-e follows symlinks, so a dangling link fails here). Without
