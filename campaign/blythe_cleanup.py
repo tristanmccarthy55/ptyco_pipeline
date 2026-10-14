@@ -96,8 +96,11 @@ class Planner:
         if self.runs is None:
             return "squeue unavailable: cannot check the queue"
         name = os.path.relpath(p, self.repo).split(os.sep)[0]
+        # both directions: a job's run inside the dir name (af_rec_X -> recon_af_X_NL18), and a run that EXTENDS the dir's
+        # own run (af_kick_armf_a080_lab_fs5_mix reads sim_out_af_armf_a080_lab_fs5 -- RTAG / point suffixes grow names)
+        core = re.sub(r"(_t\d+)?_NL\d+$", "", re.sub(r"^(sim_out|recon|search)_af_", "", name))
         for r in self.runs:
-            if r in name:
+            if r in name or r == core or r.startswith(core + "_"):
                 return f"a queued / running job names it ({r})"
         return ""
 

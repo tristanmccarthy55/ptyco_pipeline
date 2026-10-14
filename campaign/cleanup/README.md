@@ -12,7 +12,8 @@ One set of files per clean-up, named by date. `campaign/blythe_disk_survey.py` m
 | `2026-10-14_archive.txt` | 44 files (19 GB) with NO copy elsewhere, packed into one tar and pulled before anything goes: 28 tarballs never pulled, and the 16 reconstruction h5s whose probe was RECOVERED (kick, refined, true start, long kicks: the probe exists nowhere else) |
 | `2026-10-14_archived.tsv` | written once the pulled archive is verified on the Mac; the archived files then join the clean-up |
 
-Kept on Blythe: the raw sims of the four phase-1 points that failed (focal spread 5 and 7.29 Å, source 0.2 and 0.4 Å),
+Kept on Blythe (agreed with the step-2 session): the raw sims of the four phase-1 points that failed (focal spread 5 and
+7.29 Å, source 0.2 and 0.4 Å) until their _mix legs finish, and every joint sim (`*_fs*_src*`, never named by a rule),
 which the probe-mode legs reuse; every reconstruction h5 with a known or fixed probe (~84 GB; their volumes, kernels and
 atoms are in the pulled analysis tarballs); checkpoints in recon dirs that have no h5; the analysis dirs (kernel
 fallbacks); envs, dft-relax, eels, fold_slice.
