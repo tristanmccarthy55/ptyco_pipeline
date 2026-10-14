@@ -1,4 +1,5 @@
 --pulled=campaign/cleanup/2026-10-14_on_mac.tsv
+--pulled=campaign/cleanup/2026-10-14_archived.tsv
 --raw=sim_out_af_armf_a080_*_fs0p75
 --raw=sim_out_af_armf_a080_*_fs1p5
 --raw=sim_out_af_armf_a080_*_fs2p5
