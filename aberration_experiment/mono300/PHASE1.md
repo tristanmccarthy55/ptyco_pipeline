@@ -46,6 +46,13 @@ Both references reproduce the page's numbers (coherent 90/58, `_coh` 23/7).
 
 ## Step 2 (handed over 2026-10-14): joint points + probe-mode legs from the mixed state
 
+**SUBMITTED 2026-10-14 20:58** (log `logs/phase1_step2_20261014_205843.txt` on Blythe; both dry runs passed; all four
+mode points reused their step-1 sims). A joint, fixed: fs2p5_src0p1 sims 1323755/57/59, recons 1323756/58/60, pack
+1323761, analysis 1323762 · fs2p5_src0p2 1323763/65/67, 1323764/66/68, 1323769, 1323770 · fs3p5_src0p1 1323771/73/75,
+1323772/74/76, 1323777, 1323778 · fs3p5_src0p2 1323779/81/83, 1323780/82/84, 1323785, 1323786. B mode legs (lab/Pb/Ti),
+pack, analysis: fs5 1323787/88/89, 1323790, 1323791 · fs7p29 1323792/93/94, 1323795, 1323796 · src0p2 1323797/98/99,
+1323800, 1323801 · src0p4 1323802/03/04, 1323805, 1323806. Pull to `~/Desktop/mono_phase1/{results,analysis}`.
+
 One script, `phase1_step2_submit.sh` (stub dry run: 55 sbatch calls; guards: exported job variables, both dry runs, half-
 deleted sims). **A, joint points** (true probe fixed, new sims kept, `_<point>_fixed`): focal spread 2.5 and 3.5 A, each
 with a 0.1 and a 0.2 A source -- a real instrument has both at once. Submitted first. **B, mode legs** (`_<point>_mix`):
