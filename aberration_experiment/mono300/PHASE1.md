@@ -67,6 +67,7 @@ falls to 2.88 at the end of the presolve, below the control's final 3.49 -- the 
 the single-mode one.** Retry: `phase1_step2_retry.sh` resubmits only the dead legs with their point's settings (one
 operator per point), cancels the three original analyses and chains new ones on both packs. If a retried leg dies again,
 rerun that point's three legs at a larger grouping (e.g. `16;8`: 4;2 used only ~6-7 GB of 47.7).
+**Retry SUBMITTED 2026-10-15 13:35** (log `logs/phase1_step2_retry_20261015_133450.txt`): fs5 Pb/Ti 1325696/97, pack 1325698, analysis 1325699 (waits on 1325698 + 1323790) · src0p2 Ti 1325700, pack 1325701, analysis 1325702 (+ 1323800) · src0p4 lab 1325703, pack 1325704, analysis 1325705 (+ 1323805). Original analyses 1323791 / 1323801 / 1323806 cancelled. Current analyses for step 2: 1323762/70/78/86 (joint), 1323796 (fs7p29), 1325699/702/705.
 
 One script, `phase1_step2_submit.sh` (stub dry run: 55 sbatch calls; guards: exported job variables, both dry runs, half-
 deleted sims). **A, joint points** (true probe fixed, new sims kept, `_<point>_fixed`): focal spread 2.5 and 3.5 A, each
