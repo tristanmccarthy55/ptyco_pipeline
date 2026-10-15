@@ -1,0 +1,44 @@
+# The Coherence Wall page — how to fill it in and republish
+
+PUBLISHED: https://claude.ai/artifact/B7ep8BpAMVdKvrnXywACq3 (version 1, 2026-10-15: step 1 in full; step 2's joint
+points and probe-mode legs pending). Local copy of each published version: `PtycoShelves/artifacts/wcm_2026-10-12_coherence_wall.html`.
+
+The 300 kV monochromated-microscope results (phase 1, `aberration_experiment/mono300/PHASE1.md`), built the same way as
+the ARM page (`ARM_PAGE.md`): generated from the run outputs, never hand-edited. It imports `analysis/make_arm_page.py`
+for the atom scores, verdicts, depth sections, tab viewer and its template's CSS, so the two pages stay one system.
+
+| file | what it is |
+|---|---|
+| `aberration_experiment/page/mono_results.json` | the run list: tag, leg, group (section), focal spread / source, pending text; the instrument table with sources |
+| `analysis/make_mono_page.py` | builds every figure into `aberration_experiment/figs/mono_page/` and writes the page |
+| `aberration_experiment/page/mono_2026-10-12.html` | the template: prose, `{{...}}` slots, `FILL` blocks for step 2 |
+| `aberration_experiment/page/built/mono_page_built.html` | the page to publish (gitignored) |
+
+## When step 2 lands
+
+1. **Pull** into `~/Desktop/mono_phase1` with the pull blocks in PHASE1.md; extract every tarball (analysis into
+   `analysis/`, atomfind_results into `results/`).
+2. **See what landed:** `~/hyperspy-bundle/bin/python analysis/make_mono_page.py --list`.
+3. **Rebuild:** `~/hyperspy-bundle/bin/python analysis/make_mono_page.py` (about 15 s; prints the size, stay under 16 MB).
+   Landed runs fill the joint grid (§05), the mode table, mode-power figure and strip (§06), the diamonds on the wall
+   figure, and the status ledger, with no edits.
+4. **Look first** (the user's rule): the strips and tabs of the new runs, then `figs/mono_page/fig_modes.png`. If the
+   recovered mode powers collapsed onto mode 1, the reconstruction left the mixed state: say so before reading the atoms.
+5. **Write** the `FILL` blocks (`grep -n FILL aberration_experiment/page/mono_2026-10-12.html`): headline (§01), joint (§05),
+   modes (§06), discussion (§08); replace the matching `call pending` box. Short, plain, numbers from the tables.
+6. **Rebuild and republish** with the Artifact tool, `url` = the PUBLISHED url above (a conversation that did not publish
+   it reads it first), no `icon`. Copy the built page over the local copy in `PtycoShelves/artifacts/`.
+7. **Commit** the template, run list, script and the `figs/mono_page/fig_*.png` print copies (not `built/`, not `row_*.png`).
+
+## Adding a run
+
+Add it to `runs` in the run list with its `group` (`focal`, `source`, `joint`, `modes`, or `ref`), `fs` and `src`; a
+`modes` run also takes `control` (its fixed-probe twin) and `modes`. Phase 2 (phonons) will want a new group and section.
+
+## Numbers the page computes
+
+- **strongest mode**: the largest eigenvalue share of the simulator's own 16-configuration state (seed 7), from
+  `mono300/mode_spectrum.py`'s own functions (its print loop is skipped).
+- **vacuum / slab**: rms phase per slice in the two 4 Å vacuum bands over that in the slab (coherent reference 0.31).
+- **instrument ranges**: `simulate_4dstem`'s focal-spread formula on the run list's energy spreads and Cc values.
+- The wall's edges (last good, first off) and the energy spread for good are read from the verdicts, not typed.

@@ -1,0 +1,41 @@
+{
+ "about": "Run list for the Coherence Wall page (analysis/make_mono_page.py). fs / src = the run's focal spread (A rms) and source FWHM (A); group = the page section; control = the fixed-probe run a mode leg is compared with; modes = its probe modes. 'pending' is shown until the run's analysis has been pulled into a search folder.",
+ "search_dirs": [
+  "~/Desktop/mono_phase1",
+  "~/Desktop/arm_block2",
+  "~/Desktop/arm_split"
+ ],
+ "reference": "known_a080",
+ "runs": {
+  "known_a080": {"tag": ["armf_a080"], "leg": "armf_a080_lab", "short": "coherent", "name": "coherent beam, true probe fixed (ARM page reference)", "fs": 0, "src": 0, "group": "ref"},
+  "cold_feg": {"tag": ["armf_a080_coh"], "leg": "armf_a080_lab_coh", "short": "cold FEG", "name": "the cold FEG: 0.3 eV through Cc 1.4 mm (7.29 A rms) and a 0.4 A source, true probe fixed (ARM page, §6)", "fs": 7.29, "src": 0.4, "group": "ref"},
+  "fs0p75": {"tag": ["armf_a080_fs0p75_fixed"], "leg": "armf_a080_lab_fs0p75_fixed", "short": "0.75 Å", "name": "focal spread 0.75 A rms, true probe fixed", "fs": 0.75, "src": 0, "group": "focal"},
+  "fs1p5": {"tag": ["armf_a080_fs1p5_fixed"], "leg": "armf_a080_lab_fs1p5_fixed", "short": "1.5 Å", "name": "focal spread 1.5 A rms, true probe fixed", "fs": 1.5, "src": 0, "group": "focal"},
+  "fs2p5": {"tag": ["armf_a080_fs2p5_fixed"], "leg": "armf_a080_lab_fs2p5_fixed", "short": "2.5 Å", "name": "focal spread 2.5 A rms, true probe fixed", "fs": 2.5, "src": 0, "group": "focal"},
+  "fs3p5": {"tag": ["armf_a080_fs3p5_fixed"], "leg": "armf_a080_lab_fs3p5_fixed", "short": "3.5 Å", "name": "focal spread 3.5 A rms, true probe fixed", "fs": 3.5, "src": 0, "group": "focal"},
+  "fs5": {"tag": ["armf_a080_fs5_fixed"], "leg": "armf_a080_lab_fs5_fixed", "short": "5 Å", "name": "focal spread 5 A rms, true probe fixed", "fs": 5, "src": 0, "group": "focal"},
+  "fs7p29": {"tag": ["armf_a080_fs7p29_fixed"], "leg": "armf_a080_lab_fs7p29_fixed", "short": "7.29 Å", "name": "focal spread 7.29 A rms, true probe fixed", "fs": 7.29, "src": 0, "group": "focal"},
+  "src0p05": {"tag": ["armf_a080_src0p05_fixed"], "leg": "armf_a080_lab_src0p05_fixed", "short": "0.05 Å", "name": "source 0.05 A FWHM, true probe fixed", "fs": 0, "src": 0.05, "group": "source"},
+  "src0p1": {"tag": ["armf_a080_src0p1_fixed"], "leg": "armf_a080_lab_src0p1_fixed", "short": "0.1 Å", "name": "source 0.1 A FWHM, true probe fixed", "fs": 0, "src": 0.1, "group": "source"},
+  "src0p2": {"tag": ["armf_a080_src0p2_fixed"], "leg": "armf_a080_lab_src0p2_fixed", "short": "0.2 Å", "name": "source 0.2 A FWHM, true probe fixed", "fs": 0, "src": 0.2, "group": "source"},
+  "src0p4": {"tag": ["armf_a080_src0p4_fixed"], "leg": "armf_a080_lab_src0p4_fixed", "short": "0.4 Å", "name": "source 0.4 A FWHM, true probe fixed", "fs": 0, "src": 0.4, "group": "source"},
+  "fs2p5_src0p1": {"tag": ["armf_a080_fs2p5_src0p1_fixed"], "leg": "armf_a080_lab_fs2p5_src0p1_fixed", "short": "2.5 Å + 0.1 Å", "name": "focal spread 2.5 A + source 0.1 A, true probe fixed", "fs": 2.5, "src": 0.1, "group": "joint", "pending": "submitted 2026-10-14: sims 1323755/57/59, recons 1323756/58/60, analysis 1323762; pull to ~/Desktop/mono_phase1"},
+  "fs2p5_src0p2": {"tag": ["armf_a080_fs2p5_src0p2_fixed"], "leg": "armf_a080_lab_fs2p5_src0p2_fixed", "short": "2.5 Å + 0.2 Å", "name": "focal spread 2.5 A + source 0.2 A, true probe fixed", "fs": 2.5, "src": 0.2, "group": "joint", "pending": "submitted 2026-10-14: sims 1323763/65/67, recons 1323764/66/68, analysis 1323770; pull to ~/Desktop/mono_phase1"},
+  "fs3p5_src0p1": {"tag": ["armf_a080_fs3p5_src0p1_fixed"], "leg": "armf_a080_lab_fs3p5_src0p1_fixed", "short": "3.5 Å + 0.1 Å", "name": "focal spread 3.5 A + source 0.1 A, true probe fixed", "fs": 3.5, "src": 0.1, "group": "joint", "pending": "submitted 2026-10-14: sims 1323771/73/75, recons 1323772/74/76, analysis 1323778; pull to ~/Desktop/mono_phase1"},
+  "fs3p5_src0p2": {"tag": ["armf_a080_fs3p5_src0p2_fixed"], "leg": "armf_a080_lab_fs3p5_src0p2_fixed", "short": "3.5 Å + 0.2 Å", "name": "focal spread 3.5 A + source 0.2 A, true probe fixed", "fs": 3.5, "src": 0.2, "group": "joint", "pending": "submitted 2026-10-14: sims 1323779/81/83, recons 1323780/82/84, analysis 1323786; pull to ~/Desktop/mono_phase1"},
+  "fs5_mix": {"tag": ["armf_a080_fs5_mix"], "leg": "armf_a080_lab_fs5_mix", "short": "5 Å, modes", "name": "focal spread 5 A, probe modes from the mixed state", "fs": 5, "src": 0, "group": "modes", "control": "fs5", "modes": 7, "pending": "lab leg 1323787; Pb / Ti legs resubmitted 2026-10-15 (1325696/97) after the first tries stopped at a NaN; analysis 1325699; pull to ~/Desktop/mono_phase1"},
+  "fs7p29_mix": {"tag": ["armf_a080_fs7p29_mix"], "leg": "armf_a080_lab_fs7p29_mix", "short": "7.29 Å, modes", "name": "focal spread 7.29 A, probe modes from the mixed state", "fs": 7.29, "src": 0, "group": "modes", "control": "fs7p29", "modes": 8, "pending": "legs 1323792/93/94 running; analysis 1323796; pull to ~/Desktop/mono_phase1"},
+  "src0p2_mix": {"tag": ["armf_a080_src0p2_mix"], "leg": "armf_a080_lab_src0p2_mix", "short": "0.2 Å, modes", "name": "source 0.2 A, probe modes from the mixed state", "fs": 0, "src": 0.2, "group": "modes", "control": "src0p2", "modes": 8, "pending": "lab / Pb legs 1323797/98; Ti leg resubmitted 2026-10-15 (1325700); analysis 1325702; pull to ~/Desktop/mono_phase1"},
+  "src0p4_mix": {"tag": ["armf_a080_src0p4_mix"], "leg": "armf_a080_lab_src0p4_mix", "short": "0.4 Å, modes", "name": "source 0.4 A, probe modes from the mixed state", "fs": 0, "src": 0.4, "group": "modes", "control": "src0p4", "modes": 8, "pending": "Pb / Ti legs 1323803/04; lab leg resubmitted 2026-10-15 (1325703); analysis 1325705; pull to ~/Desktop/mono_phase1"}
+ },
+ "instruments": [
+  {"name": "JEOL ARM200F, cold FEG (the ARM page's baseline)", "dE": [0.3, 0.3], "cc": [1.4, 1.4], "src": "0.3 eV; total Cc 1.42 mm for a CEOS-corrected JEOL with the URP pole piece (Müller et al. 2006)"},
+  {"name": "Titan 80-300 / Titan Themis, X-FEG + Wien monochromator", "dE": [0.1, 0.3], "cc": [2.4, 2.4], "src": "0.3 eV spec, ~0.25 eV at Leeds, ~0.1 eV at some sites; total Cc 2.4 mm for the Titan with its CESCOR (Müller et al. 2006); a DCOR Themis's Cc not found"},
+  {"name": "Spectra 300, X-FEG Mono", "dE": [0.09, 0.2], "cc": [1.4, 2.4], "src": "< 0.2 eV spec (Thermo Fisher DS0297); 90 meV quoted by Cambridge; Cc not published, so 1.4-2.4 mm"},
+  {"name": "Spectra 300, X-FEG UltiMono", "dE": [0.03, 0.055], "cc": [1.4, 2.4], "src": "< 55 meV at 300 kV spec; < 30 meV quoted by Imperial; Cc 1.4-2.4 mm"},
+  {"name": "Spectra 300, X-CFEG (no monochromator)", "dE": [0.31, 0.39], "cc": [1.4, 2.4], "src": "0.31-0.39 eV (datasheet); Cc 1.4-2.4 mm"},
+  {"name": "X-FEG without a monochromator", "dE": [0.7, 0.7], "cc": [1.4, 2.4], "src": "~0.7 eV; Cc 1.4-2.4 mm"}
+ ],
+ "real_source_A": [0.24, 0.6],
+ "real_source_note": "effective source size at the specimen, 24-26 pm (CEOS improved design, maximum current) to 45-60 pm (CESCOR example): Müller et al. 2006"
+}
