@@ -53,6 +53,21 @@ mode points reused their step-1 sims). A joint, fixed: fs2p5_src0p1 sims 1323755
 pack, analysis: fs5 1323787/88/89, 1323790, 1323791 · fs7p29 1323792/93/94, 1323795, 1323796 · src0p2 1323797/98/99,
 1323800, 1323801 · src0p4 1323802/03/04, 1323805, 1323806. Pull to `~/Desktop/mono_phase1/{results,analysis}`.
 
+**2026-10-15: 4 of the 12 mode legs died in their first 1-3 presolve iterations** (Pb + Ti fs5, Ti src0p2, lab src0p4:
+"Convergence failed, error contains NaNs", LSQML line 224); 8 run (past the probe release and into the full engine). Not
+VRAM (6.2-7.0 of 47.7 GB used) and not a node (each failed node also runs a healthy leg). The start is right: the
+simulator's own defocused probe equals the writer's construction to overlap 1.000000. Likely cause, in the engine: LSQML
+takes the step length from MODE 1 ALONE (`if ll == 1` -> gradient_projection_solver on chi{1}, probe{1}) and divides
+the object step by the number of modes (`beta_object / par.probe_modes`). Harmless with 2 % seeds (mode 1 held 86-98 %);
+with a real mixed state (mode 1 at 9-43 %) the step is fitted on a weak signal -> ill-conditioned for sparse grid objects
+in small batches, stochastically (batches are shuffled). It also slows the object before the probe is released: lab fs5
+mode leg 30.8 -> 18.4 over iterations 1-36 (probe fixed) against its fixed control's 14.2 -> 5.2; after the release it
+falls to 2.88 at the end of the presolve, below the control's final 3.49 -- the modes do carry the coherence.
+**Interpretation caveat for every mode leg (this campaign's earlier ones too, e.g. `_true4`): the object step is 1/M of
+the single-mode one.** Retry: `phase1_step2_retry.sh` resubmits only the dead legs with their point's settings (one
+operator per point), cancels the three original analyses and chains new ones on both packs. If a retried leg dies again,
+rerun that point's three legs at a larger grouping (e.g. `16;8`: 4;2 used only ~6-7 GB of 47.7).
+
 One script, `phase1_step2_submit.sh` (stub dry run: 55 sbatch calls; guards: exported job variables, both dry runs, half-
 deleted sims). **A, joint points** (true probe fixed, new sims kept, `_<point>_fixed`): focal spread 2.5 and 3.5 A, each
 with a 0.1 and a 0.2 A source -- a real instrument has both at once. Submitted first. **B, mode legs** (`_<point>_mix`):

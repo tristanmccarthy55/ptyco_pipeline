@@ -13,7 +13,7 @@ LEAK=""
 for v in $(grep -ohE '\$\{[A-Z][A-Z0-9_]*:[-+=?]' campaign/run_thin_atomfind.sh campaign/run_analysis.sh \
            | sed -E 's/^\$\{([A-Z0-9_]+).*/\1/' | sort -u); do
   case "$v" in SHARE|CONDA_ENV) continue;; esac              # where the share and the python env are: meant to be set
-  [ -n "${!v+x}" ] && LEAK="${LEAK} ${v}=${!v}"
+  printenv "$v" >/dev/null && LEAK="${LEAK} ${v}=$(printenv "$v")"   # EXPORTED only: that is what reaches the jobs
 done
 [ -z "$LEAK" ] || { echo "NOT SUBMITTED: your shell exports driver variables:${LEAK} -- unset them or open a new shell"; exit 1; }
 T=$(bash campaign/test_coh_names.sh); echo "$T" | grep -v '^ok'
