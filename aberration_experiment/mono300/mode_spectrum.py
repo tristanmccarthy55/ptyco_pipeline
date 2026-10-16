@@ -47,10 +47,11 @@ def need(w, f):
     return int(np.searchsorted(np.cumsum(w), f) + 1)
 
 print(f"lambda {LAM:.5f} A, kmax {kmax:.3f} 1/A, aperture px {ap.sum()}")
-print(f"{'point':<14}{'state':<6}{'top 6 occupancies':<44}{'n90':>5}{'n95':>5}{'n99':>5}")
+print(f"{'point':<16}{'state':<6}{'top 6 occupancies':<44}{'n90':>5}{'n95':>5}{'n99':>5}")
 pts = [("fs 7.29", 7.29, 0), ("fs 5", 5, 0), ("fs 3.5", 3.5, 0), ("fs 2.5", 2.5, 0), ("fs 1.5", 1.5, 0),
-       ("fs 0.75", 0.75, 0), ("src 0.05", 0, 0.05), ("src 0.1", 0, 0.1), ("src 0.15", 0, 0.15), ("src 0.2", 0, 0.2), ("src 0.4", 0, 0.4), ("src 0.8", 0, 0.8), ("_coh 7.29+0.4", 7.29, 0.4)]
+       ("fs 0.75", 0.75, 0), ("src 0.05", 0, 0.05), ("src 0.1", 0, 0.1), ("src 0.15", 0, 0.15), ("src 0.2", 0, 0.2), ("src 0.4", 0, 0.4), ("src 0.8", 0, 0.8), ("_coh 7.29+0.4", 7.29, 0.4),
+       ("fs 2.5+src 0.1", 2.5, 0.1), ("fs 2.5+src 0.2", 2.5, 0.2), ("fs 3.5+src 0.1", 3.5, 0.1), ("fs 3.5+src 0.2", 3.5, 0.2)]
 for name, fs, src in pts:
     for tag, fn in (("sim16", offsets_sim), ("cont", offsets_cont)):
         w = spectrum(*fn(fs, src))
-        print(f"{name:<14}{tag:<6}{' '.join(f'{x:.3f}' for x in w[:6]):<44}{need(w, .90):>5}{need(w, .95):>5}{need(w, .99):>5}")
+        print(f"{name:<16}{tag:<6}{' '.join(f'{x:.3f}' for x in w[:6]):<44}{need(w, .90):>5}{need(w, .95):>5}{need(w, .99):>5}")

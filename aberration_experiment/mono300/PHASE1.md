@@ -96,6 +96,34 @@ What to judge: the mode legs against their fixed controls (step 1 above) on hone
 recovered mode powers against the start's (kick/*.json `start_mode_power`): if they collapsed back toward one mode, the
 reconstruction left the mixed state -- say so before blaming the physics.
 
+## Step 2 results (2026-10-16; joint points complete, modes partial; phase images viewed)
+
+`phase1_look.py` (now step 1 + 2) -> `phase1_scores.json`, `figs/mono300/phase1_joint.png`, `phase1_modes.png`; mode 1 =
+the sim's 16-configuration first-mode share (`mode_spectrum.txt`, joint rows added; the earlier rows unchanged).
+
+| run | mode 1 | Pb right / guess | Ti right / guess | vacuum / slab | verdict |
+|---|---|---|---|---|---|
+| fs 2.5 + src 0.1, fixed | 0.43 | 91 / 26 | 60 / 18 | 0.41 | good |
+| fs 2.5 + src 0.2, fixed | 0.26 | 45 / 29 | 38 / 20 | 0.47 | off |
+| fs 3.5 + src 0.1, fixed | 0.36 | 72 / 27 | 42 / 19 | 0.54 | okay |
+| fs 3.5 + src 0.2, fixed | 0.23 | 43 / 31 | 40 / 20 | 0.61 | off |
+| fs 7.29, fixed (step 1) | 0.30 | 31 / 24 | 15 / 15 | 1.03 | off |
+| **fs 7.29, probe modes** | 0.30 | **70 / 28** | 32 / 20 | **0.49** | **okay** |
+| src 0.2, probe modes (lab only) | 0.26 | no Ti kernel | | 0.34 | not scored |
+
+- **The two effects compound.** fs 2.5 A is good and src 0.2 A okay on their own; together off (Pb 45 %). A 0.1 A source
+  keeps fs 2.5 good and drops fs 3.5 to okay. Joint points fail like the source alone (smooth leaning streaks, vacuum
+  fairly clean), with the focal spread's vacuum loading growing on top at 3.5 A.
+- **Probe modes move the focal-spread wall.** At 7.29 A the mode leg is okay (Pb 70 vs 28 guessing) where its fixed control
+  is off (31 vs 24); the vacuum loading halves (1.03 -> 0.49) and the columns show discrete Pb sites again. Ti 32 % is
+  still short of "good" (45 %). The recovered state stayed mixed: mode powers 0.32/0.26/0.19/0.12 at the start ->
+  0.43/0.19/0.15/0.11 (truth 0.30/0.25/0.19/0.12). eps 0.0109 against the fixed control's 0.0286.
+- src 0.2 A with modes: the lab leg looks cleaner than its control (vacuum 0.34, eps 0.0097 vs 0.0197) and drifted
+  further toward one mode (0.31 -> 0.58, truth 0.26); its Ti kernel leg died, so no atoms yet.
+- **The retry repeated the failures**: Pb fs5 (3 it), Ti src0p2 (6 it), lab src0p4 (0 it) NaN'd again, so those legs are
+  not stochastic but close to deterministic; Ti fs5 (1325697) runs. The shuffled-batch explanation was wrong for them; the
+  ill-conditioned mode-1 step stands.
+
 ## Design
 
 armf_a080 (ARM tableau, 80 mrad, 210 A region, BIN 2, NL 18), noiseless, phonons off, 16 coherence configurations.
