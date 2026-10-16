@@ -139,7 +139,6 @@ def fig_wall(recs, man):
         x = np.array([r[xkey] for r in pts])
         for z, col, nm in ((82, PB, "Pb"), (22, TI, "Ti")):
             ax.plot(x, [pct(r["sc"], z) for r in pts], "-o", color=col, lw=1.8, ms=6, label=f"{nm}, right place", zorder=4)
-            ax.plot(x, [pct(r["sc"], z, "guess") for r in pts], "--", color=col, lw=1.1, alpha=.65, label=f"{nm}, guessing", zorder=3)
             mix = [m for m in recs.values() if m["spec"]["group"] == "modes" and m["found"] and m[xkey] > 0
                    and (m["fs"] == 0 if xkey == "src" else m["src"] == 0)]
             for prov, lab, al in ((False, f"{nm}, probe modes", 1.0), (True, f"{nm}, probe modes (provisional)", .45)):
@@ -160,13 +159,13 @@ def fig_wall(recs, man):
         ax.spines[["top", "right"]].set_visible(False)
     rs = man["real_source_A"]
     axs[1].axvspan(rs[0], rs[1], ymax=100 / 112, facecolor="none", edgecolor="#8a96a3", hatch="////", lw=0, zorder=0)
-    axs[1].text(0.415, 62, "real sources\nat the specimen\n(CEOS 2006)", fontsize=8.5, color=arm.INK2, va="center",
+    axs[1].text(0.415, 62, "typical source size\non real instruments", fontsize=8.5, color=arm.INK2, va="center",
                 bbox=dict(boxstyle="round,pad=0.25", fc="white", ec="none"))
     axs[1].set_xlim(-0.02, rs[1] + 0.02)
-    axs[0].set_xlim(-0.2, 7.6)
+    axs[0].set_xlim(-0.2, 7.95)
     top = axs[0].secondary_xaxis("top", functions=(lambda f: f / (FS_PER_EV_MM * 1.4), lambda e: e * FS_PER_EV_MM * 1.4))
     top.set_xlabel("energy spread through Cc 1.4 mm (eV FWHM)", fontsize=9.5)
-    axs[0].set_ylabel("bulk atoms in the right place (%)")
+    axs[0].set_ylabel("atoms in the right place (%)")
     for ax, t in zip(axs, ("Focal spread alone", "Source size alone")):
         ax.text(0, 1.2, t, transform=ax.transAxes, fontsize=11, ha="left", va="bottom", color=arm.INK)
     h, l = axs[0].get_legend_handles_labels()
@@ -311,14 +310,14 @@ def headline(recs):
     for r in lifted:
         c = recs[r["spec"]["control"]]
         extra.append((f"{setting(r)}: {c['v']} → {r['v']}", f"with probe modes: Pb {pct(c['sc'], 82):.0f} → {pct(r['sc'], 82):.0f} %, "
-                      f"vacuum / slab {c['vac']:.2f} → {r['vac']:.2f}; Ti {pct(r['sc'], 22):.0f} % (good needs 45)"))
+                      f"the vacuum loading halves ({c['vac']:.2f} → {r['vac']:.2f}); Ti {pct(r['sc'], 22):.0f} %, good needs 45"))
     tiles = [(f"{fg:g} → {fo:g} Å", "focal-spread wall (rms): the last good point and the first off"),
              (f"{sg:g} → {so:g} Å", "source-size wall (FWHM)" + "".join(
                  f"; {m['src']:g} Å is {m['v']}: Pb {pct(m['sc'], 82):.0f} %, Ti {pct(m['sc'], 22):.0f} %" for m in smid)),
              (f"≤ {dE14:.2f} eV", f"energy spread for good at Cc 1.4 mm (≤ {dE24:.2f} eV at 2.4 mm)"),
              ("both at once", f"the cold FEG ({cold['fs']:g} Å + {cold['src']:g} Å) failed on each count: Pb {pct(cold['sc'], 82):.0f} % "
                               f"against {pct(cold['sc'], 82, 'guess'):.0f} % by guessing")]
-    tiles = tiles[:3] + extra + tiles[3:]
+    tiles = tiles[:3] + extra
     grid = "".join(f"<div><b>{html.escape(a)}</b><span>{html.escape(b)}</span></div>" for a, b in tiles)
     line = f"alone: focal spread ≤ <em>{fg:g} Å</em>, source ≤ <em>{sg:g} Å</em>"
     if jgood:
@@ -330,24 +329,24 @@ ORDER = {"off": 0, "okay": 1, "good": 2}
 
 
 def status(recs, man):
-    groups = [("Step 1: one effect at a time, true probe fixed", "focal source ref"),
-              ("Step 2A: both at once, true probe fixed", "joint"),
-              ("Step 2B: probe modes started from the mixed state", "modes")]
-    out = []
-    for name, gs in groups:
+    """What has been done: one row per step, what it changes, how many runs are in, and its state."""
+    rows = [("Step 1", "one knob at a time: six focal spreads (0.75–7.29 Å), four source sizes (0.05–0.4 Å)", "true probe, fixed",
+             "focal source"),
+            ("Step 2A", "both knobs together: 2.5 and 3.5 Å, each with a 0.1 and a 0.2 Å source", "true probe, fixed", "joint"),
+            ("Step 2B", "probe modes at four settings: 5 and 7.29 Å focal spread, 0.2 and 0.4 Å source",
+             "released, 7–8 modes, started from a real gun's mixed state", "modes")]
+    trs = []
+    for step, what, probe, gs in rows:
         rs = [r for r in recs.values() if r["spec"]["group"] in gs.split()]
-        pend = [r for r in rs if r["state"] != "in"]
-        ok = len(rs) - len(pend)
-        chip = '<span class="chip c-ok">all in</span>' if not pend else (
-            f'<span class="chip c-warn">{len(pend)} pending</span>' if ok else '<span class="chip c-warn">running</span>')
-        det = "".join(f"<li><b>{html.escape(r['spec']['name'])}</b>"
-                      f"{(' (' + STATE_NOTE[r['state']] + ')') if r['state'] in STATE_NOTE else ''}: "
-                      f"{html.escape(r['spec'].get('pending', 'not landed yet'))}</li>" for r in pend)
-        out.append(f'<div><span class="lg-t">{html.escape(name)}</span>{chip}<span class="lg-d">{ok} of {len(rs)} in'
-                   f'{f"<ul>{det}</ul>" if det else ""}</span></div>')
-    out.append(f'<div><span class="lg-t">Phase 2: temperature</span><span class="chip c-none">not designed</span>'
-               f'<span class="lg-d">{html.escape(man["phase2"])}</span></div>')
-    return f'<div class="ledger">{"".join(out)}</div>'
+        n = sum(r["state"] == "in" for r in rs)
+        chip = '<span class="chip c-ok">done</span>' if n == len(rs) else '<span class="chip c-warn">running</span>'
+        trs.append(f"<tr><td><b>{step}</b></td><td class='wrap'>{html.escape(what)}</td><td class='wrap'>{html.escape(probe)}</td>"
+                   f"<td>{n} of {len(rs)}</td><td>{chip}</td></tr>")
+    trs.append("<tr><td><b>Phase 2</b></td><td class='wrap'>phonons: room temperature, 100 K and colder, at the settings that "
+               "survive</td><td class='wrap'>–</td><td>–</td><td><span class='chip c-none'>not designed</span></td></tr>")
+    return arm.table(["", "what changes", "probe", "runs in", ""], trs,
+                     "Every run: 300 kV, 80 mrad, no phonons, no shot noise. Step 2B's three unfinished points are rerunning with "
+                     "larger groups (§05).")
 
 
 def joint_grid(recs):
@@ -372,7 +371,7 @@ def joint_grid(recs):
         trs.append(f"<tr><td><b>{'no spread' if f == 0 else f'{f:g} Å'}</b></td>{''.join(tds)}</tr>")
     head = ["focal spread ↓ · source →", *[("no source" if s == 0 else f"{s:g} Å") for s in srcs]]
     return arm.table(head, trs, "Edges: step 1 (one effect at a time). Inside: step 2A, both at once. Bulk atoms in the right "
-                     "place; verdict as in §02. The strongest-mode share is computed for every cell, landed or not.")
+                     "place; verdict as in §01. The strongest-mode share is computed for every cell, landed or not.")
 
 
 def modes_table(recs):

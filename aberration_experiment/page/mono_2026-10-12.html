@@ -9,28 +9,26 @@
   .spec.wall { border-left-color: var(--warn); }
   .spec.wall .spec-v em { color: var(--warn); }
   td.wrap .muted-s { display: inline-block; margin-top: 2px; }
+  ul.found li { margin-bottom: 5px; }
 </style>
 <header class="mast">
   <div class="mast-in"><div class="mast-col">
     <div class="eyebrow">300 kV monochromated microscope · phase 1: partial coherence · week of 2026-10-12 · for the meeting of 2026-10-16</div>
     <h1>The Coherence Wall</h1>
     <p class="standfirst">
-      How coherent must the beam be for depth-resolved multislice ptychography at 300 kV and 80 mrad? The ARM200F's
-      aberrations stay as they are. We turn up the spread of focus (what an energy spread does through Cc) and the
-      source size, one at a time and then together, with the probe known, and find where the depth goes.
+      How coherent must the beam be for depth-resolved multislice ptychography at 300 kV and 80 mrad, and which
+      microscopes are coherent enough?
     </p>
     <div class="mast-meta"><span><b>built</b> {{BUILT}}</span><span><b>source</b> analysis/make_mono_page.py</span>
-      <span><b>runs</b> aberration_experiment/page/mono_results.json</span>
       <span><b>previous page</b> <a href="https://claude.ai/artifact/MUkJ7yYrsek3nTLXcZgCrk">ARM200F at 80 mrad</a></span></div>
     <nav class="jump">
       <a href="#s1">This week</a>
-      <a href="#s2">The setup</a>
-      <a href="#s3">Focal spread</a>
-      <a href="#s4">Source size</a>
-      <a href="#s5">Both at once</a>
-      <a href="#s6">Probe modes</a>
-      <a href="#s7">The instruments</a>
-      <a href="#s8">For discussion</a>
+      <a href="#s2">Focal spread</a>
+      <a href="#s3">Source size</a>
+      <a href="#s4">Both at once</a>
+      <a href="#s5">Probe modes</a>
+      <a href="#s6">The instruments</a>
+      <a href="#s7">For discussion</a>
       <a href="#appendix">Every run</a>
       <a href="#reproduce">Reproduce</a>
     </nav>
@@ -40,275 +38,160 @@
 <main>
 
   <section id="s1">
-    <div class="sec-head"><span class="sec-num">01</span><h2>This week: what we did, what we found, what is next</h2></div>
-    <!-- FILL headline (step 2 reruns): when the _mix16 points land, add a clause on whether modes move the wall at
-         5 A and at the 0.2 / 0.4 A sources. Numbers from sec 06's table. -->
+    <div class="sec-head"><span class="sec-num">01</span><h2>This week</h2></div>
+    <!-- FILL headline (step 2 reruns): when the _mix16 points land, add whether modes move the wall at 5 A and at the
+         0.2 / 0.4 A sources. Numbers from sec 05's table. -->
     <div class="spec wall">
       <div class="spec-k">Depth survives, probe known</div>
       <p class="spec-v">{{WALL_LINE}}</p>
-      <p>
-        With the probe known, no phonons and no noise, each effect alone leaves some margin: the depth survives a spread
-        of focus up to 3.5 Å rms or a source up to 0.1 Å. Together the losses compound: a 2.5 Å spread with a 0.1 Å source
-        is still good, but with a 0.2 Å source it is off, though each part passed alone. Releasing the probe with modes
-        moves the wall: at 7.29 Å the result goes from off to okay. Real sources at the specimen are 0.24–0.6 Å, at or past
-        the source wall, so with a realistic source the joint result is the one that counts (§05, §07).
-      </p>
-      <p>
-        Assumptions behind these numbers: the Spectra 300's Cc is unknown (0.2 eV gives 4.9 Å at 1.4 mm and 8.3 Å at
-        2.4 mm); high-tension and lens-current ripple add focal spread on a monochromated beam; the simulated source is the
-        kind case (§04).
-      </p>
+      <p>Each effect alone leaves some margin; together they compound; probe modes win part of it back.</p>
       {{FRAG_HEAD_GRID}}
     </div>
+
+    <h3>Parameters and method</h3>
+    <div class="tablewrap"><table>
+      <tbody>
+        <tr><td>microscope</td><td class="wrap">300 kV, 80 mrad aperture, the ARM200F's measured aberrations (defocus, C3,
+          B2 and A1 retuned for 80 mrad)</td></tr>
+        <tr><td>specimen, scan</td><td class="wrap">PbTiO<sub>3</sub>/SrTiO<sub>3</sub>, 5 unit cells (19.5 Å) with 4 Å of
+          vacuum each side; 20 Å scanned in 0.5 Å steps; detector to 133 mrad</td></tr>
+        <tr class="ref"><td>knob 1: focal spread</td><td class="wrap">The gun's energy spread ΔE passed through the objective
+          lens's chromatic aberration C<sub>c</sub>: electrons of different energy focus at different heights, a spread of
+          defocus of 17.4 Å rms per eV·mm at 300 kV. We scan it in Å, so the result holds for any ΔE and C<sub>c</sub>.</td></tr>
+        <tr class="ref"><td>knob 2: source size</td><td class="wrap">The gun's finite emitting area, demagnified onto the
+          specimen: each electron's probe lands slightly shifted. Given as the FWHM of that spread of positions, in Å.</td></tr>
+        <tr><td>how it is simulated</td><td class="wrap">16 copies of the scan, each with its own defocus offset and probe
+          shift drawn from these spreads; the diffraction patterns are averaged. No phonons, no shot noise.</td></tr>
+        <tr><td>reconstruction</td><td class="wrap">multislice ptychography, 18 slices; the true probe held fixed, or
+          released with 7–8 probe modes (step 2B)</td></tr>
+        <tr><td>how it is judged</td><td class="wrap">the share of Pb and Ti atoms the finder places as the right element
+          within 0.5 Å of their true depth. Guessing the depths along each column gives about 26 % for Pb.
+          <span class="chip c-ok">good</span> Pb ≥ 80 % and Ti ≥ 45 % · <span class="chip c-warn">okay</span> Pb ≥ 50 % ·
+          <span class="chip c-stop">off</span> otherwise</td></tr>
+      </tbody>
+    </table></div>
+
     <h3>What we did</h3>
-    <ol class="did">
-      <li><b>Chose the target and the axis.</b><span>A widespread 300 kV probe-corrected microscope with a monochromator,
-        of the Titan Themis generation, with the Spectra 300 for context. The ARM200F's aberrations kept as they are.
-        Instead of an energy spread we scan the spread of focus it causes, in Å, so the result needs no instrument's Cc;
-        the effective source size is the second knob.</span></li>
-      <li><b>Made the pipeline scan coherence.</b><span>Each coherence setting now gets its own simulation, with every
-        earlier run's name and launch line unchanged (tested against all 15 recorded launches).</span></li>
-      <li><b>Step 1: one effect at a time.</b><span>Ten points, six focal spreads (0.75–7.29 Å rms) and four source sizes
-        (0.05–0.4 Å), probe known, no phonons, no noise (§03, §04).</span></li>
-      <li><b>Step 2A: both at once.</b><span>Focal spreads of 2.5 and 3.5 Å, each with a 0.1 and a 0.2 Å source (§05).</span></li>
-      <li><b>Step 2B: let the probe carry the coherence.</b><span>The probe released with 7–8 modes, each run started from the
-        exact mixed state a real gun with that setting gives. That needed a new start-probe writer and a fix in the
-        reconstruction code for multi-mode starts. One point of four is complete; three are rerunning (§06).</span></li>
-      <li><b>Placed the instruments on the result</b><span>from published energy spreads and Cc values (§07).</span></li>
-    </ol>
+    {{FRAG_STATUS}}
 
     <h3>What we found</h3>
-    <ul>
-      <li><b>Up to 2.5 Å of focal spread the reconstruction looks like the coherent one.</b> At 3.5 Å the vacuum layers
-        start to pick up lattice, but the atoms still sit in the right place (Pb 84 %). From 5 Å the vacuum fills, the
-        columns become leaning streaks, and the depths fall to the guessing level: the cold FEG's artefact.</li>
-      <li><b>Source size fails differently.</b> The vacuum stays clean while the columns fade into smooth streaks, as
-        room-temperature phonons did on the ARM page. Ti goes first: 0.2 Å keeps Pb (82 %) but not Ti (39 %).</li>
-      <li><b>The two compound.</b> 2.5 Å with a 0.1 Å source stays good (Pb / Ti 91 / 60 %); with a 0.2 Å source it is off
-        (45 / 38 %), though 2.5 Å alone is good and 0.2 Å alone okay. 3.5 Å with a 0.1 Å source drops to okay. Together
-        they fail like the source alone, with the focal spread's vacuum loading growing on top at 3.5 Å.</li>
-      <li><b>Probe modes help, so far at one point.</b> At 7.29 Å, with the probe released and 8 modes started from a real
-        gun's mixed state, the result goes from off (Pb 31 %) to okay (70 %): the vacuum loading halves and separate Pb
-        sites return. Ti, at 32 %, is still short of good. The recovered state stayed mixed (strongest mode 43 % at the
-        end, 32 % at the start, 30 % in the data).</li>
-      <li><b>Focal spread costs more depth per unit of lost coherence.</b> A 0.2 Å source leaves a quarter of the beam in
-        its strongest mode and is still okay; a 5 Å spread leaves 42 % and fails. A likely reason: a change of focus is
-        exactly what multislice reads as depth.</li>
-      <li><b>The cold FEG's failure on the ARM page was both effects at once</b>, each enough on its own.</li>
-      <li><b>Still kinder than an experiment.</b> The simulated source is more coherent than a real one of the same size,
-        and there are no phonons yet: on the ARM page room-temperature phonons alone removed the depth at 80 mrad.</li>
+    <ul class="found">
+      <li><b>Focal spread</b>: fine up to 3.5 Å, gone by 5 Å. It fails by loading the vacuum layers above and below the slab.</li>
+      <li><b>Source size</b>: fine up to 0.1 Å, Ti lost at 0.2 Å, gone by 0.4 Å. It fails differently: the columns smear in
+        depth while the vacuum stays clean.</li>
+      <li><b>Together they compound</b>: 2.5 Å with a 0.2 Å source is off, though each passed alone.</li>
+      <li><b>Probe modes help</b>: at 7.29 Å the result goes from off to okay (Pb 31 → 70 %); Ti is still short of good.</li>
+      <li><b>For instruments</b>: good needs ΔE ≤ 0.14 eV at C<sub>c</sub> 1.4 mm (≤ 0.08 eV at 2.4 mm). The Spectra 300
+        monochromators get there, a Titan's Wien filter only at its best. Real sources, 0.24–0.6 Å, are the harder limit.</li>
     </ul>
-
     <figure class="wide">
       {{FIG_WALL}}
       <figcaption><span class="fig-name">fig_wall.png</span>
-        <div class="howto"><b>How to read it</b> Solid: the share of bulk Pb (blue) and Ti (orange) atoms the finder placed
-          as the right element within 0.5 Å of the true depth. Dashed: the same found atoms slid to 16 depths along their
-          columns, the guessing level. The point at zero is the coherent run of the ARM page. Squares: the verdict at each
-          point (green good, amber okay, red off). Amber band: between the last good and the first off point. Top axis:
-          the energy spread giving that focal spread through a 1.4 mm Cc. Diamonds: the probe-mode runs of §06, drawn just right of their point so they do not hide its dots (faded: provisional, read with the fixed-probe control's kernels).</div>
+        <div class="howto"><b>How to read it</b> Share of Pb (blue) and Ti (orange) atoms in the right place, against each
+          knob on its own, probe fixed. Squares: the verdict (green good, amber okay, red off). Amber band: between the last
+          good and the first off point. Diamonds: probe modes, drawn just right of their point. Hatched: the effective
+          source size of real instruments, 0.24–0.6 Å (Müller et al. 2006). Top axis: the energy spread giving that focal
+          spread through a 1.4 mm C<sub>c</sub>.</div>
       </figcaption>
     </figure>
 
-
     <h3>What is next</h3>
     <ol class="did">
-      <li><b>Finish the probe-mode points.</b><span>5 Å, and the 0.2 and 0.4 Å sources, rerunning with larger groups; a
-        provisional reading with the fixed-probe kernels comes first. Do modes move the wall elsewhere, and at the
-        source size in particular?</span></li>
-      <li><b>Deal with the solver's step rule for many modes.</b><span>It fits the step on the strongest mode alone and
-        divides the object step by the number of modes; three runs crash on it. To fix, or work around, before leaning
-        on any mode result.</span></li>
-      <li><b>Test a realistic source.</b><span>Real sources are 0.24–0.6 Å, where even 2.5 Å of focal spread already
-        failed with the probe fixed. To decide: which focal spreads to pair with a 0.2–0.3 Å source, with probe modes.</span></li>
-      <li><b>Phase 2: temperature.</b><span>Phonons at room temperature, 100 K and colder, at the settings that survive.
-        Not yet designed.</span></li>
-      <li><b>Pin down the instrument numbers.</b><span>A Spectra 300's Cc, its ripple, and its effective source size and
-        current at 90 meV, to place it on the wall without a range.</span></li>
+      <li><b>Finish the probe-mode points</b><span>at 5 Å and at the 0.2 and 0.4 Å sources, rerunning now.</span></li>
+      <li><b>Fix the solver's step rule for many modes</b><span>(it sets the step from the strongest mode alone; three runs
+        crash on it).</span></li>
+      <li><b>Test a realistic source</b><span>of 0.2–0.3 Å with probe modes. To decide: which focal spreads.</span></li>
+      <li><b>Phase 2: temperature</b><span>(phonons at room temperature, 100 K and colder) at the settings that survive.</span></li>
+      <li><b>Get a Spectra 300's C<sub>c</sub>, ripple and source size</b><span>to place it on the wall as a point.</span></li>
     </ol>
-
-    <h3>What is in and what is still running</h3>
-    {{FRAG_STATUS}}
-
   </section>
 
   <section id="s2">
-    <div class="sec-head"><span class="sec-num">02</span><h2>The setup</h2></div>
-    <p>
-      The target is a widespread 300 kV probe-corrected microscope with a monochromator, of the Titan Themis generation
-      (2013: CEOS DCOR corrector, X-FEG with a Wien monochromator), with the Spectra 300 (2019) for context. The
-      ARM200F's measured aberrations stay as they are; against a DCOR, which corrects to fifth order, they are the
-      pessimistic case. Rather than the energy spread we scan the spread of focus it causes, in ångströms: the energy
-      spread times Cc, 17.4 Å per eV·mm at 300 kV. Cc is not published for every instrument, so one scan covers them all
-      and §07 places them on it.
-    </p>
-    <div class="tablewrap"><table>
-      <thead><tr><th>what</th><th class="wrap">setting</th><th class="wrap">where it comes from</th></tr></thead>
-      <tbody>
-        <tr><td>corrector, aperture</td><td class="wrap">ARM200F tableau, 80 mrad, C1, C3, B2 and A1 set for the smallest probe (as on the ARM page)</td><td class="wrap">ceos_sweep.tsv row armf_a080</td></tr>
-        <tr><td>specimen</td><td class="wrap">5 PTO/STO cells (19.5 Å) with 4 Å of vacuum each side; 210 Å region</td><td class="wrap">simulate_4dstem --region-side</td></tr>
-        <tr><td>scan, window, detector</td><td class="wrap">20 Å at 0.5 Å; 105 Å window; ±133 mrad</td><td class="wrap">sweep table</td></tr>
-        <tr><td>partial coherence</td><td class="wrap">16 configurations, each with its own focus offset and probe-position
-          offset; the diffraction patterns are averaged. Focal spread: the rms of the focus offsets. Source size: the FWHM of
-          the position offsets.</td><td class="wrap">simulate_4dstem (our own average, checked against abTEM)</td></tr>
-        <tr><td>left out</td><td class="wrap">phonons and shot noise (phase 2 adds phonons at the settings that survive)</td><td class="wrap">–</td></tr>
-        <tr><td>reconstruction</td><td class="wrap">steps 1 and 2A: the true coherent probe fixed, 1 mode, 200 iterations,
-          18 slices. Step 2B: the probe released, 7–8 modes, 250 iterations (§06)</td><td class="wrap">run_thin_atomfind.sh</td></tr>
-        <tr><td>atoms</td><td class="wrap">kernels from Pb and Ti grids simulated with the same coherence and reconstructed the same way</td><td class="wrap">analyse_sweep.py</td></tr>
-      </tbody>
-      <caption><b>Strongest mode</b>: a partially coherent beam is an incoherent mix of coherent probes, its modes; this is the
-        share of the intensity in the largest one, computed exactly from the simulator's 16 configurations. It puts the
-        two series on one scale. Atom numbers, per species over the bulk: <b>right place</b>, real atoms with a found atom of
-        the same element within 0.6 Å in plane and 0.5 Å in depth; <b>guessing</b>, the same found atoms slid to 16 depths
-        along their columns; <b>wrong element</b>, the finder's own label check; <b>depth bar</b>, the median of its 95 %
-        per-atom depth error bars. Verdict, on Pb and Ti: <span class="chip c-ok">good</span> Pb ≥ 80 % and Ti ≥ 45 % ·
-        <span class="chip c-warn">okay</span> Pb ≥ 50 % · <span class="chip c-stop">off</span> otherwise. Oxygen is reported,
-        not judged.</caption>
-    </table></div>
-  </section>
-
-  <section id="s3">
-    <div class="sec-head"><span class="sec-num">03</span><h2>Focal spread alone</h2></div>
-    <p>
-      Only the focal spread changes from point to point. Up to 3.5 Å the atoms stay in place. From 3.5 Å the vacuum layers
-      above and below the slab start to carry lattice; at 5 and 7.29 Å they are nearly as strong as the slab itself and
-      each column becomes one leaning streak, so the finder still finds the columns but not the depths along them.
-    </p>
+    <div class="sec-head"><span class="sec-num">02</span><h2>Focal spread alone</h2></div>
+    <p>Up to 3.5 Å the atoms stay in place. From 5 Å the vacuum layers are nearly as strong as the slab and each column
+      becomes one leaning streak: the columns are found, their depths are not.</p>
     {{FRAG_FOCAL_TABLE}}
     <figure class="wide">
       {{FIG_FOCAL_STRIP}}
       <figcaption><span class="fig-name">fig_strip_focal.png</span>
-        <div class="howto"><b>How to read it</b> One column per run, two depth sections through it: top, a row of Pb columns;
-          bottom, a B-site row (Ti and O alternate every 1.95 Å). Depth runs down; dashed lines: the vacuum edges. Dots:
-          atoms in the structure. Rings: atoms the finder reported, with its own 95 % depth bar; in the element's colour
-          when within 0.5 Å of a true atom of that element, faded when further but the bar reaches one, white when
-          misplaced. Each column's colour scale is set by its slab alone, so bright vacuum shows as saturated bands.</div>
+        <div class="howto"><b>How to read it</b> One column per run, two depth sections: a row of Pb columns (top) and a
+          B-site row, Ti and O alternating (bottom). Depth runs down; dashed lines: the vacuum edges. Dots: true atoms.
+          Rings: found atoms with their 95 % depth bars, in the element's colour when within 0.5 Å of the truth, white when
+          misplaced.</div>
       </figcaption>
     </figure>
-    <h3>Each point, larger</h3>
     {{FRAG_FOCAL_TABS}}
   </section>
 
-  <section id="s4">
-    <div class="sec-head"><span class="sec-num">04</span><h2>Source size alone</h2></div>
-    <p>
-      The vacuum stays nearly clean while the slab loses its atom-by-atom contrast: the columns become smooth streaks.
-      Ti goes first. At 0.2 Å Pb is still placed (82 %) but Ti falls to 39 %; at 0.4 Å both are at the guessing level
-      and about half the found atoms carry the wrong element. The simulated source is the kind case: at 0.2 Å its 16
-      configurations make a beam that 9 modes hold to 99 %, where a real source of that size needs about 17.
-    </p>
+  <section id="s3">
+    <div class="sec-head"><span class="sec-num">03</span><h2>Source size alone</h2></div>
+    <p>The vacuum stays clean while the columns lose their atom-by-atom contrast. Ti goes first. The simulated source is the
+      kind case: at 0.2 Å, 9 modes hold 99 % of its beam, where a real source needs about 17.</p>
     {{FRAG_SOURCE_TABLE}}
     <figure class="wide">
       {{FIG_SOURCE_STRIP}}
       <figcaption><span class="fig-name">fig_strip_source.png</span> Read as the focal-spread strip.</figcaption>
     </figure>
-    <h3>Each point, larger</h3>
     {{FRAG_SOURCE_TABS}}
   </section>
 
-  <section id="s5">
-    <div class="sec-head"><span class="sec-num">05</span><h2>Both at once</h2></div>
-    <p>
-      A real gun has both. Step 2A puts a 0.1 Å and a 0.2 Å source on the two largest focal spreads that were still good
-      alone, 2.5 and 3.5 Å. If the two costs add, a source that is harmless alone could tip a good focal spread over the wall.
-    </p>
+  <section id="s4">
+    <div class="sec-head"><span class="sec-num">04</span><h2>Both at once</h2></div>
     <div class="call stop"><b>The losses compound.</b> A 0.1 Å source leaves 2.5 Å good but drops 3.5 Å to okay; a 0.2 Å
-      source puts both off, though 2.5 Å and 0.2 Å each passed alone. The joint points fail like the source alone, smooth
-      leaning streaks with the vacuum fairly clean, and at 3.5 Å the focal spread's vacuum loading grows on top.</div>
+      source puts both off. Together they fail like the source alone, plus the focal spread's vacuum loading at 3.5 Å.</div>
     {{FRAG_JOINT_GRID}}
     {{FRAG_JOINT_FIG}}
   </section>
 
-  <section id="s6">
-    <div class="sec-head"><span class="sec-num">06</span><h2>Letting the probe carry the coherence</h2></div>
-    <p>
-      So far the probe is held at the central coherent probe, so the reconstruction can put the partial coherence nowhere
-      but the object. In an experiment the probe is refined from the data with several modes, which can carry an
-      incoherent mix. Step 2B repeats the four points that failed or weakened with the probe released and 7–8 modes.
-    </p>
-    <p>
-      Earlier mode runs started each extra mode at 2 % of the beam and stayed close to that: <code>_true4</code>, on data
-      whose true state has 13 % in its strongest mode, ended with 84 % there. These runs start instead from the exact
-      mixed state of a real gun with each setting, so the test is whether the reconstruction keeps and uses it.
-    </p>
+  <section id="s5">
+    <div class="sec-head"><span class="sec-num">05</span><h2>Probe modes</h2></div>
+    <p>With the probe fixed, the reconstruction can put the partial coherence nowhere but the object. Here the probe is
+      released with 7–8 modes, started from the mixed state of a real gun with each setting.</p>
     <!-- FILL modes (reruns): when the fs5 / src0p2 / src0p4 points land (provisional first, then _mix16), add a sentence
-         per point to the callout below; say whether its mode powers stayed near the start before reading its atoms. -->
-    <div class="call ok"><b>Probe modes move the focal-spread wall.</b> At 7.29 Å the probe-mode run is okay (Pb 70 %
-      against 28 % by guessing) where the fixed probe was off (31 %). The vacuum loading halves (1.03 → 0.49) and the Pb
-      columns show separate sites again. It is okay, not good: Ti is at 32 %, and good needs 45 %. The state stayed mixed:
-      the strongest mode ended at 43 %, from 32 % at the start, with the data's own at 30 %.</div>
-    <p>
-      At a 0.2 Å source the lab reconstruction looks cleaner than its control, but its state drifted further towards one
-      mode (31 → 58 %, the data's 26 %) and its Ti kernel leg crashed, so it has no atoms yet.
-    </p>
-    <div class="call pending"><b>Read every mode run with this in mind.</b> The solver fits its step length on the strongest
-      mode alone and divides the object step by the number of modes. That was harmless with the old 2 % seed modes; with a
-      real mixed state it is the likely reason three legs crash with a NaN in their first iterations. Resubmitted unchanged,
-      the same three crashed again, so it is not chance. The same property sits behind every mode run, the earlier
-      <code>_true4</code> included. The three unfinished points are being rerun, all three legs each, with larger groups
-      (16;8, tagged <code>_mix16</code>); the table fills as they land, first with provisional scores read with the
-      fixed-probe control's kernels.</div>
+         per point; say whether its mode powers stayed near the start before reading its atoms. -->
+    <div class="call ok"><b>7.29 Å: off → okay.</b> Pb 70 % (fixed probe 31 %), the vacuum loading halves and separate Pb
+      sites return; Ti 32 % is short of good. The state stays mixed (fig_modes). The 0.2 Å source run looks cleaner than its
+      control but has no atoms yet.</div>
+    <div class="call pending"><b>Caveat for every mode run.</b> The solver sets its step from the strongest mode alone and
+      divides the object step by the number of modes. With a real mixed state three runs crash on it, twice; they are
+      rerunning with larger groups.</div>
     {{FRAG_MODES_TABLE}}
     {{FRAG_MODES_FIG}}
   </section>
 
-  <section id="s7">
-    <div class="sec-head"><span class="sec-num">07</span><h2>Placing the instruments</h2></div>
-    <p>
-      The measured wall in focal spread, with each instrument class drawn as the range its energy spread and Cc give.
-      The source-size wall is not on this axis. With a realistic source (0.24–0.6 Å) the joint result of §05 is the one
-      that counts: there, a 0.2 Å source already put even 2.5 Å of focal spread off, so these bands are the most generous
-      reading.
-    </p>
+  <section id="s6">
+    <div class="sec-head"><span class="sec-num">06</span><h2>Placing the instruments</h2></div>
     <figure class="wide">
       {{FIG_INSTRUMENTS}}
       <figcaption><span class="fig-name">fig_instruments.png</span>
-        <div class="howto"><b>How to read it</b> Bands: good, the wall and off, from the focal-spread runs of §03
-          (triangles: the points tested, coloured by verdict). Bars: the focal spread each instrument class gives over its
-          range of energy spread and Cc (dot: a single value); the range is written at the right. Log scale.</div>
+        <div class="howto"><b>How to read it</b> Bands: good, the wall and off, from §02 (triangles: the points tested).
+          Bars: the focal spread each instrument gives over its range of ΔE and C<sub>c</sub>. Log scale.</div>
       </figcaption>
     </figure>
     {{FRAG_INSTR_TABLE}}
     <ul>
-      <li><b>Cc.</b> Unpublished for the Spectra 300, so its range runs from the ARM200F's 1.4 mm to the Titan's 2.4 mm:
-        its 0.2 eV specification gives 4.9 Å at 1.4 mm and 8.3 Å at 2.4 mm.
-        The 2.4 mm is the Titan 80-300 with its CESCOR corrector (Müller et al. 2006); a DCOR Themis may differ.</li>
-      <li><b>Ripple.</b> High-tension ripple and objective-current noise add focal spread in quadrature; on a
-        monochromated beam they can be as large as the energy-spread part. Every bar is a lower bound.</li>
-      <li><b>Best figures.</b> 90 meV is Cambridge's best quoted value for the Spectra 300 Mono, not its specification
-        (below 0.2 eV); ~0.1 eV is the Wien filter at its best.</li>
-      <li><b>Source size.</b> Effective sources at the specimen are 0.24–0.6 Å (CEOS 2006): at or past the source wall
-        of §04. Shrinking the source image costs current roughly as its size squared.</li>
+      <li><b>C<sub>c</sub></b> is unpublished for the Spectra 300, hence its range (its 0.2 eV specification gives 4.9 Å at
+        1.4 mm, 8.3 Å at 2.4 mm); 2.4 mm is the Titan 80-300 with its CESCOR corrector.</li>
+      <li><b>Ripple</b> in the high tension and lens currents adds focal spread, so every bar is a lower bound.</li>
+      <li><b>Source size</b> is not on this axis: with real sources (0.24–0.6 Å) the joint result of §04 is the one that
+        counts, so these bands are the generous reading.</li>
     </ul>
   </section>
 
-  <section id="s8">
-    <div class="sec-head"><span class="sec-num">08</span><h2>For discussion</h2></div>
+  <section id="s7">
+    <div class="sec-head"><span class="sec-num">07</span><h2>For discussion</h2></div>
     <!-- FILL discussion (reruns): revise the 'probe modes' row when the _mix16 points land. -->
     <div class="ledger">
-      <div><span class="lg-t">Probe known, depth survives up to 3.5 Å of focal spread</span><span class="chip c-ok">supported</span>
-        <span class="lg-d">Good from 0.75 to 3.5 Å, off at 5 Å and 7.29 Å; the failure is the cold FEG's (§03).</span></div>
-      <div><span class="lg-t">The source must be below ~0.2 Å</span><span class="chip c-ok">supported</span>
-        <span class="lg-d">Good to 0.1 Å, okay at 0.2 Å (Pb kept, Ti lost), off at 0.4 Å; a different failure, like phonons (§04).</span></div>
-      <div><span class="lg-t">The cold FEG failed on both counts</span><span class="chip c-ok">supported</span>
-        <span class="lg-d">Its 7.29 Å spread and its 0.4 Å source each fail alone.</span></div>
-      <div><span class="lg-t">Focal spread costs more depth than source size</span><span class="chip c-warn">partly</span>
-        <span class="lg-d">At equal strongest-mode share the focal spread is worse. Why is a hypothesis: focus is what multislice reads as depth.</span></div>
       <div><span class="lg-t">The two effects compound</span><span class="chip c-ok">supported</span>
-        <span class="lg-d">2.5 Å + 0.2 Å is off though each part passed alone; 2.5 Å + 0.1 Å stays good (§05).</span></div>
+        <span class="lg-d">2.5 Å + 0.2 Å is off though each part passed alone (§04).</span></div>
       <div><span class="lg-t">Probe modes move the wall</span><span class="chip c-warn">partly</span>
-        <span class="lg-d">At 7.29 Å off → okay and the state stays mixed; Ti still short of good. One point so far, three
-          rerunning (§06).</span></div>
+        <span class="lg-d">At 7.29 Å off → okay; one point so far, three rerunning (§05).</span></div>
+      <div><span class="lg-t">Focal spread costs more depth than source size</span><span class="chip c-warn">partly</span>
+        <span class="lg-d">At equal coherence the focal spread is worse; a likely reason: focus is what multislice reads as depth.</span></div>
       <div><span class="lg-t">A widespread monochromated instrument gets past the wall</span><span class="chip c-warn">partly</span>
-        <span class="lg-d">In focal spread alone, the Spectra 300 monochromators yes, the Titan Wien only at its best. With a
-          realistic source the joint result rules, and ripple is still to fold in (§07).</span></div>
-      <div><span class="lg-t">Temperature</span><span class="chip c-open">open</span>
-        <span class="lg-d">Phase 2, not yet designed: phonons at room temperature, 100 K and colder, at the settings that
-          survive with a realistic source. On the ARM page, room-temperature phonons alone removed the depth at 80 mrad and
-          100 K recovered part.</span></div>
-      <div><span class="lg-t">The solver with many modes</span><span class="chip c-warn">open</span>
-        <span class="lg-d">Its step length comes from the strongest mode alone and the object step is divided by the number
-          of modes; the same three legs crashed twice. Worth fixing before reading too much into any mode run.</span></div>
+        <span class="lg-d">In focal spread, the Spectra 300 yes, the Titan Wien only at its best; the source size and ripple decide it (§06).</span></div>
+      <div><span class="lg-t">Temperature</span><span class="chip c-open">next</span>
+        <span class="lg-d">Phase 2, not yet designed. On the ARM page room-temperature phonons alone removed the depth at 80 mrad.</span></div>
     </div>
   </section>
 
@@ -327,7 +210,7 @@
     {{FRAG_REPRO}}
     <p class="small-note">
       Rebuilt from the run outputs by <code>analysis/make_mono_page.py</code> (run list
-      <code>aberration_experiment/page/mono_results.json</code>); filling in and republishing:
+      <code>aberration_experiment/page/mono_results.json</code>); how to fill in and republish:
       <code>aberration_experiment/page/MONO_PAGE.md</code>. Design and job ids: <code>aberration_experiment/mono300/PHASE1.md</code>.
     </p>
   </section>

@@ -1,6 +1,7 @@
 # The Coherence Wall page — how to fill it in and republish
 
 PUBLISHED: https://claude.ai/artifact/B7ep8BpAMVdKvrnXywACq3
+- version 4, 2026-10-16, for the meeting: text cut, a "Parameters and method" table (what the two knobs are), a steps table for what was done, no guessing lines on the wall chart, plain label for the real-source band.
 - version 3, 2026-10-16, for the meeting: section 01 rewritten as what we did / what we found / what is next; no new runs.
 - version 2, 2026-10-16: step 2 in. Joint points (the losses compound: 2.5 + 0.2 A off though each part passed alone),
   the 7.29 A probe-mode leg (off -> okay, state stays mixed), the 0.2 A source mode leg as a volume without atoms, the
