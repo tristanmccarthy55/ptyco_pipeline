@@ -123,6 +123,10 @@ the sim's 16-configuration first-mode share (`mode_spectrum.txt`, joint rows add
 - **The retry repeated the failures**: Pb fs5 (3 it), Ti src0p2 (6 it), lab src0p4 (0 it) NaN'd again, so those legs are
   not stochastic but close to deterministic; Ti fs5 (1325697) runs. The shuffled-batch explanation was wrong for them; the
   ill-conditioned mode-1 step stands.
+- **Next, handed over 2026-10-16: `phase1_step2_rerun16.sh`** -- all three legs of fs 5, src 0.2, src 0.4 at grouping
+  `16;8` (RTAG `_mix16`, new dirs; the 4;2 legs stay), cancels the 4;2 Ti fs5 retry 1325697, and reads the finished 4;2
+  lab legs (fs 5, src 0.2) with their step-1 fixed-probe kernels as a labelled, provisional fallback
+  (`_mix_kern-armf_a080_<pt>_fixed`). Stub dry run 17 calls; ~280 GPU-h. A NaN at 16;8 would show within minutes.
 
 ## Design
 
