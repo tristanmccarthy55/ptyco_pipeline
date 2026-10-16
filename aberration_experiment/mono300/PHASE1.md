@@ -127,6 +127,19 @@ the sim's 16-configuration first-mode share (`mode_spectrum.txt`, joint rows add
   `16;8` (RTAG `_mix16`, new dirs; the 4;2 legs stay), cancels the 4;2 Ti fs5 retry 1325697, and reads the finished 4;2
   lab legs (fs 5, src 0.2) with their step-1 fixed-probe kernels as a labelled, provisional fallback
   (`_mix_kern-armf_a080_<pt>_fixed`). Stub dry run 17 calls; ~280 GPU-h. A NaN at 16;8 would show within minutes.
+- **16;8 was WORSE: 7 of 9 legs NaN'd at their start** (only lab fs5 and Ti src0p4 ran). Bigger batches -> bigger
+  summed updates, so the cause is a step that is too LARGE, not ill-conditioned. **Root cause found (an engine bug):**
+  LSQML builds the object's illumination -- the preconditioner the object update is divided by -- from probe mode 1 ALONE
+  (`init_solver.m`, `ptycho_solver.m`: `aprobe2 = |probe{1}|^2`), while the update sums all modes. A real mixed state
+  (mode 1 at 9-43 %) therefore got steps ~1/w1 too large on average and far more where mode 1 is weak: lab src0p4
+  (w1 0.09) died at iteration 0 every time. **Fixed 2026-10-16**: the illumination is the sum over all modes (a one-mode
+  run is unchanged to the bit; the loop does not run). The object step stays divided by the mode count (an engine
+  heuristic, roughly right for strongly mixed states), so mode legs converge their object more slowly than single-mode
+  ones -- read their error traces with that in mind. Every earlier mode leg (incl. `_mix` fs 7.29 and `_true4`) ran the
+  old normalisation.
+- **Handed over: `phase1_step2_rerunF.sh`** -- all four mode points (fs 7.29, 5, src 0.2, 0.4), every leg, the original
+  `4;2`, 250 it, RTAG `_mixF`, on the kept sims; refuses unless the fix is pulled; cancels queued `_mix16` legs.
+  Stub dry run 20 calls; ~400 GPU-h. The `_mix` fs 7.29 result (okay) is kept as the old-engine comparison.
 
 ## Design
 

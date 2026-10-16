@@ -472,6 +472,13 @@ function [self, cache] = init_solver(self,par)
      
     %% updated illumination
     aprobe2 = abs(self.probe{1}(:,:,1)).^2; 
+    % a mixed state lights the object with ALL its modes. With mode 1 alone, the object update -- summed over the modes --
+    % was divided by too little illumination (x 1/mode-1 share, worse where mode 1 is weak): harmless with 2 % seed modes,
+    % NaN in the first iterations for a real partially coherent start (aberration_experiment/mono300/PHASE1.md,
+    % 2026-10-16). With one mode the loop does not run: unchanged.
+    for ll_m = 2:numel(self.probe)
+        aprobe2 = aprobe2 + abs(self.probe{ll_m}(:,:,1)).^2;
+    end
     for ll = 1:par.Nscans
         if par.share_object
             ind = [self.reconstruct_ind{:}];
