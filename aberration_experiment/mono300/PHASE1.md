@@ -8,9 +8,19 @@ outputs at doses x-y-z. Runs, in order (cheap "possible at all?" first, realism 
   0.2 A source, mode legs from the mixed state (`ceiling_submit.sh`, `_mixF`), beside step 2's fixed controls.
 - **B. ceiling + phonons at 100 K (LN2) and 20 K (LHe; Debye model at its zero-point floor)**, fs 2.5 + src 0.1, fixed
   control + mode legs (`ceiling_submit.sh`, `_mixF` / `_mixF_fixed`). Room temperature is a no-go (user).
-- **C. realistic start**: C1, C3, A1 errors DRAWN from the corrector's quoted precision, an outer search bounded by that
-  precision (C1 x C3, then A1), the mixed state built on the SEARCHED probe, then refine with modes. Higher orders held
-  at their true values (stated). To build.
+- **C. realistic start** (`search_submit.sh`, built 2026-10-16): C1, C3, A1 errors DRAWN from the corrector's quoted
+  precision (ARM run 3 ci95: C1 39.5 A, C3 0.804 um, A1 59 A; sigma = ci95/1.96, A1 per vector component; seed 1 -- the
+  first; it draws C1 +7 A, C3 +0.34 um, A1 (+9.9, -39.2) A, so the start A1 is 36.8 A @ -0.82 rad against the true
+  12.4 A @ 1.47, and the truth lies inside every grid, as ~81 % of draws would), a staged outer search bounded by the same
+  intervals (stage 1 C1 x C3 7 x 7 about the start, stage 2 the A1 vector 5 x 5 at stage 1's answer; 74 fixed-probe trials
+  of 50 it; round and two-fold errors are orthogonal over the aperture, C1 and C3 are not, hence the pairing), the mixed
+  state built on the SEARCHED probe (`make_mixed_probe.py --base`), then refine with 8 modes. Higher orders held at their
+  true values (stated). At fs 2.5 + src 0.1 on the kept joint sims; ~185 GPU-h. Pieces: `campaign/psearch_plan.py`
+  (draw + grids), `campaign/select_grid.py` (one stage's minimum, the C1/C3 search's own fit, in grid-normalised
+  coordinates), `campaign/search_trial.sh` (columns by name; A1 absolute), `sim/make_probe.py --set` (absolute terms, last),
+  the slurm's PROBE_FROM "C1 C3 C12 phi12" and PROBE_MIXED on the searched probe, driver `PSEARCH=1` (legs tagged `_ps`).
+  Why A1 matters: the old 5 % kick moved C12 by 0.6 A, the corrector's precision is ~30 A per component (~5 waves at the
+  80 mrad edge); a 10 A C1 error alone drops the start's overlap with the truth to 0.18.
 - **D. dose series 1e5-1e8 with the search**, at the final survivor and temperature. Last (most expensive).
 Kept as limitations, with numbers: no measured S-CORR tableau (ARM pessimistic), Cc assumed, the single-Wien elliptical /
 energy-position-correlated source bounded by the round scan, drift through the scan-time budget (D's minimum dose ->

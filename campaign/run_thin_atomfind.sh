@@ -263,7 +263,9 @@ kick_job(){ # $1 name $2 sim dir $3 bin $4 nl $5 dep $6 c1 $7 c3 $8 modes $9 nit
     local f; for f in "${INPUTS[@]}" aberrations.json probe_initial_true.mat; do ln -sf "${datadir}/01/${f}" "${rdir}/01/${f}"; done
     rm -f "${rdir:?}/01/probe_initial.mat" "${rdir:?}/01/probe_initial.json"
     local start k1 k3
-    if [ -n "$from" ]; then start="PROBE_FROM=${from}"
+    if [ -n "$from" ]; then
+        start="PROBE_FROM=${from}"     # with KICK_START=mixed the mixed state is built on that (searched) probe in the job
+        if [ "$KICK_START" = mixed ]; then start="${start},PROBE_MIXED=${modes}"; fi
     elif [ "$KICK_START" = mixed ]; then start="PROBE_MIXED=${modes}"
     else k1=$(awk "BEGIN{printf \"%.4f\", ${c1}*${KICK}}"); k3=$(awk "BEGIN{printf \"%.2f\", ${c3}*${KICK}}"); start="PROBE_C1=${k1},PROBE_C3=${k3}"; fi
     local cls da; cls="$(res_class "$bin")"; da=$(dep_arg_for "$dep")
@@ -300,7 +302,6 @@ SEARCH_MEM="${SEARCH_MEM:-}"; SEARCH_RTIME="${SEARCH_RTIME:-04:00:00}"; FIXED_TW
 SEARCH=0
 if [ -n "${SEARCH_C1F}${SEARCH_C3F}" ]; then
     SEARCH=1; SEARCH_C1F="${SEARCH_C1F:-1}"; SEARCH_C3F="${SEARCH_C3F:-1}"
-    [ "$KICK_START" = tableau ] || { echo "SEARCH chooses a coherent start's C1 / C3: not with KICK_START=${KICK_START}" >&2; exit 1; }
     [ "${MODES%% *}" = lab ] || { echo "SEARCH needs MODES to start with lab (Pb and Ti take the lab leg's answer)" >&2; exit 1; }
     [ -x "${PYBIN}" ] || { echo "SEARCH set but no abtem env python at ${PYBIN} (campaign/select_trial.py)" >&2; exit 1; }
 fi
@@ -328,6 +329,56 @@ search_job(){ # $1 name (the lab leg) $2 sim dir $3 bin $4 nl $5 dep $6 c1 $7 c3
         --wrap="'${PYBIN}' '${REPO_DIR}/campaign/select_trial.py' --manifest '${man}' --out '${REPO_DIR}/${sd}'")
     echo "${A} ${S} ${REPO_DIR}/${sd}/search_best.txt"
 }
+# STAGED OUTER SEARCH FROM A DRAWN START (2026-10-16; the user: C1, C3 and A1, the start drawn from the corrector's quoted
+# precision, the search bounded by it). PSEARCH=1: per lab leg (and dose) campaign/psearch_plan.py draws the start (seed
+# PSEARCH_SEED; 95 % intervals PSEARCH_CI95="<C1> <C3> <A1>" in A, default the ARM run-3 tableau's 39.5 8040 59) and lays
+# out stage 1 (C1 x C3, PSEARCH_N1 per axis, +- ci95 about the start, A1 at the start) and stage 2 (the A1 vector,
+# PSEARCH_N2 per axis, +- ci95 per component, at stage 1's answer). Each stage is a job array of fixed-probe trials
+# (campaign/search_trial.sh, SEARCH_NITER iterations) then a campaign/select_grid.py job; every leg in MODES then runs as a
+# kick leg from stage 2's answer (search_best.txt "C1 C3 C12 phi12"), tagged _ps (Pb and Ti take the lab leg's answer); with
+# KICK_START=mixed the mixed state is built on that probe. Higher orders stay at their true values. Not with SEARCH_C1F/C3F.
+PSEARCH="${PSEARCH:-0}"; PSEARCH_SEED="${PSEARCH_SEED:-1}"; PSEARCH_CI95="${PSEARCH_CI95:-39.5 8040 59}"
+PSEARCH_N1="${PSEARCH_N1:-7}"; PSEARCH_N2="${PSEARCH_N2:-5}"
+if [ "$PSEARCH" = 1 ]; then
+    [ "$SEARCH" = 0 ] || { echo "PSEARCH or SEARCH_C1F / SEARCH_C3F, not both" >&2; exit 1; }
+    [ "${MODES%% *}" = lab ] || { echo "PSEARCH needs MODES to start with lab (Pb and Ti take the lab leg's answer)" >&2; exit 1; }
+    [ -x "${PYBIN}" ] || { echo "PSEARCH set but no abtem env python at ${PYBIN} (campaign/psearch_plan.py)" >&2; exit 1; }
+fi
+psearch_job(){ # $1 name (the lab leg) $2 sim dir $3 bin $4 nl $5 dep $6 c1 $7 c3 -> "<stage-1 array> <select> <stage-2 array> <select> <start file>"
+    local name="$1" datadir="$2" bin="$3" nl="$4" dep="$5" c1="$6" c3="$7"
+    local sd="search_af_${name}"; local sdd="${REPO_DIR}/${sd}"; mkdir -p "$sdd"; echo "${sd}" >>"${DIRS_FILE}"
+    local c12 phi st rd f n1 n2 cls grp da A1 S1 A2 S2
+    read -r c12 phi < <(ABJ="${aj:--}" "${PYBIN}" -c 'import json, os; j = os.environ["ABJ"]; d = json.loads(j) if j not in ("", "-") else {}
+print(d.get("C12", 0.0), d.get("phi12", 0.0))')
+    "${PYBIN}" "${REPO_DIR}/campaign/psearch_plan.py" --name "$name" --nl "$nl" --c1="$c1" --c3="$c3" --c12="$c12" --phi12="$phi" \
+        --ci95 "$PSEARCH_CI95" --seed "$PSEARCH_SEED" --n1 "$PSEARCH_N1" --n2 "$PSEARCH_N2" --out "$sdd" >&2 || return 1
+    for st in 1 2; do
+        while IFS= read -r rd; do
+            mkdir -p "${REPO_DIR}/${rd}/01"; echo "${rd}" >>"${DIRS_FILE}"
+            if [ -d "${REPO_DIR}/${rd}/analysis" ]; then mv "${REPO_DIR}/${rd}/analysis" "${REPO_DIR}/${rd}/analysis.prev_$(date +%Y%m%d_%H%M%S)"; fi
+            for f in "${INPUTS[@]}" aberrations.json probe_initial_true.mat; do ln -sf "${datadir}/01/${f}" "${REPO_DIR}/${rd}/01/${f}"; done
+            rm -f "${REPO_DIR:?}/${rd:?}/01/probe_initial.mat" "${REPO_DIR:?}/${rd:?}/01/probe_initial.json"
+        done < <(awk -F'\t' 'NR == 1 {for (j = 1; j <= NF; j++) if ($j == "recon_dir") c = j; next} {print $c}' "${sdd}/stage${st}.tsv")
+    done
+    n1=$(( $(wc -l <"${sdd}/stage1.tsv") - 1 )); n2=$(( $(wc -l <"${sdd}/stage2.tsv") - 1 ))
+    cls="$(res_class "$bin")"; grp="$(grp_for "$cls")"; da=$(dep_arg_for "$dep")
+    local ex="NLAYERS=${nl},REGLAYER=0,PROBE_MODES=1,NITER=${SEARCH_NITER},SAVE_EVERY=${SEARCH_NITER},BETA_LSQ=${BETA_LSQ}${grp:+,GROUPING=${grp}}"
+    A1=$(sbatch --parsable --array="0-$((n1 - 1))" --job-name="af_ps1_${name}" --time="${SEARCH_RTIME}" \
+        --mem="${SEARCH_MEM:-$(mem_for "$cls")}" ${da:+"$da"} \
+        --output="${REPO_DIR}/recon_af_${name}_s1t%a_NL${nl}/slurm_%A_%a.out" --error="${REPO_DIR}/recon_af_${name}_s1t%a_NL${nl}/slurm_%A_%a.err" \
+        --export=ALL,SEARCH_MANIFEST="${sdd}/stage1.tsv",${ex} campaign/search_trial.sh); A1="${A1%%;*}"
+    S1=$(sbatch --parsable --job-name="af_psel1_${name}" --time=00:30:00 --mem=8G --cpus-per-task=1 --dependency="afterany:${A1}" \
+        --output="${sdd}/slurm_select1_%j.out" --error="${sdd}/slurm_select1_%j.err" \
+        --wrap="'${PYBIN}' '${REPO_DIR}/campaign/select_grid.py' --manifest '${sdd}/stage1.tsv' --stage 1 --axes c1 --out '${sdd}'")
+    A2=$(sbatch --parsable --array="0-$((n2 - 1))" --job-name="af_ps2_${name}" --time="${SEARCH_RTIME}" \
+        --mem="${SEARCH_MEM:-$(mem_for "$cls")}" --dependency="afterany:${S1}" \
+        --output="${REPO_DIR}/recon_af_${name}_s2t%a_NL${nl}/slurm_%A_%a.out" --error="${REPO_DIR}/recon_af_${name}_s2t%a_NL${nl}/slurm_%A_%a.err" \
+        --export=ALL,SEARCH_MANIFEST="${sdd}/stage2.tsv",SEARCH_BASE_FILE="${sdd}/stage1_best.txt",${ex} campaign/search_trial.sh); A2="${A2%%;*}"
+    S2=$(sbatch --parsable --job-name="af_psel2_${name}" --time=00:30:00 --mem=8G --cpus-per-task=1 --dependency="afterany:${A2}" \
+        --output="${sdd}/slurm_select2_%j.out" --error="${sdd}/slurm_select2_%j.err" \
+        --wrap="'${PYBIN}' '${REPO_DIR}/campaign/select_grid.py' --manifest '${sdd}/stage2.tsv' --stage 2 --axes a1 --base '${sdd}/stage1_best.txt' --final --out '${sdd}'")
+    echo "${A1} ${S1} ${A2} ${S2} ${sdd}/search_best.txt"
+}
 SELS=(); BESTS=()                  # per dose index: the lab leg's select job and its start file (Pb and Ti read them)
 submit_legs(){ # $1 base name (<leg>_<mode><SFX>[_dose<D>]) $2 sim dir $3 dep $4 mode $5 dose index; appends to RIDS and line
     local base="$1" dd="$2" dep="$3" m="$4" di="$5" ids A S B
@@ -341,6 +392,15 @@ submit_legs(){ # $1 base name (<leg>_<mode><SFX>[_dose<D>]) $2 sim dir $3 dep $4
         fi
         ids=$(kick_variants "${base}${RTAG}_rk" "$dd" "$bin" "$nl" "${dep:+afterok:${dep},}afterany:${SELS[$di]}" "$c1" "$c3" "${BESTS[$di]}")
         RIDS+=($ids); line+=" ${m}:rk=$(echo $ids | tr ' ' '+')"
+    elif [ "$PSEARCH" = 1 ]; then
+        if [ "$m" = lab ]; then
+            local A1 S1 A2 S2
+            read -r A1 S1 A2 S2 B < <(psearch_job "${base}${RTAG}" "$dd" "$bin" "$nl" "$dep" "$c1" "$c3")
+            [ -n "${B:-}" ] || { echo "PSEARCH: planning the search for ${base}${RTAG} failed (above)" >&2; exit 1; }
+            SELS[$di]="$S2"; BESTS[$di]="$B"; RIDS+=("$A1" "$S1" "$A2" "$S2"); line+=" ${m}:psearch=${A1}>${S1}>${A2}>${S2}"
+        fi
+        ids=$(kick_variants "${base}${RTAG}_ps" "$dd" "$bin" "$nl" "${dep:+afterok:${dep},}afterany:${SELS[$di]}" "$c1" "$c3" "${BESTS[$di]}")
+        RIDS+=($ids); line+=" ${m}:ps=$(echo $ids | tr ' ' '+')"
     elif [ "$KICK_ALL" = 1 ]; then
         ids=$(kick_variants "${base}${RTAG}" "$dd" "$bin" "$nl" "$dep" "$c1" "$c3"); RIDS+=($ids); line+=" ${m}=$(echo $ids | tr ' ' '+')"
     else

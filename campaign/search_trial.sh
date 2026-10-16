@@ -22,9 +22,17 @@ set -euo pipefail
 # no GPU -> stop now: MATLAB would otherwise fall back to its CPU solver and run into the walltime
 [ -n "${CUDA_VISIBLE_DEVICES:-}" ] || { echo "search trial: no GPU allocated (CUDA_VISIBLE_DEVICES empty) -- check the #SBATCH --gres line" >&2; exit 1; }
 REPO_DIR="${SLURM_SUBMIT_DIR:-$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)}"
-row=$(awk -F'\t' -v i="${SLURM_ARRAY_TASK_ID}" 'NR > 1 && $1 == i' "${SEARCH_MANIFEST}")
-[ -n "$row" ] || { echo "search trial: no row ${SLURM_ARRAY_TASK_ID} in ${SEARCH_MANIFEST}" >&2; exit 1; }
-IFS=$'\t' read -r idx f1 f3 c1 c3 rdir <<<"$row"
+# columns by NAME from the manifest's header: the C1/C3 search's (idx f_c1 f_c3 c1_A c3_A recon_dir) and a staged search's
+# (campaign/psearch_plan.py: idx x y c1_A c3_A c12_A phi12 recon_dir; c1_A / c3_A "-" = stage 1's answer, SEARCH_BASE_FILE)
+col(){ awk -F'\t' -v i="${SLURM_ARRAY_TASK_ID}" -v k="$1" 'NR == 1 {for (j = 1; j <= NF; j++) if ($j == k) c = j; next}
+                                                         $1 == i {if (c) print $c; exit}' "${SEARCH_MANIFEST}"; }
+rdir=$(col recon_dir); c1=$(col c1_A); c3=$(col c3_A); c12=$(col c12_A); phi=$(col phi12)
+[ -n "$rdir" ] || { echo "search trial: no row ${SLURM_ARRAY_TASK_ID} in ${SEARCH_MANIFEST}" >&2; exit 1; }
+if [ "$c1" = "-" ]; then
+    [ -s "${SEARCH_BASE_FILE:-}" ] || { echo "search trial: C1/C3 from the previous stage, but SEARCH_BASE_FILE '${SEARCH_BASE_FILE:-}' is empty" >&2; exit 1; }
+    read -r c1 c3 _ <"${SEARCH_BASE_FILE}"
+fi
 export SIM_BASE="${REPO_DIR}/${rdir}/" PROBE_C1="$c1" PROBE_C3="$c3"
-echo "search trial ${idx}: C1 x ${f1}, C3 x ${f3} of the kicked start -> C1 ${c1} A, C3 ${c3} A, probe fixed (${rdir})"
+[ -n "$c12" ] && export PROBE_SET="C12=${c12}:phi12=${phi}"     # absolute A1 (applied after any PROBE_SCALE)
+echo "search trial ${SLURM_ARRAY_TASK_ID}: C1 ${c1} A, C3 ${c3} A${c12:+, A1 ${c12} A @ ${phi} rad}, probe fixed (${rdir})"
 exec bash "${REPO_DIR}/run_recon_synthetic_ML.slurm"

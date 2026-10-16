@@ -22,6 +22,11 @@ true probe (ov_start for analysis/kick_probe.py), and self-checks (powers from t
 orthogonality). The writer exits non-zero if a self-check fails.
 
     python sim/make_mixed_probe.py --sim-dir <recon>/01 --modes 8 --out <recon>/01/probe_initial.mat
+
+SEARCHED START (2026-10-16): --base <probe .mat> builds the modes on THAT coherent probe (e.g. an outer search's start,
+written by sim/make_probe.py) instead of the true one -- what an experimenter would do with their measured probe and known
+energy spread / source size. The truth is still read, for the record only: mode 1's overlap with it, and how much of the
+sim's own 16-configuration state (built on the true probe) the modes' span holds.
 """
 from __future__ import annotations
 
@@ -82,6 +87,8 @@ def main(argv=None) -> int:
     ap.add_argument("--sim-dir", type=Path, required=True, help="01/ holding probe_initial_true.mat and sim_meta.mat")
     ap.add_argument("--modes", type=int, required=True, help="modes to write (the reconstruction's PROBE_MODES)")
     ap.add_argument("--out", type=Path, required=True, help="probe_initial.mat to write")
+    ap.add_argument("--base", type=Path, default=None,
+                    help="coherent probe to build the modes on (default: <sim-dir>/probe_initial_true.mat)")
     ap.add_argument("--focal-spread", type=float, default=None, help="override the sim's focal spread [A rms]")
     ap.add_argument("--source-fwhm", type=float, default=None, help="override the sim's source FWHM [A]")
     ap.add_argument("--n-fs", type=int, default=None, help="defocus quantiles (default 200 alone, 24 with a source)")
@@ -96,6 +103,9 @@ def main(argv=None) -> int:
     T = loadmat(str(a.sim_dir / "probe_initial_true.mat"))["probe"].astype(np.complex128)
     n = T.shape[0]
     assert T.shape == (n, n), f"true probe {T.shape}"
+    B = T if a.base is None else np.squeeze(loadmat(str(a.base))["probe"]).astype(np.complex128)   # read before --out may overwrite it
+    if B.shape != T.shape:
+        raise SystemExit(f"[mixed] base probe {B.shape} != true probe {T.shape} (a multi-mode file is not a base)")
     if a.modes < 1:
         raise SystemExit("[mixed] --modes must be >= 1")
     if fs <= 0 and src <= 0:
@@ -105,7 +115,8 @@ def main(argv=None) -> int:
     ddf, dr = offsets(fs, src, n_fs, n_src)
     K = len(ddf); w = 1.0 / K
 
-    F = np.fft.fft2(T)
+    F = np.fft.fft2(B)                                   # the modes are built on the base (the true probe by default)
+    Ft = F if a.base is None else np.fft.fft2(T)         # the sim's own configurations are built on the truth
     kk = np.fft.fftfreq(n, d=dx)
     K0, K1 = np.meshgrid(kk, kk, indexing="ij")
     a2 = np.abs(F) ** 2
@@ -133,7 +144,7 @@ def main(argv=None) -> int:
         modes[m] = np.fft.ifft2(Fm)
     p = (np.abs(modes) ** 2).sum(axis=(1, 2))
     # self-checks: the modes' powers follow the Gram eigenvalues; the modes are mutually orthogonal
-    p_rel = p / (np.linalg.norm(T) ** 2)                                # share of the true probe's power per mode
+    p_rel = p / (np.linalg.norm(B) ** 2)                                # share of the base probe's power per mode
     power_err = float(np.max(np.abs(p_rel / occ[:M] - 1))) if M else 0.0
     U = modes.reshape(M, -1) / np.sqrt(p)[:, None]
     O = np.abs(U.conj() @ U.T); np.fill_diagonal(O, 0)
@@ -147,13 +158,13 @@ def main(argv=None) -> int:
         tot = held = 0.0
         for i in range(n16):
             psi = np.zeros((n, n), np.complex128)
-            psi[sup] = F[sup] * np.exp(-1j * phases(d16[i:i + 1], r16[i:i + 1], k0, k1, lam))[0]
+            psi[sup] = Ft[sup] * np.exp(-1j * phases(d16[i:i + 1], r16[i:i + 1], k0, k1, lam))[0]
             psi = np.fft.ifft2(psi)
             tot += np.linalg.norm(psi) ** 2
             held += float(np.sum(np.abs(U.conj() @ psi.ravel()) ** 2))
         cover[name] = held / tot
-    # normalise: the M modes carry the true probe's total power, with the state's relative occupancies
-    modes *= np.sqrt(np.linalg.norm(T) ** 2 / p.sum())
+    # normalise: the M modes carry the base probe's total power, with the state's relative occupancies
+    modes *= np.sqrt(np.linalg.norm(B) ** 2 / p.sum())
     P = np.moveaxis(modes, 0, -1)[:, :, None, :].astype(np.complex64)   # (N, N, 1, M)
     if a.out.is_symlink():
         raise SystemExit(f"[mixed] {a.out} is a symlink (a known-probe link?) -- refusing to write through it")
@@ -169,7 +180,9 @@ def main(argv=None) -> int:
                 occupancy_head=[float(x) for x in occ[:16]], state_held=float(occ[:M].sum()),
                 sim16_state_held=cover, overlap_with_sim_probe=ov1, c1_A=None, c1_sim_A=None, scaled_terms={},
                 self_check=dict(power_err=power_err, ortho_err=ortho_err, result="PASS" if ok else "FAIL"),
-                n_b=n, dx_A=dx, wavelength_A=lam, sim_dir=str(a.sim_dir.resolve()))
+                n_b=n, dx_A=dx, wavelength_A=lam, sim_dir=str(a.sim_dir.resolve()),
+                base="probe_initial_true.mat (the truth)" if a.base is None else str(a.base.resolve()),
+                base_overlap_with_sim_probe=float(np.abs(np.vdot(T.ravel(), B.ravel())) / (np.linalg.norm(T) * np.linalg.norm(B))))
     js = a.out.with_suffix(".json")
     if js.is_symlink():
         js.unlink()

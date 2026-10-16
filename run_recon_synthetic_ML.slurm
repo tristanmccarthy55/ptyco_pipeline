@@ -58,23 +58,21 @@ echo "SIM_BASE : ${SIM_BASE}"
 echo "NLAYERS  : ${NLAYERS}"
 echo "GPU      : ${CUDA_VISIBLE_DEVICES:-<unset>}"
 
-# one start probe only: a mixed-state start (PROBE_MIXED, below) excludes the C1 writer's (PROBE_C1 / PROBE_FROM)
-if [ -n "${PROBE_MIXED:-}" ] && [ -n "${PROBE_C1:-}${PROBE_FROM:-}" ]; then
-    echo "PREFLIGHT FAIL: PROBE_MIXED with PROBE_C1 / PROBE_FROM (one start probe)"; exit 1
-fi
-
 # --- optional: the START probe from an OUTER SEARCH (campaign/run_thin_atomfind.sh SEARCH_*, 2026-10-04). PROBE_FROM is
 # the search's search_best.txt ("<C1 A> <C3 A>"), written by campaign/select_trial.py once every trial had ended; its
 # values become this job's PROBE_C1 / PROBE_C3 and the writer below builds the probe from them. A missing or empty file
 # fails HERE, at once, so a broken search chain still lets the submission reach its pack.
 if [ -n "${PROBE_FROM:-}" ]; then
     PROBE_C1=""; PROBE_C3=""
-    [ -f "${PROBE_FROM}" ] && read -r PROBE_C1 PROBE_C3 _ <"${PROBE_FROM}"
+    PF_C12=""; PF_PHI=""
+    [ -f "${PROBE_FROM}" ] && read -r PROBE_C1 PROBE_C3 PF_C12 PF_PHI _ <"${PROBE_FROM}"
     if [ -z "${PROBE_C1}" ] || [ -z "${PROBE_C3}" ]; then
         echo "PREFLIGHT FAIL: no C1/C3 in PROBE_FROM=${PROBE_FROM} (did the search's select job run?)"; exit 1
     fi
     export PROBE_C1 PROBE_C3
-    echo "PROBE    : start from the outer search ${PROBE_FROM}: C1 ${PROBE_C1} A, C3 ${PROBE_C3} A"
+    # a staged search's answer also carries A1 ("C1 C3 C12 phi12", campaign/select_grid.py): set it absolutely
+    [ -n "${PF_C12}" ] && export PROBE_SET="C12=${PF_C12}:phi12=${PF_PHI}"
+    echo "PROBE    : start from the outer search ${PROBE_FROM}: C1 ${PROBE_C1} A, C3 ${PROBE_C3} A${PF_C12:+, A1 ${PF_C12} A @ ${PF_PHI} rad}"
 fi
 
 # --- optional: write the TRIAL probe (C1 defocus search, aberration_experiment/NEXT_PHASE.md
@@ -91,6 +89,7 @@ if [ -n "${PROBE_C1:-}" ]; then
     [ -n "${PROBE_C3:-}" ] && PW_ARG+=(--c3="${PROBE_C3}")
     [ -n "${PROBE_C5:-}" ] && PW_ARG+=(--c5="${PROBE_C5}")
     [ -n "${PROBE_SCALE:-}" ] && PW_ARG+=(--scale="${PROBE_SCALE}")      # e.g. C12=1.05 (kicked start probe)
+    [ -n "${PROBE_SET:-}" ] && PW_ARG+=(--set="${PROBE_SET}")            # absolute terms, applied last (a searched A1)
     echo "PROBE    : trial C1=${PROBE_C1} A  (sim/make_probe.py ${PW_ARG[*]})"
     # In a subshell with the sim's CUDA module (best effort): abtem imports cupy, and the sim env has only
     # ever run with CUDA/12.6.0 loaded. The subshell keeps that module out of MATLAB's environment.
@@ -103,14 +102,22 @@ fi
 # ${SIM_BASE}01/probe_initial.mat as the top <modes> eigenmodes of the partially coherent state the sim's own sim_meta.mat
 # describes (focal spread, source size), built on probe_initial_true.mat (sim/make_mixed_probe.py; numpy/scipy only), so
 # prepare_initial_probes keeps those modes instead of seeding Hermite modes at mode_start_pow 0.02. PROBE_MODES must equal it.
+# With PROBE_C1 / PROBE_FROM as well (2026-10-16) the modes are built on the COHERENT start just written above (an outer
+# search's answer) instead of the true probe -- the experiment-like route; its own record is kept as probe_initial_coherent.json.
 if [ -n "${PROBE_MIXED:-}" ]; then
     [ "${PROBE_MIXED}" = "${PROBE_MODES:-1}" ] \
         || { echo "PREFLIGHT FAIL: PROBE_MIXED=${PROBE_MIXED} modes but PROBE_MODES=${PROBE_MODES:-1}"; exit 1; }
     CONDA_ENV="${CONDA_ENV:-$SHARE/phucrh/envs/abtem}"; PYBIN="${CONDA_ENV}/bin/python"
     [ -x "${PYBIN}" ] || { echo "PREFLIGHT FAIL: abtem env python not found at ${PYBIN}" >&2; exit 1; }
-    echo "PROBE    : mixed-state start, ${PROBE_MIXED} modes (sim/make_mixed_probe.py)"
-    "${PYBIN}" "${REPO_DIR}/sim/make_mixed_probe.py" --sim-dir "${SIM_BASE}01" --modes "${PROBE_MIXED}" \
-        --out "${SIM_BASE}01/probe_initial.mat" || { echo "PREFLIGHT FAIL: mixed-state writer failed (see above)" >&2; exit 1; }
+    MX_ARG=(--sim-dir "${SIM_BASE}01" --modes "${PROBE_MIXED}" --out "${SIM_BASE}01/probe_initial.mat")
+    if [ -n "${PROBE_C1:-}" ]; then
+        MX_ARG+=(--base "${SIM_BASE}01/probe_initial.mat")
+        cp "${SIM_BASE}01/probe_initial.json" "${SIM_BASE}01/probe_initial_coherent.json" 2>/dev/null || true
+    fi
+    MX_ON="true"; [ -n "${PROBE_C1:-}" ] && MX_ON="searched"
+    echo "PROBE    : mixed-state start, ${PROBE_MIXED} modes, on the ${MX_ON} probe (sim/make_mixed_probe.py)"
+    "${PYBIN}" "${REPO_DIR}/sim/make_mixed_probe.py" "${MX_ARG[@]}" \
+        || { echo "PREFLIGHT FAIL: mixed-state writer failed (see above)" >&2; exit 1; }
 fi
 
 # Preflight: every input must resolve (-e follows symlinks, so a dangling link fails here). Without
