@@ -1,5 +1,21 @@
 # Phase 1: focal spread and source size, with probe modes (designed 2026-10-12; NOT submitted as designed)
 
+**THE PAPER AND THE PLAN (the user, 2026-10-16).** One story in short sections, each exploring one limiting factor:
+a bad (pessimistic, ARM) set of aberrations and what happens when the aperture opens; partial coherence (the focal-spread
+and source walls above); then cooling; then the chosen instrument (the Spectra 300 X-FEG **Mono**, not UltiMono) and its
+outputs at doses x-y-z. Runs, in order (cheap "possible at all?" first, realism last):
+- **A. ceiling, coherence only** at the realistic Mono settings: fs 2.5 A (~90 meV through Cc ~1.6 mm) with a 0.1 and a
+  0.2 A source, mode legs from the mixed state (`ceiling_submit.sh`, `_mixF`), beside step 2's fixed controls.
+- **B. ceiling + phonons at 100 K (LN2) and 20 K (LHe; Debye model at its zero-point floor)**, fs 2.5 + src 0.1, fixed
+  control + mode legs (`ceiling_submit.sh`, `_mixF` / `_mixF_fixed`). Room temperature is a no-go (user).
+- **C. realistic start**: C1, C3, A1 errors DRAWN from the corrector's quoted precision, an outer search bounded by that
+  precision (C1 x C3, then A1), the mixed state built on the SEARCHED probe, then refine with modes. Higher orders held
+  at their true values (stated). To build.
+- **D. dose series 1e5-1e8 with the search**, at the final survivor and temperature. Last (most expensive).
+Kept as limitations, with numbers: no measured S-CORR tableau (ARM pessimistic), Cc assumed, the single-Wien elliptical /
+energy-position-correlated source bounded by the round scan, drift through the scan-time budget (D's minimum dose ->
+dwell -> scan time against 0.8-3.3 A/s at LHe), true-probe ceiling for A/B.
+
 **Status 2026-10-13 (the user's choice): two steps.** Step 1 = the controls only, `phase1_fixed_submit.sh`: the same ten
 points, the same `_<point>_fixed` dirs, the sims KEPT -- DONE, results below ("Step 1 results"). Step 2 = the mode legs below, RECON_ONLY on those sims, at the points
 whose control fails, started from the exact mixed state (to build). Why not the design as it stands: the engine seeds each
