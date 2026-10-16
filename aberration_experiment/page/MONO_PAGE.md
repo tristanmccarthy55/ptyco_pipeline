@@ -1,6 +1,7 @@
 # The Coherence Wall page — how to fill it in and republish
 
 PUBLISHED: https://claude.ai/artifact/B7ep8BpAMVdKvrnXywACq3
+- version 3, 2026-10-16, for the meeting: section 01 rewritten as what we did / what we found / what is next; no new runs.
 - version 2, 2026-10-16: step 2 in. Joint points (the losses compound: 2.5 + 0.2 A off though each part passed alone),
   the 7.29 A probe-mode leg (off -> okay, state stays mixed), the 0.2 A source mode leg as a volume without atoms, the
   engine's mode-1 step rule as a caveat on every mode run. Pending: the fs 5 / src 0.2 / src 0.4 reruns (`_mix16`, all
