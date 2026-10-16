@@ -22,6 +22,13 @@ outputs at doses x-y-z. Runs, in order (cheap "possible at all?" first, realism 
   Why A1 matters: the old 5 % kick moved C12 by 0.6 A, the corrector's precision is ~30 A per component (~5 waves at the
   80 mrad edge); a 10 A C1 error alone drops the start's overlap with the truth to 0.18.
 - **D. dose series 1e5-1e8 with the search**, at the final survivor and temperature. Last (most expensive).
+**SUBMITTED 2026-10-16 17:14** (logs `logs/ceiling_20261016_171444.txt`, `logs/search_20261016_171458.txt` on Blythe; both
+dry runs passed; the seed-1 draw as planned). A: fs2p5_src0p1 `_mixF` legs 1329288/89/90, pack 1329291, analysis 1329292 ·
+fs2p5_src0p2 1329293/94/95, pack 1329296, analysis 1329297. B, 100 K: sims 1329298/301/304, fixed 1329299/302/305, modes
+1329300/303/306, pack 1329307, analyses 1329308 (`_mixF`) / 1329309 (`_mixF_fixed`) · 20 K: sims 1329310/313/316, fixed
+1329311/314/317, modes 1329312/315/318, pack 1329319, analyses 1329320 / 1329321. C: stage-1 array 1329323, select 1329324,
+stage-2 array 1329325, select 1329326, refine legs 1329327/28/29, pack 1329330 (`atomfind_results_armf_a080_fs2p5_src0p1_2026*`,
+no `_ps` in the name), analysis 1329331 (`analysis_armf_a080_fs2p5_src0p1_ps_*`).
 Kept as limitations, with numbers: no measured S-CORR tableau (ARM pessimistic), Cc assumed, the single-Wien elliptical /
 energy-position-correlated source bounded by the round scan, drift through the scan-time budget (D's minimum dose ->
 dwell -> scan time against 0.8-3.3 A/s at LHe), true-probe ceiling for A/B.
