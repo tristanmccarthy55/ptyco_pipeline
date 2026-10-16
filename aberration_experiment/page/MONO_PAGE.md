@@ -1,7 +1,11 @@
 # The Coherence Wall page — how to fill it in and republish
 
-PUBLISHED: https://claude.ai/artifact/B7ep8BpAMVdKvrnXywACq3 (version 1, 2026-10-15: step 1 in full; step 2's joint
-points and probe-mode legs pending). Local copy of each published version: `PtycoShelves/artifacts/wcm_2026-10-12_coherence_wall.html`.
+PUBLISHED: https://claude.ai/artifact/B7ep8BpAMVdKvrnXywACq3
+- version 2, 2026-10-16: step 2 in. Joint points (the losses compound: 2.5 + 0.2 A off though each part passed alone),
+  the 7.29 A probe-mode leg (off -> okay, state stays mixed), the 0.2 A source mode leg as a volume without atoms, the
+  engine's mode-1 step rule as a caveat on every mode run. Pending: the fs 5 / src 0.2 / src 0.4 reruns (`_mix16`, all
+  three legs at 16;8), provisional scores (`_mix_kern-..._fixed`), phase 2 (not designed).
+- version 1, 2026-10-15: step 1 in full; step 2's joint points and probe-mode legs pending. Local copy of each published version: `PtycoShelves/artifacts/wcm_2026-10-12_coherence_wall.html`.
 
 The 300 kV monochromated-microscope results (phase 1, `aberration_experiment/mono300/PHASE1.md`), built the same way as
 the ARM page (`ARM_PAGE.md`): generated from the run outputs, never hand-edited. It imports `analysis/make_arm_page.py`
@@ -32,7 +36,12 @@ for the atom scores, verdicts, depth sections, tab viewer and its template's CSS
 
 ## Adding a run
 
-Add it to `runs` in the run list with its `group` (`focal`, `source`, `joint`, `modes`, or `ref`), `fs` and `src`; a
+A mode point lists its tags in priority order with a matching `legs` list: the `_mix16` rerun (own kernels), then the
+`_mix_kern-<control>` analysis (provisional: atoms read with the fixed-probe control's kernels, labelled so on the page),
+then the original `_mix` leg (a reconstruction without atoms, or a crash). The page shows whichever landed first in that
+order, and its state (in / provisional / volume only / crashed / pending).
+
+Add a run to `runs` in the run list with its `group` (`focal`, `source`, `joint`, `modes`, or `ref`), `fs` and `src`; a
 `modes` run also takes `control` (its fixed-probe twin) and `modes`. Phase 2 (phonons) will want a new group and section.
 
 ## Numbers the page computes

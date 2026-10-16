@@ -12,7 +12,7 @@
 </style>
 <header class="mast">
   <div class="mast-in"><div class="mast-col">
-    <div class="eyebrow">300 kV monochromated microscope · phase 1: partial coherence · step 1 in, step 2 running</div>
+    <div class="eyebrow">300 kV monochromated microscope · phase 1: partial coherence · steps 1 and 2 in, three probe-mode reruns pending</div>
     <h1>The Coherence Wall</h1>
     <p class="standfirst">
       How coherent must the beam be for depth-resolved multislice ptychography at 300 kV and 80 mrad? The ARM200F's
@@ -41,17 +41,22 @@
 
   <section id="s1">
     <div class="sec-head"><span class="sec-num">01</span><h2>Where we are</h2></div>
-    <!-- FILL headline: when step 2 lands, add one sentence on each: do the joint points hold (sec 05), do the probe
-         modes move the wall (sec 06). Numbers from those sections' tables. -->
+    <!-- FILL headline (step 2 reruns): when the _mix16 points land, add a clause on whether modes move the wall at
+         5 A and at the 0.2 / 0.4 A sources. Numbers from sec 06's table. -->
     <div class="spec wall">
       <div class="spec-k">Depth survives, probe known</div>
       <p class="spec-v">{{WALL_LINE}}</p>
       <p>
-        With the probe known, no phonons and no noise, the depth survives a spread of focus up to 3.5 Å rms and a source
-        up to 0.1 Å, and is gone by 5 Å and by 0.4 Å. For the energy spread that means a monochromator: the Titan
-        generation's Wien filter reaches the wall only at its best, and the Spectra 300's monochromators sit inside it
-        (§07). Real sources at the specimen are 0.24–0.6 Å, at or past the source wall, so the source size may be the
-        harder limit.
+        With the probe known, no phonons and no noise, each effect alone leaves some margin: the depth survives a spread
+        of focus up to 3.5 Å rms or a source up to 0.1 Å. Together the losses compound: a 2.5 Å spread with a 0.1 Å source
+        is still good, but with a 0.2 Å source it is off, though each part passed alone. Releasing the probe with modes
+        moves the wall: at 7.29 Å the result goes from off to okay. Real sources at the specimen are 0.24–0.6 Å, at or past
+        the source wall, so with a realistic source the joint result is the one that counts (§05, §07).
+      </p>
+      <p>
+        Assumptions behind these numbers: the Spectra 300's Cc is unknown (0.2 eV gives 4.9 Å at 1.4 mm and 8.3 Å at
+        2.4 mm); high-tension and lens-current ripple add focal spread on a monochromated beam; the simulated source is the
+        kind case (§04).
       </p>
       {{FRAG_HEAD_GRID}}
     </div>
@@ -62,7 +67,7 @@
           as the right element within 0.5 Å of the true depth. Dashed: the same found atoms slid to 16 depths along their
           columns, the guessing level. The point at zero is the coherent run of the ARM page. Squares: the verdict at each
           point (green good, amber okay, red off). Amber band: between the last good and the first off point. Top axis:
-          the energy spread giving that focal spread through a 1.4 mm Cc. Diamonds, once landed: the probe-mode runs of §06.</div>
+          the energy spread giving that focal spread through a 1.4 mm Cc. Diamonds: the probe-mode runs of §06, drawn just right of their point so they do not hide its dots (faded: provisional, read with the fixed-probe control's kernels).</div>
       </figcaption>
     </figure>
 
@@ -76,13 +81,19 @@
         columns become leaning streaks, and the depths fall to the guessing level: the cold FEG's artefact.</li>
       <li><b>Source size fails differently.</b> The vacuum stays clean while the columns fade into smooth streaks, as
         room-temperature phonons did on the ARM page. Ti goes first: 0.2 Å keeps Pb (82 %) but not Ti (39 %).</li>
+      <li><b>The two compound.</b> 2.5 Å with a 0.1 Å source stays good (Pb / Ti 91 / 60 %); with a 0.2 Å source it is off
+        (45 / 38 %), though 2.5 Å alone is good and 0.2 Å alone okay. 3.5 Å with a 0.1 Å source drops to okay. Together
+        they fail like the source alone, with the focal spread's vacuum loading growing on top at 3.5 Å.</li>
+      <li><b>Probe modes help, so far at one point.</b> At 7.29 Å, with the probe released and 8 modes started from a real
+        gun's mixed state, the result goes from off (Pb 31 %) to okay (70 %): the vacuum loading halves and separate Pb
+        sites return. Ti, at 32 %, is still short of good. The recovered state stayed mixed (strongest mode 43 % at the
+        end, 32 % at the start, 30 % in the data).</li>
       <li><b>Focal spread costs more depth per unit of lost coherence.</b> A 0.2 Å source leaves a quarter of the beam in
         its strongest mode and is still okay; a 5 Å spread leaves 42 % and fails. A likely reason: a change of focus is
         exactly what multislice reads as depth.</li>
       <li><b>The cold FEG's failure on the ARM page was both effects at once</b>, each enough on its own.</li>
-      <li><b>Two assumptions here are kind.</b> The simulated source uses 16 configurations, a more coherent beam than a
-        real source of the same size. And there are no phonons yet: on the ARM page room-temperature phonons alone removed
-        the depth at 80 mrad (phase 2).</li>
+      <li><b>Still kinder than an experiment.</b> The simulated source is more coherent than a real one of the same size,
+        and there are no phonons yet: on the ARM page room-temperature phonons alone removed the depth at 80 mrad.</li>
     </ul>
   </section>
 
@@ -148,7 +159,8 @@
     <p>
       The vacuum stays nearly clean while the slab loses its atom-by-atom contrast: the columns become smooth streaks.
       Ti goes first. At 0.2 Å Pb is still placed (82 %) but Ti falls to 39 %; at 0.4 Å both are at the guessing level
-      and about half the found atoms carry the wrong element.
+      and about half the found atoms carry the wrong element. The simulated source is the kind case: at 0.2 Å its 16
+      configurations make a beam that 9 modes hold to 99 %, where a real source of that size needs about 17.
     </p>
     {{FRAG_SOURCE_TABLE}}
     <figure class="wide">
@@ -165,9 +177,9 @@
       A real gun has both. Step 2A puts a 0.1 Å and a 0.2 Å source on the two largest focal spreads that were still good
       alone, 2.5 and 3.5 Å. If the two costs add, a source that is harmless alone could tip a good focal spread over the wall.
     </p>
-    <!-- FILL joint: when the four joint points show IN in make_mono_page.py --list, replace this callout with the result in
-         two sentences: which cells stay good, and whether the failure looks like the focal-spread or the source kind. -->
-    <div class="call pending"><b>Running.</b> Submitted 2026-10-14; the grid fills in as the four points land.</div>
+    <div class="call stop"><b>The losses compound.</b> A 0.1 Å source leaves 2.5 Å good but drops 3.5 Å to okay; a 0.2 Å
+      source puts both off, though 2.5 Å and 0.2 Å each passed alone. The joint points fail like the source alone, smooth
+      leaning streaks with the vacuum fairly clean, and at 3.5 Å the focal spread's vacuum loading grows on top.</div>
     {{FRAG_JOINT_GRID}}
     {{FRAG_JOINT_FIG}}
   </section>
@@ -184,13 +196,23 @@
       whose true state has 13 % in its strongest mode, ended with 84 % there. These runs start instead from the exact
       mixed state of a real gun with each setting, so the test is whether the reconstruction keeps and uses it.
     </p>
-    <!-- FILL modes: when the four mode legs show IN, replace this callout with the verdict in two or three sentences:
-         did the wall move (modes against fixed, same row of the table), and did the mode powers stay near the start
-         (fig_modes). If they collapsed onto mode 1, say the reconstruction left the mixed state before reading the atoms. -->
-    <div class="call pending"><b>Running.</b> Four of the twelve legs stopped with a numerical overflow in their first
-      iterations and were resubmitted unchanged on 2026-10-15. The likely cause is in the solver: it sets each step length
-      from the strongest mode alone and divides the object step by the number of modes, a weak footing when the strongest
-      mode holds a quarter of the beam. The same rule slows the object down in every mode run, earlier ones included.</div>
+    <!-- FILL modes (reruns): when the fs5 / src0p2 / src0p4 points land (provisional first, then _mix16), add a sentence
+         per point to the callout below; say whether its mode powers stayed near the start before reading its atoms. -->
+    <div class="call ok"><b>Probe modes move the focal-spread wall.</b> At 7.29 Å the probe-mode run is okay (Pb 70 %
+      against 28 % by guessing) where the fixed probe was off (31 %). The vacuum loading halves (1.03 → 0.49) and the Pb
+      columns show separate sites again. It is okay, not good: Ti is at 32 %, and good needs 45 %. The state stayed mixed:
+      the strongest mode ended at 43 %, from 32 % at the start, with the data's own at 30 %.</div>
+    <p>
+      At a 0.2 Å source the lab reconstruction looks cleaner than its control, but its state drifted further towards one
+      mode (31 → 58 %, the data's 26 %) and its Ti kernel leg crashed, so it has no atoms yet.
+    </p>
+    <div class="call pending"><b>Read every mode run with this in mind.</b> The solver fits its step length on the strongest
+      mode alone and divides the object step by the number of modes. That was harmless with the old 2 % seed modes; with a
+      real mixed state it is the likely reason three legs crash with a NaN in their first iterations. Resubmitted unchanged,
+      the same three crashed again, so it is not chance. The same property sits behind every mode run, the earlier
+      <code>_true4</code> included. The three unfinished points are being rerun, all three legs each, with larger groups
+      (16;8, tagged <code>_mix16</code>); the table fills as they land, first with provisional scores read with the
+      fixed-probe control's kernels.</div>
     {{FRAG_MODES_TABLE}}
     {{FRAG_MODES_FIG}}
   </section>
@@ -199,7 +221,9 @@
     <div class="sec-head"><span class="sec-num">07</span><h2>Placing the instruments</h2></div>
     <p>
       The measured wall in focal spread, with each instrument class drawn as the range its energy spread and Cc give.
-      The source-size wall is not on this axis; it is discussed below.
+      The source-size wall is not on this axis. With a realistic source (0.24–0.6 Å) the joint result of §05 is the one
+      that counts: there, a 0.2 Å source already put even 2.5 Å of focal spread off, so these bands are the most generous
+      reading.
     </p>
     <figure class="wide">
       {{FIG_INSTRUMENTS}}
@@ -211,7 +235,8 @@
     </figure>
     {{FRAG_INSTR_TABLE}}
     <ul>
-      <li><b>Cc.</b> Unpublished for the Spectra 300, so its range runs from the ARM200F's 1.4 mm to the Titan's 2.4 mm.
+      <li><b>Cc.</b> Unpublished for the Spectra 300, so its range runs from the ARM200F's 1.4 mm to the Titan's 2.4 mm:
+        its 0.2 eV specification gives 4.9 Å at 1.4 mm and 8.3 Å at 2.4 mm.
         The 2.4 mm is the Titan 80-300 with its CESCOR corrector (Müller et al. 2006); a DCOR Themis may differ.</li>
       <li><b>Ripple.</b> High-tension ripple and objective-current noise add focal spread in quadrature; on a
         monochromated beam they can be as large as the energy-spread part. Every bar is a lower bound.</li>
@@ -224,7 +249,7 @@
 
   <section id="s8">
     <div class="sec-head"><span class="sec-num">08</span><h2>For discussion</h2></div>
-    <!-- FILL discussion: revise the 'both at once' and 'probe modes' rows once sec 05 and 06 are in. -->
+    <!-- FILL discussion (reruns): revise the 'probe modes' row when the _mix16 points land. -->
     <div class="ledger">
       <div><span class="lg-t">Probe known, depth survives up to 3.5 Å of focal spread</span><span class="chip c-ok">supported</span>
         <span class="lg-d">Good from 0.75 to 3.5 Å, off at 5 Å and 7.29 Å; the failure is the cold FEG's (§03).</span></div>
@@ -234,18 +259,21 @@
         <span class="lg-d">Its 7.29 Å spread and its 0.4 Å source each fail alone.</span></div>
       <div><span class="lg-t">Focal spread costs more depth than source size</span><span class="chip c-warn">partly</span>
         <span class="lg-d">At equal strongest-mode share the focal spread is worse. Why is a hypothesis: focus is what multislice reads as depth.</span></div>
-      <div><span class="lg-t">Both at once</span><span class="chip c-open">running</span>
-        <span class="lg-d">Step 2A (§05).</span></div>
-      <div><span class="lg-t">Probe modes move the wall</span><span class="chip c-open">running</span>
-        <span class="lg-d">Step 2B (§06), started from the exact mixed state.</span></div>
+      <div><span class="lg-t">The two effects compound</span><span class="chip c-ok">supported</span>
+        <span class="lg-d">2.5 Å + 0.2 Å is off though each part passed alone; 2.5 Å + 0.1 Å stays good (§05).</span></div>
+      <div><span class="lg-t">Probe modes move the wall</span><span class="chip c-warn">partly</span>
+        <span class="lg-d">At 7.29 Å off → okay and the state stays mixed; Ti still short of good. One point so far, three
+          rerunning (§06).</span></div>
       <div><span class="lg-t">A widespread monochromated instrument gets past the wall</span><span class="chip c-warn">partly</span>
-        <span class="lg-d">In focal spread, the Spectra 300 monochromators yes, the Titan Wien only at its best; source size and ripple still to fold in.</span></div>
+        <span class="lg-d">In focal spread alone, the Spectra 300 monochromators yes, the Titan Wien only at its best. With a
+          realistic source the joint result rules, and ripple is still to fold in (§07).</span></div>
       <div><span class="lg-t">Temperature</span><span class="chip c-open">open</span>
-        <span class="lg-d">Phase 2: phonons at room temperature, 100 K and colder, at the settings that survive. On the
-          ARM page, room-temperature phonons alone removed the depth at 80 mrad and 100 K recovered part.</span></div>
+        <span class="lg-d">Phase 2, not yet designed: phonons at room temperature, 100 K and colder, at the settings that
+          survive with a realistic source. On the ARM page, room-temperature phonons alone removed the depth at 80 mrad and
+          100 K recovered part.</span></div>
       <div><span class="lg-t">The solver with many modes</span><span class="chip c-warn">open</span>
         <span class="lg-d">Its step length comes from the strongest mode alone and the object step is divided by the number
-          of modes; worth fixing before reading too much into any mode run.</span></div>
+          of modes; the same three legs crashed twice. Worth fixing before reading too much into any mode run.</span></div>
     </div>
   </section>
 

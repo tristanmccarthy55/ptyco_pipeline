@@ -93,18 +93,36 @@ def vacuum_loading(lg):
 
 # ====================================================================================== one record per run
 def record(R, key):
+    """One run: its scores, verdict, vacuum loading and probe record, and its state --
+    in (own kernels) · provisional (atoms read with the fixed-probe control's kernels, a '_kern-' tag) · volume (a
+    reconstruction but no atoms) · crashed (an analysis row but no reconstruction) · pending (nothing landed).
+    found = scored, so every table and figure that needs atoms reads it directly."""
     info = R.find(key)
     spec = info["spec"]
-    r = dict(key=key, info=info, spec=spec, fs=float(spec["fs"]), src=float(spec["src"]), found=info["found"] and info["primary"],
-             w1=strongest_mode(float(spec["fs"]), float(spec["src"])), sc=None, v=None, vac=None, kick=None)
-    if r["found"]:
+    tag = info["tag"]
+    leg = spec["legs"][spec["tag"].index(tag)] if tag and "legs" in spec else spec["leg"]
+    provisional = bool(tag) and "_kern-" in tag
+    if provisional:
+        info = dict(info, primary=True)           # its atoms are the point of the tag: score them, labelled provisional
+    r = dict(key=key, info=info, spec=spec, leg=leg, tag=tag, fs=float(spec["fs"]), src=float(spec["src"]),
+             w1=strongest_mode(float(spec["fs"]), float(spec["src"])), sc=None, v=None, vac=None, kick=None,
+             found=False, vol=False, provisional=provisional, state="pending")
+    if info["found"] and info["primary"] and info["af"]:
         r["sc"] = arm.atom_scores(info)
+        r["found"] = r["sc"] is not None
         r["v"] = arm.verdict(r["sc"])
+    if info["found"] and info["fd"]:
         lg = arm.load_leg(info)
+        r["vol"] = lg is not None
         r["vac"] = vacuum_loading(lg) if lg is not None else None
-        kj, _ = R.kick(spec["leg"])
-        r["kick"] = kj
+    if info["found"]:
+        r["kick"], _ = R.kick(leg)
+        r["state"] = ("provisional" if provisional else "in") if r["found"] else ("volume" if r["vol"] else "crashed")
     return r
+
+
+STATE_NOTE = {"volume": "reconstruction in, no atoms yet", "crashed": "crashed before a reconstruction",
+              "provisional": "provisional: atoms read with the fixed-probe control's kernels"}
 
 
 def pct(sc, z, which="right"):
@@ -124,9 +142,12 @@ def fig_wall(recs, man):
             ax.plot(x, [pct(r["sc"], z, "guess") for r in pts], "--", color=col, lw=1.1, alpha=.65, label=f"{nm}, guessing", zorder=3)
             mix = [m for m in recs.values() if m["spec"]["group"] == "modes" and m["found"] and m[xkey] > 0
                    and (m["fs"] == 0 if xkey == "src" else m["src"] == 0)]
-            if mix:
-                ax.plot([m[xkey] for m in mix], [pct(m["sc"], z) for m in mix], "D", mfc="none", mec=col, mew=1.6, ms=8,
-                        label=f"{nm}, probe modes", zorder=5)
+            for prov, lab, al in ((False, f"{nm}, probe modes", 1.0), (True, f"{nm}, probe modes (provisional)", .45)):
+                mm = [m for m in mix if m["provisional"] == prov]
+                if mm:
+                    dx = 0.03 * (7.6 if xkey == "fs" else 0.64)      # drawn just right of their point, clear of its dots
+                    ax.plot([m[xkey] + dx for m in mm], [pct(m["sc"], z) for m in mm], "D", mfc="none", mec=col, mew=1.6, ms=8,
+                            alpha=al, label=lab, zorder=5)
         good = [r[xkey] for r in pts if r["v"] == "good"]
         bad = [r[xkey] for r in pts if r["v"] == "off"]
         if good and bad:
@@ -189,7 +210,7 @@ def fig_instruments(recs, man):
 
 def fig_strip(name, keys, recs, cuts, title_of):
     """Depth sections side by side: one column per run, the Pb row and the B-site row of the coherent reference's cuts."""
-    keys = [k for k in keys if recs[k]["found"]]
+    keys = [k for k in keys if recs[k]["vol"]]
     n = len(keys)
     fig, axs = plt.subplots(2, n, figsize=(2.05 * n + 0.4, 8.7), squeeze=False)
     for j, k in enumerate(keys):
@@ -199,10 +220,9 @@ def fig_strip(name, keys, recs, cuts, title_of):
             ax = axs[i, j]
             arm.xz_section(ax, lg, sc, rA / lg["dx"], xlim=(nx * lg["dx"] / 2 - 8, nx * lg["dx"] / 2 + 8), show_y=(j == 0))
             if i == 0:
-                ax.set_title(f"{title_of(r)}\nstrongest mode {100 * r['w1']:.0f} %\nPb {pct(sc, 82):.0f} vs {pct(sc, 82, 'guess'):.0f}"
-                             f"\nTi {pct(sc, 22):.0f} vs {pct(sc, 22, 'guess'):.0f}\n{r['v']}", fontsize=8.5, loc="left",
-                             color=arm.INK)
-                ax.title.set_color(arm.INK)
+                body = (f"\nPb {pct(sc, 82):.0f} vs {pct(sc, 82, 'guess'):.0f}\nTi {pct(sc, 22):.0f} vs {pct(sc, 22, 'guess'):.0f}"
+                        f"\n{r['v']}{' (provisional)' if r['provisional'] else ''}") if sc else "\nno atoms yet\n\n"
+                ax.set_title(f"{title_of(r)}\nstrongest mode {100 * r['w1']:.0f} %{body}", fontsize=8.5, loc="left", color=arm.INK)
             ax.set_xlabel(f"x (Å) · {cut}", fontsize=8)
     fig.tight_layout()
     return arm.save(fig, name)
@@ -210,7 +230,7 @@ def fig_strip(name, keys, recs, cuts, title_of):
 
 def fig_modes(mix, recs):
     """Mode powers of each landed probe-mode leg: the exact state it started from against what it recovered."""
-    m = [r for r in mix if r["found"] and r["kick"] and r["kick"].get("mode_power")]
+    m = [r for r in mix if r["kick"] and r["kick"].get("mode_power")]
     if not m:
         return None
     fig, axs = plt.subplots(1, len(m), figsize=(2.9 * len(m) + 0.6, 3.2), squeeze=False, sharey=True)
@@ -218,13 +238,14 @@ def fig_modes(mix, recs):
         k = r["kick"]; rec = np.array(k["mode_power"]); st = np.array(k.get("start_mode_power") or [])
         i = np.arange(1, len(rec) + 1)
         if len(st):
-            ax.bar(i - 0.2, st / st.sum(), 0.4, color="#9aa6b3", label="start: the exact mixed state")
+            ax.bar(i - 0.2, st, 0.4, color="#9aa6b3", label="start: a real gun's mixed state")
         ax.bar(i + 0.2, rec, 0.4, color=arm.INK, label="recovered")
+        ax.axhline(r["w1"], color=WARN, lw=1.2, ls=(0, (4, 3)), label="truth: the data's strongest mode")
         ax.set_title(r["spec"]["short"], fontsize=10, loc="left"); ax.set_xticks(i)
         ax.set_xlabel("mode"); ax.spines[["top", "right"]].set_visible(False)
     axs[0][0].set_ylabel("share of the beam")
     h, l = axs[0][0].get_legend_handles_labels()
-    fig.legend(h, l, loc="lower center", ncol=2, fontsize=9, frameon=False, bbox_to_anchor=(0.5, -0.08))
+    fig.legend(h, l, loc="lower center", ncol=3, fontsize=9, frameon=False, bbox_to_anchor=(0.5, -0.1))
     fig.tight_layout()
     return arm.save(fig, "fig_modes.png")
 
@@ -256,9 +277,10 @@ def series_tabs(tid, keys, recs, cuts):
     panes = []
     for k in keys:
         r = recs[k]
-        if not r["found"]:
+        if not r["vol"]:
             continue
-        p = arm.compare_fig(f"row_{k}.png", [(f"{setting(r)}  ·  {r['spec']['name'].split(', ')[-1]}", r["info"])], CUTS[0])
+        kind = r["spec"]["name"].split(", ")[-1] + ("" if r["state"] == "in" else f"  ·  {STATE_NOTE[r['state']]}")
+        p = arm.compare_fig(f"row_{k}.png", [(f"{setting(r)}  ·  {kind}", r["info"])], CUTS[0])
         panes.append((r["spec"]["short"], arm.img(p, r["spec"]["name"], maxw=1500, jpeg=80)))
     return arm.tabs(tid, panes) if panes else "<p>Nothing landed yet.</p>"
 
@@ -274,31 +296,57 @@ def headline(recs):
     sg, so, smid = wall("source", "src")
     dE14, dE24 = fg / (FS_PER_EV_MM * 1.4), fg / (FS_PER_EV_MM * 2.4)
     cold = recs["cold_feg"]
+    alone = {(r["fs"], r["src"]): r for r in recs.values() if r["spec"]["group"] in ("focal", "source") and r["found"]}
+    joint = [r for r in recs.values() if r["spec"]["group"] == "joint" and r["found"]]
+    worse = [r for r in joint if r["v"] == "off" and alone.get((r["fs"], 0.0), {}).get("v") in ("good", "okay")
+             and alone.get((0.0, r["src"]), {}).get("v") in ("good", "okay")]
+    jgood = sorted([r for r in joint if r["v"] == "good"], key=lambda r: (r["fs"], r["src"]))
+    lifted = [r for r in recs.values() if r["spec"]["group"] == "modes" and r["found"] and not r["provisional"]
+              and ORDER[r["v"]] > ORDER[recs[r["spec"]["control"]]["v"]]]
+    extra = []
+    for r in worse[:1]:
+        a, b = alone[(r["fs"], 0.0)], alone[(0.0, r["src"])]
+        extra.append((f"{r['fs']:g} Å + {r['src']:g} Å: off", f"both at once, though {r['fs']:g} Å alone is {a['v']} and {r['src']:g} Å "
+                      f"alone {b['v']}: Pb {pct(r['sc'], 82):.0f} %, Ti {pct(r['sc'], 22):.0f} %. The losses compound."))
+    for r in lifted:
+        c = recs[r["spec"]["control"]]
+        extra.append((f"{setting(r)}: {c['v']} → {r['v']}", f"with probe modes: Pb {pct(c['sc'], 82):.0f} → {pct(r['sc'], 82):.0f} %, "
+                      f"vacuum / slab {c['vac']:.2f} → {r['vac']:.2f}; Ti {pct(r['sc'], 22):.0f} % (good needs 45)"))
     tiles = [(f"{fg:g} → {fo:g} Å", "focal-spread wall (rms): the last good point and the first off"),
              (f"{sg:g} → {so:g} Å", "source-size wall (FWHM)" + "".join(
                  f"; {m['src']:g} Å is {m['v']}: Pb {pct(m['sc'], 82):.0f} %, Ti {pct(m['sc'], 22):.0f} %" for m in smid)),
              (f"≤ {dE14:.2f} eV", f"energy spread for good at Cc 1.4 mm (≤ {dE24:.2f} eV at 2.4 mm)"),
              ("both at once", f"the cold FEG ({cold['fs']:g} Å + {cold['src']:g} Å) failed on each count: Pb {pct(cold['sc'], 82):.0f} % "
                               f"against {pct(cold['sc'], 82, 'guess'):.0f} % by guessing")]
+    tiles = tiles[:3] + extra + tiles[3:]
     grid = "".join(f"<div><b>{html.escape(a)}</b><span>{html.escape(b)}</span></div>" for a, b in tiles)
-    line = f"focal spread ≤ <em>{fg:g} Å</em> rms · source ≤ <em>{sg:g} Å</em> FWHM"
+    line = f"alone: focal spread ≤ <em>{fg:g} Å</em>, source ≤ <em>{sg:g} Å</em>"
+    if jgood:
+        line += f" · together: <em>{jgood[-1]['fs']:g} Å + {jgood[-1]['src']:g} Å</em>"
     return dict(WALL_LINE=line, FRAG_HEAD_GRID=f'<div class="spec-grid">{grid}</div>')
 
 
-def status(recs):
+ORDER = {"off": 0, "okay": 1, "good": 2}
+
+
+def status(recs, man):
     groups = [("Step 1: one effect at a time, true probe fixed", "focal source ref"),
               ("Step 2A: both at once, true probe fixed", "joint"),
               ("Step 2B: probe modes started from the mixed state", "modes")]
     out = []
     for name, gs in groups:
         rs = [r for r in recs.values() if r["spec"]["group"] in gs.split()]
-        pend = [r for r in rs if not r["found"]]
+        pend = [r for r in rs if r["state"] != "in"]
         ok = len(rs) - len(pend)
         chip = '<span class="chip c-ok">all in</span>' if not pend else (
             f'<span class="chip c-warn">{len(pend)} pending</span>' if ok else '<span class="chip c-warn">running</span>')
-        det = "".join(f"<li><b>{html.escape(r['spec']['name'])}</b>: {html.escape(r['spec'].get('pending', 'not landed yet'))}</li>" for r in pend)
-        out.append(f'<div><span class="lg-t">{html.escape(name)}</span>{chip}<span class="lg-d">{ok} of {len(rs)} landed'
+        det = "".join(f"<li><b>{html.escape(r['spec']['name'])}</b>"
+                      f"{(' (' + STATE_NOTE[r['state']] + ')') if r['state'] in STATE_NOTE else ''}: "
+                      f"{html.escape(r['spec'].get('pending', 'not landed yet'))}</li>" for r in pend)
+        out.append(f'<div><span class="lg-t">{html.escape(name)}</span>{chip}<span class="lg-d">{ok} of {len(rs)} in'
                    f'{f"<ul>{det}</ul>" if det else ""}</span></div>')
+    out.append(f'<div><span class="lg-t">Phase 2: temperature</span><span class="chip c-none">not designed</span>'
+               f'<span class="lg-d">{html.escape(man["phase2"])}</span></div>')
     return f'<div class="ledger">{"".join(out)}</div>'
 
 
@@ -329,26 +377,26 @@ def joint_grid(recs):
 
 def modes_table(recs):
     head = ["setting", "modes", "probe fixed (step 1): Pb / Ti (%)", "verdict", "probe modes: Pb / Ti (%)", "verdict",
-            "strongest mode: exact / recovered (%)", "probe overlap"]
+            "strongest mode: truth / start / recovered (%)", "vacuum / slab: fixed → modes"]
     trs = []
     for r in [x for x in recs.values() if x["spec"]["group"] == "modes"]:
         c = recs[r["spec"]["control"]]
         cpart = f"<td>{pct(c['sc'], 82):.0f} / {pct(c['sc'], 22):.0f}</td>{arm.vcell(c['v'])}" if c["found"] else "<td>–</td><td>–</td>"
-        if not r["found"]:
-            trs.append(f"<tr><td>{html.escape(setting(r))}</td><td>{r['spec']['modes']}</td>{cpart}"
-                       f"<td colspan='4'>{arm.pending_box(r['info'])}</td></tr>")
-            continue
         k = r["kick"] or {}
-        st = k.get("start_mode_power") or []
-        rec_ = k.get("mode_power") or []
-        mp = f"{100 * st[0] / sum(st):.0f} / {100 * rec_[0]:.0f}" if st and rec_ else "–"
-        ov = f"{k['ov_final']:.2f}" if "ov_final" in k else "–"
-        trs.append(f"<tr><td>{html.escape(setting(r))}</td><td>{r['spec']['modes']}</td>{cpart}"
-                   f"<td>{pct(r['sc'], 82):.0f} / {pct(r['sc'], 22):.0f}</td>{arm.vcell(r['v'])}<td>{mp}</td><td>{ov}</td></tr>")
-    return arm.table(head, trs, "Both columns: noiseless, no phonons, bulk atoms in the right place, kernels from Pb and Ti grids "
-                     "reconstructed the same way as their own leg. Exact = the start the leg was given (the mixed state of a real "
-                     "gun with this setting, its strongest mode); recovered = after 250 iterations. Probe overlap: the recovered "
-                     "strongest mode against the central coherent probe (below 1 even for a perfect recovery).")
+        st, rec_ = k.get("start_mode_power") or [], k.get("mode_power") or []
+        mp = (f"{100 * r['w1']:.0f} / {100 * st[0]:.0f} / {100 * rec_[0]:.0f}" if st and rec_ else f"{100 * r['w1']:.0f} / – / –")
+        vac = f"{c['vac']:.2f} → {r['vac']:.2f}" if r["vac"] is not None and c["vac"] is not None else "–"
+        if r["found"]:
+            tag = " <span class='chip c-warn'>provisional</span>" if r["provisional"] else ""
+            mpart = f"<td>{pct(r['sc'], 82):.0f} / {pct(r['sc'], 22):.0f}{tag}</td>{arm.vcell(r['v'])}"
+        else:
+            mpart = (f"<td colspan='2' class='wrap'><span class='chip c-warn'>{'no atoms yet' if r['state'] == 'volume' else 'pending'}</span> "
+                     f"<span class='muted-s'>{html.escape(r['spec'].get('pending', ''))}</span></td>")
+        trs.append(f"<tr><td>{html.escape(setting(r))}</td><td>{r['spec']['modes']}</td>{cpart}{mpart}<td>{mp}</td><td>{vac}</td></tr>")
+    return arm.table(head, trs, "Noiseless, no phonons, bulk atoms in the right place. Kernels from Pb and Ti grids reconstructed "
+                     "the same way as their own leg, except where marked provisional (the fixed-probe control's kernels). "
+                     "Strongest mode: truth, the data's own state (the simulator's 16 configurations); start, the state of a real "
+                     "gun with this setting, which the leg was given; recovered, after 250 iterations.")
 
 
 def instruments_table(man, recs):
@@ -366,7 +414,7 @@ def instruments_table(man, recs):
 def renders(recs):
     panes = []
     for r in recs.values():
-        p = r["info"]["found"] and arm._RUNS[0].render(r["spec"]["leg"])
+        p = r["info"]["found"] and arm._RUNS[0].render(r["leg"])
         if p:
             panes.append((r["spec"]["short"], arm.img(p, r["spec"]["name"], maxw=1100, jpeg=78)))
     return arm.tabs("tabs-renders", panes) if panes else "<p>No renders pulled yet.</p>"
@@ -418,7 +466,7 @@ def main():
                        ("coherent" if r["key"] == "known_a080" else "cold FEG\n7.29 Å + 0.4 Å"))
     frag = dict(BUILT=datetime.datetime.now().strftime("%Y-%m-%d %H:%M"))
     frag.update(headline(recs))
-    frag["FRAG_STATUS"] = status(recs)
+    frag["FRAG_STATUS"] = status(recs, man)
     frag["FIG_WALL"] = arm.img(fig_wall(recs, man), "atoms in the right place against focal spread and source size")
     ref_row = lambda k: (recs[k], "coherent (reference)" if k == "known_a080" else "the cold FEG: 7.29 Å + 0.4 Å source", "ref")
     frag["FRAG_FOCAL_TABLE"] = judged_table([ref_row("known_a080")] + [(recs[k], setting(recs[k]), "") for k in focal[1:-1]]
@@ -437,13 +485,14 @@ def main():
                               f'focal spread first alone, then with a 0.1 and a 0.2 Å source.</figcaption></figure>'
                               + series_tabs("tabs-joint", jl, recs, CUTS[0])) if jl else ""
     frag["FRAG_MODES_TABLE"] = modes_table(recs)
-    ml = [r for r in (recs[k] for k in mix) if r["found"]]
+    ml = [r for r in (recs[k] for k in mix) if r["vol"]]
     fm = fig_modes([recs[k] for k in mix], recs)
-    pairs = [k for k2 in mix if recs[k2]["found"] for k in (recs[k2]["spec"]["control"], k2)]
+    pairs = [k for k2 in mix if recs[k2]["vol"] for k in (recs[k2]["spec"]["control"], k2)]
     frag["FRAG_MODES_FIG"] = ((f'<figure class="wide">{arm.img(fm, "mode powers, start against recovered")}<figcaption>'
                                f'<span class="fig-name">fig_modes.png</span><div class="howto"><b>How to read it</b> Grey: the '
-                               f'share of the beam in each mode of the state the leg started from. Black: what it ended with. Bars '
-                               f'that collapse onto mode 1 mean the reconstruction left the mixed state.</div></figcaption></figure>'
+                               f'share of the beam in each mode at the start (a real gun with this setting). Black: what the '
+                               f'reconstruction ended with. Dashed: the strongest mode of the state that made the data. Black bars '
+                               f'piling onto mode 1 mean the reconstruction is leaving the mixed state.</div></figcaption></figure>'
                                if fm else "")
                               + (f'<figure class="wide">{arm.img(fig_strip("fig_strip_modes.png", pairs, recs, CUTS[0], short), "fixed probe against probe modes")}'
                                  f'<figcaption><span class="fig-name">fig_strip_modes.png</span> Each setting twice: the true probe '
