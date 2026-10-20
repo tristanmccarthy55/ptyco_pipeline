@@ -73,6 +73,10 @@ All at focal spread 2.5 A, ARM tableau, 80 mrad, noiseless; right place (0.5 A) 
   12.4 @ 1.47: ~3.6 A) despite the wrong C1 -- A1 is robust to a C1 error, C1 is not to an A1 error. The refine raised the
   probe overlap from 0.038 to 0.74 but the object moved into the vacuum (the C1/depth trade), and the Pb/Ti grid legs
   found 2 and 0 grid atoms, so no kernels. Fix: a third stage, C1 x C3 again at the searched A1 (or A1 first).
+- **C rerun handed over 2026-10-20: `search3_submit.sh`** -- stages 1-2 taken from the first search (`PSEARCH_RESUME`;
+  the seed-1 draw is re-planned and checked, it matches to 1e-14), stage 3 = C1 x C3 again on stage 1's grid at stage 2's
+  A1 (49 trials), legs refined from stage 3's answer (RTAG `_s3`, legs `_s3_ps`). The driver's staged search now has 3
+  stages by default (`PSEARCH_STAGES`), so D gets them too. Stub dry run 7 calls; ~160 GPU-h.
 
 ## Step 1 results (2026-10-14; controls: true probe fixed, 1 mode, noiseless, own matched kernels)
 

@@ -337,47 +337,66 @@ search_job(){ # $1 name (the lab leg) $2 sim dir $3 bin $4 nl $5 dep $6 c1 $7 c3
 # (campaign/search_trial.sh, SEARCH_NITER iterations) then a campaign/select_grid.py job; every leg in MODES then runs as a
 # kick leg from stage 2's answer (search_best.txt "C1 C3 C12 phi12"), tagged _ps (Pb and Ti take the lab leg's answer); with
 # KICK_START=mixed the mixed state is built on that probe. Higher orders stay at their true values. Not with SEARCH_C1F/C3F.
+# PSEARCH_STAGES=3 (the default from 2026-10-20) adds stage 3, C1 x C3 again at stage 2's A1, and the legs start from
+# stage 3's answer: with A1 still far off, stage 1's C1 x C3 minimum is biased (the first run: C1 32 A off), while A1 is
+# robust to a C1 error. PSEARCH_RESUME=<an earlier search_af_<leg> dir with the same draw> takes the stages that dir
+# finished (its stage<k>_best.txt) instead of re-running them; the draw must match (start.json) or nothing is submitted.
 PSEARCH="${PSEARCH:-0}"; PSEARCH_SEED="${PSEARCH_SEED:-1}"; PSEARCH_CI95="${PSEARCH_CI95:-39.5 8040 59}"
-PSEARCH_N1="${PSEARCH_N1:-7}"; PSEARCH_N2="${PSEARCH_N2:-5}"
+PSEARCH_N1="${PSEARCH_N1:-7}"; PSEARCH_N2="${PSEARCH_N2:-5}"; PSEARCH_STAGES="${PSEARCH_STAGES:-3}"; PSEARCH_RESUME="${PSEARCH_RESUME:-}"
 if [ "$PSEARCH" = 1 ]; then
     [ "$SEARCH" = 0 ] || { echo "PSEARCH or SEARCH_C1F / SEARCH_C3F, not both" >&2; exit 1; }
     [ "${MODES%% *}" = lab ] || { echo "PSEARCH needs MODES to start with lab (Pb and Ti take the lab leg's answer)" >&2; exit 1; }
     [ -x "${PYBIN}" ] || { echo "PSEARCH set but no abtem env python at ${PYBIN} (campaign/psearch_plan.py)" >&2; exit 1; }
+    case "$PSEARCH_STAGES" in 2|3) ;; *) echo "PSEARCH_STAGES=${PSEARCH_STAGES}: 2 or 3" >&2; exit 1;; esac
+    [ -z "$PSEARCH_RESUME" ] || [ -f "${PSEARCH_RESUME}/start.json" ] || { echo "PSEARCH_RESUME=${PSEARCH_RESUME}: no start.json there" >&2; exit 1; }
 fi
-psearch_job(){ # $1 name (the lab leg) $2 sim dir $3 bin $4 nl $5 dep $6 c1 $7 c3 -> "<stage-1 array> <select> <stage-2 array> <select> <start file>"
+psearch_job(){ # $1 name (the lab leg) $2 sim dir $3 bin $4 nl $5 dep $6 c1 $7 c3 -> "<job ids ...> <last select> <start file>"
     local name="$1" datadir="$2" bin="$3" nl="$4" dep="$5" c1="$6" c3="$7"
     local sd="search_af_${name}"; local sdd="${REPO_DIR}/${sd}"; mkdir -p "$sdd"; echo "${sd}" >>"${DIRS_FILE}"
-    local c12 phi st rd f n1 n2 cls grp da A1 S1 A2 S2
+    local c12 phi st rd f n cls grp da A S ids="" prev="" axes base fin
     read -r c12 phi < <(ABJ="${aj:--}" "${PYBIN}" -c 'import json, os; j = os.environ["ABJ"]; d = json.loads(j) if j not in ("", "-") else {}
 print(d.get("C12", 0.0), d.get("phi12", 0.0))')
     "${PYBIN}" "${REPO_DIR}/campaign/psearch_plan.py" --name "$name" --nl "$nl" --c1="$c1" --c3="$c3" --c12="$c12" --phi12="$phi" \
-        --ci95 "$PSEARCH_CI95" --seed "$PSEARCH_SEED" --n1 "$PSEARCH_N1" --n2 "$PSEARCH_N2" --out "$sdd" >&2 || return 1
-    for st in 1 2; do
+        --ci95 "$PSEARCH_CI95" --seed "$PSEARCH_SEED" --n1 "$PSEARCH_N1" --n2 "$PSEARCH_N2" --stages "$PSEARCH_STAGES" \
+        --out "$sdd" >&2 || return 1
+    if [ -n "$PSEARCH_RESUME" ]; then          # the same draw, or nothing
+        "${PYBIN}" -c 'import json, sys; a, b = (json.load(open(f + "/start.json"))["start"] for f in sys.argv[1:3])
+ok = all(abs(a[k] - b[k]) <= 1e-6 * max(1.0, abs(b[k])) for k in ("c1_A", "c3_A", "c12_A", "phi12"))
+sys.exit(0 if ok else "PSEARCH_RESUME: " + sys.argv[1] + " drew another start than this plan")' "$PSEARCH_RESUME" "$sdd" >&2 || return 1
+    fi
+    cls="$(res_class "$bin")"; grp="$(grp_for "$cls")"; da=$(dep_arg_for "$dep")
+    local ex="NLAYERS=${nl},REGLAYER=0,PROBE_MODES=1,NITER=${SEARCH_NITER},SAVE_EVERY=${SEARCH_NITER},BETA_LSQ=${BETA_LSQ}${grp:+,GROUPING=${grp}}"
+    for st in $(seq 1 "$PSEARCH_STAGES"); do
+        if [ -n "$PSEARCH_RESUME" ] && [ -s "${PSEARCH_RESUME}/stage${st}_best.txt" ]; then    # done before: take its answer
+            for f in "stage${st}_best.txt" "stage${st}_best.json" "stage${st}_trials.csv"; do
+                [ -e "${PSEARCH_RESUME}/${f}" ] && cp "${PSEARCH_RESUME}/${f}" "${sdd}/${f}"
+            done
+            echo "  stage ${st}: resumed from ${PSEARCH_RESUME} ($(cat "${sdd}/stage${st}_best.txt"))" >&2
+            prev=""; continue
+        fi
         while IFS= read -r rd; do
             mkdir -p "${REPO_DIR}/${rd}/01"; echo "${rd}" >>"${DIRS_FILE}"
             if [ -d "${REPO_DIR}/${rd}/analysis" ]; then mv "${REPO_DIR}/${rd}/analysis" "${REPO_DIR}/${rd}/analysis.prev_$(date +%Y%m%d_%H%M%S)"; fi
             for f in "${INPUTS[@]}" aberrations.json probe_initial_true.mat; do ln -sf "${datadir}/01/${f}" "${REPO_DIR}/${rd}/01/${f}"; done
             rm -f "${REPO_DIR:?}/${rd:?}/01/probe_initial.mat" "${REPO_DIR:?}/${rd:?}/01/probe_initial.json"
         done < <(awk -F'\t' 'NR == 1 {for (j = 1; j <= NF; j++) if ($j == "recon_dir") c = j; next} {print $c}' "${sdd}/stage${st}.tsv")
+        n=$(( $(wc -l <"${sdd}/stage${st}.tsv") - 1 ))
+        axes=c1; [ "$st" = 2 ] && axes=a1
+        base=""; [ "$st" -gt 1 ] && base="${sdd}/stage$((st - 1))_best.txt"
+        fin=""; [ "$st" = "$PSEARCH_STAGES" ] && fin="--final"
+        local dd_="$da"                                    # the sims (if any); after a stage run here, its select
+        if [ -n "$prev" ]; then dd_="--dependency=afterany:${prev}"; fi
+        A=$(sbatch --parsable --array="0-$((n - 1))" --job-name="af_ps${st}_${name}" --time="${SEARCH_RTIME}" \
+            --mem="${SEARCH_MEM:-$(mem_for "$cls")}" ${dd_:+"$dd_"} \
+            --output="${REPO_DIR}/recon_af_${name}_s${st}t%a_NL${nl}/slurm_%A_%a.out" --error="${REPO_DIR}/recon_af_${name}_s${st}t%a_NL${nl}/slurm_%A_%a.err" \
+            --export=ALL,SEARCH_MANIFEST="${sdd}/stage${st}.tsv"${base:+,SEARCH_BASE_FILE=${base}},${ex} campaign/search_trial.sh); A="${A%%;*}"
+        S=$(sbatch --parsable --job-name="af_psel${st}_${name}" --time=00:30:00 --mem=8G --cpus-per-task=1 --dependency="afterany:${A}" \
+            --output="${sdd}/slurm_select${st}_%j.out" --error="${sdd}/slurm_select${st}_%j.err" \
+            --wrap="'${PYBIN}' '${REPO_DIR}/campaign/select_grid.py' --manifest '${sdd}/stage${st}.tsv' --stage ${st} --axes ${axes}${base:+ --base '${base}'} ${fin} --out '${sdd}'")
+        ids="${ids} ${A} ${S}"; prev="$S"
     done
-    n1=$(( $(wc -l <"${sdd}/stage1.tsv") - 1 )); n2=$(( $(wc -l <"${sdd}/stage2.tsv") - 1 ))
-    cls="$(res_class "$bin")"; grp="$(grp_for "$cls")"; da=$(dep_arg_for "$dep")
-    local ex="NLAYERS=${nl},REGLAYER=0,PROBE_MODES=1,NITER=${SEARCH_NITER},SAVE_EVERY=${SEARCH_NITER},BETA_LSQ=${BETA_LSQ}${grp:+,GROUPING=${grp}}"
-    A1=$(sbatch --parsable --array="0-$((n1 - 1))" --job-name="af_ps1_${name}" --time="${SEARCH_RTIME}" \
-        --mem="${SEARCH_MEM:-$(mem_for "$cls")}" ${da:+"$da"} \
-        --output="${REPO_DIR}/recon_af_${name}_s1t%a_NL${nl}/slurm_%A_%a.out" --error="${REPO_DIR}/recon_af_${name}_s1t%a_NL${nl}/slurm_%A_%a.err" \
-        --export=ALL,SEARCH_MANIFEST="${sdd}/stage1.tsv",${ex} campaign/search_trial.sh); A1="${A1%%;*}"
-    S1=$(sbatch --parsable --job-name="af_psel1_${name}" --time=00:30:00 --mem=8G --cpus-per-task=1 --dependency="afterany:${A1}" \
-        --output="${sdd}/slurm_select1_%j.out" --error="${sdd}/slurm_select1_%j.err" \
-        --wrap="'${PYBIN}' '${REPO_DIR}/campaign/select_grid.py' --manifest '${sdd}/stage1.tsv' --stage 1 --axes c1 --out '${sdd}'")
-    A2=$(sbatch --parsable --array="0-$((n2 - 1))" --job-name="af_ps2_${name}" --time="${SEARCH_RTIME}" \
-        --mem="${SEARCH_MEM:-$(mem_for "$cls")}" --dependency="afterany:${S1}" \
-        --output="${REPO_DIR}/recon_af_${name}_s2t%a_NL${nl}/slurm_%A_%a.out" --error="${REPO_DIR}/recon_af_${name}_s2t%a_NL${nl}/slurm_%A_%a.err" \
-        --export=ALL,SEARCH_MANIFEST="${sdd}/stage2.tsv",SEARCH_BASE_FILE="${sdd}/stage1_best.txt",${ex} campaign/search_trial.sh); A2="${A2%%;*}"
-    S2=$(sbatch --parsable --job-name="af_psel2_${name}" --time=00:30:00 --mem=8G --cpus-per-task=1 --dependency="afterany:${A2}" \
-        --output="${sdd}/slurm_select2_%j.out" --error="${sdd}/slurm_select2_%j.err" \
-        --wrap="'${PYBIN}' '${REPO_DIR}/campaign/select_grid.py' --manifest '${sdd}/stage2.tsv' --stage 2 --axes a1 --base '${sdd}/stage1_best.txt' --final --out '${sdd}'")
-    echo "${A1} ${S1} ${A2} ${S2} ${sdd}/search_best.txt"
+    [ -n "$prev" ] || { echo "PSEARCH: every stage was resumed -- nothing to search, so nothing to start from" >&2; return 1; }
+    echo "${ids# } ${sdd}/search_best.txt"
 }
 SELS=(); BESTS=()                  # per dose index: the lab leg's select job and its start file (Pb and Ti read them)
 submit_legs(){ # $1 base name (<leg>_<mode><SFX>[_dose<D>]) $2 sim dir $3 dep $4 mode $5 dose index; appends to RIDS and line
@@ -394,10 +413,12 @@ submit_legs(){ # $1 base name (<leg>_<mode><SFX>[_dose<D>]) $2 sim dir $3 dep $4
         RIDS+=($ids); line+=" ${m}:rk=$(echo $ids | tr ' ' '+')"
     elif [ "$PSEARCH" = 1 ]; then
         if [ "$m" = lab ]; then
-            local A1 S1 A2 S2
-            read -r A1 S1 A2 S2 B < <(psearch_job "${base}${RTAG}" "$dd" "$bin" "$nl" "$dep" "$c1" "$c3")
-            [ -n "${B:-}" ] || { echo "PSEARCH: planning the search for ${base}${RTAG} failed (above)" >&2; exit 1; }
-            SELS[$di]="$S2"; BESTS[$di]="$B"; RIDS+=("$A1" "$S1" "$A2" "$S2"); line+=" ${m}:psearch=${A1}>${S1}>${A2}>${S2}"
+            local PS=() np
+            read -r -a PS < <(psearch_job "${base}${RTAG}" "$dd" "$bin" "$nl" "$dep" "$c1" "$c3")
+            np=${#PS[@]}
+            [ "$np" -ge 3 ] || { echo "PSEARCH: planning the search for ${base}${RTAG} failed (above)" >&2; exit 1; }
+            B="${PS[$((np - 1))]}"; SELS[$di]="${PS[$((np - 2))]}"; BESTS[$di]="$B"
+            RIDS+=("${PS[@]:0:$((np - 1))}"); line+=" ${m}:psearch=$(echo "${PS[@]:0:$((np - 1))}" | tr ' ' '>')"
         fi
         ids=$(kick_variants "${base}${RTAG}_ps" "$dd" "$bin" "$nl" "${dep:+afterok:${dep},}afterany:${SELS[$di]}" "$c1" "$c3" "${BESTS[$di]}")
         RIDS+=($ids); line+=" ${m}:ps=$(echo $ids | tr ' ' '+')"

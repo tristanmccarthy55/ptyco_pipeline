@@ -28,9 +28,14 @@ col(){ awk -F'\t' -v i="${SLURM_ARRAY_TASK_ID}" -v k="$1" 'NR == 1 {for (j = 1; 
                                                          $1 == i {if (c) print $c; exit}' "${SEARCH_MANIFEST}"; }
 rdir=$(col recon_dir); c1=$(col c1_A); c3=$(col c3_A); c12=$(col c12_A); phi=$(col phi12)
 [ -n "$rdir" ] || { echo "search trial: no row ${SLURM_ARRAY_TASK_ID} in ${SEARCH_MANIFEST}" >&2; exit 1; }
-if [ "$c1" = "-" ]; then
-    [ -s "${SEARCH_BASE_FILE:-}" ] || { echo "search trial: C1/C3 from the previous stage, but SEARCH_BASE_FILE '${SEARCH_BASE_FILE:-}' is empty" >&2; exit 1; }
-    read -r c1 c3 _ <"${SEARCH_BASE_FILE}"
+if [ "$c1" = "-" ] || [ "$c12" = "-" ]; then     # "-" = the previous stage's answer ("C1 C3 C12 phi12")
+    [ -s "${SEARCH_BASE_FILE:-}" ] || { echo "search trial: a term from the previous stage, but SEARCH_BASE_FILE '${SEARCH_BASE_FILE:-}' is empty" >&2; exit 1; }
+    read -r b1 b3 b12 bphi _ <"${SEARCH_BASE_FILE}"
+    if [ "$c1" = "-" ]; then c1="$b1"; c3="$b3"; fi
+    if [ "$c12" = "-" ]; then
+        [ -n "${bphi:-}" ] || { echo "search trial: A1 from the previous stage, but ${SEARCH_BASE_FILE} has no C12 / phi12" >&2; exit 1; }
+        c12="$b12"; phi="$bphi"
+    fi
 fi
 export SIM_BASE="${REPO_DIR}/${rdir}/" PROBE_C1="$c1" PROBE_C3="$c3"
 [ -n "$c12" ] && export PROBE_SET="C12=${c12}:phi12=${phi}"     # absolute A1 (applied after any PROBE_SCALE)

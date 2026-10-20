@@ -12,6 +12,7 @@ stage<k>_best.json / stage<k>_best.txt ("<C1 A> <C3 A> <C12 A> <phi12 rad>") and
 search_best.json / search_best.txt, read by run_recon_synthetic_ML.slurm PROBE_FROM. Exits 0.
   stage 1  --axes c1: coordinates are C1 / C3 [A]; A1 from the manifest (the drawn start)
   stage 2  --axes a1: coordinates are the A1 vector (C12 cos 2 phi12, C12 sin 2 phi12) [A]; C1 / C3 from --base
+  stage 3  --axes c1 again, A1 from --base (the manifest's c12_A is "-")
 The truth (start.json's record) never enters the choice.
 
     python campaign/select_grid.py --manifest search_af_<leg>/stage1.tsv --stage 1 --axes c1 --out search_af_<leg>
@@ -75,7 +76,11 @@ def main(argv=None):
                    method=method)
     if a.axes == "c1":
         c1, c3 = float(xy[0]), float(xy[1])
-        c12, phi = float(rows[0]["c12_A"]), float(rows[0]["phi12"])
+        if rows[0]["c12_A"] == "-":                     # stage 3: A1 is the previous stage's answer
+            b = open(a.base).read().split()
+            c12, phi = float(b[2]), float(b[3])
+        else:
+            c12, phi = float(rows[0]["c12_A"]), float(rows[0]["phi12"])
     else:
         b = open(a.base).read().split()
         c1, c3 = float(b[0]), float(b[1])
