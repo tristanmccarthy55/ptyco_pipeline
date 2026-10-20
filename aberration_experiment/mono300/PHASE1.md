@@ -44,6 +44,36 @@ Supersedes the fixed-probe-only proposal in `HANDOFF_MONO300.md` ("Phase 1 as pr
 with modes is the method, the fixed probe is the side control. Stub dry run of `phase1_submit.sh`: 120 sbatch calls,
 `campaign/test_coh_names.sh` 26/26 first.
 
+## A, B, C results (2026-10-20; phase images viewed: `figs/mono300/phase1_ceiling.png`; `phase1_look.py`)
+
+All at focal spread 2.5 A, ARM tableau, 80 mrad, noiseless; right place (0.5 A) vs guessing; mode 1 = the sim's share.
+
+| run | Pb right / guess | Ti right / guess | vacuum / slab | verdict |
+|---|---|---|---|---|
+| A: src 0.1, fixed (step 2) | 91 / 26 | 60 / 18 | 0.41 | good |
+| **A: src 0.1, modes** | 81 / 22 | 47 / 20 | 0.36 | **good** |
+| A: src 0.2, fixed (step 2) | 45 / 29 | 38 / 20 | 0.47 | off |
+| **A: src 0.2, modes** | 55 / 27 | 38 / 23 | 0.35 | **okay** |
+| B: src 0.1 + phonons 100 K, fixed | 29 / 30 | 22 / 18 | 0.47 | off |
+| **B: src 0.1 + phonons 100 K, modes** | 51 / 27 | 19 / 17 | 0.38 | **okay** |
+| B: src 0.1 + phonons 20 K, fixed | 41 / 31 | 26 / 21 | 0.46 | off |
+| **B: src 0.1 + phonons 20 K, modes** | 70 / 30 | 24 / 19 | 0.36 | **okay** |
+| C: src 0.1, searched start, modes | no kernels | | 0.99 | failed |
+
+- **A**: the Mono near its best (0.1 A source) is good with modes; a realistic 0.2 A source is okay with modes where the
+  fixed probe was off. Here the mode leg sits a little below its fixed control (81/47 vs 91/60) -- likely the engine's
+  object step divided by the mode count (slower object convergence), not the physics. Recovered state drifts toward mode 1
+  (0.45 -> 0.65 at src 0.1, 0.26 -> 0.53 at src 0.2).
+- **B**: with phonons, the fixed probe has no depth at either temperature; with modes Pb comes back to okay (51 % at 100 K,
+  **70 % at 20 K**) but **Ti stays at the guessing level even at 20 K** (Debye zero-point floor, Ti 0.044 A per axis).
+  Images: modes turn the fixed probe's leaning streaks back into discrete Pb sites; the B-site columns stay continuous.
+- **C failed, and the cause is the SEARCH ORDER, not the method.** Stage 1 searched C1 x C3 while A1 was still ~40 A
+  wrong: its error surface is a shallow diagonal C1-C3 valley whose minimum the A1 error pulled to the grid corner (C1
+  -991 A, true -958.6: 32.5 A off, ~5 waves at the edge; C3 690 A off). Stage 2 then found A1 well (15.8 A @ 1.51 rad vs
+  12.4 @ 1.47: ~3.6 A) despite the wrong C1 -- A1 is robust to a C1 error, C1 is not to an A1 error. The refine raised the
+  probe overlap from 0.038 to 0.74 but the object moved into the vacuum (the C1/depth trade), and the Pb/Ti grid legs
+  found 2 and 0 grid atoms, so no kernels. Fix: a third stage, C1 x C3 again at the searched A1 (or A1 first).
+
 ## Step 1 results (2026-10-14; controls: true probe fixed, 1 mode, noiseless, own matched kernels)
 
 Submitted 2026-10-13 ~08:08 (tarballs `*_fixed_20261013_0808*`, job ids not recorded), pulled to `~/Desktop/mono_phase1`.

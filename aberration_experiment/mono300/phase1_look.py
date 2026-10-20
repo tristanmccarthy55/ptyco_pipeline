@@ -34,6 +34,15 @@ STEP1 = [("fs", "7.29"), ("fs", "5"), ("fs", "3.5"), ("fs", "2.5"), ("fs", "1.5"
          ("src", "0.05"), ("src", "0.1"), ("src", "0.2"), ("src", "0.4")]
 JOINT = [("2.5", "0.1"), ("2.5", "0.2"), ("3.5", "0.1"), ("3.5", "0.2")]
 MODES = [("fs", "7.29"), ("fs", "5"), ("src", "0.2"), ("src", "0.4")]
+# the ceiling and the searched start at the realistic Spectra Mono settings (ceiling_submit.sh, search_submit.sh; 2026-10-16):
+# (section, display name, key, recon tag core, mode_spectrum name, fs, src) -- tags armf_a080_<core>, legs armf_a080_lab_<core>
+CEIL = [("A ceiling", "fs 2.5 + src 0.1, modes", "fs2p5_src0p1_mixF", "fs2p5_src0p1_mixF", "fs 2.5+src 0.1", 2.5, 0.1),
+        ("A ceiling", "fs 2.5 + src 0.2, modes", "fs2p5_src0p2_mixF", "fs2p5_src0p2_mixF", "fs 2.5+src 0.2", 2.5, 0.2),
+        ("B cooled", "100 K, fixed", "T100_fixed", "ph16_T100_fs2p5_src0p1_mixF_fixed", "fs 2.5+src 0.1", 2.5, 0.1),
+        ("B cooled", "100 K, modes", "T100_mixF", "ph16_T100_fs2p5_src0p1_mixF", "fs 2.5+src 0.1", 2.5, 0.1),
+        ("B cooled", "20 K, fixed", "T20_fixed", "ph16_T20_fs2p5_src0p1_mixF_fixed", "fs 2.5+src 0.1", 2.5, 0.1),
+        ("B cooled", "20 K, modes", "T20_mixF", "ph16_T20_fs2p5_src0p1_mixF", "fs 2.5+src 0.1", 2.5, 0.1),
+        ("C searched", "fs 2.5 + src 0.1, searched start, modes", "fs2p5_src0p1_ps", "fs2p5_src0p1_ps", "fs 2.5+src 0.1", 2.5, 0.1)]
 p_ = lambda v: v.replace(".", "p")
 
 
@@ -73,6 +82,10 @@ def runs():
         t = f"{k}{p_(v)}"
         out.append(("step 2 modes", f"{k} {v}, modes", f"{t}_mix", {"tag": [f"armf_a080_{t}_mix"], "leg": f"armf_a080_lab_{t}_mix"},
                     f"{k} {v}", float(v) if k == "fs" else 0.0, float(v) if k == "src" else 0.0))
+    out.append(("B cooled", "phonons only, RT (ARM page)", "split_ph", None, None, 0.0, 0.0))
+    out.append(("B cooled", "phonons only, 100 K (ARM page)", "split_ph100", None, None, 0.0, 0.0))
+    for sec, name, key, core, wkey, fs, src in CEIL:
+        out.append((sec, name, key, {"tag": [f"armf_a080_{core}"], "leg": f"armf_a080_lab_{core}"}, wkey, fs, src))
     return out
 
 
@@ -125,7 +138,9 @@ def main():
               ("source", ["known_a080", "src0p05", "src0p1", "src0p2", "src0p4", "split_coh"]),
               ("joint", ["known_a080", "fs2p5", "fs2p5_src0p1", "fs2p5_src0p2", "fs3p5", "fs3p5_src0p1", "fs3p5_src0p2",
                          "src0p1", "src0p2"]),
-              ("modes", ["fs7p29", "fs7p29_mix", "fs5", "fs5_mix", "src0p2", "src0p2_mix", "src0p4", "src0p4_mix"]))
+              ("modes", ["fs7p29", "fs7p29_mix", "fs5", "fs5_mix", "src0p2", "src0p2_mix", "src0p4", "src0p4_mix"]),
+              ("ceiling", ["fs2p5_src0p1", "fs2p5_src0p1_mixF", "fs2p5_src0p2", "fs2p5_src0p2_mixF", "T100_fixed", "T100_mixF",
+                           "T20_fixed", "T20_mixF", "fs2p5_src0p1_ps"]))
     for series, keys in sheets:
         keys = [k for k in keys if arm.load_leg(R.find(k)) is not None]
         n = len(keys)
@@ -139,7 +154,8 @@ def main():
                 arm.xz_section(ax, lg, sc, rA / lg["dx"], xlim=(nx * lg["dx"] / 2 - 8, nx * lg["dx"] / 2 + 8), show_y=(j == 0))
                 if i == 0:
                     ttl = r["point"].replace(" (fs 7.29 + src 0.4)", "\nfs 7.29 + src 0.4").replace(", modes", "\nprobe modes")
-                    ttl += "\nfixed probe" if series == "modes" and not k.endswith("_mix") else ""
+                    ttl += "\nfixed probe" if (series == "modes" and not k.endswith("_mix")) or \
+                                               (series == "ceiling" and k in ("fs2p5_src0p1", "fs2p5_src0p2")) else ""
                     ttl += f"\nmode 1 {r['mode1_share']:.2f}" if r["mode1_share"] is not None else ""
                     if "right" in r:
                         ttl += f"\nPb {100 * r['right']['Pb']:.0f} vs {100 * r['guess']['Pb']:.0f}" \
