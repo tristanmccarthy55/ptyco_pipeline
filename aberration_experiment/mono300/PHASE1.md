@@ -77,6 +77,10 @@ All at focal spread 2.5 A, ARM tableau, 80 mrad, noiseless; right place (0.5 A) 
   the seed-1 draw is re-planned and checked, it matches to 1e-14), stage 3 = C1 x C3 again on stage 1's grid at stage 2's
   A1 (49 trials), legs refined from stage 3's answer (RTAG `_s3`, legs `_s3_ps`). The driver's staged search now has 3
   stages by default (`PSEARCH_STAGES`), so D gets them too. Stub dry run 7 calls; ~160 GPU-h.
+- **C rerun SUBMITTED 2026-10-20 13:11** (log `logs/search3_20261020_131139.txt`; stages 1-2 resumed as planned): stage-3
+  array 1334455, select 1334456, refine legs 1334457/58/59, pack 1334460 (`atomfind_results_armf_a080_fs2p5_src0p1_s3_*`),
+  analysis 1334461 (`analysis_armf_a080_fs2p5_src0p1_s3_ps_*`). The `_mixF` wall reruns (`phase1_step2_rerunF.sh`, re-dry-run
+  2026-10-20 on the current code: 20 calls) are set off alongside -- record their ids from the user's paste.
 
 ## Step 1 results (2026-10-14; controls: true probe fixed, 1 mode, noiseless, own matched kernels)
 
