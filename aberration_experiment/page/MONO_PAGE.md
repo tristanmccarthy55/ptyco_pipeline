@@ -1,6 +1,10 @@
 # The Coherence Wall page — how to fill it in and republish
 
 PUBLISHED: https://claude.ai/artifact/B7ep8BpAMVdKvrnXywACq3
+- version 12, 2026-10-21: simpler figures. Source figure: one bold line (the Mono) and one thin grey (no monochromator),
+  labelled on the curves, dotted verdict lines, dots for the Mono's current at 0.1 / 0.2 Å, no legend or bars. fig_wall:
+  the hatched "typical source size on real instruments" band removed (measured at 25-40 mrad with jitter; §06 has
+  the context); its source axis says "at the sample".
 - version 11, 2026-10-21: the user read the monochromator bars (Å of focus spread) as source sizes. The where-it-works
   figure now says so in its title ("a spread of FOCUS along the beam ... not the source size"), bars read "gives x Å of
   focus spread", rows read "source 0.1 Å at the sample (Mono: ≤ 4-9 pA at 80 mrad)", and its caption names the two Å.

@@ -137,7 +137,7 @@ def fig_wall(recs, man):
     """Pb and Ti in the right place against each single effect, with the guessing level; probe-mode legs when landed."""
     fig, axs = plt.subplots(1, 2, figsize=(11.6, 4.5), sharey=True, gridspec_kw=dict(wspace=0.07))
     ref = recs["known_a080"]
-    for ax, grp, xkey, xlab in ((axs[0], "focal", "fs", "chromatic focal spread (Å rms)"), (axs[1], "source", "src", "source size (Å FWHM)")):
+    for ax, grp, xkey, xlab in ((axs[0], "focal", "fs", "chromatic focal spread (Å rms)"), (axs[1], "source", "src", "source size at the sample (Å FWHM)")):
         pts = [ref] + sorted([r for r in recs.values() if r["spec"]["group"] == grp and r["found"]], key=lambda r: r[xkey])
         x = np.array([r[xkey] for r in pts])
         for z, col, nm in ((82, PB, "Pb"), (22, TI, "Ti")):
@@ -160,11 +160,7 @@ def fig_wall(recs, man):
             ax.plot(r[xkey], 108, "s", ms=7, color=VCOL[r["v"]], zorder=6)
         ax.set_xlabel(xlab); ax.set_ylim(0, 112); ax.set_yticks(range(0, 101, 20)); ax.grid(alpha=.25, lw=.6)
         ax.spines[["top", "right"]].set_visible(False)
-    rs = man["real_source_A"]
-    axs[1].axvspan(rs[0], rs[1], ymax=100 / 112, facecolor="none", edgecolor="#8a96a3", hatch="////", lw=0, zorder=0)
-    axs[1].text(0.415, 62, "typical source size\non real instruments", fontsize=8.5, color=arm.INK2, va="center",
-                bbox=dict(boxstyle="round,pad=0.25", fc="white", ec="none"))
-    axs[1].set_xlim(-0.02, rs[1] + 0.02)
+    axs[1].set_xlim(-0.02, 0.45)
     axs[0].set_xlim(-0.2, 7.95)
     top = axs[0].secondary_xaxis("top", functions=(lambda f: f / (FS_PER_EV_MM * 1.4), lambda e: e * FS_PER_EV_MM * 1.4))
     top.set_xlabel("energy spread through Cc 1.4 mm (eV FWHM)", fontsize=9.5)
@@ -238,31 +234,37 @@ def mono_current_range(d_A):
 
 
 def fig_source():
-    """The gun's source image at the sample against probe current at 80 mrad: the X-FEG with and without the 90 meV
-    monochromator, beside the source sizes tested; top axis, the scan time for 1e7 e/A^2 over the 20 x 20 A scan."""
+    """The gun's source image at the sample against probe current at 80 mrad: the X-FEG Mono at 90 meV (bold, its
+    brightness range shaded) and without the monochromator (thin grey), beside the source sizes tested; top axis, the
+    scan time for 1e7 e/A^2 over the 20 x 20 A scan."""
     I = np.logspace(np.log10(0.3), np.log10(300), 200) * 1e-12
     fig, ax = plt.subplots(figsize=(11.6, 4.6))
-    for name, cut, col in (("X-FEG, no monochromator", 1.0, arm.INK2), ("X-FEG Mono at 90 meV (estimate)", MONO_CUT, arm.INK)):
-        a = source_fwhm_A(I, BR_XFEG[1] / cut); b = source_fwhm_A(I, BR_XFEG[0] / cut)
-        ax.fill_between(I * 1e12, a, b, color=col, alpha=.22 if cut > 1 else .12, lw=0)
-        ax.plot(I * 1e12, np.sqrt(a * b), "-", color=col, lw=2, label=name)
+    ax.axhspan(0.24, 0.6, color="#8a96a3", alpha=.10, lw=0)
+    ax.text(0.33, 0.585, "effective sources measured at 25–40 mrad, jitter included (Müller et al. 2006)",
+            ha="left", va="top", fontsize=8.3, color=arm.INK2)
     for d, t, c in ((0.1, "0.1 Å: good at 2.5 Å with modes", OK), (0.2, "0.2 Å: okay with modes", WARN),
                     (0.4, "0.4 Å: off, even alone", STOP)):
-        ax.axhline(d, color=c, lw=1.4, ls="--"); ax.text(0.32, d + 0.008, t, fontsize=8.8, color=c, va="bottom")
-    ax.axhspan(0.24, 0.6, color="#8a96a3", alpha=.10, lw=0)
-    ax.text(300 * 0.97, 0.585, "effective sources measured at 25–40 mrad, instabilities included (Müller et al. 2006)",
-            ha="right", va="top", fontsize=8.3, color=arm.INK2)
+        ax.axhline(d, color=c, lw=1, ls=":"); ax.text(0.33, d + 0.007, t, fontsize=8.8, color=c, va="bottom")
+    lo_b, hi_b = (source_fwhm_A(I, BR_XFEG[1] / MONO_CUT), source_fwhm_A(I, BR_XFEG[0] / MONO_CUT))
+    ax.fill_between(I * 1e12, lo_b, hi_b, color=arm.INK, alpha=.13, lw=0)
+    mono = np.sqrt(lo_b * hi_b)
+    ax.plot(I * 1e12, mono, "-", color=arm.INK, lw=2.4)
+    plain = source_fwhm_A(I, np.sqrt(BR_XFEG[0] * BR_XFEG[1]))
+    ax.plot(I * 1e12, plain, "-", color="#8a96a3", lw=1.2)
+    k = np.searchsorted(mono, 0.5)
+    ax.text(I[k] * 1e12 * 0.92, 0.5, "X-FEG Mono at 90 meV (estimate)", ha="right", va="center", fontsize=9.5,
+            color=arm.INK, fontweight="bold")
+    ax.text(250, plain[-1] * 0.93, "X-FEG, no monochromator", ha="right", va="top", fontsize=9, color="#6f7b8a")
     for d in (0.1, 0.2):
         lo, hi = mono_current_range(d)
-        ax.plot([lo, hi], [d, d], "-", color=arm.INK, lw=5, solid_capstyle="butt", alpha=.8)
-        ax.text(np.sqrt(lo * hi), d - 0.012, f"Mono: ≤ {lo:.0f}–{hi:.0f} pA", ha="center", va="top", fontsize=8.5, color=arm.INK)
+        ax.plot([np.sqrt(lo * hi)], [d], "o", color=arm.INK, ms=6, zorder=5)
+        ax.text(hi * 1.12, d - 0.004, f"Mono: {lo:.0f}–{hi:.0f} pA", ha="left", va="top", fontsize=9, color=arm.INK)
     ax.set_xscale("log"); ax.set_xlim(0.3, 300); ax.set_ylim(0, 0.6)
     ax.set_xlabel("probe current (pA)"); ax.set_ylabel("the gun's source image at the sample (Å FWHM)")
     t = lambda i: 1e7 * SCAN_A2 * 1.602e-19 / (np.maximum(i, 1e-9) * 1e-12)
     top = ax.secondary_xaxis("top", functions=(t, t))
     top.set_xlabel("time for 1e7 e/Å² over the 20 × 20 Å scan (s)", fontsize=9)
-    ax.legend(loc="upper left", bbox_to_anchor=(0.0, 0.83), fontsize=9, frameon=False)
-    ax.spines[["right"]].set_visible(False); ax.grid(alpha=.25, lw=.6)
+    ax.spines[["right"]].set_visible(False); ax.grid(alpha=.2, lw=.6)
     return arm.save(fig, "fig_source_current.png")
 
 WHERE_ROWS = [("chromatic focal spread only (§02)", ["known_a080", "fs0p75", "fs1p5", "fs2p5", "fs3p5", "fs5", "fs5_mix"]),
