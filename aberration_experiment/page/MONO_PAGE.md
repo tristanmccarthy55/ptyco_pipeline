@@ -1,6 +1,10 @@
 # The Coherence Wall page — how to fill it in and republish
 
 PUBLISHED: https://claude.ai/artifact/B7ep8BpAMVdKvrnXywACq3
+- version 7, 2026-10-21: calmer formatting (the user: "a bit hard on my eyes"). One sans typeface for text; no all-caps
+  monospace labels (eyebrow, nav, table heads, chips, box labels); call boxes as a left rule only; no figure shadows; the
+  big headline panel and its seven tiles replaced by one "In short" sentence (`headline()` now returns only WALL_LINE);
+  findings as a numbered list. Overrides sit in the template's own <style> (the ARM page's CSS is shared).
 - version 6, 2026-10-21, rewritten for a reader who has not seen the runs (the user's PI): §01 opens with "What this
   page is" (question, test, score, aberrations, order), then the findings one limiting factor at a time, the main figure,
   then the run list in two parts and a terms table; every section opens with a question / answer box (`call qa`); table

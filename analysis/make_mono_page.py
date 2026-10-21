@@ -289,6 +289,7 @@ def series_tabs(tid, keys, recs, cuts):
 
 
 def headline(recs):
+    """The summary's opening sentence: the last good focal spread and source size alone, and together."""
     def wall(grp, key):
         pts = sorted([recs["known_a080"]] + [r for r in recs.values() if r["spec"]["group"] == grp and r["found"]], key=lambda r: r[key])
         g = max(r[key] for r in pts if r["v"] == "good")
@@ -297,44 +298,12 @@ def headline(recs):
         return g, o, mid
     fg, fo, _ = wall("focal", "fs")
     sg, so, smid = wall("source", "src")
-    dE14, dE24 = fg / (FS_PER_EV_MM * 1.4), fg / (FS_PER_EV_MM * 2.4)
-    cold = recs["cold_feg"]
-    alone = {(r["fs"], r["src"]): r for r in recs.values() if r["spec"]["group"] in ("focal", "source") and r["found"]}
     joint = [r for r in recs.values() if r["spec"]["group"] == "joint" and r["found"]]
-    worse = [r for r in joint if r["v"] == "off" and alone.get((r["fs"], 0.0), {}).get("v") in ("good", "okay")
-             and alone.get((0.0, r["src"]), {}).get("v") in ("good", "okay")]
     jgood = sorted([r for r in joint if r["v"] == "good"], key=lambda r: (r["fs"], r["src"]))
-    lifted = [r for r in recs.values() if r["spec"]["group"] == "modes" and r["found"] and not r["provisional"]
-              and ORDER[r["v"]] > ORDER[recs[r["spec"]["control"]]["v"]]]
-    extra = []
-    for r in worse[:1]:
-        a, b = alone[(r["fs"], 0.0)], alone[(0.0, r["src"])]
-        extra.append((f"{r['fs']:g} Å + {r['src']:g} Å: off", f"both at once, though {r['fs']:g} Å alone is {a['v']} and {r['src']:g} Å "
-                      f"alone {b['v']}: Pb {pct(r['sc'], 82):.0f} %, Ti {pct(r['sc'], 22):.0f} %. The losses compound."))
-    for r in lifted:
-        c = recs[r["spec"]["control"]]
-        extra.append((f"{setting(r)}: {c['v']} → {r['v']}", f"with probe modes: Pb {pct(c['sc'], 82):.0f} → {pct(r['sc'], 82):.0f} %, "
-                      f"the vacuum loading halves ({c['vac']:.2f} → {r['vac']:.2f}); Ti {pct(r['sc'], 22):.0f} %, good needs 45"))
-    tiles = [(f"{fg:g} → {fo:g} Å", "focal-spread wall (rms): the last good point and the first off"),
-             (f"{sg:g} → {so:g} Å", "source-size wall (FWHM)" + "".join(
-                 f"; {m['src']:g} Å is {m['v']}: Pb {pct(m['sc'], 82):.0f} %, Ti {pct(m['sc'], 22):.0f} %" for m in smid)),
-             (f"≤ {dE14:.2f} eV", f"energy spread for good at Cc 1.4 mm (≤ {dE24:.2f} eV at 2.4 mm)"),
-             ("both at once", f"the cold FEG ({cold['fs']:g} Å + {cold['src']:g} Å) failed on each count: Pb {pct(cold['sc'], 82):.0f} % "
-                              f"against {pct(cold['sc'], 82, 'guess'):.0f} % by guessing")]
-    for k, lab in (("ceil_s01", "the Spectra Mono near its best"), ("cool20_mix", "cooled to 20 K")):
-        r = recs.get(k)
-        if r and r["found"]:
-            c = recs[r["spec"]["control"]]
-            extra.append((f"{lab}: {r['v']}", f"{setting(r)}{' + phonons 20 K' if k == 'cool20_mix' else ''}, probe modes: "
-                          f"Pb {pct(r['sc'], 82):.0f} %, Ti {pct(r['sc'], 22):.0f} % (fixed probe: Pb {pct(c['sc'], 82):.0f} %, "
-                          f"{c['v']})"))
-    tiles = tiles[:3] + extra
-    grid = "".join(f"<div><b>{html.escape(a)}</b><span>{html.escape(b)}</span></div>" for a, b in tiles)
-    line = f"focal spread <em>{fg:g} Å</em> alone · source <em>{sg:g} Å</em> alone"
-    if jgood:
-        line += f" · <em>{jgood[-1]['fs']:g} Å + {jgood[-1]['src']:g} Å</em> together"
-    return dict(WALL_LINE=line, FRAG_HEAD_GRID=f'<div class="spec-grid">{grid}</div>')
-
+    line = (f"With the true probe given, the depth survives up to <b>{fg:g} Å</b> of focal spread alone, a <b>{sg:g} Å</b> "
+            f"source alone")
+    line += (f", or <b>{jgood[-1]['fs']:g} Å + {jgood[-1]['src']:g} Å</b> together." if jgood else ".")
+    return dict(WALL_LINE=line)
 
 ORDER = {"off": 0, "okay": 1, "good": 2}
 
