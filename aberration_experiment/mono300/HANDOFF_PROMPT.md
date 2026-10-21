@@ -12,7 +12,7 @@ to ~/Desktop/mono_phase1/{results,analysis}.
 READ FIRST: memory "target-mono300"; aberration_experiment/mono300/PHASE1.md in full (the paper plan at the top, every
 result table, every job id, the engine bug and the search-order lesson); the STATE block at the top of
 aberration_experiment/HANDOFF_MONO300.md; aberration_experiment/page/MONO_PAGE.md (the results page, now this
-direction's to keep up: version 6 published 2026-10-21 at https://claude.ai/artifact/B7ep8BpAMVdKvrnXywACq3).
+direction's to keep up: version 8 published 2026-10-21, told as the story ARM fails -> coherence scan -> Spectra Mono -> physics put back, at https://claude.ai/artifact/B7ep8BpAMVdKvrnXywACq3).
 
 THE PAPER (the user): short sections, one limiting factor each -- a bad (ARM) aberration set and opening the aperture;
 partial coherence; cooling; then the chosen Spectra 300 X-FEG Mono (not UltiMono) and its outputs at doses x-y-z.
@@ -44,7 +44,7 @@ NEXT, IN ORDER:
     aberration_experiment/mono300/phase1_look.py (add rows for fs2p5_src0p1_s3_ps).
  2. The _mixF single points: score them the same way (rows for the four _mixF points); the page shows the 7.29 A point
     from the earlier solver until they land (mono_results.json score_fallbacks).
- 3. Update the page: fill the pending C and _mixF entries in aberration_experiment/page/mono_results.json and the §06 call
+ 3. Update the page: fill the pending C and _mixF entries in aberration_experiment/page/mono_results.json and the §07 call
     and question/answer boxes in page/mono_2026-10-12.html (keep it readable cold: the PI reads it), rebuild with ~/hyperspy-bundle/bin/python analysis/make_mono_page.py, view the
     figures, Artifact read then publish with url= (no icon), copy the built page over
     PtycoShelves/artifacts/wcm_2026-10-12_coherence_wall.html, add a version entry to MONO_PAGE.md.
