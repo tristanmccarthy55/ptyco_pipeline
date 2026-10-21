@@ -36,6 +36,8 @@
   .call.qa.warn { border-left-color: var(--warn); }
   table.brief { font-size: 14.5px; }
   table.brief td:first-child { font-weight: 600; white-space: nowrap; vertical-align: top; }
+  ol.sources li { margin-bottom: 10px; }
+  .refs a, ol.sources a { color: var(--accent); }
   p.tnote { font-family: var(--sans); font-size: 13.5px; line-height: 1.55; color: var(--ink-2); margin: 4px 0 18px; }
   tr.grp td { font-family: var(--sans); font-weight: 600; color: var(--ink); padding-top: 14px; white-space: normal; }
 </style>
@@ -60,6 +62,7 @@
       <a href="#s7">The physics put back</a>
       <a href="#s8">For discussion</a>
       <a href="#appendix">Every run</a>
+      <a href="#sources">Sources</a>
       <a href="#reproduce">Reproduce</a>
     </nav>
   </div></div>
@@ -72,7 +75,7 @@
     <h3>The story</h3>
     <div class="tablewrap"><table class="brief">
       <tbody>
-        <tr><td>Where we started</td><td class="wrap">The previous page: the JEOL ARM200F with its measured aberrations at 80 mrad.
+        <tr><td>Where we started</td><td class="wrap"><a href="https://claude.ai/artifact/MUkJ7yYrsek3nTLXcZgCrk" target="_blank" rel="noopener">The previous page</a>: the JEOL ARM200F with its measured aberrations at 80 mrad.
           With a perfect beam and the probe known, the depth works (Pb 90 %, Ti 58 % of atoms at the right depth). With
           realistic physics it does not. The ARM's own beam (a cold FEG: 0.3 eV energy spread, 0.4 Å source) drops it to
           guessing (Pb 23 %, Ti 7 %), and so does room-temperature vibration on its own (Pb 24 %). Shot noise was not the
@@ -81,9 +84,9 @@
           and the source size, each on its own and then together, with the true probe given and no other physics (§02–§05).
           Both are scanned in Å at the specimen, so the limits hold for any microscope.</td></tr>
         <tr><td>What it turned up</td><td class="wrap">The Spectra 300 with the X-FEG Mono (§06), for three reasons. Its
-          monochromator brings the energy spread to about 90 meV in use, about 2.5 Å of chromatic focal spread: inside the limit, where
+          monochromator brings the energy spread to about 90 meV in use (<a href="https://www.wems.msm.cam.ac.uk/node/56" target="_blank" rel="noopener">as quoted by Cambridge</a>), about 2.5 Å of chromatic focal spread: inside the limit, where
           the ARM's cold FEG gives 7.3 Å and a Titan's Wien filter 4–12 Å. It is a current, widely installed microscope, not
-          a one-off (Cambridge's runs at 90 meV). And its corrector corrects A5, which the ARM's does not, so keeping the
+          a one-off (where they are: §06). And its corrector corrects A5, which the ARM's does not, so keeping the
           ARM's aberrations is pessimistic for it. The UltiMono does better still, but it is the rarer, high-end option.</td></tr>
         <tr><td>Then</td><td class="wrap">We put the physics back at the Spectra Mono's setting, one piece at a time (§07): the
           source size (A), atomic vibration cooled to 100 K and 20 K (B; room temperature is already ruled out), a
@@ -108,7 +111,7 @@
         that needs ΔE ≤ 0.14 eV at C<sub>c</sub> 1.4 mm (≤ 0.08 eV at 2.4 mm). When it fails, false structure fills the
         vacuum above and below the specimen (§02).</li>
       <li><b>Source size</b>: good up to 0.1 Å, Ti lost at 0.2 Å, off by 0.4 Å. On the Mono at 80 mrad the gun's source
-        image is 0.1 Å up to about 4–9 pA of probe current, so the source sets the current, and with it the scan time (§06).
+        image is 0.1 Å up to about 4–8 pA of probe current, so the source sets the current, and with it the scan time (§06).
         When it fails, each column smears in depth while the vacuum stays clean
         (§03).</li>
       <li><b>Both together</b>: worse than either alone. 2.5 Å with a 0.2 Å source is off, though each passed alone (§04).</li>
@@ -116,13 +119,13 @@
         fixed, win part of it back: at 7.29 Å, off → okay. A bug in our solver crashed three of these runs; it is fixed and
         the points are rerunning (§05).</li>
     </ol>
-    <p><b>The microscope it points to</b>: in energy spread the Spectra 300 X-FEG Mono is inside at the 90 meV quoted in use
-      (not at its 0.2 eV specification); the UltiMono with margin; a Titan's Wien filter only to the edge, at its best; the
+    <p><b>The microscope it points to</b>: in energy spread the Spectra 300 X-FEG Mono is inside at the <a href="https://www.wems.msm.cam.ac.uk/node/56" target="_blank" rel="noopener">90 meV quoted in use</a>
+      (not at its <a href="https://www.utwente.nl/en/mesaplus/infrastructure/nanolab/analysis/facilities/tem/doc-1-spectra-300-stem-datasheet-ds0297.pdf" target="_blank" rel="noopener">0.2–0.3 eV specification</a>); the UltiMono with margin; a Titan's Wien filter only to the edge, at its best; the
       ARM's cold FEG and unmonochromated guns do not (§06).</p>
     <p><b>The physics put back, at the Spectra Mono's setting</b> (2.5 Å of chromatic focal spread)</p>
     <ol class="found" start="5">
       <li><b>Source size (A)</b>: good with a 0.1 Å source and probe modes; okay with 0.2 Å, where the fixed probe fails.
-        On the Mono at 80 mrad, 0.1 Å means a probe current of about 4–9 pA or less, 0.2 Å about 17–37 pA (§06, §07).</li>
+        On the Mono at 80 mrad, 0.1 Å means a probe current of about 4–8 pA or less, 0.2 Å about 15–32 pA (§06, §07).</li>
       <li><b>Atomic vibration (B)</b>: with probe modes, Pb comes back to okay (51 % at 100 K, 70 % at 20 K); Ti stays at the
         guessing level even at 20 K (§07).</li>
       <li><b>Not knowing the probe (C)</b>: not yet shown. Starting from the corrector's quoted precision, the search found
@@ -225,7 +228,7 @@
     <div class="sec-head"><span class="sec-num">03</span><h2>Source size alone</h2></div>
     <div class="call qa warn">
       <span class="k">Question</span><span class="v">How large can the source be (the gun's emitting area, demagnified onto the specimen)?</span>
-      <span class="k">Answer</span><span class="v">0.1 Å: good. 0.2 Å: okay, Ti lost. 0.4 Å: off. For scale: on the Mono at 80 mrad the gun's source image is 0.1 Å at about 4–9 pA and 0.2 Å at 17–37 pA (§06).</span>
+      <span class="k">Answer</span><span class="v">0.1 Å: good. 0.2 Å: okay, Ti lost. 0.4 Å: off. For scale: on the Mono at 80 mrad the gun's source image is 0.1 Å at about 4–8 pA and 0.2 Å at 15–32 pA (§06).</span>
       <span class="k">How it fails</span><span class="v">Differently from chromatic focal spread: the vacuum stays clean while the columns lose their atom-by-atom contrast. Ti goes first. Caveat: our simulated source is the kind case (at 0.2 Å, 9 modes hold 99 % of its beam, where a real source needs about 17).</span>
     </div>
     {{FRAG_SOURCE_TABLE}}
@@ -274,8 +277,8 @@
     <div class="sec-head"><span class="sec-num">06</span><h2>Which microscope: the Spectra 300 X-FEG Mono</h2></div>
     <div class="call qa ok">
       <span class="k">Question</span><span class="v">Which microscopes give a chromatic focal spread inside the limit of §02?</span>
-      <span class="k">Answer</span><span class="v">The UltiMono, with margin. The Mono, at the 90 meV Cambridge
-      quotes (if C<sub>c</sub> ≤ about 2 mm), but not at its 0.2 eV specification. A Titan's Wien monochromator reaches the
+      <span class="k">Answer</span><span class="v">The UltiMono, with margin. The Mono, at the 90 meV <a href="https://www.wems.msm.cam.ac.uk/node/56" target="_blank" rel="noopener">Cambridge quotes</a>
+      (if C<sub>c</sub> ≤ about 2 mm), but not at its <a href="https://www.utwente.nl/en/mesaplus/infrastructure/nanolab/analysis/facilities/tem/doc-1-spectra-300-stem-datasheet-ds0297.pdf" target="_blank" rel="noopener">0.2–0.3 eV specification</a>. A Titan's Wien monochromator reaches the
       band between good and off only at its best (~0.1 eV). The ARM's cold FEG or an unmonochromated X-FEG, no.</span>
       <span class="k">Our choice</span><span class="v">The Spectra 300 X-FEG Mono: inside on chromatic focal spread, current and widely
       installed, and with a corrector that corrects A5, so the ARM aberrations we keep are pessimistic for it. Its weak
@@ -293,25 +296,34 @@
     </figure>
     {{FRAG_INSTR_TABLE}}
     <ul>
-      <li><b>C<sub>c</sub></b> is unpublished for the Spectra 300, hence its range (its 0.2 eV specification gives 4.9 Å at
-        1.4 mm, 8.3 Å at 2.4 mm); 2.4 mm is the Titan 80-300 with its CESCOR corrector.</li>
+      <li><b>C<sub>c</sub></b> is unpublished for the Spectra 300, hence its range (its <a href="https://www.utwente.nl/en/mesaplus/infrastructure/nanolab/analysis/facilities/tem/doc-1-spectra-300-stem-datasheet-ds0297.pdf" target="_blank" rel="noopener">0.2–0.3 eV specification</a> gives
+        4.9–7.3 Å at 1.4 mm and 8.3–12.5 Å at 2.4 mm); 2.4 mm is the Titan 80-300 with its CESCOR corrector
+        (<a href="https://www.ceos-gmbh.de/en/produkte/stemkorrektoren/dcor-ascor/Mueller2006a.pdf" target="_blank" rel="noopener">Müller et al. 2006</a>).</li>
       <li><b>Ripple</b> in the high tension and noise in the lens currents spread the focus further, on top of the chromatic
         part, so every bar is a lower bound.</li>
       <li><b>Source size</b> is not on this axis: it has its own figure below.</li>
     </ul>
+    <h3>How common each is</h3>
+    <p>The point of the Spectra 300 is that it is not a one-off. Below, the sites we could find with a public page for each
+      family of microscope on this page. The
+      Spectra 300 is the newest of the three, so its count is the smallest, but it is already in two UK and several European facilities, and at least seven of the sites found run it with a
+      monochromator.</p>
+    {{FRAG_INSTALLS}}
+
     <h3>And the source size at the sample</h3>
-    <p>The gun's source image at the sample is set by its brightness and the probe current: d = (2 / πα) √(I / B<sub>r</sub>V).
+    <p>The gun's source image at the sample is set by its brightness and the probe current: d = (2 / πα) √(I / B<sub>r</sub>V) (Barth &amp; Kruit 1996).
       At 80 mrad it is much smaller, for the same current, than at the 25–40 mrad where effective sources are usually
-      measured. On the Mono at 90 meV the gun's own part stays at 0.1 Å up to about 4–9 pA and at 0.2 Å up to about
-      17–37 pA. At 5 pA, a dose of 1e7 e/Å² over our 20 × 20 Å scan takes about two minutes: a small source costs scan time,
+      measured (<a href="https://www.ceos-gmbh.de/en/produkte/stemkorrektoren/dcor-ascor/Mueller2006a.pdf" target="_blank" rel="noopener">Müller et al. 2006</a>). On the Mono at 90 meV the gun's own part stays at 0.1 Å up to about 4–8 pA and at 0.2 Å up to about
+      15–32 pA. At 5 pA, a dose of 1e7 e/Å² over our 20 × 20 Å scan takes about two minutes: a small source costs scan time,
       which a cold stage's drift has to allow.</p>
     <figure class="wide">
       {{FIG_SOURCE}}
       <figcaption><span class="fig-name">fig_source_current.png</span>
         <div class="howto"><b>How to read it</b> Bold line: the gun's source image at the sample (FWHM) against probe current, at
           80 mrad and 300 kV, for the X-FEG Mono at 90 meV; thin grey line: the X-FEG without the monochromator. Shading:
-          the X-FEG's quoted reduced brightness, 0.7–1.5 × 10<sup>8</sup> A/(m² sr V) (Thermo Fisher); with the monochromator at 90 meV we take that
-          divided by about 8, the share of the gun's ~0.7 eV that the slit keeps (an estimate, not a measurement). Dotted:
+          the X-FEG's quoted reduced brightness, 0.7–1.5 × 10<sup>8</sup> A/(m² sr V) (<a href="https://iubemcenter.indiana.edu/doc/tfs-arctica/xfeg.pdf" target="_blank" rel="noopener">Talos manual</a>; <a href="https://documents.thermofisher.com/TFS-Assets/MSD/Application-Notes/xcfeg-application-note-an0171.pdf" target="_blank" rel="noopener">AN0171</a>
+          gives 7.5 × 10<sup>7</sup>); with the monochromator at 90 meV we take that divided by about 9, the share of the gun's
+          ~0.8 eV (<a href="https://iubemcenter.indiana.edu/doc/tfs-arctica/xfeg.pdf" target="_blank" rel="noopener">Talos manual</a>) that the slit keeps (an estimate, not a measurement). Dotted:
           the sizes tested here, with their verdicts; the dots and numbers give the Mono's current for 0.1 and 0.2 Å. Grey band:
           effective sources measured at 25–40 mrad, which include vibration and other jitter on top of the gun's image;
           that jitter is in neither this figure nor our runs. Top axis: the time for 1e7 e/Å² over the 20 × 20 Å scan.</div>
@@ -335,7 +347,7 @@
           spread of <b>focus along the beam</b> (Å rms); the source size in each row is a <b>sideways blur at the sample</b>
           (Å FWHM), which on the Mono is set by the probe current (§06), not by the monochromator. Top: the chromatic focal
           spread the Spectra 300 monochromators give
-          (from §06): the Mono at the 90 meV quoted in use and at its 0.2 eV specification, and the UltiMono. Below: every
+          (from §06): the Mono at the 90 meV quoted in use and at its 0.2–0.3 eV specification, and the UltiMono. Below: every
           run with the source and vibration put back, at its chromatic focal spread, one row per setting. Square colour: the verdict
           (green good, amber okay, red off). Hollow: the true probe held fixed; filled: probe modes. Numbers: Pb / Ti % at
           the right depth. Grey: running. Background: the good, wall and off bands of §02, for chromatic focal spread alone. Where a
@@ -387,7 +399,7 @@
       <div><span class="lg-t">Chromatic chromatic focal spread costs more depth than source size</span><span class="chip c-warn">partly</span>
         <span class="lg-d">At equal coherence the chromatic focal spread is worse; a likely reason: focus is what multislice reads as depth.</span></div>
       <div><span class="lg-t">A widespread monochromated instrument gets past the wall</span><span class="chip c-warn">partly</span>
-        <span class="lg-d">In chromatic focal spread: the UltiMono yes; the Mono at the 90 meV quoted in use, not at its 0.2 eV
+        <span class="lg-d">In chromatic focal spread: the UltiMono yes; the Mono at the 90 meV quoted in use, not at its 0.2–0.3 eV
           specification; the Titan Wien only to the edge, at its best. The source size and ripple decide it (§06).</span></div>
       <div><span class="lg-t">Cooling restores the depth</span><span class="chip c-warn">partly</span>
         <span class="lg-d">For Pb, with probe modes: 51 % at 100 K, 70 % at 20 K. Not for Ti, at either. Room-temperature
@@ -416,6 +428,13 @@
       <code>aberration_experiment/page/mono_results.json</code>); how to fill in and republish:
       <code>aberration_experiment/page/MONO_PAGE.md</code>. Design and job ids: <code>aberration_experiment/mono300/PHASE1.md</code>.
     </p>
+  </section>
+
+  <section id="sources">
+    <div class="sec-head"><span class="sec-num">C</span><h2>Sources</h2></div>
+    <p>Every outside number on this page, with what it is used for. Instrument figures are vendor specifications or what
+      facilities quote for their own instruments; none was measured by us.</p>
+    {{FRAG_SOURCES}}
   </section>
 </main>
 

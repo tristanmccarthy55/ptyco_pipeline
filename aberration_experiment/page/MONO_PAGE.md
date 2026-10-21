@@ -1,6 +1,12 @@
 # The Coherence Wall page — how to fill it in and republish
 
 PUBLISHED: https://claude.ai/artifact/B7ep8BpAMVdKvrnXywACq3
+- version 13, 2026-10-21: every outside number linked. mono_results.json gains "sources" (cite, url, what it
+  supports; rendered as section C by `sources_list`, inline by `src_link`, per instrument via "refs") and "installs"
+  (model, region uk/eu/row, site, url, note; `installs_table` in §06, "How common each is": lower bounds from public
+  facility pages). Corrections from the sources: the X-FEG/Mono's specification is 0.2-0.3 eV (DS0297; < 0.2 eV is its
+  tuning range), the X-FEG's own spread ~0.8 eV (Talos manual; MONO_CUT 0.8/0.09, so 0.1 A needs 4-8 pA, 0.2 A 15-32 pA),
+  Leeds ~0.25 eV now linked, UltiMono 25 meV at 60 kV (no 300 kV spec found).
 - version 12, 2026-10-21: simpler figures. Source figure: one bold line (the Mono) and one thin grey (no monochromator),
   labelled on the curves, dotted verdict lines, dots for the Mono's current at 0.1 / 0.2 Å, no legend or bars. fig_wall:
   the hatched "typical source size on real instruments" band removed (measured at 25-40 mrad with jitter; §06 has

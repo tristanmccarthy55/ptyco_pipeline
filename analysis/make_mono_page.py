@@ -212,10 +212,11 @@ def fig_instruments(recs, man):
 # The gun's own source image at the sample (2026-10-21): FW50 d = (2 / (pi alpha)) sqrt(I / (B_r V)) (Barth & Kruit), which
 # for a round Gaussian is its FWHM, the simulator's SOURCE_FWHM. X-FEG reduced brightness 0.7-1.5e8 A/(m^2 sr V) (Thermo
 # Fisher's Talos manual; its X-CFEG application note gives 7.5e7). The monochromator's slit keeps about the share of the
-# energy distribution it passes, so at 90 meV from the X-FEG's ~0.7 eV the brightness falls by ~0.7 / 0.09 (an estimate).
+# energy distribution it passes, so at 90 meV from the X-FEG's ~0.8 eV (the Talos manual: "about 0.8 eV or less" at best)
+# the brightness falls by ~0.8 / 0.09 (an estimate).
 # Measured effective sources (0.24-0.6 A, Mueller et al. 2006) are at 25-40 mrad and include instabilities.
 BR_XFEG = (0.7e8, 1.5e8)
-MONO_CUT = 0.7 / 0.09
+MONO_CUT = 0.8 / 0.09
 ALPHA_RAD, V_ACC = 0.080, 300e3
 SCAN_A2 = 20.0 * 20.0
 
@@ -285,7 +286,7 @@ def fig_where(recs, man):
     ins = {s["name"]: s for s in man["instruments"]}
     mono, ulti = ins["Spectra 300, X-FEG Mono"], ins["Spectra 300, X-FEG UltiMono"]
     bars = [("Spectra 300, X-FEG Mono, at the 90 meV quoted in use", mono["dE"][0], mono["dE"][0], mono["cc"]),
-            ("Spectra 300, X-FEG Mono, at its < 0.2 eV specification", mono["dE"][1], mono["dE"][1], mono["cc"]),
+            ("Spectra 300, X-FEG Mono, at its 0.2–0.3 eV specification", mono["spec"][0], mono["spec"][1], mono["cc"]),
             ("Spectra 300, X-FEG UltiMono", ulti["dE"][0], ulti["dE"][1], ulti["cc"])]
     lo, hi = -0.45, 6.0
     fig, (at, ab) = plt.subplots(2, 1, figsize=(11.6, 6.4), sharex=True, gridspec_kw=dict(height_ratios=[1.25, 3.4], hspace=.08))
@@ -630,12 +631,56 @@ def modes_table(recs):
                      "templates for a lone Pb and a lone Ti atom are reconstructed the same way as each run.")
 
 
+def src_link(man, k, label=None):
+    """An inline link to a source in the run list's "sources" (plain text when it has no URL)."""
+    s = man["sources"][k]; t = html.escape(label or s["short"])
+    return f'<a href="{html.escape(s["url"])}" target="_blank" rel="noopener">{t}</a>' if s["url"] else t
+
+
+def sources_list(man):
+    """Every source the page relies on: what it is, the link, and what it supports here."""
+    items = []
+    for k, s in man["sources"].items():
+        cite = (f'<a href="{html.escape(s["url"])}" target="_blank" rel="noopener">{html.escape(s["cite"])}</a>'
+                if s["url"] else html.escape(s["cite"]))
+        items.append(f'<li id="src-{k}">{cite}<br><span class="muted-s">{html.escape(s["supports"])}</span></li>')
+    return f'<ol class="sources">{"".join(items)}</ol>'
+
+
+def installs_table(man):
+    """How common each microscope is: sites with a public facility page, UK / Europe (incl. UK) / world, each linked."""
+    order = []
+    for r in man["installs"]:
+        if r["model"] not in order:
+            order.append(r["model"])
+    trs = []
+    for model in order:
+        rs = [r for r in man["installs"] if r["model"] == model]
+        uk = sum(r["region"] == "uk" for r in rs); eu = uk + sum(r["region"] == "eu" for r in rs)
+        where = []
+        for reg, lab in (("uk", "UK"), ("eu", "Europe"), ("row", "elsewhere")):
+            items = [f'<a href="{html.escape(r["url"])}" target="_blank" rel="noopener">{html.escape(r["site"])}</a>'
+                     + (f' <span class="muted-s">({html.escape(r["note"])})</span>' if r["note"] else "")
+                     for r in rs if r["region"] == reg]
+            if items:
+                where.append(f"<b>{lab}:</b> " + "; ".join(items))
+        trs.append(f"<tr><td class='wrap'><b>{html.escape(model)}</b></td><td>≥ {uk}</td><td>≥ {eu}</td><td>≥ {len(rs)}</td>"
+                   f"<td class='wrap'>{'<br>'.join(where)}</td></tr>")
+    fei = man["sources"]["fei2006"]
+    return arm.table(["microscope", "UK", "Europe, incl. UK", "world", "where (each links to the facility's page)"], trs,
+                     html.escape(man["installs_note"]) + f' For scale, FEI reported more than 30 Titan orders within a year of '
+                     f'its 2005 launch (<a href="{html.escape(fei["url"])}" target="_blank" rel="noopener">{html.escape(fei["short"])}</a>).')
+
+
 def instruments_table(man, recs):
     trs = []
     for s in man["instruments"]:
         a = focal_spread(s["dE"][0], s["cc"][0]); b = focal_spread(s["dE"][1], s["cc"][1])
         rng = f"{a:.1f}" if abs(a - b) < 0.05 else f"{a:.1f}–{b:.1f}"
-        trs.append(f"<tr><td class='wrap'>{html.escape(s['name'])}</td><td>{rng}</td><td class='wrap muted'>{html.escape(s['src'])}</td></tr>")
+        refs = " · ".join(src_link(man, k) for k in s.get("refs", []))
+        refs = f' <span class="refs">({refs})</span>' if refs else ""
+        trs.append(f"<tr><td class='wrap'>{html.escape(s['name'])}</td><td>{rng}</td><td class='wrap muted'>{html.escape(s['src'])}"
+                   f"{refs}</td></tr>")
     return arm.table(["instrument", "chromatic focal spread (Å rms)", "energy spread and Cc: where they come from"], trs,
                      f"Chromatic focal spread = Cc · (σ<sub>E</sub>/E) · (1 + E/E<sub>0</sub>)/(1 + E/2E<sub>0</sub>), σ<sub>E</sub> = FWHM/2.355: "
                      f"{FS_PER_EV_MM:.2f} Å per eV·mm at 300 kV. High-tension ripple and objective-current noise add in "
@@ -740,6 +785,8 @@ def main():
     frag["FIG_SOURCE"] = arm.img(fig_source(), "the gun's source image at the sample against probe current")
     frag["FIG_WHERE"] = arm.img(fig_where(recs, man), "the combined runs placed under the Spectra 300 monochromators")
     frag["FRAG_INSTR_TABLE"] = instruments_table(man, recs)
+    frag["FRAG_SOURCES"] = sources_list(man)
+    frag["FRAG_INSTALLS"] = installs_table(man)
     frag["FRAG_RENDERS"] = renders(recs)
     frag["FRAG_REPRO"] = repro()
     css = re.search(r"<style>(.*?)</style>", open(arm.TEMPLATE).read(), re.S).group(1)

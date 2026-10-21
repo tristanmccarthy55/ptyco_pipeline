@@ -426,7 +426,11 @@
     1.4,
     1.4
    ],
-   "src": "0.3 eV; total Cc 1.42 mm for a CEOS-corrected JEOL with the URP pole piece (Müller et al. 2006)"
+   "src": "0.3 eV, the ARM page's cold-FEG setting; total Cc 1.42 mm for a CEOS-corrected JEOL with the URP pole piece",
+   "refs": [
+    "arm",
+    "muller"
+   ]
   },
   {
    "name": "Titan 80-300 / Titan Themis, X-FEG + Wien monochromator",
@@ -438,31 +442,50 @@
     2.4,
     2.4
    ],
-   "src": "0.3 eV spec, ~0.25 eV at Leeds, ~0.1 eV at some sites; total Cc 2.4 mm for the Titan with its CESCOR (Müller et al. 2006); a DCOR Themis's Cc not found"
+   "src": "0.3 eV for its monochromator; ~0.25 eV at Leeds; 0.2 eV quoted at Erlangen; 90–110 meV measured at Padua; total Cc 2.4 mm for the Titan 80-300 with its CESCOR (a DCOR Themis's Cc not found)",
+   "refs": [
+    "muller",
+    "leeds",
+    "fau",
+    "padua"
+   ]
   },
   {
    "name": "Spectra 300, X-FEG Mono",
    "dE": [
     0.09,
-    0.2
+    0.3
    ],
    "cc": [
     1.4,
     2.4
    ],
-   "src": "< 0.2 eV spec (Thermo Fisher DS0297); 90 meV quoted by Cambridge; Cc not published, so 1.4-2.4 mm"
+   "src": "0.2–0.3 eV specified, tunable to < 0.2 eV; 90 meV quoted in use at Cambridge; Cc not published, so 1.4–2.4 mm",
+   "spec": [
+    0.2,
+    0.3
+   ],
+   "refs": [
+    "ds0297",
+    "cam"
+   ]
   },
   {
    "name": "Spectra 300, X-FEG UltiMono",
    "dE": [
-    0.03,
+    0.025,
     0.055
    ],
    "cc": [
     1.4,
     2.4
    ],
-   "src": "< 55 meV at 300 kV spec; < 30 meV quoted by Imperial; Cc 1.4-2.4 mm"
+   "src": "tunable to < 30 meV; 25 meV specified at 60 kV; no 300 kV specification found, so up to 55 meV is allowed; Cc 1.4–2.4 mm",
+   "refs": [
+    "tfprod",
+    "imp",
+    "ds0297"
+   ]
   },
   {
    "name": "Spectra 300, X-CFEG (no monochromator)",
@@ -474,25 +497,374 @@
     1.4,
     2.4
    ],
-   "src": "0.31-0.39 eV (datasheet); Cc 1.4-2.4 mm"
+   "src": "0.31–0.39 eV depending on probe current; Cc 1.4–2.4 mm",
+   "refs": [
+    "ds0297"
+   ]
   },
   {
    "name": "X-FEG without a monochromator",
    "dE": [
-    0.7,
-    0.7
+    0.8,
+    1.1
    ],
    "cc": [
     1.4,
     2.4
    ],
-   "src": "~0.7 eV; Cc 1.4-2.4 mm"
+   "src": "about 0.8 eV at best, better than 1.1 eV specified; Cc 1.4–2.4 mm",
+   "refs": [
+    "talos",
+    "an0171"
+   ]
   }
  ],
  "real_source_A": [
   0.24,
   0.6
  ],
- "real_source_note": "effective source size at the specimen, 24-26 pm (CEOS improved design, maximum current) to 45-60 pm (CESCOR example): Müller et al. 2006",
- "phase2": "Phase 2 (B): phonons at 100 K (liquid-nitrogen holders) and 20 K (liquid helium; the Debye model's zero-point floor) at 2.5 A + 0.1 A. Room temperature is out. Next: D, the dose series 1e5-1e8 with the searched start."
+ "real_source_note": "effective source size at the specimen, 24-60 pm (Müller et al. 2006), measured with 25-40 mrad apertures and including instabilities",
+ "phase2": "Phase 2 (B): phonons at 100 K (liquid-nitrogen holders) and 20 K (liquid helium; the Debye model's zero-point floor) at 2.5 A + 0.1 A. Room temperature is out. Next: D, the dose series 1e5-1e8 with the searched start.",
+ "sources": {
+  "cam": {
+   "short": "Cambridge",
+   "cite": "Wolfson Electron Microscopy Suite, University of Cambridge: Thermo Fisher Spectra 300",
+   "url": "https://www.wems.msm.cam.ac.uk/node/56",
+   "supports": "X-FEG/Mono tuned to an energy resolution of 90 meV at 300 kV, with ~50 pm STEM resolution"
+  },
+  "ds0297": {
+   "short": "DS0297",
+   "cite": "Thermo Fisher Scientific, Spectra 300 S/TEM datasheet DS0297-EN-08-2020 (copy hosted by the University of Twente)",
+   "url": "https://www.utwente.nl/en/mesaplus/infrastructure/nanolab/analysis/facilities/tem/doc-1-spectra-300-stem-datasheet-ds0297.pdf",
+   "supports": "X-FEG/Mono energy spread 0.2–0.3 eV, tunable from 1 eV to < 0.2 eV; UltiMono 0.025 eV specified at 60 kV; X-CFEG 0.31–0.39 eV depending on probe current"
+  },
+  "tfprod": {
+   "short": "Thermo Fisher",
+   "cite": "Thermo Fisher Scientific, Spectra 300 product page",
+   "url": "https://www.thermofisher.com/order/catalog/product/SPECTRA300",
+   "supports": "X-FEG/Mono tunable from 1 eV to < 0.2 eV; X-FEG/UltiMono to < 0.03 eV; double-corrected X-FEG/Mono energy spread 0.2–0.3 eV"
+  },
+  "imp": {
+   "short": "Imperial",
+   "cite": "Department of Materials, Imperial College London: TFS Spectra 300",
+   "url": "https://imperial.ac.uk/materials/facilities/em/titan",
+   "supports": "X-FEG/UltiMono tuned automatically to < 30 meV"
+  },
+  "an0171": {
+   "short": "AN0171",
+   "cite": "Thermo Fisher Scientific, Extreme-Brightness Cold Field Emission Gun (X-CFEG), application note AN0171",
+   "url": "https://documents.thermofisher.com/TFS-Assets/MSD/Application-Notes/xcfeg-application-note-an0171.pdf",
+   "supports": "reduced brightness 7.5 × 10⁷ A/(m² sr V) for the X-FEG, 1.0 × 10⁸ for the X-CFEG; X-FEG energy resolution better than 1.1 eV"
+  },
+  "talos": {
+   "short": "Talos manual",
+   "cite": "Thermo Fisher Scientific, Talos on-line help: Working with a FEG (X-FEG) (copy hosted by Indiana University)",
+   "url": "https://iubemcenter.indiana.edu/doc/tfs-arctica/xfeg.pdf",
+   "supports": "X-FEG reduced brightness 0.7–1.5 × 10⁸ A/(m² sr V); FEG energy spread about 0.8 eV or less at best"
+  },
+  "muller": {
+   "short": "Müller et al. 2006",
+   "cite": "H. Müller, S. Uhlemann, P. Hartel, M. Haider, Advancing the hexapole Cs-corrector for the scanning transmission electron microscope, Microsc. Microanal. 12, 442–455 (2006)",
+   "url": "https://www.ceos-gmbh.de/en/produkte/stemkorrektoren/dcor-ascor/Mueller2006a.pdf",
+   "supports": "total Cc 1.42 mm for a CEOS-corrected JEOL (URP) and 2.4 mm for the Titan 80-300 with its CESCOR; a monochromator at 0.3 eV; effective source sizes at the specimen of 24–60 pm"
+  },
+  "fau": {
+   "short": "Erlangen",
+   "cite": "FAU Erlangen-Nürnberg, FEI Titan Themis 300",
+   "url": "https://cris.fau.de/equipment/201981894/",
+   "supports": "Titan Themis monochromator, energy resolution 0.2 eV"
+  },
+  "padua": {
+   "short": "Padua",
+   "cite": "University of Padua research record (Amendola and co-workers, 2020): STEM-EELS on a Titan Themis 60-300",
+   "url": "https://www.research.unipd.it/handle/11577/3387663",
+   "supports": "monochromated X-FEG on a Titan Themis: ~90–110 meV energy resolution at 200–250 pA"
+  },
+  "kruit": {
+   "short": "Barth & Kruit 1996",
+   "cite": "J. E. Barth, P. Kruit, Addition of different contributions to the charged particle probe size, Optik 101, 101–109 (1996)",
+   "url": "",
+   "supports": "the source term of the probe size, d = (2 / πα) √(I / B_r V)"
+  },
+  "arm": {
+   "short": "ARM page",
+   "cite": "The previous page: ARM200F at 80 mrad (this campaign)",
+   "url": "https://claude.ai/artifact/MUkJ7yYrsek3nTLXcZgCrk",
+   "supports": "the ARM200F results this page starts from: the probe-known baseline, the cold-FEG and room-temperature failures"
+  },
+  "leeds": {
+   "short": "Leeds",
+   "cite": "Leeds Electron Microscopy and Spectroscopy facility (LEMAS), University of Leeds",
+   "url": "https://www.leeds.ac.uk/experimental-facilities/dir-record/profiles/23786/leeds-electron-microscopy-and-spectroscopy-facility",
+   "supports": "FEI Titan3 Themis 300 with an X-FEG and monochromator, energy spread approx. 0.25 eV"
+  },
+  "fei2006": {
+   "short": "FEI 2006",
+   "cite": "McMaster University orders two FEI Titan S/TEMs (Solid State Technology, 2006)",
+   "url": "https://sst.semiconductor-digest.com/?p=45881",
+   "supports": "FEI reported orders for more than 30 Titan systems within a year of its August 2005 launch"
+  }
+ },
+ "installs_note": "Sites with a public facility page found on 2026-10-21. Every count is a lower bound: Thermo Fisher and JEOL publish no installed-base figures, and many instruments (industry, much of Asia) have no public English page.",
+ "installs": [
+  {
+   "model": "Spectra 300 (any gun)",
+   "region": "uk",
+   "site": "Cambridge, Wolfson EM Suite",
+   "url": "https://www.wems.msm.cam.ac.uk/node/56",
+   "note": "X-FEG/Mono, 90 meV"
+  },
+  {
+   "model": "Spectra 300 (any gun)",
+   "region": "uk",
+   "site": "Imperial College London, Materials",
+   "url": "https://www.imperial.ac.uk/materials/facilities/em/titan/",
+   "note": "X-FEG/UltiMono, < 30 meV"
+  },
+  {
+   "model": "Spectra 300 (any gun)",
+   "region": "eu",
+   "site": "Jülich, Ernst Ruska-Centre",
+   "url": "https://er-c.org/index.php/facilities-2/facilities-material-science/material-science/tfs-spectra-300/",
+   "note": "monochromated X-FEG, double-corrected"
+  },
+  {
+   "model": "Spectra 300 (any gun)",
+   "region": "eu",
+   "site": "Twente, MESA+ NanoLab",
+   "url": "https://www.utwente.nl/en/mesaplus/nanolab/analysis/facilities/tem/",
+   "note": "probe-corrected, since 2022"
+  },
+  {
+   "model": "Spectra 300 (any gun)",
+   "region": "eu",
+   "site": "Barcelona, JEMCA (ICN2, CSIC, UAB, ALBA)",
+   "url": "https://icn2.cat/en/emu-equipments/thermo-fisher-scientific-spectra-300-s-tem",
+   "note": ""
+  },
+  {
+   "model": "Spectra 300 (any gun)",
+   "region": "eu",
+   "site": "a Slovenian research institute (not named in the listing)",
+   "url": "https://een.ec.europa.eu/partnering-opportunities/slovenian-research-institute-offering-microanalysis-examination-morphology",
+   "note": ""
+  },
+  {
+   "model": "Spectra 300 (any gun)",
+   "region": "row",
+   "site": "Cornell, CCMR (Andromeda)",
+   "url": "https://www.ccmr.cornell.edu/facilities/instruments/electron-microscopy-and-imaging/scanning-transmission-electron-microscopy-stem",
+   "note": ""
+  },
+  {
+   "model": "Spectra 300 (any gun)",
+   "region": "row",
+   "site": "Cornell, CCMR (Kraken)",
+   "url": "https://www.ccmr.cornell.edu/facilities/ccmr-instruments-overview/electron-and-optical-microscopy-and-imaging/scanning-transmission-electron-microscopy-stem/thermo-fisher-spectra-300-kraken",
+   "note": ""
+  },
+  {
+   "model": "Spectra 300 (any gun)",
+   "region": "row",
+   "site": "Stanford, SNSF",
+   "url": "https://snsf.stanford.edu/facilities/eim/spectra",
+   "note": "monochromated, double-corrected, 2023"
+  },
+  {
+   "model": "Spectra 300 (any gun)",
+   "region": "row",
+   "site": "Louisiana State University",
+   "url": "https://www.lsu.edu/sif/new-ben/sif/em-spectra300.php",
+   "note": "monochromated, double-corrected"
+  },
+  {
+   "model": "Spectra 300 (any gun)",
+   "region": "row",
+   "site": "Notre Dame",
+   "url": "https://imaging.nd.edu/services/electron-microscopy-core/spectra-300/",
+   "note": "monochromated, 1 eV to < 0.2 eV"
+  },
+  {
+   "model": "Spectra 300 (any gun)",
+   "region": "row",
+   "site": "Missouri",
+   "url": "https://research.missouri.edu/electron-microscopy/thermoscientific-spectra-300",
+   "note": ""
+  },
+  {
+   "model": "Spectra 300 (any gun)",
+   "region": "row",
+   "site": "Michigan, (MC)²",
+   "url": "https://mc2.engin.umich.edu/",
+   "note": "probe-corrected, monochromated EELS"
+  },
+  {
+   "model": "JEOL ARM200F / 200CF",
+   "region": "uk",
+   "site": "Warwick",
+   "url": "https://warwick.ac.uk/fac/sci/physics/research/condensedmatt/microscopy/em-rtp-copy-copy/instrumentation/jeol_arm200f",
+   "note": "double-corrected"
+  },
+  {
+   "model": "JEOL ARM200F / 200CF",
+   "region": "uk",
+   "site": "Glasgow, MagTEM (ARM 200CF)",
+   "url": "https://www.supa.ac.uk/general/mcmp",
+   "note": ""
+  },
+  {
+   "model": "JEOL ARM200F / 200CF",
+   "region": "uk",
+   "site": "Manchester, Royce (ARM 200CF)",
+   "url": "https://www.royce.ac.uk/?p=2968",
+   "note": ""
+  },
+  {
+   "model": "JEOL ARM200F / 200CF",
+   "region": "uk",
+   "site": "Diamond, ePSIC",
+   "url": "https://www.diamond.ac.uk/Science/Integrated-facilities/ePSIC/Capabilities.html",
+   "note": "probe-corrected"
+  },
+  {
+   "model": "JEOL ARM200F / 200CF",
+   "region": "eu",
+   "site": "Trondheim, NTNU TEM Gemini Centre",
+   "url": "https://ntnu.edu/web/temgemini/tem/-/asset_publisher/2EWM49wMslOy/content/fgjgj",
+   "note": "double-corrected cold FEG, 2013"
+  },
+  {
+   "model": "JEOL ARM200F / 200CF",
+   "region": "row",
+   "site": "UT San Antonio (the first, 2010)",
+   "url": "https://www.jeolusa.com/NEWS-EVENTS/Press-Releases/first-jeol-jem-arm200f-electron-microscope-produces-atomic-resolution-data-in-record-time-at-university-of-san-antonio",
+   "note": ""
+  },
+  {
+   "model": "JEOL ARM200F / 200CF",
+   "region": "row",
+   "site": "Kyoto, Institute for Chemical Research",
+   "url": "https://www.jimu.uji.kyoto-u.ac.jp/uji-sces/en/equipment/equipment-07/",
+   "note": "with a monochromator, 2013"
+  },
+  {
+   "model": "JEOL ARM200F / 200CF",
+   "region": "row",
+   "site": "Tohoku, Institute for Materials Research",
+   "url": "https://www.aem.imr.tohoku.ac.jp/en/?p=5216",
+   "note": ""
+  },
+  {
+   "model": "JEOL ARM200F / 200CF",
+   "region": "row",
+   "site": "OIST",
+   "url": "https://oist.jp/node/41524",
+   "note": ""
+  },
+  {
+   "model": "JEOL ARM200F / 200CF",
+   "region": "row",
+   "site": "Wollongong",
+   "url": "https://www.uow.edu.au/research/australian-institute-for-innovative-materials/uow-electron-microscopy-centre/emc-facilities/",
+   "note": ""
+  },
+  {
+   "model": "FEI Titan 80-300 / Titan Themis",
+   "region": "uk",
+   "site": "Leeds, LEMAS (Titan3 Themis 300)",
+   "url": "https://www.leeds.ac.uk/experimental-facilities/dir-record/profiles/23786/leeds-electron-microscopy-and-spectroscopy-facility",
+   "note": "monochromator, ~0.25 eV"
+  },
+  {
+   "model": "FEI Titan 80-300 / Titan Themis",
+   "region": "uk",
+   "site": "Imperial College London (Titan 80-300, 2006)",
+   "url": "https://www.imperial.ac.uk/news/2807/the-uks-first-fei-titan-microscope/",
+   "note": "the UK's first Titan"
+  },
+  {
+   "model": "FEI Titan 80-300 / Titan Themis",
+   "region": "eu",
+   "site": "Chalmers (Titan 80-300)",
+   "url": "https://www.chalmers.se/en/infrastructure/cmal/instruments/electron-microscopy/tem-titan-80-300/",
+   "note": ""
+  },
+  {
+   "model": "FEI Titan 80-300 / Titan Themis",
+   "region": "eu",
+   "site": "Vienna (Titan 80-300)",
+   "url": "https://physnano.univie.ac.at/equipment/microscopes/fei-titan-80-300-tem/",
+   "note": ""
+  },
+  {
+   "model": "FEI Titan 80-300 / Titan Themis",
+   "region": "eu",
+   "site": "Erlangen (Titan Themis 300)",
+   "url": "https://cris.fau.de/equipment/201981894/",
+   "note": "monochromator, 0.2 eV"
+  },
+  {
+   "model": "FEI Titan 80-300 / Titan Themis",
+   "region": "eu",
+   "site": "Lille (Titan Themis 300, 2017)",
+   "url": "https://pmel.univ-lille.fr/en/plateforme/instruments",
+   "note": ""
+  },
+  {
+   "model": "FEI Titan 80-300 / Titan Themis",
+   "region": "eu",
+   "site": "Padua (Titan Themis 60-300)",
+   "url": "https://www.research.unipd.it/handle/11577/3387663",
+   "note": "monochromated, 90–110 meV measured"
+  },
+  {
+   "model": "FEI Titan 80-300 / Titan Themis",
+   "region": "eu",
+   "site": "Brno, CEITEC (Titan Themis 60-300 Cubed)",
+   "url": "https://zaloha-czechnanolab.ceitec.cz/high-resolution-scanning-transmission-electron-microscope-fei-titan-themis-60-300-cubed",
+   "note": ""
+  },
+  {
+   "model": "FEI Titan 80-300 / Titan Themis",
+   "region": "row",
+   "site": "UCLA (Titan 80-300)",
+   "url": "https://eicn.cnsi.ucla.edu/project/fei-titan-tem-stem/",
+   "note": ""
+  },
+  {
+   "model": "FEI Titan 80-300 / Titan Themis",
+   "region": "row",
+   "site": "Ames Laboratory (Titan Themis Cubed)",
+   "url": "https://www.ameslab.gov/dmse/titan",
+   "note": ""
+  },
+  {
+   "model": "FEI Titan 80-300 / Titan Themis",
+   "region": "row",
+   "site": "UC Riverside (Titan Themis 300)",
+   "url": "https://cfamm.ucr.edu/instruments/titan",
+   "note": ""
+  },
+  {
+   "model": "FEI Titan 80-300 / Titan Themis",
+   "region": "row",
+   "site": "Texas A&M (Titan Themis 300)",
+   "url": "https://mcf.tamu.edu/instruments/titan-themis-300-s-tem/",
+   "note": ""
+  },
+  {
+   "model": "FEI Titan 80-300 / Titan Themis",
+   "region": "row",
+   "site": "NIST (Titan 80-300)",
+   "url": "https://www.nist.gov/laboratories/tools-instruments/nanofab-tool-fei-titan-80-300-analytical-transmission-electron",
+   "note": ""
+  },
+  {
+   "model": "FEI Titan 80-300 / Titan Themis",
+   "region": "row",
+   "site": "Technion (Titan Themis G2 60-300)",
+   "url": "https://materials.technion.ac.il/he/המיקרוסקופים-במיקא/titan-themis-g2-60-300-fei-thermo-fisher/",
+   "note": "monochromator"
+  }
+ ]
 }
