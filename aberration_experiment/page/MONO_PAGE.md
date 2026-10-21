@@ -1,6 +1,11 @@
 # The Coherence Wall page — how to fill it in and republish
 
 PUBLISHED: https://claude.ai/artifact/B7ep8BpAMVdKvrnXywACq3
+- version 14, 2026-10-21: installs sorted by gun (Mono, UltiMono, monochromated-unstated, X-CFEG/unstated; ARM for
+  comparison; Titan dropped, the user: no better than the ARM). The UltiMono's 25-55 meV was a 30-60 kV figure: at 300 kV
+  the quoted numbers are 110 meV (Stanford) and < 0.2 eV (Michigan), so its bar is now 0.11-0.2 eV and the page says the
+  Mono and UltiMono are about the same at 300 kV; the target is "a monochromated Spectra 300 at ~0.1 eV". Europe: >= 5
+  monochromated Spectra 300s (Cambridge Mono; Imperial, Barcelona, Jülich UltiMono; Stuttgart unstated).
 - version 13, 2026-10-21: every outside number linked. mono_results.json gains "sources" (cite, url, what it
   supports; rendered as section C by `sources_list`, inline by `src_link`, per instrument via "refs") and "installs"
   (model, region uk/eu/row, site, url, note; `installs_table` in §06, "How common each is": lower bounds from public

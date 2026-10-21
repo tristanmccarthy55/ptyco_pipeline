@@ -287,7 +287,7 @@ def fig_where(recs, man):
     mono, ulti = ins["Spectra 300, X-FEG Mono"], ins["Spectra 300, X-FEG UltiMono"]
     bars = [("Spectra 300, X-FEG Mono, at the 90 meV quoted in use", mono["dE"][0], mono["dE"][0], mono["cc"]),
             ("Spectra 300, X-FEG Mono, at its 0.2–0.3 eV specification", mono["spec"][0], mono["spec"][1], mono["cc"]),
-            ("Spectra 300, X-FEG UltiMono", ulti["dE"][0], ulti["dE"][1], ulti["cc"])]
+            ("Spectra 300, X-FEG UltiMono, as quoted at 300 kV", ulti["dE"][0], ulti["dE"][1], ulti["cc"])]
     lo, hi = -0.45, 6.0
     fig, (at, ab) = plt.subplots(2, 1, figsize=(11.6, 6.4), sharex=True, gridspec_kw=dict(height_ratios=[1.25, 3.4], hspace=.08))
     for ax in (at, ab):
@@ -666,10 +666,8 @@ def installs_table(man):
                 where.append(f"<b>{lab}:</b> " + "; ".join(items))
         trs.append(f"<tr><td class='wrap'><b>{html.escape(model)}</b></td><td>≥ {uk}</td><td>≥ {eu}</td><td>≥ {len(rs)}</td>"
                    f"<td class='wrap'>{'<br>'.join(where)}</td></tr>")
-    fei = man["sources"]["fei2006"]
     return arm.table(["microscope", "UK", "Europe, incl. UK", "world", "where (each links to the facility's page)"], trs,
-                     html.escape(man["installs_note"]) + f' For scale, FEI reported more than 30 Titan orders within a year of '
-                     f'its 2005 launch (<a href="{html.escape(fei["url"])}" target="_blank" rel="noopener">{html.escape(fei["short"])}</a>).')
+                     html.escape(man["installs_note"]))
 
 
 def instruments_table(man, recs):
