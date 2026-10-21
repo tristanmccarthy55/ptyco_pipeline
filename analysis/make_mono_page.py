@@ -205,7 +205,8 @@ def fig_instruments(recs, man):
     ax.set_xscale("log"); ax.set_xlim(lo, hi); ax.set_ylim(-1.2, len(ins) - 0.1)
     ax.set_yticks(range(len(ins))); ax.set_yticklabels([s["name"] for s in ins[::-1]], fontsize=9.5)
     ax.set_xticks([0.5, 1, 2, 3.5, 5, 10, 20, 40]); ax.set_xticklabels(["0.5", "1", "2", "3.5", "5", "10", "20", "40"])
-    ax.set_xlabel("chromatic focal spread (Å rms) = energy spread × Cc × " + f"{FS_PER_EV_MM:.1f} Å per eV·mm at 300 kV")
+    ax.set_xlabel("chromatic focal spread: the spread of focus along the beam (Å rms) = energy spread × Cc × "
+                  + f"{FS_PER_EV_MM:.1f} Å per eV·mm")
     ax.spines[["top", "right", "left"]].set_visible(False); ax.tick_params(axis="y", length=0); ax.grid(axis="x", alpha=.25, lw=.6)
     return arm.save(fig, "fig_instruments.png")
 
@@ -298,9 +299,13 @@ def fig_where(recs, man):
     for i, (name, d0, d1, cc) in enumerate(bars[::-1]):
         a, b = focal_spread(d0, cc[0]), focal_spread(d1, cc[1])
         at.plot([a, min(b, hi)], [i, i], "-", color=arm.INK, lw=6, solid_capstyle="butt", alpha=.85, zorder=4)
-        lab = f"{d0:g}{'' if d0 == d1 else '–' + format(d1, 'g')} eV × {cc[0]:g}–{cc[1]:g} mm: {a:.1f}–{b:.1f} Å"
-        at.text(min((a + min(b, hi)) / 2, hi - 0.9), i + 0.22, lab + (" (runs off the plot)" if b > hi else ""),
-                ha="center", va="bottom", fontsize=8.5, color=arm.INK2)
+        lab = f"{d0:g}{'' if d0 == d1 else '–' + format(d1, 'g')} eV × {cc[0]:g}–{cc[1]:g} mm gives {a:.1f}–{b:.1f} Å of focus spread"
+        if b > hi:
+            at.text(hi, i + 0.22, lab + ", the bar runs on past the plot", ha="right", va="bottom", fontsize=8.5, color=arm.INK2)
+        else:
+            at.text((a + b) / 2, i + 0.22, lab, ha="center", va="bottom", fontsize=8.5, color=arm.INK2)
+    at.set_title("What the Spectra 300 monochromators give: a spread of FOCUS along the beam (Å rms). This is not the "
+                 "source size.", loc="left", fontsize=10, color=arm.INK)
     at.set_ylim(-0.6, len(bars) + 0.1); at.set_yticks(range(len(bars)))
     at.set_yticklabels([b[0] for b in bars[::-1]], fontsize=9.5)
     n = len(WHERE_ROWS)
@@ -328,12 +333,13 @@ def fig_where(recs, man):
         for d in (0.1, 0.2):
             if f"source {d:g} Å" in lab:
                 lo, hi = mono_current_range(d)
-                return f"{lab}\n(Mono at 90 meV: ≤ {lo:.0f}–{hi:.0f} pA)"
+                return lab.replace(f"source {d:g} Å", f"source {d:g} Å at the sample") + f"\n(Mono: ≤ {lo:.0f}–{hi:.0f} pA at 80 mrad)"
         return lab
     ab.set_ylim(-0.6, n - 0.2); ab.set_yticks(range(n))
     ab.set_yticklabels([ylab(r[0]) for r in WHERE_ROWS[::-1]], fontsize=9.5)
     ab.set_xlim(lo, hi); ab.set_xticks([0, 1, 2, 2.5, 3.5, 5, 6]); ab.set_xticklabels(["0", "1", "2", "2.5", "3.5", "5", "6"])
-    ab.set_xlabel("chromatic focal spread (Å rms) = energy spread × Cc × " + f"{FS_PER_EV_MM:.1f} Å per eV·mm at 300 kV")
+    ab.set_xlabel("chromatic focal spread: the spread of focus along the beam (Å rms) = energy spread × Cc × "
+                  + f"{FS_PER_EV_MM:.1f} Å per eV·mm")
     h = [plt.Line2D([], [], ls="", marker="s", ms=9, mec=arm.INK2, mew=2, mfc="white", label="true probe held fixed"),
          plt.Line2D([], [], ls="", marker="s", ms=9, mec=arm.INK2, mew=2, mfc=arm.INK2, label="probe modes"),
          plt.Line2D([], [], ls="", marker="s", ms=9, mec="#9aa3ad", mew=2, mfc="#9aa3ad", label="running, not scored yet")]

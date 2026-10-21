@@ -1,6 +1,9 @@
 # The Coherence Wall page — how to fill it in and republish
 
 PUBLISHED: https://claude.ai/artifact/B7ep8BpAMVdKvrnXywACq3
+- version 11, 2026-10-21: the user read the monochromator bars (Å of focus spread) as source sizes. The where-it-works
+  figure now says so in its title ("a spread of FOCUS along the beam ... not the source size"), bars read "gives x Å of
+  focus spread", rows read "source 0.1 Å at the sample (Mono: ≤ 4-9 pA at 80 mrad)", and its caption names the two Å.
 - version 10, 2026-10-21: "focal spread" renamed "chromatic focal spread" everywhere (ΔE through Cc; ripple and
   lens-current noise named as other, unsimulated causes). New `fig_source_current.png` in §06 (`fig_source`): the gun's
   source image at the sample, d = (2/πα)√(I/B_r V), against probe current at 80 mrad; X-FEG B_r 0.7-1.5e8 (Thermo
