@@ -1,6 +1,8 @@
 # The Coherence Wall page — how to fill it in and republish
 
 PUBLISHED: https://claude.ai/artifact/B7ep8BpAMVdKvrnXywACq3
+- version 15, 2026-10-21: the UltiMono on the source-vs-current figure (`ULTI_DE`): blue at its quoted 300 kV 110 meV
+  (0.1 A at <= 5-10 pA, about the Mono), dashed blue at 30 meV if reached at 300 kV (<= 1-3 pA).
 - version 14, 2026-10-21: installs sorted by gun (Mono, UltiMono, monochromated-unstated, X-CFEG/unstated; ARM for
   comparison; Titan dropped, the user: no better than the ARM). The UltiMono's 25-55 meV was a 30-60 kV figure: at 300 kV
   the quoted numbers are 110 meV (Stanford) and < 0.2 eV (Michigan), so its bar is now 0.11-0.2 eV and the page says the

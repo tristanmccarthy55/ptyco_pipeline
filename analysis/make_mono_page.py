@@ -217,6 +217,8 @@ def fig_instruments(recs, man):
 # Measured effective sources (0.24-0.6 A, Mueller et al. 2006) are at 25-40 mrad and include instabilities.
 BR_XFEG = (0.7e8, 1.5e8)
 MONO_CUT = 0.8 / 0.09
+ULTI_DE = (0.11, 0.03)      # the UltiMono at its quoted 300 kV figure (Stanford) and at its 30-60 kV figure, if reached at 300 kV
+ULTI_BLUE = "#2f6db5"
 ALPHA_RAD, V_ACC = 0.080, 300e3
 SCAN_A2 = 20.0 * 20.0
 
@@ -256,6 +258,18 @@ def fig_source():
     ax.text(I[k] * 1e12 * 0.92, 0.5, "X-FEG Mono at 90 meV (estimate)", ha="right", va="center", fontsize=9.5,
             color=arm.INK, fontweight="bold")
     ax.text(250, plain[-1] * 0.93, "X-FEG, no monochromator", ha="right", va="top", fontsize=9, color="#6f7b8a")
+    for dE, ls, lw, y in ((ULTI_DE[0], "-", 1.8, 0.30), (ULTI_DE[1], "--", 1.3, 0.33)):
+        br = np.sqrt(BR_XFEG[0] * BR_XFEG[1]) * dE / 0.8
+        u = source_fwhm_A(I, br)
+        ax.plot(I * 1e12, u, ls, color=ULTI_BLUE, lw=lw)
+        lo, hi = (current_for_source_pA(0.1, b * dE / 0.8) for b in BR_XFEG)
+        k = np.searchsorted(u, y)
+        lab = (f"UltiMono at {1000 * dE:.0f} meV\n(its quoted 300 kV figure):\n0.1 Å at ≤ {lo:.0f}–{hi:.0f} pA" if ls == "-" else
+               f"UltiMono at {1000 * dE:.0f} meV, if reached at 300 kV: 0.1 Å at ≤ {lo:.0f}–{hi:.0f} pA")
+        if ls == "-":
+            ax.text(I[k] * 1e12 * 1.12, y, lab, ha="left", va="center", fontsize=8.8, color=ULTI_BLUE)
+        else:
+            ax.text(I[k] * 1e12 * 0.9, y, lab, ha="right", va="center", fontsize=8.8, color=ULTI_BLUE)
     for d in (0.1, 0.2):
         lo, hi = mono_current_range(d)
         ax.plot([np.sqrt(lo * hi)], [d], "o", color=arm.INK, ms=6, zorder=5)
