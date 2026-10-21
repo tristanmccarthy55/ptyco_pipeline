@@ -1,6 +1,10 @@
 # The Coherence Wall page — how to fill it in and republish
 
 PUBLISHED: https://claude.ai/artifact/B7ep8BpAMVdKvrnXywACq3
+- version 9, 2026-10-21: `fig_where_it_works.png` at the top of §07 (`fig_where`, rows in `WHERE_ROWS`): every run with
+  the source and vibration put back, at its focal spread, under the Spectra 300 monochromators only (Mono at 90 meV and
+  at its 0.2 eV spec, UltiMono), on a linear 0-6 A axis. Hollow = probe fixed, filled = modes, grey = running. New runs
+  appear on it once scored (add their keys to WHERE_ROWS).
 - version 8, 2026-10-21: told as the story (the user): the ARM200F's realistic runs failed -> we scanned the coherence
   to find a microscope that could do it -> that turned up the Spectra 300 X-FEG Mono (90 meV in use, ~2.5 A focal spread;
   current and widely installed; S-CORR corrects A5) -> the physics put back at its setting. Sections reordered to match:

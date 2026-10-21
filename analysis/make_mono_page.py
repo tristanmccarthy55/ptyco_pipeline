@@ -210,6 +210,77 @@ def fig_instruments(recs, man):
     return arm.save(fig, "fig_instruments.png")
 
 
+
+WHERE_ROWS = [("focal spread only (§02)", ["known_a080", "fs0p75", "fs1p5", "fs2p5", "fs3p5", "fs5", "fs5_mix"]),
+              ("+ source 0.1 Å", ["src0p1", "fs2p5_src0p1", "ceil_s01", "fs3p5_src0p1"]),
+              ("+ source 0.2 Å", ["src0p2", "src0p2_mix", "fs2p5_src0p2", "ceil_s02", "fs3p5_src0p2"]),
+              ("+ source 0.1 Å + 100 K", ["cool100_fixed", "cool100_mix"]),
+              ("+ source 0.1 Å + 20 K", ["cool20_fixed", "cool20_mix"]),
+              ("+ source 0.1 Å, probe searched (C)", ["searched"])]
+
+
+def fig_where(recs, man):
+    """Where it works: the combined runs at their focal spread, under the Spectra 300 monochromators' ranges (no off-scale
+    instruments). Square colour = verdict, hollow = true probe fixed, filled = probe modes, grey = not scored yet."""
+    focal = sorted([recs["known_a080"]] + [r for r in recs.values() if r["spec"]["group"] == "focal" and r["found"]],
+                   key=lambda r: r["fs"])
+    good = max(r["fs"] for r in focal if r["v"] == "good")
+    off = min(r["fs"] for r in focal if r["v"] == "off" and r["fs"] > good)
+    ins = {s["name"]: s for s in man["instruments"]}
+    mono, ulti = ins["Spectra 300, X-FEG Mono"], ins["Spectra 300, X-FEG UltiMono"]
+    bars = [("Spectra 300, X-FEG Mono, at the 90 meV quoted in use", mono["dE"][0], mono["dE"][0], mono["cc"]),
+            ("Spectra 300, X-FEG Mono, at its < 0.2 eV specification", mono["dE"][1], mono["dE"][1], mono["cc"]),
+            ("Spectra 300, X-FEG UltiMono", ulti["dE"][0], ulti["dE"][1], ulti["cc"])]
+    lo, hi = -0.45, 6.0
+    fig, (at, ab) = plt.subplots(2, 1, figsize=(11.6, 6.4), sharex=True, gridspec_kw=dict(height_ratios=[1.25, 3.4], hspace=.08))
+    for ax in (at, ab):
+        ax.axvspan(lo, good, color=OK, alpha=.10, lw=0); ax.axvspan(good, off, color=WARN, alpha=.16, lw=0)
+        ax.axvspan(off, hi, color=STOP, alpha=.08, lw=0)
+        ax.spines[["top", "right", "left"]].set_visible(False); ax.tick_params(axis="y", length=0)
+        ax.grid(axis="x", alpha=.25, lw=.6)
+        ax.axvline(2.5, color=arm.INK2, lw=1, ls="--", alpha=.7, zorder=2)
+    at.text(2.55, -0.5, "the setting used: 2.5 Å (90 meV, Cc ≈ 1.6 mm)", ha="left", va="bottom", fontsize=8.5, color=arm.INK2)
+    for x, t, c in (((lo + good) / 2, "good", OK), ((good + off) / 2, "the wall", WARN), ((off + hi) / 2, "off", STOP)):
+        at.text(x, len(bars) - 0.35, t, ha="center", va="bottom", fontsize=9.5, color=c, fontweight="bold")
+    for i, (name, d0, d1, cc) in enumerate(bars[::-1]):
+        a, b = focal_spread(d0, cc[0]), focal_spread(d1, cc[1])
+        at.plot([a, min(b, hi)], [i, i], "-", color=arm.INK, lw=6, solid_capstyle="butt", alpha=.85, zorder=4)
+        lab = f"{d0:g}{'' if d0 == d1 else '–' + format(d1, 'g')} eV × {cc[0]:g}–{cc[1]:g} mm: {a:.1f}–{b:.1f} Å"
+        at.text(min((a + min(b, hi)) / 2, hi - 0.9), i + 0.22, lab + (" (runs off the plot)" if b > hi else ""),
+                ha="center", va="bottom", fontsize=8.5, color=arm.INK2)
+    at.set_ylim(-0.6, len(bars) + 0.1); at.set_yticks(range(len(bars)))
+    at.set_yticklabels([b[0] for b in bars[::-1]], fontsize=9.5)
+    n = len(WHERE_ROWS)
+    for i, (lab, keys) in enumerate(WHERE_ROWS):
+        y = n - 1 - i
+        pts = [recs[k] for k in keys if k in recs]
+        byx = {}
+        for r in pts:
+            byx.setdefault(r["fs"], []).append(r)
+        for x, rs in byx.items():
+            rs.sort(key=lambda r: (r["spec"]["group"] in ("modes", "ceiling") or r["spec"].get("kind") == "modes"
+                                   or r["key"] == "searched", r["key"]))
+            for j, r in enumerate(rs):
+                xx = x + (j - (len(rs) - 1) / 2) * 0.26
+                mode = r["spec"]["group"] in ("modes", "ceiling") or r["spec"].get("kind") == "modes" or r["key"] == "searched"
+                if r["found"] and not r["provisional"]:
+                    c = VCOL[r["v"]]
+                    ab.plot(xx, y, "s", ms=11, mec=c, mew=2, mfc=c if mode else "white", zorder=5)
+                    ab.text(xx, y + 0.24, f"{pct(r['sc'], 82):.0f}/{pct(r['sc'], 22):.0f}", ha="center", va="bottom",
+                            fontsize=8, color=arm.INK)
+                else:
+                    ab.plot(xx, y, "s", ms=11, mec="#9aa3ad", mew=2, mfc="#9aa3ad" if mode else "white", zorder=5)
+                    ab.text(xx, y + 0.24, "running", ha="center", va="bottom", fontsize=8, color="#7d8a99")
+    ab.set_ylim(-0.6, n - 0.2); ab.set_yticks(range(n)); ab.set_yticklabels([r[0] for r in WHERE_ROWS[::-1]], fontsize=9.5)
+    ab.set_xlim(lo, hi); ab.set_xticks([0, 1, 2, 2.5, 3.5, 5, 6]); ab.set_xticklabels(["0", "1", "2", "2.5", "3.5", "5", "6"])
+    ab.set_xlabel("focal spread (Å rms) = energy spread × Cc × " + f"{FS_PER_EV_MM:.1f} Å per eV·mm at 300 kV")
+    h = [plt.Line2D([], [], ls="", marker="s", ms=9, mec=arm.INK2, mew=2, mfc="white", label="true probe held fixed"),
+         plt.Line2D([], [], ls="", marker="s", ms=9, mec=arm.INK2, mew=2, mfc=arm.INK2, label="probe modes"),
+         plt.Line2D([], [], ls="", marker="s", ms=9, mec="#9aa3ad", mew=2, mfc="#9aa3ad", label="running, not scored yet")]
+    ab.legend(handles=h, loc="lower right", fontsize=8.5, frameon=True, framealpha=.9, ncol=3,
+              title="colour: verdict · numbers: Pb / Ti % at the right depth", title_fontsize=8.5)
+    return arm.save(fig, "fig_where_it_works.png")
+
 def fig_strip(name, keys, recs, cuts, title_of):
     """Depth sections side by side: one column per run, the Pb row and the B-site row of the coherent reference's cuts."""
     keys = [k for k in keys if recs[k]["vol"]]
@@ -598,6 +669,7 @@ def main():
     frag["FRAG_P2_TABS"] = series_tabs("tabs-p2", p2, recs, CUTS[0])
     frag["FRAG_SEARCH_TABLE"] = search_table(R, recs)
     frag["FIG_INSTRUMENTS"] = arm.img(fig_instruments(recs, man), "instruments on the focal-spread wall")
+    frag["FIG_WHERE"] = arm.img(fig_where(recs, man), "the combined runs placed under the Spectra 300 monochromators")
     frag["FRAG_INSTR_TABLE"] = instruments_table(man, recs)
     frag["FRAG_RENDERS"] = renders(recs)
     frag["FRAG_REPRO"] = repro()
