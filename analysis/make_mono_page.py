@@ -339,8 +339,8 @@ def p2_table(recs):
                        f"<span class='muted-s'>{html.escape(why)}</span></td><td>{r['vac']:.2f}</td><td>–</td></tr>")
         else:
             trs.append(f"<tr>{lead}<td colspan='6'>{arm.pending_box(r['info'])}</td></tr>")
-    return arm.table(head, trs, "All at the Spectra Mono point: focal spread 2.5 Å (about 90 meV through C<sub>c</sub> 1.6 mm), "
-                     "the ARM aberrations, 80 mrad, no shot noise. <b>A</b>: beam imperfections only. <b>B</b>: plus atomic "
+    return arm.table(head, trs, "All at the Spectra Mono's setting: focal spread 2.5 Å (about 90 meV through C<sub>c</sub> 1.6 mm), "
+                     "the ARM aberrations, 80 mrad, no shot noise. <b>A</b>: the source size, 0.1 or 0.2 Å. <b>B</b>: plus atomic "
                      "vibration at room temperature, 100 K (liquid nitrogen) and 20 K (liquid helium, where only the zero-point "
                      "motion is left). <b>C</b>: the probe found from the data (below). Probe: <b>fixed</b> = the true probe given "
                      "and held; <b>8 modes</b> = refined from the data as 8 modes. The first two B rows are references with a "
@@ -406,14 +406,14 @@ COLS_NOTE = ("Columns: <b>strongest mode</b>, how coherent the beam is (the shar
 
 def status(recs, man):
     """What has been done: one row per step, what it changes, how many runs are in, and its state."""
-    rows = [("Part 1: where are the coherence limits? The true probe is given.",),
+    rows = [("Part 1, the scan: how coherent must the beam be? The true probe is given, no other physics.",),
             ("Step 1", "one knob at a time: six focal spreads (0.75–7.29 Å), four source sizes (0.05–0.4 Å)",
              "true probe, held fixed", "focal source"),
             ("Step 2A", "both knobs together: 2.5 and 3.5 Å, each with a 0.1 and a 0.2 Å source", "true probe, held fixed", "joint"),
             ("Step 2B", "probe modes at four settings: 5 and 7.29 Å focal spread, 0.2 and 0.4 Å source",
              "refined from the data as 7–8 modes, started from a real gun's mixed beam", "modes"),
-            ("Part 2: the Spectra Mono's own setting (2.5 Å focal spread), made harder one step at a time.",),
-            ("A", "beam imperfections only: a 0.1 and a 0.2 Å source", "refined as 8 modes (corrected solver)", "ceiling"),
+            ("Part 2, the physics put back, one piece at a time, at the Spectra Mono's setting (2.5 Å focal spread).",),
+            ("A", "the source size: 0.1 and 0.2 Å", "refined as 8 modes (corrected solver)", "ceiling"),
             ("B", "add atomic vibration: phonons at 100 K and 20 K (0.1 Å source)",
              "true probe held fixed, and refined as 8 modes", "cooled"),
             ("C", "add not knowing the probe: start from the corrector's quoted precision, find it by an outer search",
@@ -434,7 +434,7 @@ def status(recs, man):
                "</span></td></tr>")
     return arm.table(["", "what changes", "probe", "runs in", ""], trs,
                      "Every run: 300 kV, 80 mrad, no shot noise; atomic vibration only in B. Running now: step 2B's four points, "
-                     "with a solver bug fixed (§05), and C with a third search stage (§06).")
+                     "with a solver bug fixed (§05), and C with a third search stage (§07).")
 
 
 def joint_grid(recs):

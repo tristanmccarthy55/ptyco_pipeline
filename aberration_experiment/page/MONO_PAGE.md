@@ -1,6 +1,11 @@
 # The Coherence Wall page — how to fill it in and republish
 
 PUBLISHED: https://claude.ai/artifact/B7ep8BpAMVdKvrnXywACq3
+- version 8, 2026-10-21: told as the story (the user): the ARM200F's realistic runs failed -> we scanned the coherence
+  to find a microscope that could do it -> that turned up the Spectra 300 X-FEG Mono (90 meV in use, ~2.5 A focal spread;
+  current and widely installed; S-CORR corrects A5) -> the physics put back at its setting. Sections reordered to match:
+  §06 is now "Which microscope" (was §07, instruments), §07 "The physics put back" (was §06, A/B/C); every cross-
+  reference moved with them. 0.1 / 0.2 A sources are not called realistic (real ones are quoted at 0.24-0.6 A).
 - version 7, 2026-10-21: calmer formatting (the user: "a bit hard on my eyes"). One sans typeface for text; no all-caps
   monospace labels (eyebrow, nav, table heads, chips, box labels); call boxes as a left rule only; no figure shadows; the
   big headline panel and its seven tiles replaced by one "In short" sentence (`headline()` now returns only WALL_LINE);

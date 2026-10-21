@@ -44,9 +44,9 @@
     <div class="eyebrow">300 kV monochromated microscope · partial coherence and cooling · week of 2026-10-19 · for the meeting of 2026-10-21</div>
     <h1>The Coherence Wall</h1>
     <p class="standfirst">
-      Can a widely installed 300 kV monochromated microscope, the Spectra 300 X-FEG Mono, find the depth of each atom
-      along the beam by multislice ptychography? We test what could stop it: a beam that is not perfectly coherent, the
-      atoms' thermal vibration, and not knowing the probe exactly.
+      On the ARM200F, realistic physics took away the depth of each atom. So we scanned the beam's coherence to find what a
+      microscope must deliver for depth-resolved multislice ptychography. That points to a Spectra 300 with the X-FEG
+      monochromator. Then we put the physics back at its setting, one piece at a time.
     </p>
     <div class="mast-meta"><span><b>built</b> {{BUILT}}</span><span><b>source</b> analysis/make_mono_page.py</span>
       <span><b>previous page</b> <a href="https://claude.ai/artifact/MUkJ7yYrsek3nTLXcZgCrk">ARM200F at 80 mrad</a></span></div>
@@ -56,8 +56,8 @@
       <a href="#s3">Source size</a>
       <a href="#s4">Both at once</a>
       <a href="#s5">Probe modes</a>
-      <a href="#s6">The Spectra Mono point</a>
-      <a href="#s7">The instruments</a>
+      <a href="#s6">Which microscope</a>
+      <a href="#s7">The physics put back</a>
       <a href="#s8">For discussion</a>
       <a href="#appendix">Every run</a>
       <a href="#reproduce">Reproduce</a>
@@ -69,54 +69,66 @@
 
   <section id="s1">
     <div class="sec-head"><span class="sec-num">01</span><h2>Summary</h2></div>
-    <h3>What this page is</h3>
+    <h3>The story</h3>
     <div class="tablewrap"><table class="brief">
       <tbody>
-        <tr><td>Question</td><td class="wrap">Does depth-resolved multislice ptychography still work on a Spectra 300 with
-          the X-FEG Mono, a common instrument, not a one-off? "Works" means the reconstruction puts each Pb and Ti atom at its
-          true depth along the beam.</td></tr>
-        <tr><td>Test</td><td class="wrap">Simulated 4D-STEM data of a thin PbTiO<sub>3</sub>/SrTiO<sub>3</sub> slab at
-          300 kV and 80 mrad. We add one imperfection at a time, reconstruct, and let an atom finder read each atom's depth
-          from the reconstructed volume.</td></tr>
+        <tr><td>Where we started</td><td class="wrap">The previous page: the JEOL ARM200F with its measured aberrations at 80 mrad.
+          With a perfect beam and the probe known, the depth works (Pb 90 %, Ti 58 % of atoms at the right depth). With
+          realistic physics it does not. The ARM's own beam (a cold FEG: 0.3 eV energy spread, 0.4 Å source) drops it to
+          guessing (Pb 23 %, Ti 7 %), and so does room-temperature vibration on its own (Pb 24 %). Shot noise was not the
+          cause.</td></tr>
+        <tr><td>What we did</td><td class="wrap">Scanned the beam's coherence: the spread of focus that the energy spread causes,
+          and the source size, each on its own and then together, with the true probe given and no other physics (§02–§05).
+          Both are scanned in Å at the specimen, so the limits hold for any microscope.</td></tr>
+        <tr><td>What it turned up</td><td class="wrap">The Spectra 300 with the X-FEG Mono (§06), for three reasons. Its
+          monochromator brings the energy spread to about 90 meV in use, about 2.5 Å of focal spread: inside the limit, where
+          the ARM's cold FEG gives 7.3 Å and a Titan's Wien filter 4–12 Å. It is a current, widely installed microscope, not
+          a one-off (Cambridge's runs at 90 meV). And its corrector corrects A5, which the ARM's does not, so keeping the
+          ARM's aberrations is pessimistic for it. The UltiMono does better still, but it is the rarer, high-end option.</td></tr>
+        <tr><td>Then</td><td class="wrap">We put the physics back at the Spectra Mono's setting, one piece at a time (§07): the
+          source size (A), atomic vibration cooled to 100 K and 20 K (B; room temperature is already ruled out), a
+          probe found from the data rather than given (C), and next, shot noise (D).</td></tr>
         <tr><td>Score</td><td class="wrap">The share of Pb and Ti atoms put at the right depth, within 0.5 Å. Pure guessing
           scores about 26 % for Pb and 18 % for Ti. <span class="chip c-ok">good</span> Pb ≥ 80 % and Ti ≥ 45 % ·
           <span class="chip c-warn">okay</span> Pb ≥ 50 % · <span class="chip c-stop">off</span> below that.</td></tr>
-        <tr><td>Aberrations</td><td class="wrap">The JEOL ARM200F's measured set, retuned for 80 mrad, in every run. We found
-          no measured Spectra set, and the ARM's corrector leaves A5 uncorrected, so this is a pessimistic stand-in.</td></tr>
-        <tr><td>Order</td><td class="wrap">§02–§04: the beam's coherence, with the true probe given. §05: letting the
-          reconstruction refine the beam as several modes. §06: the Spectra Mono's own setting, then cooled, then with the
-          probe found from the data. §07: which microscopes reach the limits found. §08: the claims, and how well each is
-          supported.</td></tr>
+        <tr><td>Aberrations</td><td class="wrap">The ARM200F's measured set, retuned for 80 mrad, in every run (no measured
+          Spectra set was found).</td></tr>
       </tbody>
     </table></div>
-    <!-- FILL headline (v5, 2026-10-21): when the _mixF reruns (sec 05) and the searched start with its third stage (C, sec 06)
-         land, revise the 'probe modes' and 'finding the probe' bullets. Numbers from the tables. -->
     <div class="inshort">
-      <p><b>In short.</b> {{WALL_LINE}} That last point is the Spectra Mono's own setting with a small source. Add atomic
-        vibration, even cooled to 20 K, and only the Pb depths survive. A probe found from the data, and shot noise, are the
-        next two results.</p>
+      <p><b>In short.</b> {{WALL_LINE}} The Spectra Mono, at about 2.5 Å, is inside. Putting the physics back at its
+        setting: good with a 0.1 Å source, okay with 0.2 Å. With atomic vibration, even cooled to 20 K, only the Pb depths
+        survive. A probe found from the data, and shot noise, are the next two results.</p>
     </div>
 
-    <h3>What we found, one limiting factor at a time</h3>
+    <h3>What we found</h3>
+    <p><b>The scan: what the beam must do</b> (true probe given, no other physics)</p>
     <ol class="found">
-      <li><b>Energy spread</b> (seen as a spread of focus): the depth survives up to 3.5 Å rms of focal spread and is lost
-        by 5 Å. For good that needs ΔE ≤ 0.14 eV at C<sub>c</sub> 1.4 mm (≤ 0.08 eV at 2.4 mm). The Spectra Mono, at about
-        90 meV, gives 2.5 Å: inside. When it fails, false structure fills the vacuum above and below the specimen (§02).</li>
+      <li><b>Energy spread</b>, seen as a spread of focus: the depth survives up to 3.5 Å rms and is lost by 5 Å. For good,
+        that needs ΔE ≤ 0.14 eV at C<sub>c</sub> 1.4 mm (≤ 0.08 eV at 2.4 mm). When it fails, false structure fills the
+        vacuum above and below the specimen (§02).</li>
       <li><b>Source size</b>: good up to 0.1 Å, Ti lost at 0.2 Å, off by 0.4 Å. Real effective sources are quoted at
-        0.24–0.6 Å, so this is the harder limit. When it fails, each column smears in depth while the vacuum stays clean (§03).</li>
+        0.24–0.6 Å, so this is the harder limit. When it fails, each column smears in depth while the vacuum stays clean
+        (§03).</li>
       <li><b>Both together</b>: worse than either alone. 2.5 Å with a 0.2 Å source is off, though each passed alone (§04).</li>
       <li><b>Probe modes</b>, letting the reconstruction describe the beam as a mixture of 7–8 probes instead of one held
-        fixed, win part of it back: at 7.29 Å off → okay, and at the Spectra Mono setting with a 0.2 Å source off → okay. A bug
-        in our solver crashed three of these runs; it is fixed and the single points are rerunning (§05).</li>
-      <li><b>Atomic vibration</b>: at room temperature the depth is lost. Cooled, with probe modes, Pb comes back to okay
-        (51 % at 100 K, 70 % at 20 K); Ti stays at the guessing level even at 20 K (§06).</li>
-      <li><b>Not knowing the probe</b>: not yet shown. Starting from the corrector's quoted precision, the search found the
-        astigmatism A1 to 4 Å but put the defocus C1 32 Å off, because it searched C1 before A1. A third search stage fixes the
-        order and is running (§06).</li>
+        fixed, win part of it back: at 7.29 Å, off → okay. A bug in our solver crashed three of these runs; it is fixed and
+        the points are rerunning (§05).</li>
     </ol>
-    <p><b>For instruments</b>: in energy spread the UltiMono gets there with margin; the Mono at the 90 meV quoted in use,
-        not at its 0.2 eV specification; a Titan's Wien filter only to the edge, at its best; a cold FEG or unmonochromated
-        gun does not (§07).</p>
+    <p><b>The microscope it points to</b>: in energy spread the Spectra 300 X-FEG Mono is inside at the 90 meV quoted in use
+      (not at its 0.2 eV specification); the UltiMono with margin; a Titan's Wien filter only to the edge, at its best; the
+      ARM's cold FEG and unmonochromated guns do not (§06).</p>
+    <p><b>The physics put back, at the Spectra Mono's setting</b> (2.5 Å of focal spread)</p>
+    <ol class="found" start="5">
+      <li><b>Source size (A)</b>: good with a 0.1 Å source and probe modes; okay with 0.2 Å, where the fixed probe fails.
+        Real sources are quoted at 0.24–0.6 Å, so 0.2 Å is the nearer to a real instrument (§07).</li>
+      <li><b>Atomic vibration (B)</b>: with probe modes, Pb comes back to okay (51 % at 100 K, 70 % at 20 K); Ti stays at the
+        guessing level even at 20 K (§07).</li>
+      <li><b>Not knowing the probe (C)</b>: not yet shown. Starting from the corrector's quoted precision, the search found
+        the astigmatism A1 to 4 Å but put the defocus C1 32 Å off, because it searched C1 before A1. A third search stage
+        fixes the order and is running (§07).</li>
+      <li><b>Shot noise (D)</b>: next, once C works.</li>
+    </ol>
     <figure class="wide">
       {{FIG_WALL}}
       <figcaption><span class="fig-name">fig_wall.png</span>
@@ -145,7 +157,7 @@
           specimen: each electron's probe lands slightly shifted. Given as the FWHM of that spread of positions, in Å.</td></tr>
         <tr><td>how it is simulated</td><td class="wrap">16 copies of the scan, each with its own defocus offset and probe
           shift drawn from these spreads; the diffraction patterns are averaged. No shot noise anywhere yet; atomic
-          vibration only in §06, B.</td></tr>
+          vibration only in §07, B.</td></tr>
         <tr><td>reconstruction</td><td class="wrap">multislice ptychography (LSQML), 18 slices through the depth</td></tr>
         <tr><td>probe fixed</td><td class="wrap">the reconstruction is given the true probe and may not change it.
           It then has nowhere to put the beam's partial coherence but the object. A control, not an experiment.</td></tr>
@@ -161,7 +173,7 @@
           temperature from a Debye model fitted to its room-temperature value; at 20 K only the zero-point motion is left
           (Ti about 0.04 Å per axis).</td></tr>
         <tr><td>outer search</td><td class="wrap">finding the probe's aberrations from the data: many short
-          reconstructions on a grid of trial values; the trial that fits the data best gives the answer (§06, C).</td></tr>
+          reconstructions on a grid of trial values; the trial that fits the data best gives the answer (§07, C).</td></tr>
         <tr><td>how it is judged</td><td class="wrap">the share of Pb and Ti atoms the finder places as the right element
           within 0.5 Å of their true depth. "Guessing" is the same found atoms slid to random depths along their columns:
           about 26 % for Pb, 18 % for Ti. The finder matches each column against templates of a lone Pb and a lone Ti atom,
@@ -254,12 +266,45 @@
   </section>
 
   <section id="s6">
-    <div class="sec-head"><span class="sec-num">06</span><h2>The Spectra Mono point: cooling, and finding the probe</h2></div>
+    <div class="sec-head"><span class="sec-num">06</span><h2>Which microscope: the Spectra 300 X-FEG Mono</h2></div>
+    <div class="call qa ok">
+      <span class="k">Question</span><span class="v">Which microscopes give a focal spread inside the limit of §02?</span>
+      <span class="k">Answer</span><span class="v">The UltiMono, with margin. The Mono, at the 90 meV Cambridge
+      quotes (if C<sub>c</sub> ≤ about 2 mm), but not at its 0.2 eV specification. A Titan's Wien monochromator reaches the
+      band between good and off only at its best (~0.1 eV). The ARM's cold FEG or an unmonochromated X-FEG, no.</span>
+      <span class="k">Our choice</span><span class="v">The Spectra 300 X-FEG Mono: inside on focal spread, current and widely
+      installed, and with a corrector that corrects A5, so the ARM aberrations we keep are pessimistic for it. Its weak
+      point is the source: a Schottky X-FEG's source is larger than a cold FEG's, which is why the source size is the first
+      piece of physics put back (§07, A).</span>
+      <span class="k">Caveat</span><span class="v">This is focal spread only. Source size (§03) and ripple are not on this axis, and with real sources the joint result of §04 is the one that counts.</span>
+    </div>
+    <figure class="wide">
+      {{FIG_INSTRUMENTS}}
+      <figcaption><span class="fig-name">fig_instruments.png</span>
+        <div class="howto"><b>How to read it</b> Bands: good, the wall and off, from §02 (triangles: the points tested).
+          Bars: the focal spread each instrument gives over its range of ΔE and C<sub>c</sub>. Log scale.</div>
+      </figcaption>
+    </figure>
+    {{FRAG_INSTR_TABLE}}
+    <ul>
+      <li><b>C<sub>c</sub></b> is unpublished for the Spectra 300, hence its range (its 0.2 eV specification gives 4.9 Å at
+        1.4 mm, 8.3 Å at 2.4 mm); 2.4 mm is the Titan 80-300 with its CESCOR corrector.</li>
+      <li><b>Ripple</b> in the high tension and lens currents adds focal spread, so every bar is a lower bound.</li>
+      <li><b>Source size</b> is not on this axis: with real sources (0.24–0.6 Å) the joint result of §04 is the one that
+        counts, so these bands are the generous reading.</li>
+    </ul>
+  </section>
+
+  <section id="s7">
+    <div class="sec-head"><span class="sec-num">07</span><h2>The physics put back, at the Spectra Mono's setting</h2></div>
     <div class="call qa warn">
-      <span class="k">Question</span><span class="v">At the Spectra Mono's own setting (2.5 Å of focal spread, about 90 meV through C<sub>c</sub> ≈ 1.6 mm), does the depth survive (A) the beam's imperfections, (B) the atoms' vibration, cooled to 100 K or 20 K, and (C) a probe found from the data rather than given?</span>
+      <span class="k">Question</span><span class="v">At the Spectra Mono's setting (2.5 Å of focal spread, about
+      90 meV through C<sub>c</sub> ≈ 1.6 mm), does the depth survive as the physics is put back one piece at a time:
+      (A) the source size, (B) atomic vibration, cooled to 100 K or 20 K, (C) a probe found from the data rather
+      than given? Shot noise (D) comes next.</span>
       <span class="k">Answer</span><span class="v">A: yes, good with a 0.1 Å source, okay with 0.2 Å. B: partly, Pb comes back to okay with probe modes, Ti does not. C: not yet shown; the first search failed on its order and is rerunning.</span>
     </div>
-    <div class="call ok"><b>A, coherence only: good with a 0.1 Å source, okay with 0.2 Å.</b> Probe modes take the 0.2 Å
+    <div class="call ok"><b>A, source size: good at 0.1 Å, okay at 0.2 Å.</b> Probe modes take the 0.2 Å
       point from off to okay (Pb 45 → 55 %). At 0.1 Å the mode run sits a little below its fixed-probe control (Pb 81 vs
       91 %, Ti 47 vs 60 %), most likely because mode runs take smaller object steps (§05), not the physics.</div>
     <div class="call pending"><b>B, cooled: Pb comes back, Ti does not.</b> With phonons the fixed probe loses the depth at both
@@ -290,32 +335,6 @@
     {{FRAG_SEARCH_TABLE}}
   </section>
 
-  <section id="s7">
-    <div class="sec-head"><span class="sec-num">07</span><h2>Placing the instruments</h2></div>
-    <div class="call qa ok">
-      <span class="k">Question</span><span class="v">Which microscopes give a focal spread inside the limit of §02?</span>
-      <span class="k">Answer</span><span class="v">The UltiMono, yes, with margin. The Mono, yes at the 90 meV Cambridge quotes (if C<sub>c</sub> ≤ about
-      2 mm), but not at its 0.2 eV specification. A Titan's Wien monochromator reaches the band between good and off only
-      at its best (~0.1 eV). A cold FEG or an unmonochromated X-FEG, no.</span>
-      <span class="k">Caveat</span><span class="v">This is focal spread only. Source size (§03) and ripple are not on this axis, and with real sources the joint result of §04 is the one that counts.</span>
-    </div>
-    <figure class="wide">
-      {{FIG_INSTRUMENTS}}
-      <figcaption><span class="fig-name">fig_instruments.png</span>
-        <div class="howto"><b>How to read it</b> Bands: good, the wall and off, from §02 (triangles: the points tested).
-          Bars: the focal spread each instrument gives over its range of ΔE and C<sub>c</sub>. Log scale.</div>
-      </figcaption>
-    </figure>
-    {{FRAG_INSTR_TABLE}}
-    <ul>
-      <li><b>C<sub>c</sub></b> is unpublished for the Spectra 300, hence its range (its 0.2 eV specification gives 4.9 Å at
-        1.4 mm, 8.3 Å at 2.4 mm); 2.4 mm is the Titan 80-300 with its CESCOR corrector.</li>
-      <li><b>Ripple</b> in the high tension and lens currents adds focal spread, so every bar is a lower bound.</li>
-      <li><b>Source size</b> is not on this axis: with real sources (0.24–0.6 Å) the joint result of §04 is the one that
-        counts, so these bands are the generous reading.</li>
-    </ul>
-  </section>
-
   <section id="s8">
     <div class="sec-head"><span class="sec-num">08</span><h2>For discussion</h2></div>
     <!-- FILL discussion (reruns): revise the 'probe modes' row when the _mixF points land. -->
@@ -325,17 +344,17 @@
         <span class="lg-d">2.5 Å + 0.2 Å is off though each part passed alone (§04).</span></div>
       <div><span class="lg-t">Probe modes move the wall</span><span class="chip c-warn">partly</span>
         <span class="lg-d">At 7.29 Å off → okay, and at the Mono point 2.5 Å + 0.2 Å off → okay; the single points are
-          rerunning with the corrected solver (§05, §06).</span></div>
+          rerunning with the corrected solver (§05, §07).</span></div>
       <div><span class="lg-t">Focal spread costs more depth than source size</span><span class="chip c-warn">partly</span>
         <span class="lg-d">At equal coherence the focal spread is worse; a likely reason: focus is what multislice reads as depth.</span></div>
       <div><span class="lg-t">A widespread monochromated instrument gets past the wall</span><span class="chip c-warn">partly</span>
         <span class="lg-d">In focal spread: the UltiMono yes; the Mono at the 90 meV quoted in use, not at its 0.2 eV
-          specification; the Titan Wien only to the edge, at its best. The source size and ripple decide it (§07).</span></div>
+          specification; the Titan Wien only to the edge, at its best. The source size and ripple decide it (§06).</span></div>
       <div><span class="lg-t">Cooling restores the depth</span><span class="chip c-warn">partly</span>
         <span class="lg-d">For Pb, with probe modes: 51 % at 100 K, 70 % at 20 K. Not for Ti, at either. Room-temperature
-          phonons remove the depth (§06).</span></div>
+          phonons remove the depth (§07).</span></div>
       <div><span class="lg-t">The method finds its own probe</span><span class="chip c-open">open</span>
-        <span class="lg-d">A1 found to 4 Å from the corrector's precision; C1 needs a third search stage, running (§06).</span></div>
+        <span class="lg-d">A1 found to 4 Å from the corrector's precision; C1 needs a third search stage, running (§07).</span></div>
     </div>
   </section>
 
