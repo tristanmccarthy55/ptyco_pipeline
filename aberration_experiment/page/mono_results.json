@@ -202,7 +202,7 @@
    "group": "modes",
    "control": "fs5",
    "modes": 7,
-   "pending": "rerunning with the corrected solver (all-modes illumination): legs 1334471/72/73, set off 2026-10-20, ~32 h; until then the page shows the earlier run",
+   "pending": "rerunning with the solver bug fixed (set off 2026-10-20, about 32 h; job ids in PHASE1.md)",
    "legs": [
     "armf_a080_lab_fs5_mixF",
     "armf_a080_lab_fs5_mix16",
@@ -224,7 +224,7 @@
    "group": "modes",
    "control": "fs7p29",
    "modes": 8,
-   "pending": "rerunning with the corrected solver (all-modes illumination): legs 1334466/67/68, set off 2026-10-20, ~32 h; until then the page shows the earlier run",
+   "pending": "rerunning with the solver bug fixed (set off 2026-10-20, about 32 h; job ids in PHASE1.md)",
    "legs": [
     "armf_a080_lab_fs7p29_mixF",
     "armf_a080_lab_fs7p29_mix"
@@ -246,7 +246,7 @@
    "group": "modes",
    "control": "src0p2",
    "modes": 8,
-   "pending": "rerunning with the corrected solver (all-modes illumination): legs 1334476/77/78, set off 2026-10-20, ~32 h; until then the page shows the earlier run",
+   "pending": "rerunning with the solver bug fixed (set off 2026-10-20, about 32 h; job ids in PHASE1.md)",
    "legs": [
     "armf_a080_lab_src0p2_mixF",
     "armf_a080_lab_src0p2_mix16",
@@ -269,7 +269,7 @@
    "group": "modes",
    "control": "src0p4",
    "modes": 8,
-   "pending": "rerunning with the corrected solver (all-modes illumination): legs 1334481/82/83, set off 2026-10-20, ~32 h; until then the page shows the earlier run",
+   "pending": "rerunning with the solver bug fixed (set off 2026-10-20, about 32 h; job ids in PHASE1.md)",
    "legs": [
     "armf_a080_lab_src0p4_mixF",
     "armf_a080_lab_src0p4_mix16",
@@ -412,7 +412,7 @@
     "search_af_armf_a080_lab_fs2p5_src0p1_s3",
     "search_af_armf_a080_lab_fs2p5_src0p1"
    ],
-   "pending": "the rerun with a third search stage: stage-3 array 1334455, legs 1334457/58/59, analysis 1334461"
+   "pending": "the rerun with a third search stage (set off 2026-10-20; job ids in PHASE1.md)"
   }
  },
  "instruments": [

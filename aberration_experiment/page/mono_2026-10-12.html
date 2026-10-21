@@ -10,19 +10,29 @@
   .spec.wall .spec-v em { color: var(--warn); }
   td.wrap .muted-s { display: inline-block; margin-top: 2px; }
   ul.found li { margin-bottom: 5px; }
+  /* ---- v6 (2026-10-21): a question / answer lead at the head of every section, for a reader new to the runs ------ */
+  .call.qa { display: grid; grid-template-columns: max-content 1fr; gap: 7px 14px; align-items: baseline; }
+  .call.qa .k { font-family: var(--mono); font-size: 10.5px; font-weight: 600; letter-spacing: .08em;
+    text-transform: uppercase; color: var(--ink-3); }
+  .call.qa .v { font-size: 15px; }
+  .call.qa.warn { border-left-color: var(--warn); }
+  table.brief td:first-child { font-weight: 600; white-space: nowrap; vertical-align: top; }
+  p.tnote { font-family: var(--sans); font-size: 12.5px; line-height: 1.5; color: var(--ink-3); margin: 4px 0 18px; }
+  tr.grp td { font-family: var(--sans); font-weight: 600; color: var(--ink); padding-top: 14px; white-space: normal; }
 </style>
 <header class="mast">
   <div class="mast-in"><div class="mast-col">
     <div class="eyebrow">300 kV monochromated microscope · partial coherence and cooling · week of 2026-10-19 · for the meeting of 2026-10-21</div>
     <h1>The Coherence Wall</h1>
     <p class="standfirst">
-      How coherent must the beam be for depth-resolved multislice ptychography at 300 kV and 80 mrad, and which
-      microscopes are coherent enough?
+      Can a widely installed 300 kV monochromated microscope, the Spectra 300 X-FEG Mono, find the depth of each atom
+      along the beam by multislice ptychography? We test what could stop it: a beam that is not perfectly coherent, the
+      atoms' thermal vibration, and not knowing the probe exactly.
     </p>
     <div class="mast-meta"><span><b>built</b> {{BUILT}}</span><span><b>source</b> analysis/make_mono_page.py</span>
       <span><b>previous page</b> <a href="https://claude.ai/artifact/MUkJ7yYrsek3nTLXcZgCrk">ARM200F at 80 mrad</a></span></div>
     <nav class="jump">
-      <a href="#s1">This week</a>
+      <a href="#s1">Summary</a>
       <a href="#s2">Focal spread</a>
       <a href="#s3">Source size</a>
       <a href="#s4">Both at once</a>
@@ -39,59 +49,57 @@
 <main>
 
   <section id="s1">
-    <div class="sec-head"><span class="sec-num">01</span><h2>This week</h2></div>
+    <div class="sec-head"><span class="sec-num">01</span><h2>Summary</h2></div>
+    <h3>What this page is</h3>
+    <div class="tablewrap"><table class="brief">
+      <tbody>
+        <tr><td>the question</td><td class="wrap">Does depth-resolved multislice ptychography still work on a Spectra 300 with
+          the X-FEG Mono, a common instrument, not a one-off? "Works" means the reconstruction puts each Pb and Ti atom at its
+          true depth along the beam.</td></tr>
+        <tr><td>the test</td><td class="wrap">Simulated 4D-STEM data of a thin PbTiO<sub>3</sub>/SrTiO<sub>3</sub> slab at
+          300 kV and 80 mrad. We add one imperfection at a time, reconstruct, and let an atom finder read each atom's depth
+          from the reconstructed volume.</td></tr>
+        <tr><td>the score</td><td class="wrap">The share of Pb and Ti atoms put at the right depth, within 0.5 Å. Pure guessing
+          scores about 26 % for Pb and 18 % for Ti. <span class="chip c-ok">good</span> Pb ≥ 80 % and Ti ≥ 45 % ·
+          <span class="chip c-warn">okay</span> Pb ≥ 50 % · <span class="chip c-stop">off</span> below that.</td></tr>
+        <tr><td>the aberrations</td><td class="wrap">The JEOL ARM200F's measured set, retuned for 80 mrad, in every run. We found
+          no measured Spectra set, and the ARM's corrector leaves A5 uncorrected, so this is a pessimistic stand-in.</td></tr>
+        <tr><td>the order</td><td class="wrap">§02–§04: the beam's coherence, with the true probe given. §05: letting the
+          reconstruction refine the beam as several modes. §06: the Spectra Mono's own setting, then cooled, then with the
+          probe found from the data. §07: which microscopes reach the limits found. §08: the claims, and how well each is
+          supported.</td></tr>
+      </tbody>
+    </table></div>
     <!-- FILL headline (v5, 2026-10-21): when the _mixF reruns (sec 05) and the searched start with its third stage (C, sec 06)
          land, revise the 'probe modes' and 'finding the probe' bullets. Numbers from the tables. -->
     <div class="spec wall">
-      <div class="spec-k">Depth survives, probe known</div>
+      <div class="spec-k">The limits found, with the true probe given: the depth survives up to</div>
       <p class="spec-v">{{WALL_LINE}}</p>
-      <p>Each effect alone leaves some margin; together they compound; probe modes win part of it back. At the Spectra
-        Mono's best setting the depth survives with a known probe, and cooling to 20 K brings back the Pb layers but not Ti.</p>
+      <p>In one line: with the probe known, the Spectra Mono's setting keeps both Pb and Ti depths if the source is small
+        (0.1 Å); with atomic vibration, even cooled to 20 K, only Pb's. A probe found from the data, and shot noise, are the
+        next two results.</p>
       {{FRAG_HEAD_GRID}}
     </div>
 
-    <h3>Parameters and method</h3>
-    <div class="tablewrap"><table>
-      <tbody>
-        <tr><td>microscope</td><td class="wrap">300 kV, 80 mrad aperture, the ARM200F's measured aberrations (defocus, C3,
-          B2 and A1 retuned for 80 mrad)</td></tr>
-        <tr><td>specimen, scan</td><td class="wrap">PbTiO<sub>3</sub>/SrTiO<sub>3</sub>, 5 unit cells (19.5 Å) with 4 Å of
-          vacuum each side; 20 Å scanned in 0.5 Å steps; detector to 133 mrad</td></tr>
-        <tr class="ref"><td>knob 1: focal spread</td><td class="wrap">The gun's energy spread ΔE passed through the objective
-          lens's chromatic aberration C<sub>c</sub>: electrons of different energy focus at different heights, a spread of
-          defocus of 17.4 Å rms per eV·mm at 300 kV. We scan it in Å, so the result holds for any ΔE and C<sub>c</sub>.</td></tr>
-        <tr class="ref"><td>knob 2: source size</td><td class="wrap">The gun's finite emitting area, demagnified onto the
-          specimen: each electron's probe lands slightly shifted. Given as the FWHM of that spread of positions, in Å.</td></tr>
-        <tr><td>how it is simulated</td><td class="wrap">16 copies of the scan, each with its own defocus offset and probe
-          shift drawn from these spreads; the diffraction patterns are averaged. No phonons, no shot noise.</td></tr>
-        <tr><td>reconstruction</td><td class="wrap">multislice ptychography, 18 slices; the true probe held fixed, or
-          released with 7–8 probe modes (step 2B)</td></tr>
-        <tr><td>how it is judged</td><td class="wrap">the share of Pb and Ti atoms the finder places as the right element
-          within 0.5 Å of their true depth. Guessing the depths along each column gives about 26 % for Pb.
-          <span class="chip c-ok">good</span> Pb ≥ 80 % and Ti ≥ 45 % · <span class="chip c-warn">okay</span> Pb ≥ 50 % ·
-          <span class="chip c-stop">off</span> otherwise</td></tr>
-      </tbody>
-    </table></div>
-
-    <h3>What we did</h3>
-    {{FRAG_STATUS}}
-
-    <h3>What we found</h3>
+    <h3>What we found, one limiting factor at a time</h3>
     <ul class="found">
-      <li><b>Focal spread</b>: fine up to 3.5 Å, gone by 5 Å. It fails by loading the vacuum layers above and below the slab.</li>
-      <li><b>Source size</b>: fine up to 0.1 Å, Ti lost at 0.2 Å, gone by 0.4 Å. It fails differently: the columns smear in
-        depth while the vacuum stays clean.</li>
-      <li><b>Together they compound</b>: 2.5 Å with a 0.2 Å source is off, though each passed alone.</li>
-      <li><b>Probe modes help</b>: at 7.29 Å the result goes from off to okay (Pb 31 → 70 %); Ti is still short of good.
-        The crashes of three mode runs were a solver bug, now fixed (§05); all four points are rerunning.</li>
-      <li><b>At the Spectra Mono point</b> (2.5 Å, about 90 meV): good with a 0.1 Å source and probe modes, okay with a
-        realistic 0.2 Å source, where the fixed probe failed (§06).</li>
-      <li><b>Cooling</b>: with phonons the fixed probe loses the depth even at 20 K; probe modes bring Pb back to okay (51 % at
-        100 K, 70 % at 20 K) but not Ti, which stays at the guessing level (§06).</li>
-      <li><b>Finding the probe</b>: an outer search from the corrector's own precision finds A1 to 4 Å but its first C1 answer
-        was 32 Å off, enough to lose the depth; a third search stage is running (§06).</li>
-      <li><b>For instruments</b>: good needs ΔE ≤ 0.14 eV at C<sub>c</sub> 1.4 mm (≤ 0.08 eV at 2.4 mm). The Spectra 300
-        monochromators get there, a Titan's Wien filter only at its best. Real sources, 0.24–0.6 Å, are the harder limit.</li>
+      <li><b>1. Energy spread</b> (seen as a spread of focus): the depth survives up to 3.5 Å rms of focal spread and is lost
+        by 5 Å. For good that needs ΔE ≤ 0.14 eV at C<sub>c</sub> 1.4 mm (≤ 0.08 eV at 2.4 mm). The Spectra Mono, at about
+        90 meV, gives 2.5 Å: inside. When it fails, false structure fills the vacuum above and below the specimen (§02).</li>
+      <li><b>2. Source size</b>: good up to 0.1 Å, Ti lost at 0.2 Å, off by 0.4 Å. Real effective sources are quoted at
+        0.24–0.6 Å, so this is the harder limit. When it fails, each column smears in depth while the vacuum stays clean (§03).</li>
+      <li><b>3. Both together</b>: worse than either alone. 2.5 Å with a 0.2 Å source is off, though each passed alone (§04).</li>
+      <li><b>4. Probe modes</b>, letting the reconstruction describe the beam as a mixture of 7–8 probes instead of one held
+        fixed, win part of it back: at 7.29 Å off → okay, and at the Spectra Mono setting with a 0.2 Å source off → okay. A bug
+        in our solver crashed three of these runs; it is fixed and the single points are rerunning (§05).</li>
+      <li><b>5. Atomic vibration</b>: at room temperature the depth is lost. Cooled, with probe modes, Pb comes back to okay
+        (51 % at 100 K, 70 % at 20 K); Ti stays at the guessing level even at 20 K (§06).</li>
+      <li><b>6. Not knowing the probe</b>: not yet shown. Starting from the corrector's quoted precision, the search found the
+        astigmatism A1 to 4 Å but put the defocus C1 32 Å off, because it searched C1 before A1. A third search stage fixes the
+        order and is running (§06).</li>
+      <li><b>For instruments</b>: in energy spread the UltiMono gets there with margin; the Mono at the 90 meV quoted in use,
+        not at its 0.2 eV specification; a Titan's Wien filter only to the edge, at its best; a cold FEG or unmonochromated
+        gun does not (§07).</li>
     </ul>
     <figure class="wide">
       {{FIG_WALL}}
@@ -104,13 +112,57 @@
       </figcaption>
     </figure>
 
+    <h3>What we ran</h3>
+    {{FRAG_STATUS}}
+
+    <h3>Parameters, method and the terms used on this page</h3>
+    <div class="tablewrap"><table>
+      <tbody>
+        <tr><td>microscope</td><td class="wrap">300 kV, 80 mrad aperture, the ARM200F's measured aberrations (defocus, C3,
+          B2 and A1 retuned for 80 mrad)</td></tr>
+        <tr><td>specimen, scan</td><td class="wrap">PbTiO<sub>3</sub>/SrTiO<sub>3</sub>, 5 unit cells (19.5 Å) with 4 Å of
+          vacuum each side; 20 Å scanned in 0.5 Å steps; detector to 133 mrad</td></tr>
+        <tr class="ref"><td>knob 1: focal spread</td><td class="wrap">The gun's energy spread ΔE passed through the objective
+          lens's chromatic aberration C<sub>c</sub>: electrons of different energy focus at different heights, a spread of
+          defocus of 17.4 Å rms per eV·mm at 300 kV. We scan it in Å, so the result holds for any ΔE and C<sub>c</sub>.</td></tr>
+        <tr class="ref"><td>knob 2: source size</td><td class="wrap">The gun's finite emitting area, demagnified onto the
+          specimen: each electron's probe lands slightly shifted. Given as the FWHM of that spread of positions, in Å.</td></tr>
+        <tr><td>how it is simulated</td><td class="wrap">16 copies of the scan, each with its own defocus offset and probe
+          shift drawn from these spreads; the diffraction patterns are averaged. No shot noise anywhere yet; atomic
+          vibration only in §06, B.</td></tr>
+        <tr><td>reconstruction</td><td class="wrap">multislice ptychography (LSQML), 18 slices through the depth</td></tr>
+        <tr class="ref"><td>probe fixed</td><td class="wrap">the reconstruction is given the true probe and may not change it.
+          It then has nowhere to put the beam's partial coherence but the object. A control, not an experiment.</td></tr>
+        <tr class="ref"><td>probe modes</td><td class="wrap">the reconstruction describes the beam as a mixture of 7–8
+          mutually incoherent probes and refines them together with the object, so the partial coherence can go into the
+          beam where it belongs.</td></tr>
+        <tr class="ref"><td>strongest mode</td><td class="wrap">how coherent a beam is: the share of its intensity in its single
+          most coherent component. 100 % is a perfectly coherent beam.</td></tr>
+        <tr class="ref"><td>vacuum / slab</td><td class="wrap">how much false structure the reconstruction puts in the empty
+          vacuum layers, relative to the specimen: 0.31 for a perfect beam, near 1 when the vacuum looks as strong as the
+          specimen.</td></tr>
+        <tr class="ref"><td>atomic vibration</td><td class="wrap">frozen phonons, each element's vibration at a given
+          temperature from a Debye model fitted to its room-temperature value; at 20 K only the zero-point motion is left
+          (Ti about 0.04 Å per axis).</td></tr>
+        <tr class="ref"><td>outer search</td><td class="wrap">finding the probe's aberrations from the data: many short
+          reconstructions on a grid of trial values; the trial that fits the data best gives the answer (§06, C).</td></tr>
+        <tr><td>how it is judged</td><td class="wrap">the share of Pb and Ti atoms the finder places as the right element
+          within 0.5 Å of their true depth. "Guessing" is the same found atoms slid to random depths along their columns:
+          about 26 % for Pb, 18 % for Ti. The finder matches each column against templates of a lone Pb and a lone Ti atom,
+          reconstructed under the same conditions as the run.
+          <span class="chip c-ok">good</span> Pb ≥ 80 % and Ti ≥ 45 % · <span class="chip c-warn">okay</span> Pb ≥ 50 % ·
+          <span class="chip c-stop">off</span> otherwise</td></tr>
+      </tbody>
+    </table></div>
+
     <h3>What is next</h3>
     <ol class="did">
-      <li><b>Finish</b><span>the four probe-mode points with the corrected solver, and the searched start with its third
-        stage (both running, about 1.5 days).</span></li>
+      <li><b>Finish</b><span>the four probe-mode points with the solver bug fixed, and the searched start with its third
+        stage (both set off 2026-10-20, due in about a day).</span></li>
       <li><b>D: shot noise</b><span>a dose series, 1e5–1e8 e/Å², with the searched start at 2.5 Å + 0.1 Å + 20 K: the
         lowest dose that keeps the depth sets the scan time, to weigh against a helium holder's drift.</span></li>
-      <li><b>Ti in depth</b><span>lost with phonons even at 20 K: is it the method (iterations, kernels) or the physics?</span></li>
+      <li><b>Ti in depth</b><span>lost with atomic vibration even at 20 K: is it the method (iterations, the finder's templates) or the
+        physics?</span></li>
       <li><b>Get a Spectra 300's C<sub>c</sub>, ripple, source size and measured aberrations</b><span>to place it on the
         wall as a point rather than a range.</span></li>
     </ol>
@@ -118,8 +170,11 @@
 
   <section id="s2">
     <div class="sec-head"><span class="sec-num">02</span><h2>Focal spread alone</h2></div>
-    <p>Up to 3.5 Å the atoms stay in place. From 5 Å the vacuum layers are nearly as strong as the slab and each column
-      becomes one leaning streak: the columns are found, their depths are not.</p>
+    <div class="call qa ok">
+      <span class="k">question</span><span class="v">How much spread of focus (from the beam's energy spread) can the depth take, with the true probe given?</span>
+      <span class="k">answer</span><span class="v">Up to 3.5 Å rms: good. From 5 Å: off.</span>
+      <span class="k">how it fails</span><span class="v">The vacuum layers fill with false structure, nearly as strong as the slab, and each column becomes one leaning streak: the columns are found, their depths are not.</span>
+    </div>
     {{FRAG_FOCAL_TABLE}}
     <figure class="wide">
       {{FIG_FOCAL_STRIP}}
@@ -135,8 +190,11 @@
 
   <section id="s3">
     <div class="sec-head"><span class="sec-num">03</span><h2>Source size alone</h2></div>
-    <p>The vacuum stays clean while the columns lose their atom-by-atom contrast. Ti goes first. The simulated source is the
-      kind case: at 0.2 Å, 9 modes hold 99 % of its beam, where a real source needs about 17.</p>
+    <div class="call qa warn">
+      <span class="k">question</span><span class="v">How large can the source be (the gun's emitting area, demagnified onto the specimen)?</span>
+      <span class="k">answer</span><span class="v">0.1 Å: good. 0.2 Å: okay, Ti lost. 0.4 Å: off. Real effective sources are quoted at 0.24–0.6 Å.</span>
+      <span class="k">how it fails</span><span class="v">Differently from focal spread: the vacuum stays clean while the columns lose their atom-by-atom contrast. Ti goes first. Caveat: our simulated source is the kind case (at 0.2 Å, 9 modes hold 99 % of its beam, where a real source needs about 17).</span>
+    </div>
     {{FRAG_SOURCE_TABLE}}
     <figure class="wide">
       {{FIG_SOURCE_STRIP}}
@@ -147,39 +205,47 @@
 
   <section id="s4">
     <div class="sec-head"><span class="sec-num">04</span><h2>Both at once</h2></div>
-    <div class="call stop"><b>The losses compound.</b> A 0.1 Å source leaves 2.5 Å good but drops 3.5 Å to okay; a 0.2 Å
-      source puts both off. Together they fail like the source alone, plus the focal spread's vacuum loading at 3.5 Å.</div>
+    <div class="call qa stop">
+      <span class="k">question</span><span class="v">With both imperfections at once, does the worse one decide, or do they add?</span>
+      <span class="k">answer</span><span class="v">They add. A 0.1 Å source leaves 2.5 Å good but drops 3.5 Å to okay; a 0.2 Å source puts both off, though each part passed alone.</span>
+      <span class="k">how it fails</span><span class="v">Like the source alone (smeared columns), plus the focal spread's false structure in the vacuum at 3.5 Å.</span>
+    </div>
     {{FRAG_JOINT_GRID}}
     {{FRAG_JOINT_FIG}}
   </section>
 
   <section id="s5">
     <div class="sec-head"><span class="sec-num">05</span><h2>Probe modes</h2></div>
-    <p>With the probe fixed, the reconstruction can put the partial coherence nowhere but the object. Here the probe is
-      released with 7–8 modes, started from the mixed state of a real gun with each setting.</p>
+    <div class="call qa warn">
+      <span class="k">question</span><span class="v">With the probe fixed, the beam's partial coherence can only go into the object. If the reconstruction instead refines the beam as 7–8 modes (started from the mixed beam a real gun would give), how much comes back?</span>
+      <span class="k">answer</span><span class="v">Part of it. At 7.29 Å focal spread, off → okay (Pb 31 → 70 %). The other three points are rerunning after a solver bug fix, below.</span>
+    </div>
     <!-- FILL modes (reruns): when the fs5 / src0p2 / src0p4 points land (provisional first, then _mix16), add a sentence
          per point; say whether its mode powers stayed near the start before reading its atoms. -->
-    <div class="call ok"><b>7.29 Å: off → okay.</b> Pb 70 % (fixed probe 31 %), the vacuum loading halves and separate Pb
-      sites return; Ti 32 % is short of good. The state stays mixed (fig_modes). The 0.2 Å source run looks cleaner than its
-      control but has no atoms yet.</div>
-    <div class="call pending"><b>Solver bug, found and fixed (2026-10-16).</b> Three mode runs crashed at their start, at
-      every grouping tried. The solver divided the object update by the illumination of the strongest mode alone while the
-      update adds every mode, so with a real mixed state (strongest mode 9–43 %) its steps were 2–11 times too large. It
-      now sums all the modes; a one-mode run is unchanged. All four points are rerunning with the fix; until they land this
-      section shows the earlier runs, marked "earlier solver". The solver still divides the object step by the number of
-      modes, so mode runs converge the object more slowly than fixed-probe runs.</div>
+    <div class="call ok"><b>7.29 Å: off → okay.</b> Pb 70 % (fixed probe 31 %); the false structure in the vacuum halves
+      and separate Pb sites return down each column; Ti 32 % is short of good. The reconstruction kept the beam mixed rather
+      than collapsing it to one probe (fig_modes). The 0.2 Å source run looks cleaner than its control but has no atom
+      scores yet.</div>
+    <div class="call pending"><b>A bug in our solver, found and fixed (2026-10-16).</b> Three of these runs crashed at
+      their start. The code sized each object update by the strongest mode's illumination alone, while the update itself
+      adds every mode, so with a realistic beam (strongest mode 9–43 %) the steps were 2–11 times too large. It now uses all
+      the modes; a one-mode run is unchanged. All four points are rerunning with the fix; until they land, this section shows
+      the earlier runs, labelled "earlier solver". One limit remains: the code also shrinks the object step by the number of
+      modes, so in the same 250 iterations a mode run converges its object less, and can score a little below its
+      fixed-probe control.</div>
     {{FRAG_MODES_TABLE}}
     {{FRAG_MODES_FIG}}
   </section>
 
   <section id="s6">
     <div class="sec-head"><span class="sec-num">06</span><h2>The Spectra Mono point: cooling, and finding the probe</h2></div>
-    <p>The instrument's best realistic setting: 2.5 Å of focal spread (about 90 meV through C<sub>c</sub> ≈ 1.6 mm) with a
-      0.1 or a 0.2 Å source, run three ways: the probe known (A), cooled with phonons at 100 K and 20 K (B), and the probe
-      found from the data rather than given (C).</p>
+    <div class="call qa warn">
+      <span class="k">question</span><span class="v">At the Spectra Mono's own setting (2.5 Å of focal spread, about 90 meV through C<sub>c</sub> ≈ 1.6 mm), does the depth survive (A) the beam's imperfections, (B) the atoms' vibration, cooled to 100 K or 20 K, and (C) a probe found from the data rather than given?</span>
+      <span class="k">answer</span><span class="v">A: yes, good with a 0.1 Å source, okay with 0.2 Å. B: partly, Pb comes back to okay with probe modes, Ti does not. C: not yet shown; the first search failed on its order and is rerunning.</span>
+    </div>
     <div class="call ok"><b>A, coherence only: good with a 0.1 Å source, okay with 0.2 Å.</b> Probe modes take the 0.2 Å
       point from off to okay (Pb 45 → 55 %). At 0.1 Å the mode run sits a little below its fixed-probe control (Pb 81 vs
-      91 %, Ti 47 vs 60 %), most likely the solver's divided object step rather than the physics.</div>
+      91 %, Ti 47 vs 60 %), most likely because mode runs take smaller object steps (§05), not the physics.</div>
     <div class="call pending"><b>B, cooled: Pb comes back, Ti does not.</b> With phonons the fixed probe loses the depth at both
       temperatures. Probe modes bring Pb back to okay, 51 % at 100 K and 70 % at 20 K; Ti stays at the guessing level even
       at 20 K, where the atoms still move by their zero-point motion (about 0.04 Å).</div>
@@ -189,25 +255,34 @@
       <figcaption><span class="fig-name">fig_strip_p2.png</span>
         <div class="howto"><b>How to read it</b> Depth sections through a Pb row (top) and a B-site row (bottom), as in §02:
           each setting first with the probe fixed, then with probe modes. Dots: true atoms; rings: found atoms, white when
-          misplaced. Separate bright sites down a column mean the depth is resolved; a smooth streak means it is not. The
-          last column is the searched start: its vacuum layers and slab are loaded throughout.</div>
+          misplaced. Separate bright sites down a column mean the depth is resolved; a smooth streak means it is not. Left
+          to right: A (2.5 Å with a 0.1 Å, then a 0.2 Å source), B (100 K, then 20 K), and last C, the first searched start,
+          whose vacuum and slab are filled with false structure throughout.</div>
       </figcaption>
     </figure>
     {{FRAG_P2_TABS}}
     <h3>C: finding the probe</h3>
-    <p>In an experiment the probe is not given. The corrector reports C1, C3 and A1 with 95 % intervals; the start's errors
-      were drawn from those intervals and an outer search had to find them, before refining with probe modes. Higher
-      orders are held at their true values.</p>
+    <p>In an experiment the probe is not given. The corrector reports the defocus C1, spherical aberration C3 and
+      astigmatism A1 with 95 % intervals. We start the run from values off by errors drawn from those intervals, as an
+      operator would, and an outer search has to find the truth before the reconstruction refines the probe as modes.
+      Higher orders are held at their true values.</p>
     <div class="call stop"><b>The first search failed on its order, not its method.</b> It searched C1 × C3 while A1 was
       still about 40 Å wrong, and its C1 answer slid to the edge of the grid, 32 Å off (about 5 waves at the aperture edge).
-      It then found A1 to within 4 Å regardless. With C1 that far off the object moved into the vacuum and the depth was
-      lost. A1 is robust to a C1 error; C1 is not to an A1 error. A third stage, C1 × C3 again at the found A1, is
-      running.</div>
+      It then found A1 to within 4 Å regardless. With C1 that far off, the object moved into the vacuum and the depth was
+      lost. The lesson: A1 can be found with C1 wrong, but C1 cannot be found with A1 wrong. A third stage, C1 × C3 again
+      at the found A1, is running.</div>
     {{FRAG_SEARCH_TABLE}}
   </section>
 
   <section id="s7">
     <div class="sec-head"><span class="sec-num">07</span><h2>Placing the instruments</h2></div>
+    <div class="call qa ok">
+      <span class="k">question</span><span class="v">Which microscopes give a focal spread inside the limit of §02?</span>
+      <span class="k">answer</span><span class="v">The UltiMono, yes, with margin. The Mono, yes at the 90 meV Cambridge quotes (if C<sub>c</sub> ≤ about
+      2 mm), but not at its 0.2 eV specification. A Titan's Wien monochromator reaches the band between good and off only
+      at its best (~0.1 eV). A cold FEG or an unmonochromated X-FEG, no.</span>
+      <span class="k">caveat</span><span class="v">This is focal spread only. Source size (§03) and ripple are not on this axis, and with real sources the joint result of §04 is the one that counts.</span>
+    </div>
     <figure class="wide">
       {{FIG_INSTRUMENTS}}
       <figcaption><span class="fig-name">fig_instruments.png</span>
@@ -227,7 +302,8 @@
 
   <section id="s8">
     <div class="sec-head"><span class="sec-num">08</span><h2>For discussion</h2></div>
-    <!-- FILL discussion (reruns): revise the 'probe modes' row when the _mix16 points land. -->
+    <!-- FILL discussion (reruns): revise the 'probe modes' row when the _mixF points land. -->
+    <p>Each line is a claim the paper would make; the tag says how far the runs so far support it.</p>
     <div class="ledger">
       <div><span class="lg-t">The two effects compound</span><span class="chip c-ok">supported</span>
         <span class="lg-d">2.5 Å + 0.2 Å is off though each part passed alone (§04).</span></div>
@@ -237,7 +313,8 @@
       <div><span class="lg-t">Focal spread costs more depth than source size</span><span class="chip c-warn">partly</span>
         <span class="lg-d">At equal coherence the focal spread is worse; a likely reason: focus is what multislice reads as depth.</span></div>
       <div><span class="lg-t">A widespread monochromated instrument gets past the wall</span><span class="chip c-warn">partly</span>
-        <span class="lg-d">In focal spread, the Spectra 300 yes, the Titan Wien only at its best; the source size and ripple decide it (§07).</span></div>
+        <span class="lg-d">In focal spread: the UltiMono yes; the Mono at the 90 meV quoted in use, not at its 0.2 eV
+          specification; the Titan Wien only to the edge, at its best. The source size and ripple decide it (§07).</span></div>
       <div><span class="lg-t">Cooling restores the depth</span><span class="chip c-warn">partly</span>
         <span class="lg-d">For Pb, with probe modes: 51 % at 100 K, 70 % at 20 K. Not for Ti, at either. Room-temperature
           phonons remove the depth (§06).</span></div>
@@ -251,7 +328,8 @@
     <figure class="wide">
       {{FRAG_RENDERS}}
       <figcaption><span class="fig-name">render_phase.py</span>
-        Top left: summed phase over the whole window; small panels: each slice; bottom: a depth cut through the centre.
+        Every run on this page, as reconstructed. Top left: the phase summed through the depth, over the whole window;
+        small panels: each of the 18 slices, top of the specimen first; bottom: a cut down through the depth at the centre.
       </figcaption>
     </figure>
   </section>

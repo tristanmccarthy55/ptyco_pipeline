@@ -330,9 +330,9 @@ def headline(recs):
                           f"{c['v']})"))
     tiles = tiles[:3] + extra
     grid = "".join(f"<div><b>{html.escape(a)}</b><span>{html.escape(b)}</span></div>" for a, b in tiles)
-    line = f"alone: focal spread ≤ <em>{fg:g} Å</em>, source ≤ <em>{sg:g} Å</em>"
+    line = f"focal spread <em>{fg:g} Å</em> alone · source <em>{sg:g} Å</em> alone"
     if jgood:
-        line += f" · together: <em>{jgood[-1]['fs']:g} Å + {jgood[-1]['src']:g} Å</em>"
+        line += f" · <em>{jgood[-1]['fs']:g} Å + {jgood[-1]['src']:g} Å</em> together"
     return dict(WALL_LINE=line, FRAG_HEAD_GRID=f'<div class="spec-grid">{grid}</div>')
 
 
@@ -347,7 +347,7 @@ LAM_A, ALPHA = 0.019687, 0.080
 
 def p2_table(recs):
     """A, B and C beside their controls: the ceiling at the Spectra Mono point, cooled, and with the probe found by search."""
-    head = ["run", "probe", "strongest mode (%)", *arm.ATOM_HEAD, "vacuum / slab", "verdict"]
+    head = ["run, all at 2.5 Å focal spread", "probe", "strongest mode (%)", *arm.ATOM_HEAD, "vacuum / slab", "verdict"]
     rows = [("A", "fs2p5_src0p1", "fixed (step 2A)"), ("A", "ceil_s01", "8 modes"), ("A", "fs2p5_src0p2", "fixed (step 2A)"),
             ("A", "ceil_s02", "8 modes"), ("B", "ph_rt", "fixed"), ("B", "ph_100", "fixed"), ("B", "cool100_fixed", "fixed"),
             ("B", "cool100_mix", "8 modes"), ("B", "cool20_fixed", "fixed"), ("B", "cool20_mix", "8 modes"),
@@ -355,23 +355,27 @@ def p2_table(recs):
     trs = []
     for part, k, probe in rows:
         r = recs[k]
-        label = {"ph_rt": "phonons only, room temperature, coherent beam", "ph_100": "phonons only, 100 K, coherent beam"}.get(
-            k, setting(r) + (f" + phonons {r['spec']['temp']} K" if r["spec"].get("kind") in ("fixed", "modes") else ""))
+        label = {"ph_rt": "coherent beam, room temperature", "ph_100": "coherent beam, 100 K",
+                 "searched": f"source {r['src']:g} Å, probe searched"}.get(
+            k, f"source {r['src']:g} Å" + (f" + {r['spec']['temp']} K" if r["spec"].get("kind") in ("fixed", "modes") else ""))
         cls = "ref" if k in ("ph_rt", "ph_100") else ""
         lead = f"<td><b>{part}</b> {html.escape(label)}</td><td>{html.escape(probe)}</td><td>{100 * r['w1']:.0f}</td>"
         if r["found"]:
             trs.append(f"<tr class='{cls}'>{lead}{arm.atoms_cells(r['sc'])}<td>{r['vac']:.2f}</td>{arm.vcell(r['v'])}</tr>")
         elif r["vol"]:
-            why = ("failed: the probe search left C1 32 Å off; the Pb and Ti grid legs did not reconstruct, so there are no "
-                   "kernels. Rerun with a third search stage pending." if k == "searched" else "reconstruction in, no atoms yet")
+            why = ("failed: the search left C1 32 Å off, the reconstruction drifted into the vacuum, and the finder's Pb "
+                   "and Ti templates could not be made. A rerun with a third search stage is running." if k == "searched"
+                   else "reconstruction in, no atoms yet")
             trs.append(f"<tr>{lead}<td colspan='4' class='wrap'><span class='chip c-stop'>no atoms</span> "
                        f"<span class='muted-s'>{html.escape(why)}</span></td><td>{r['vac']:.2f}</td><td>–</td></tr>")
         else:
             trs.append(f"<tr>{lead}<td colspan='6'>{arm.pending_box(r['info'])}</td></tr>")
-    return arm.table(head, trs, "All at focal spread 2.5 Å (about 90 meV through C<sub>c</sub> 1.6 mm), ARM aberrations, 80 mrad, "
-                     "no shot noise. A: source 0.1 and 0.2 Å, probe modes started from a real gun's mixed state. B: phonons at "
-                     "100 K (liquid nitrogen) and 20 K (liquid helium; the Debye model's zero-point floor). C: the probe not "
-                     "given (below). Each mode run's kernels come from Pb and Ti grids reconstructed the same way.")
+    return arm.table(head, trs, "All at the Spectra Mono point: focal spread 2.5 Å (about 90 meV through C<sub>c</sub> 1.6 mm), "
+                     "the ARM aberrations, 80 mrad, no shot noise. <b>A</b>: beam imperfections only. <b>B</b>: plus atomic "
+                     "vibration at room temperature, 100 K (liquid nitrogen) and 20 K (liquid helium, where only the zero-point "
+                     "motion is left). <b>C</b>: the probe found from the data (below). Probe: <b>fixed</b> = the true probe given "
+                     "and held; <b>8 modes</b> = refined from the data as 8 modes. The first two B rows are references with a "
+                     "perfectly coherent beam, vibration only. " + COLS_NOTE)
 
 
 def _search_dir(R, name):
@@ -412,37 +416,56 @@ def search_table(R, recs):
                         + f" · {errs(v)[i][1]:.1f} waves</span></td>" for _, v in cols)
         trs.append(f"<tr><td>{names[i]}</td><td>{fmt[i](tr)}</td>{cells}</tr>")
     note = (" A third stage, C1 × C3 again at the found A1, is running." if len(stages) < 3 else "")
-    return arm.table(head, trs, f"The start: the true values plus errors drawn at the corrector's quoted 95 % precision "
-                     f"(C1 39.5 Å, C3 0.80 µm, A1 59 Å; seed 1). Stage 1 searches C1 × C3 (7 × 7) with A1 at the start, stage "
-                     f"2 the A1 vector (5 × 5); each trial is a short fixed-probe reconstruction, scored by its error. Waves: the "
-                     f"phase error that term leaves at the 80 mrad edge. The truth is shown for the record; it never enters the "
-                     f"search.{note}")
+    return arm.table(head, trs, f"Each row is one aberration the search had to find. <b>Drawn start</b>: what an operator would "
+                     f"begin with, the true value plus an error drawn at the corrector's own quoted 95 % precision (C1 39.5 Å, "
+                     f"C3 0.80 µm, A1 59 Å; seed 1). <b>Stage 1</b> tries a 7 × 7 grid of C1 and C3 with A1 left at the start; "
+                     f"<b>stage 2</b> a 5 × 5 grid of A1 with C1 and C3 at stage 1's answer. Each trial is a short reconstruction "
+                     f"with that probe held fixed; the answer is the lowest data error, refined by a smooth fit through its "
+                     f"neighbours. <b>Waves</b>: the phase error the "
+                     f"remaining mistake leaves at the edge of the 80 mrad aperture, in wavelengths; a quarter wave is the usual "
+                     f"tolerance. The truth is shown only for the record; the search never sees it.{note}")
+
+
+COLS_NOTE = ("Columns: <b>strongest mode</b>, how coherent the beam is (the share of its intensity in its single most "
+             "coherent component; 100 % = perfectly coherent). <b>Right place</b>, the score: atoms the finder puts as the right "
+             "element within 0.5 Å of their true depth. <b>Guessing</b>, the same found atoms slid to random depths along their "
+             "columns: what the score would be with no depth information. <b>Wrong element</b>, found atoms given the wrong "
+             "element. <b>95 % depth bar</b>, the finder's own uncertainty on an atom's depth (median). <b>Vacuum / slab</b>, how "
+             "much false structure the reconstruction puts in the empty vacuum layers, relative to the specimen: 0.31 for a "
+             "perfect beam, near 1 when the vacuum looks as strong as the specimen.")
 
 
 def status(recs, man):
     """What has been done: one row per step, what it changes, how many runs are in, and its state."""
-    rows = [("Step 1", "one knob at a time: six focal spreads (0.75–7.29 Å), four source sizes (0.05–0.4 Å)", "true probe, fixed",
-             "focal source"),
-            ("Step 2A", "both knobs together: 2.5 and 3.5 Å, each with a 0.1 and a 0.2 Å source", "true probe, fixed", "joint"),
+    rows = [("Part 1: where are the coherence limits? The true probe is given.",),
+            ("Step 1", "one knob at a time: six focal spreads (0.75–7.29 Å), four source sizes (0.05–0.4 Å)",
+             "true probe, held fixed", "focal source"),
+            ("Step 2A", "both knobs together: 2.5 and 3.5 Å, each with a 0.1 and a 0.2 Å source", "true probe, held fixed", "joint"),
             ("Step 2B", "probe modes at four settings: 5 and 7.29 Å focal spread, 0.2 and 0.4 Å source",
-             "released, 7–8 modes, started from a real gun's mixed state", "modes"),
-            ("A", "the Spectra Mono point: 2.5 Å with a 0.1 and a 0.2 Å source", "released, 8 modes, corrected solver", "ceiling"),
-            ("B", "the same point (0.1 Å source) with phonons at 100 K and 20 K", "fixed, and released with 8 modes", "cooled"),
-            ("C", "the probe not given: drawn from the corrector's precision, found by an outer search", "searched, then 8 modes",
-             "searched")]
+             "refined from the data as 7–8 modes, started from a real gun's mixed beam", "modes"),
+            ("Part 2: the Spectra Mono's own setting (2.5 Å focal spread), made harder one step at a time.",),
+            ("A", "beam imperfections only: a 0.1 and a 0.2 Å source", "refined as 8 modes (corrected solver)", "ceiling"),
+            ("B", "add atomic vibration: phonons at 100 K and 20 K (0.1 Å source)",
+             "true probe held fixed, and refined as 8 modes", "cooled"),
+            ("C", "add not knowing the probe: start from the corrector's quoted precision, find it by an outer search",
+             "searched, then refined as 8 modes", "searched")]
     trs = []
-    for step, what, probe, gs in rows:
+    for row in rows:
+        if len(row) == 1:
+            trs.append(f"<tr class='grp'><td colspan='5'>{html.escape(row[0])}</td></tr>")
+            continue
+        step, what, probe, gs = row
         rs = [r for r in recs.values() if r["spec"]["group"] in gs.split()]
         n = sum(r["state"] == "in" for r in rs)
         chip = '<span class="chip c-ok">done</span>' if n == len(rs) else '<span class="chip c-warn">running</span>'
         trs.append(f"<tr><td><b>{step}</b></td><td class='wrap'>{html.escape(what)}</td><td class='wrap'>{html.escape(probe)}</td>"
                    f"<td>{n} of {len(rs)}</td><td>{chip}</td></tr>")
-    trs.append("<tr><td><b>D</b></td><td class='wrap'>shot noise: a dose series, 1e5–1e8 e/Å², with the searched start, at the "
-               "point that survives</td><td class='wrap'>searched, then modes</td><td>–</td><td><span class='chip c-none'>next"
+    trs.append("<tr><td><b>D</b></td><td class='wrap'>add shot noise: a dose series, 1e5–1e8 e/Å², with the searched start, at "
+               "the point that survives</td><td class='wrap'>searched, then modes</td><td>–</td><td><span class='chip c-none'>next"
                "</span></td></tr>")
     return arm.table(["", "what changes", "probe", "runs in", ""], trs,
-                     "Every run: 300 kV, 80 mrad, no shot noise; phonons only in B. Step 2B's four points are rerunning with the "
-                     "corrected solver (§05); C is rerunning with a third search stage (§06).")
+                     "Every run: 300 kV, 80 mrad, no shot noise; atomic vibration only in B. Running now: step 2B's four points, "
+                     "with a solver bug fixed (§05), and C with a third search stage (§06).")
 
 
 def joint_grid(recs):
@@ -466,8 +489,10 @@ def joint_grid(recs):
                        f"{pct(r['sc'], 22, 'guess'):.0f} · strongest mode {100 * r['w1']:.0f} %</span></td>")
         trs.append(f"<tr><td><b>{'no spread' if f == 0 else f'{f:g} Å'}</b></td>{''.join(tds)}</tr>")
     head = ["focal spread ↓ · source →", *[("no source" if s == 0 else f"{s:g} Å") for s in srcs]]
-    return arm.table(head, trs, "Edges: step 1 (one effect at a time). Inside: step 2A, both at once. Bulk atoms in the right "
-                     "place; verdict as in §01. The strongest-mode share is computed for every cell, landed or not.")
+    return arm.table(head, trs, "Rows: focal spread; columns: source size. The top row and the left column are step 1, one "
+                     "effect alone; the four inner cells are step 2A, both at once. Each cell: the verdict, the share of Pb and Ti "
+                     "atoms at the right depth, what guessing gives, and how coherent the beam is (strongest mode). True probe "
+                     "given and held fixed throughout.")
 
 
 def modes_table(recs):
@@ -489,10 +514,12 @@ def modes_table(recs):
             mpart = (f"<td colspan='2' class='wrap'><span class='chip c-warn'>{'no atoms yet' if r['state'] == 'volume' else 'pending'}</span> "
                      f"<span class='muted-s'>{html.escape(r['spec'].get('pending', ''))}</span></td>")
         trs.append(f"<tr><td>{html.escape(setting(r))}</td><td>{r['spec']['modes']}</td>{cpart}{mpart}<td>{mp}</td><td>{vac}</td></tr>")
-    return arm.table(head, trs, "Noiseless, no phonons, bulk atoms in the right place. Kernels from Pb and Ti grids reconstructed "
-                     "the same way as their own leg, except where marked provisional (the fixed-probe control's kernels). "
-                     "Strongest mode: truth, the data's own state (the simulator's 16 configurations); start, the state of a real "
-                     "gun with this setting, which the leg was given; recovered, after 250 iterations.")
+    return arm.table(head, trs, "No shot noise, no atomic vibration. Fixed: the true probe given and held. Modes: the beam "
+                     "refined from the data as 7–8 modes. Strongest mode, three numbers: <b>truth</b>, the beam that made the data "
+                     "(the simulator's 16 configurations); <b>start</b>, what the reconstruction was given (the mixed beam a real gun "
+                     "with this setting would have); <b>recovered</b>, what it ended with after 250 iterations. A recovered number "
+                     "near the truth means the reconstruction kept the beam mixed rather than collapsing it to one probe. The finder's "
+                     "templates for a lone Pb and a lone Ti atom are reconstructed the same way as each run.")
 
 
 def instruments_table(man, recs):
@@ -564,14 +591,15 @@ def main():
     frag.update(headline(recs))
     frag["FRAG_STATUS"] = status(recs, man)
     frag["FIG_WALL"] = arm.img(fig_wall(recs, man), "atoms in the right place against focal spread and source size")
-    ref_row = lambda k: (recs[k], "coherent (reference)" if k == "known_a080" else "the cold FEG: 7.29 Å + 0.4 Å source", "ref")
+    ref_row = lambda k: (recs[k], "coherent beam (reference)" if k == "known_a080" else "ARM200F cold FEG: 7.29 + 0.4 Å", "ref")
     frag["FRAG_FOCAL_TABLE"] = judged_table([ref_row("known_a080")] + [(recs[k], setting(recs[k]), "") for k in focal[1:-1]]
-                                            + [ref_row("cold_feg")], "Noiseless, no phonons, true coherent probe fixed; kernels with "
-                                            "the same physics. Vacuum / slab: rms phase per slice in the vacuum bands over that in the slab.")
+                                            + [ref_row("cold_feg")], "No shot noise, no atomic vibration; the reconstruction is given "
+                                            "the true probe and holds it fixed. " + COLS_NOTE)
     frag["FIG_FOCAL_STRIP"] = arm.img(fig_strip("fig_strip_focal.png", focal, recs, CUTS[0], short), "depth sections, focal spread")
     frag["FRAG_FOCAL_TABS"] = series_tabs("tabs-focal", focal[1:-1], recs, CUTS[0])
     frag["FRAG_SOURCE_TABLE"] = judged_table([ref_row("known_a080")] + [(recs[k], setting(recs[k]), "") for k in source[1:-1]]
-                                             + [ref_row("cold_feg")], "As above.")
+                                             + [ref_row("cold_feg")], "As in §02: no shot noise, no atomic "
+                                             "vibration, the true probe given and held fixed. " + COLS_NOTE)
     frag["FIG_SOURCE_STRIP"] = arm.img(fig_strip("fig_strip_source.png", source, recs, CUTS[0], short), "depth sections, source size")
     frag["FRAG_SOURCE_TABS"] = series_tabs("tabs-source", source[1:-1], recs, CUTS[0])
     frag["FRAG_JOINT_GRID"] = joint_grid(recs)
@@ -606,6 +634,9 @@ def main():
     frag["FRAG_REPRO"] = repro()
     css = re.search(r"<style>(.*?)</style>", open(arm.TEMPLATE).read(), re.S).group(1)
     frag["ARM_CSS"] = css
+    for k in frag:
+        if k.startswith("FRAG_"):
+            frag[k] = re.sub(r"<caption>(.*?)</caption></table></div>", r'</table></div><p class="tnote">\1</p>', frag[k], flags=re.S)
     page = open(TEMPLATE).read()
     for k, v in frag.items():
         if "{{%s}}" % k not in page:

@@ -1,6 +1,12 @@
 # The Coherence Wall page — how to fill it in and republish
 
 PUBLISHED: https://claude.ai/artifact/B7ep8BpAMVdKvrnXywACq3
+- version 6, 2026-10-21, rewritten for a reader who has not seen the runs (the user's PI): §01 opens with "What this
+  page is" (question, test, score, aberrations, order), then the findings one limiting factor at a time, the main figure,
+  then the run list in two parts and a terms table; every section opens with a question / answer box (`call qa`); table
+  notes say what every column means (`COLS_NOTE`) and sit outside the scroll box (`p.tnote`, so wide tables never clip
+  them); job ids off the page (they are in PHASE1.md); the Spectra Mono claim tightened: yes at the 90 meV quoted in
+  use, not at its 0.2 eV specification. No plots removed.
 - version 5, 2026-10-21, for the meeting: new section 06 "The Spectra Mono point" -- A (ceiling with modes: good at
   src 0.1, okay at 0.2), B (cooling: fixed probe off at 100 K and 20 K, modes okay with Pb 51 / 70 %, Ti at guessing),
   C (searched start: the first 2-stage search failed on its order -- C1 32.5 A off -- the 3-stage rerun pending), the
