@@ -1,6 +1,11 @@
 # The Coherence Wall page — how to fill it in and republish
 
 PUBLISHED: https://claude.ai/artifact/B7ep8BpAMVdKvrnXywACq3
+- version 5, 2026-10-21, for the meeting: new section 06 "The Spectra Mono point" -- A (ceiling with modes: good at
+  src 0.1, okay at 0.2), B (cooling: fixed probe off at 100 K and 20 K, modes okay with Pb 51 / 70 %, Ti at guessing),
+  C (searched start: the first 2-stage search failed on its order -- C1 32.5 A off -- the 3-stage rerun pending), the
+  search table (`search_table`), the phase-2 strip `fig_strip_p2.png`; the 7.29 A `_mix` leg shown as "earlier solver"
+  until the `_mixF` reruns land (`score_fallbacks`); sections renumbered (instruments 07, discussion 08).
 - version 4, 2026-10-16, for the meeting: text cut, a "Parameters and method" table (what the two knobs are), a steps table for what was done, no guessing lines on the wall chart, plain label for the real-source band.
 - version 3, 2026-10-16, for the meeting: section 01 rewritten as what we did / what we found / what is next; no new runs.
 - version 2, 2026-10-16: step 2 in. Joint points (the losses compound: 2.5 + 0.2 A off though each part passed alone),

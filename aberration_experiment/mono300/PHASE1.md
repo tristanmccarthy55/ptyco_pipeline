@@ -80,7 +80,7 @@ All at focal spread 2.5 A, ARM tableau, 80 mrad, noiseless; right place (0.5 A) 
 - **C rerun SUBMITTED 2026-10-20 13:11** (log `logs/search3_20261020_131139.txt`; stages 1-2 resumed as planned): stage-3
   array 1334455, select 1334456, refine legs 1334457/58/59, pack 1334460 (`atomfind_results_armf_a080_fs2p5_src0p1_s3_*`),
   analysis 1334461 (`analysis_armf_a080_fs2p5_src0p1_s3_ps_*`). The `_mixF` wall reruns (`phase1_step2_rerunF.sh`, re-dry-run
-  2026-10-20 on the current code: 20 calls) are set off alongside -- record their ids from the user's paste.
+  2026-10-20 on the current code: 20 calls) are set off alongside: legs fs 7.29 1334466/67/68, fs 5 1334471/72/73, src 0.2 1334476/77/78, src 0.4 1334481/82/83 (all seen running and NaN-free 2026-10-21 except 1334476 and src 0.4, not in that check); packs + analyses inferred as 1334469/70, 1334474/75, 1334479/80, 1334484/85 -- confirm with sacct.
 
 ## Step 1 results (2026-10-14; controls: true probe fixed, 1 mode, noiseless, own matched kernels)
 

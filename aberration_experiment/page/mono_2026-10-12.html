@@ -13,7 +13,7 @@
 </style>
 <header class="mast">
   <div class="mast-in"><div class="mast-col">
-    <div class="eyebrow">300 kV monochromated microscope · phase 1: partial coherence · week of 2026-10-12 · for the meeting of 2026-10-16</div>
+    <div class="eyebrow">300 kV monochromated microscope · partial coherence and cooling · week of 2026-10-19 · for the meeting of 2026-10-21</div>
     <h1>The Coherence Wall</h1>
     <p class="standfirst">
       How coherent must the beam be for depth-resolved multislice ptychography at 300 kV and 80 mrad, and which
@@ -27,8 +27,9 @@
       <a href="#s3">Source size</a>
       <a href="#s4">Both at once</a>
       <a href="#s5">Probe modes</a>
-      <a href="#s6">The instruments</a>
-      <a href="#s7">For discussion</a>
+      <a href="#s6">The Spectra Mono point</a>
+      <a href="#s7">The instruments</a>
+      <a href="#s8">For discussion</a>
       <a href="#appendix">Every run</a>
       <a href="#reproduce">Reproduce</a>
     </nav>
@@ -39,12 +40,13 @@
 
   <section id="s1">
     <div class="sec-head"><span class="sec-num">01</span><h2>This week</h2></div>
-    <!-- FILL headline (step 2 reruns): when the _mix16 points land, add whether modes move the wall at 5 A and at the
-         0.2 / 0.4 A sources. Numbers from sec 05's table. -->
+    <!-- FILL headline (v5, 2026-10-21): when the _mixF reruns (sec 05) and the searched start with its third stage (C, sec 06)
+         land, revise the 'probe modes' and 'finding the probe' bullets. Numbers from the tables. -->
     <div class="spec wall">
       <div class="spec-k">Depth survives, probe known</div>
       <p class="spec-v">{{WALL_LINE}}</p>
-      <p>Each effect alone leaves some margin; together they compound; probe modes win part of it back.</p>
+      <p>Each effect alone leaves some margin; together they compound; probe modes win part of it back. At the Spectra
+        Mono's best setting the depth survives with a known probe, and cooling to 20 K brings back the Pb layers but not Ti.</p>
       {{FRAG_HEAD_GRID}}
     </div>
 
@@ -80,7 +82,14 @@
       <li><b>Source size</b>: fine up to 0.1 Å, Ti lost at 0.2 Å, gone by 0.4 Å. It fails differently: the columns smear in
         depth while the vacuum stays clean.</li>
       <li><b>Together they compound</b>: 2.5 Å with a 0.2 Å source is off, though each passed alone.</li>
-      <li><b>Probe modes help</b>: at 7.29 Å the result goes from off to okay (Pb 31 → 70 %); Ti is still short of good.</li>
+      <li><b>Probe modes help</b>: at 7.29 Å the result goes from off to okay (Pb 31 → 70 %); Ti is still short of good.
+        The crashes of three mode runs were a solver bug, now fixed (§05); all four points are rerunning.</li>
+      <li><b>At the Spectra Mono point</b> (2.5 Å, about 90 meV): good with a 0.1 Å source and probe modes, okay with a
+        realistic 0.2 Å source, where the fixed probe failed (§06).</li>
+      <li><b>Cooling</b>: with phonons the fixed probe loses the depth even at 20 K; probe modes bring Pb back to okay (51 % at
+        100 K, 70 % at 20 K) but not Ti, which stays at the guessing level (§06).</li>
+      <li><b>Finding the probe</b>: an outer search from the corrector's own precision finds A1 to 4 Å but its first C1 answer
+        was 32 Å off, enough to lose the depth; a third search stage is running (§06).</li>
       <li><b>For instruments</b>: good needs ΔE ≤ 0.14 eV at C<sub>c</sub> 1.4 mm (≤ 0.08 eV at 2.4 mm). The Spectra 300
         monochromators get there, a Titan's Wien filter only at its best. Real sources, 0.24–0.6 Å, are the harder limit.</li>
     </ul>
@@ -97,12 +106,13 @@
 
     <h3>What is next</h3>
     <ol class="did">
-      <li><b>Finish the probe-mode points</b><span>at 5 Å and at the 0.2 and 0.4 Å sources, rerunning now.</span></li>
-      <li><b>Fix the solver's step rule for many modes</b><span>(it sets the step from the strongest mode alone; three runs
-        crash on it).</span></li>
-      <li><b>Test a realistic source</b><span>of 0.2–0.3 Å with probe modes. To decide: which focal spreads.</span></li>
-      <li><b>Phase 2: temperature</b><span>(phonons at room temperature, 100 K and colder) at the settings that survive.</span></li>
-      <li><b>Get a Spectra 300's C<sub>c</sub>, ripple and source size</b><span>to place it on the wall as a point.</span></li>
+      <li><b>Finish</b><span>the four probe-mode points with the corrected solver, and the searched start with its third
+        stage (both running, about 1.5 days).</span></li>
+      <li><b>D: shot noise</b><span>a dose series, 1e5–1e8 e/Å², with the searched start at 2.5 Å + 0.1 Å + 20 K: the
+        lowest dose that keeps the depth sets the scan time, to weigh against a helium holder's drift.</span></li>
+      <li><b>Ti in depth</b><span>lost with phonons even at 20 K: is it the method (iterations, kernels) or the physics?</span></li>
+      <li><b>Get a Spectra 300's C<sub>c</sub>, ripple, source size and measured aberrations</b><span>to place it on the
+        wall as a point rather than a range.</span></li>
     </ol>
   </section>
 
@@ -152,15 +162,52 @@
     <div class="call ok"><b>7.29 Å: off → okay.</b> Pb 70 % (fixed probe 31 %), the vacuum loading halves and separate Pb
       sites return; Ti 32 % is short of good. The state stays mixed (fig_modes). The 0.2 Å source run looks cleaner than its
       control but has no atoms yet.</div>
-    <div class="call pending"><b>Caveat for every mode run.</b> The solver sets its step from the strongest mode alone and
-      divides the object step by the number of modes. With a real mixed state three runs crash on it, twice; they are
-      rerunning with larger groups.</div>
+    <div class="call pending"><b>Solver bug, found and fixed (2026-10-16).</b> Three mode runs crashed at their start, at
+      every grouping tried. The solver divided the object update by the illumination of the strongest mode alone while the
+      update adds every mode, so with a real mixed state (strongest mode 9–43 %) its steps were 2–11 times too large. It
+      now sums all the modes; a one-mode run is unchanged. All four points are rerunning with the fix; until they land this
+      section shows the earlier runs, marked "earlier solver". The solver still divides the object step by the number of
+      modes, so mode runs converge the object more slowly than fixed-probe runs.</div>
     {{FRAG_MODES_TABLE}}
     {{FRAG_MODES_FIG}}
   </section>
 
   <section id="s6">
-    <div class="sec-head"><span class="sec-num">06</span><h2>Placing the instruments</h2></div>
+    <div class="sec-head"><span class="sec-num">06</span><h2>The Spectra Mono point: cooling, and finding the probe</h2></div>
+    <p>The instrument's best realistic setting: 2.5 Å of focal spread (about 90 meV through C<sub>c</sub> ≈ 1.6 mm) with a
+      0.1 or a 0.2 Å source, run three ways: the probe known (A), cooled with phonons at 100 K and 20 K (B), and the probe
+      found from the data rather than given (C).</p>
+    <div class="call ok"><b>A, coherence only: good with a 0.1 Å source, okay with 0.2 Å.</b> Probe modes take the 0.2 Å
+      point from off to okay (Pb 45 → 55 %). At 0.1 Å the mode run sits a little below its fixed-probe control (Pb 81 vs
+      91 %, Ti 47 vs 60 %), most likely the solver's divided object step rather than the physics.</div>
+    <div class="call pending"><b>B, cooled: Pb comes back, Ti does not.</b> With phonons the fixed probe loses the depth at both
+      temperatures. Probe modes bring Pb back to okay, 51 % at 100 K and 70 % at 20 K; Ti stays at the guessing level even
+      at 20 K, where the atoms still move by their zero-point motion (about 0.04 Å).</div>
+    {{FRAG_P2_TABLE}}
+    <figure class="wide">
+      {{FIG_P2_STRIP}}
+      <figcaption><span class="fig-name">fig_strip_p2.png</span>
+        <div class="howto"><b>How to read it</b> Depth sections through a Pb row (top) and a B-site row (bottom), as in §02:
+          each setting first with the probe fixed, then with probe modes. Dots: true atoms; rings: found atoms, white when
+          misplaced. Separate bright sites down a column mean the depth is resolved; a smooth streak means it is not. The
+          last column is the searched start: its vacuum layers and slab are loaded throughout.</div>
+      </figcaption>
+    </figure>
+    {{FRAG_P2_TABS}}
+    <h3>C: finding the probe</h3>
+    <p>In an experiment the probe is not given. The corrector reports C1, C3 and A1 with 95 % intervals; the start's errors
+      were drawn from those intervals and an outer search had to find them, before refining with probe modes. Higher
+      orders are held at their true values.</p>
+    <div class="call stop"><b>The first search failed on its order, not its method.</b> It searched C1 × C3 while A1 was
+      still about 40 Å wrong, and its C1 answer slid to the edge of the grid, 32 Å off (about 5 waves at the aperture edge).
+      It then found A1 to within 4 Å regardless. With C1 that far off the object moved into the vacuum and the depth was
+      lost. A1 is robust to a C1 error; C1 is not to an A1 error. A third stage, C1 × C3 again at the found A1, is
+      running.</div>
+    {{FRAG_SEARCH_TABLE}}
+  </section>
+
+  <section id="s7">
+    <div class="sec-head"><span class="sec-num">07</span><h2>Placing the instruments</h2></div>
     <figure class="wide">
       {{FIG_INSTRUMENTS}}
       <figcaption><span class="fig-name">fig_instruments.png</span>
@@ -178,20 +225,24 @@
     </ul>
   </section>
 
-  <section id="s7">
-    <div class="sec-head"><span class="sec-num">07</span><h2>For discussion</h2></div>
+  <section id="s8">
+    <div class="sec-head"><span class="sec-num">08</span><h2>For discussion</h2></div>
     <!-- FILL discussion (reruns): revise the 'probe modes' row when the _mix16 points land. -->
     <div class="ledger">
       <div><span class="lg-t">The two effects compound</span><span class="chip c-ok">supported</span>
         <span class="lg-d">2.5 Å + 0.2 Å is off though each part passed alone (§04).</span></div>
       <div><span class="lg-t">Probe modes move the wall</span><span class="chip c-warn">partly</span>
-        <span class="lg-d">At 7.29 Å off → okay; one point so far, three rerunning (§05).</span></div>
+        <span class="lg-d">At 7.29 Å off → okay, and at the Mono point 2.5 Å + 0.2 Å off → okay; the single points are
+          rerunning with the corrected solver (§05, §06).</span></div>
       <div><span class="lg-t">Focal spread costs more depth than source size</span><span class="chip c-warn">partly</span>
         <span class="lg-d">At equal coherence the focal spread is worse; a likely reason: focus is what multislice reads as depth.</span></div>
       <div><span class="lg-t">A widespread monochromated instrument gets past the wall</span><span class="chip c-warn">partly</span>
-        <span class="lg-d">In focal spread, the Spectra 300 yes, the Titan Wien only at its best; the source size and ripple decide it (§06).</span></div>
-      <div><span class="lg-t">Temperature</span><span class="chip c-open">next</span>
-        <span class="lg-d">Phase 2, not yet designed. On the ARM page room-temperature phonons alone removed the depth at 80 mrad.</span></div>
+        <span class="lg-d">In focal spread, the Spectra 300 yes, the Titan Wien only at its best; the source size and ripple decide it (§07).</span></div>
+      <div><span class="lg-t">Cooling restores the depth</span><span class="chip c-warn">partly</span>
+        <span class="lg-d">For Pb, with probe modes: 51 % at 100 K, 70 % at 20 K. Not for Ti, at either. Room-temperature
+          phonons remove the depth (§06).</span></div>
+      <div><span class="lg-t">The method finds its own probe</span><span class="chip c-open">open</span>
+        <span class="lg-d">A1 found to 4 Å from the corrector's precision; C1 needs a third search stage, running (§06).</span></div>
     </div>
   </section>
 

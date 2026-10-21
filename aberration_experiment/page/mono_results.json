@@ -189,6 +189,7 @@
   },
   "fs5_mix": {
    "tag": [
+    "armf_a080_fs5_mixF",
     "armf_a080_fs5_mix16",
     "armf_a080_fs5_mix_kern-armf_a080_fs5_fixed",
     "armf_a080_fs5_mix"
@@ -201,15 +202,18 @@
    "group": "modes",
    "control": "fs5",
    "modes": 7,
-   "pending": "its Pb leg crashes (a NaN at the start, twice). All three legs are being rerun at grouping 16;8 (armf_a080_fs5_mix16); the finished lab leg will first be scored provisionally with the fixed-probe control's kernels (armf_a080_fs5_mix_kern-armf_a080_fs5_fixed)",
+   "pending": "rerunning with the corrected solver (all-modes illumination): legs 1334471/72/73, set off 2026-10-20, ~32 h; until then the page shows the earlier run",
    "legs": [
+    "armf_a080_lab_fs5_mixF",
     "armf_a080_lab_fs5_mix16",
     "armf_a080_lab_fs5_mix",
     "armf_a080_lab_fs5_mix"
-   ]
+   ],
+   "score_fallbacks": true
   },
   "fs7p29_mix": {
    "tag": [
+    "armf_a080_fs7p29_mixF",
     "armf_a080_fs7p29_mix"
    ],
    "leg": "armf_a080_lab_fs7p29_mix",
@@ -220,10 +224,16 @@
    "group": "modes",
    "control": "fs7p29",
    "modes": 8,
-   "pending": "legs 1323792/93/94, analysis 1323796"
+   "pending": "rerunning with the corrected solver (all-modes illumination): legs 1334466/67/68, set off 2026-10-20, ~32 h; until then the page shows the earlier run",
+   "legs": [
+    "armf_a080_lab_fs7p29_mixF",
+    "armf_a080_lab_fs7p29_mix"
+   ],
+   "score_fallbacks": true
   },
   "src0p2_mix": {
    "tag": [
+    "armf_a080_src0p2_mixF",
     "armf_a080_src0p2_mix16",
     "armf_a080_src0p2_mix_kern-armf_a080_src0p2_fixed",
     "armf_a080_src0p2_mix"
@@ -236,15 +246,18 @@
    "group": "modes",
    "control": "src0p2",
    "modes": 8,
-   "pending": "its Ti leg crashes, so no Ti kernel; the lab leg looks clean but is not yet scored. All three legs are being rerun at grouping 16;8 (armf_a080_src0p2_mix16); provisional scores of the lab leg with the fixed-probe control's kernels to come (armf_a080_src0p2_mix_kern-armf_a080_src0p2_fixed)",
+   "pending": "rerunning with the corrected solver (all-modes illumination): legs 1334476/77/78, set off 2026-10-20, ~32 h; until then the page shows the earlier run",
    "legs": [
+    "armf_a080_lab_src0p2_mixF",
     "armf_a080_lab_src0p2_mix16",
     "armf_a080_lab_src0p2_mix",
     "armf_a080_lab_src0p2_mix"
-   ]
+   ],
+   "score_fallbacks": true
   },
   "src0p4_mix": {
    "tag": [
+    "armf_a080_src0p4_mixF",
     "armf_a080_src0p4_mix16",
     "armf_a080_src0p4_mix"
    ],
@@ -256,11 +269,150 @@
    "group": "modes",
    "control": "src0p4",
    "modes": 8,
-   "pending": "its lab leg crashes (a NaN at the start, twice). All three legs are being rerun at grouping 16;8 (armf_a080_src0p4_mix16)",
+   "pending": "rerunning with the corrected solver (all-modes illumination): legs 1334481/82/83, set off 2026-10-20, ~32 h; until then the page shows the earlier run",
    "legs": [
+    "armf_a080_lab_src0p4_mixF",
     "armf_a080_lab_src0p4_mix16",
     "armf_a080_lab_src0p4_mix"
-   ]
+   ],
+   "score_fallbacks": true
+  },
+  "ceil_s01": {
+   "tag": [
+    "armf_a080_fs2p5_src0p1_mixF"
+   ],
+   "leg": "armf_a080_lab_fs2p5_src0p1_mixF",
+   "short": "2.5 + 0.1, modes",
+   "name": "focal spread 2.5 A + source 0.1 A, probe modes from the mixed state",
+   "fs": 2.5,
+   "src": 0.1,
+   "group": "ceiling",
+   "control": "fs2p5_src0p1",
+   "modes": 8,
+   "pending": "legs 1329288/89/90, analysis 1329292"
+  },
+  "ceil_s02": {
+   "tag": [
+    "armf_a080_fs2p5_src0p2_mixF"
+   ],
+   "leg": "armf_a080_lab_fs2p5_src0p2_mixF",
+   "short": "2.5 + 0.2, modes",
+   "name": "focal spread 2.5 A + source 0.2 A, probe modes from the mixed state",
+   "fs": 2.5,
+   "src": 0.2,
+   "group": "ceiling",
+   "control": "fs2p5_src0p2",
+   "modes": 8,
+   "pending": "legs 1329293/94/95, analysis 1329297"
+  },
+  "ph_rt": {
+   "tag": [
+    "armf_a080_ph16"
+   ],
+   "leg": "armf_a080_lab_ph16",
+   "short": "phonons RT",
+   "name": "phonons only, room temperature, coherent, true probe fixed (ARM page)",
+   "fs": 0,
+   "src": 0,
+   "group": "cooled",
+   "temp": 295,
+   "kind": "reference"
+  },
+  "ph_100": {
+   "tag": [
+    "armf_a080_ph16_T100"
+   ],
+   "leg": "armf_a080_lab_ph16_T100",
+   "short": "phonons 100 K",
+   "name": "phonons only, 100 K, coherent, true probe fixed (ARM page)",
+   "fs": 0,
+   "src": 0,
+   "group": "cooled",
+   "temp": 100,
+   "kind": "reference"
+  },
+  "cool100_fixed": {
+   "tag": [
+    "armf_a080_ph16_T100_fs2p5_src0p1_mixF_fixed"
+   ],
+   "leg": "armf_a080_lab_ph16_T100_fs2p5_src0p1_mixF_fixed",
+   "short": "100 K, fixed",
+   "name": "2.5 A + 0.1 A + phonons at 100 K, true probe fixed",
+   "fs": 2.5,
+   "src": 0.1,
+   "group": "cooled",
+   "temp": 100,
+   "kind": "fixed",
+   "pending": "1329299/302/305 fixed, 1329300/303/306 modes, analyses 1329308/309"
+  },
+  "cool100_mix": {
+   "tag": [
+    "armf_a080_ph16_T100_fs2p5_src0p1_mixF"
+   ],
+   "leg": "armf_a080_lab_ph16_T100_fs2p5_src0p1_mixF",
+   "short": "100 K, modes",
+   "name": "2.5 A + 0.1 A + phonons at 100 K, probe modes from the mixed state",
+   "fs": 2.5,
+   "src": 0.1,
+   "group": "cooled",
+   "temp": 100,
+   "kind": "modes",
+   "control": "cool100_fixed",
+   "modes": 8,
+   "pending": "1329299/302/305 fixed, 1329300/303/306 modes, analyses 1329308/309"
+  },
+  "cool20_fixed": {
+   "tag": [
+    "armf_a080_ph16_T20_fs2p5_src0p1_mixF_fixed"
+   ],
+   "leg": "armf_a080_lab_ph16_T20_fs2p5_src0p1_mixF_fixed",
+   "short": "20 K, fixed",
+   "name": "2.5 A + 0.1 A + phonons at 20 K, true probe fixed",
+   "fs": 2.5,
+   "src": 0.1,
+   "group": "cooled",
+   "temp": 20,
+   "kind": "fixed",
+   "pending": "1329311/314/317 fixed, 1329312/315/318 modes, analyses 1329320/321"
+  },
+  "cool20_mix": {
+   "tag": [
+    "armf_a080_ph16_T20_fs2p5_src0p1_mixF"
+   ],
+   "leg": "armf_a080_lab_ph16_T20_fs2p5_src0p1_mixF",
+   "short": "20 K, modes",
+   "name": "2.5 A + 0.1 A + phonons at 20 K, probe modes from the mixed state",
+   "fs": 2.5,
+   "src": 0.1,
+   "group": "cooled",
+   "temp": 20,
+   "kind": "modes",
+   "control": "cool20_fixed",
+   "modes": 8,
+   "pending": "1329311/314/317 fixed, 1329312/315/318 modes, analyses 1329320/321"
+  },
+  "searched": {
+   "tag": [
+    "armf_a080_fs2p5_src0p1_s3_ps",
+    "armf_a080_fs2p5_src0p1_ps"
+   ],
+   "legs": [
+    "armf_a080_lab_fs2p5_src0p1_s3_ps",
+    "armf_a080_lab_fs2p5_src0p1_ps"
+   ],
+   "leg": "armf_a080_lab_fs2p5_src0p1_ps",
+   "short": "searched start",
+   "name": "2.5 A + 0.1 A, probe found by an outer search from a drawn start, then probe modes",
+   "fs": 2.5,
+   "src": 0.1,
+   "group": "searched",
+   "control": "ceil_s01",
+   "modes": 8,
+   "search_dirs": [
+    "search_af_armf_a080_lab_fs2p5_src0p1_s3",
+    "search_af_armf_a080_lab_fs2p5_src0p1"
+   ],
+   "pending": "the rerun with a third search stage: stage-3 array 1334455, legs 1334457/58/59, analysis 1334461"
   }
  },
  "instruments": [
@@ -342,5 +494,5 @@
   0.6
  ],
  "real_source_note": "effective source size at the specimen, 24-26 pm (CEOS improved design, maximum current) to 45-60 pm (CESCOR example): Müller et al. 2006",
- "phase2": "Phase 2: phonons at room temperature, 100 K and colder, at the settings that survive with a realistic source. Not yet designed."
+ "phase2": "Phase 2 (B): phonons at 100 K (liquid-nitrogen holders) and 20 K (liquid helium; the Debye model's zero-point floor) at 2.5 A + 0.1 A. Room temperature is out. Next: D, the dose series 1e5-1e8 with the searched start."
 }

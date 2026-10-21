@@ -4,7 +4,7 @@ Written 2026-10-12 at the close of the ARM200F campaign. **Read this whole file 
 State block in `HANDOFF_REALISTIC.md` (blocks 3–5: every number behind the summary below), `PSF_KERNELS.md` (kernel
 rules), and `page/ARM_PAGE.md` (the results page and the honest atom scoring). Where they disagree, this file is newer.
 
-## STATE (2026-10-20) -- read this first, then `mono300/PHASE1.md` (the plan, every result, every job id)
+## STATE (2026-10-21) -- read this first, then `mono300/PHASE1.md` (the plan, every result, every job id)
 
 - **The paper (the user, 2026-10-16):** short sections, one limiting factor each -- a bad (ARM) set of aberrations and what
   opening the aperture does; partial coherence (the walls); cooling; then the chosen instrument, the **Spectra 300 X-FEG
@@ -14,8 +14,9 @@ rules), and `page/ARM_PAGE.md` (the results page and the honest atom scoring). W
   source good to 0.1 A, okay 0.2, off 0.4); step 2 joint points (losses compound: fs 2.5 + src 0.2 off with a fixed probe);
   A ceiling with modes (fs 2.5 + src 0.1 good, + src 0.2 okay); B ceiling + phonons (fixed off at 100 K and 20 K; modes
   okay, Pb 51 / 70 %, Ti at guessing even at 20 K); C searched start failed on the search ORDER (fixed: 3 stages).
-- **Running:** the C rerun (3-stage search, resumed stages 1-2; ids in PHASE1.md) and the `_mixF` reruns of the four
-  single wall points (`phase1_step2_rerunF.sh`).
+- **Running (set off 2026-10-20, all ids in PHASE1.md):** the C rerun (3-stage search, resumed stages 1-2; analysis
+  1334461) and the `_mixF` reruns of the four single wall points (`phase1_step2_rerunF.sh`, legs 1334466-83). The
+  ready prompt for the next session is `mono300/HANDOFF_PROMPT.md`.
 - **Next:** score both when pulled (`mono300/phase1_look.py`; add rows for `fs2p5_src0p1_s3_ps` and the `_mixF` single
   points); check the search's answer against `start.json`'s truth record; if C works, build **D**: the dose series
   1e5-1e8 with the 3-stage search at the combined point (fs 2.5 + src 0.1 + phonons at 20 K), asking before submitting.
@@ -26,7 +27,8 @@ rules), and `page/ARM_PAGE.md` (the results page and the honest atom scoring). W
   coherence-valued dir names; `sim/make_mixed_probe.py` (mixed-state start, `--base` for a searched probe);
   `KICK_START=mixed`; the staged search `PSEARCH=1` (`campaign/psearch_plan.py`, `select_grid.py`, 3 stages, resume);
   submit scripts in `mono300/` with guards (engine fix pulled, exported job variables, dry runs, sims present).
-- A results page for this direction is maintained by another session (memory `mono-results-page`, `page/MONO_PAGE.md`).
+- The results page (memory `mono-results-page`, `page/MONO_PAGE.md`) is at version 5 (2026-10-21: A, B, the failed C
+  and its search table in a new §06); C's rerun and the `_mixF` points are marked pending on it.
 
 ## The goal (the user, 2026-10-12)
 
