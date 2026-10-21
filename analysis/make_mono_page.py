@@ -44,7 +44,7 @@ TEMPLATE = os.path.join(PAGE, "mono_2026-10-12.html")
 OUT = os.path.join(PAGE, "built", "mono_page_built.html")
 arm.FIGS = os.path.join(REPO, "aberration_experiment", "figs", "mono_page")      # this page's figures (print copies)
 MONO = os.path.join(REPO, "aberration_experiment", "mono300")
-FS_PER_EV_MM = None                     # A rms of focal spread per eV (FWHM) x mm of Cc at 300 kV, set by focal_spread()
+FS_PER_EV_MM = None                     # A rms of chromatic focal spread per eV (FWHM) x mm of Cc at 300 kV, set by focal_spread()
 OK, WARN, STOP = "#00795c", "#a97400", "#c2490a"                                 # the page's verdict colours
 VCOL = {"good": OK, "okay": WARN, "off": STOP}
 PB, TI = arm.SP[82][1], arm.SP[22][1]
@@ -52,7 +52,7 @@ PB, TI = arm.SP[82][1], arm.SP[22][1]
 
 # ====================================================================================== physics, read from the code
 def focal_spread(dE_eV, cc_mm):
-    """rms focal spread [A] of an energy spread (FWHM, eV) through Cc (mm) at 300 kV -- simulate_4dstem's own formula."""
+    """rms chromatic focal spread [A] of an energy spread (FWHM, eV) through Cc (mm) at 300 kV -- simulate_4dstem's own formula."""
     e0, E = 510998.95, 300e3
     return cc_mm * 1e7 * (dE_eV / (2 * np.sqrt(2 * np.log(2))) / E) * (1 + E / e0) / (1 + E / (2 * e0))
 
@@ -137,7 +137,7 @@ def fig_wall(recs, man):
     """Pb and Ti in the right place against each single effect, with the guessing level; probe-mode legs when landed."""
     fig, axs = plt.subplots(1, 2, figsize=(11.6, 4.5), sharey=True, gridspec_kw=dict(wspace=0.07))
     ref = recs["known_a080"]
-    for ax, grp, xkey, xlab in ((axs[0], "focal", "fs", "focal spread (Å rms)"), (axs[1], "source", "src", "source size (Å FWHM)")):
+    for ax, grp, xkey, xlab in ((axs[0], "focal", "fs", "chromatic focal spread (Å rms)"), (axs[1], "source", "src", "source size (Å FWHM)")):
         pts = [ref] + sorted([r for r in recs.values() if r["spec"]["group"] == grp and r["found"]], key=lambda r: r[xkey])
         x = np.array([r[xkey] for r in pts])
         for z, col, nm in ((82, PB, "Pb"), (22, TI, "Ti")):
@@ -169,7 +169,7 @@ def fig_wall(recs, man):
     top = axs[0].secondary_xaxis("top", functions=(lambda f: f / (FS_PER_EV_MM * 1.4), lambda e: e * FS_PER_EV_MM * 1.4))
     top.set_xlabel("energy spread through Cc 1.4 mm (eV FWHM)", fontsize=9.5)
     axs[0].set_ylabel("atoms in the right place (%)")
-    for ax, t in zip(axs, ("Focal spread alone", "Source size alone")):
+    for ax, t in zip(axs, ("Chromatic focal spread alone", "Source size alone")):
         ax.text(0, 1.2, t, transform=ax.transAxes, fontsize=11, ha="left", va="bottom", color=arm.INK)
     h, l = axs[0].get_legend_handles_labels()
     fig.legend(h, l, loc="lower center", ncol=len(l), fontsize=9, frameon=False, bbox_to_anchor=(0.5, -0.06))
@@ -177,7 +177,7 @@ def fig_wall(recs, man):
 
 
 def fig_instruments(recs, man):
-    """Each instrument class as the range of focal spread its energy spread and Cc give, on the measured wall."""
+    """Each instrument class as the range of chromatic focal spread its energy spread and Cc give, on the measured wall."""
     focal = sorted([recs["known_a080"]] + [r for r in recs.values() if r["spec"]["group"] == "focal" and r["found"]],
                    key=lambda r: r["fs"])
     good = max(r["fs"] for r in focal if r["v"] == "good")
@@ -205,13 +205,66 @@ def fig_instruments(recs, man):
     ax.set_xscale("log"); ax.set_xlim(lo, hi); ax.set_ylim(-1.2, len(ins) - 0.1)
     ax.set_yticks(range(len(ins))); ax.set_yticklabels([s["name"] for s in ins[::-1]], fontsize=9.5)
     ax.set_xticks([0.5, 1, 2, 3.5, 5, 10, 20, 40]); ax.set_xticklabels(["0.5", "1", "2", "3.5", "5", "10", "20", "40"])
-    ax.set_xlabel("focal spread (Å rms) = energy spread × Cc × " + f"{FS_PER_EV_MM:.1f} Å per eV·mm at 300 kV")
+    ax.set_xlabel("chromatic focal spread (Å rms) = energy spread × Cc × " + f"{FS_PER_EV_MM:.1f} Å per eV·mm at 300 kV")
     ax.spines[["top", "right", "left"]].set_visible(False); ax.tick_params(axis="y", length=0); ax.grid(axis="x", alpha=.25, lw=.6)
     return arm.save(fig, "fig_instruments.png")
 
 
 
-WHERE_ROWS = [("focal spread only (§02)", ["known_a080", "fs0p75", "fs1p5", "fs2p5", "fs3p5", "fs5", "fs5_mix"]),
+
+# The gun's own source image at the sample (2026-10-21): FW50 d = (2 / (pi alpha)) sqrt(I / (B_r V)) (Barth & Kruit), which
+# for a round Gaussian is its FWHM, the simulator's SOURCE_FWHM. X-FEG reduced brightness 0.7-1.5e8 A/(m^2 sr V) (Thermo
+# Fisher's Talos manual; its X-CFEG application note gives 7.5e7). The monochromator's slit keeps about the share of the
+# energy distribution it passes, so at 90 meV from the X-FEG's ~0.7 eV the brightness falls by ~0.7 / 0.09 (an estimate).
+# Measured effective sources (0.24-0.6 A, Mueller et al. 2006) are at 25-40 mrad and include instabilities.
+BR_XFEG = (0.7e8, 1.5e8)
+MONO_CUT = 0.7 / 0.09
+ALPHA_RAD, V_ACC = 0.080, 300e3
+SCAN_A2 = 20.0 * 20.0
+
+
+def source_fwhm_A(I_A, br):
+    return 2 / (np.pi * ALPHA_RAD) * np.sqrt(I_A / (br * V_ACC)) * 1e10
+
+
+def current_for_source_pA(d_A, br):
+    return br * V_ACC * (np.pi * ALPHA_RAD * d_A * 1e-10 / 2) ** 2 * 1e12
+
+
+def mono_current_range(d_A):
+    lo, hi = (current_for_source_pA(d_A, b / MONO_CUT) for b in BR_XFEG)
+    return lo, hi
+
+
+def fig_source():
+    """The gun's source image at the sample against probe current at 80 mrad: the X-FEG with and without the 90 meV
+    monochromator, beside the source sizes tested; top axis, the scan time for 1e7 e/A^2 over the 20 x 20 A scan."""
+    I = np.logspace(np.log10(0.3), np.log10(300), 200) * 1e-12
+    fig, ax = plt.subplots(figsize=(11.6, 4.6))
+    for name, cut, col in (("X-FEG, no monochromator", 1.0, arm.INK2), ("X-FEG Mono at 90 meV (estimate)", MONO_CUT, arm.INK)):
+        a = source_fwhm_A(I, BR_XFEG[1] / cut); b = source_fwhm_A(I, BR_XFEG[0] / cut)
+        ax.fill_between(I * 1e12, a, b, color=col, alpha=.22 if cut > 1 else .12, lw=0)
+        ax.plot(I * 1e12, np.sqrt(a * b), "-", color=col, lw=2, label=name)
+    for d, t, c in ((0.1, "0.1 Å: good at 2.5 Å with modes", OK), (0.2, "0.2 Å: okay with modes", WARN),
+                    (0.4, "0.4 Å: off, even alone", STOP)):
+        ax.axhline(d, color=c, lw=1.4, ls="--"); ax.text(0.32, d + 0.008, t, fontsize=8.8, color=c, va="bottom")
+    ax.axhspan(0.24, 0.6, color="#8a96a3", alpha=.10, lw=0)
+    ax.text(300 * 0.97, 0.585, "effective sources measured at 25–40 mrad, instabilities included (Müller et al. 2006)",
+            ha="right", va="top", fontsize=8.3, color=arm.INK2)
+    for d in (0.1, 0.2):
+        lo, hi = mono_current_range(d)
+        ax.plot([lo, hi], [d, d], "-", color=arm.INK, lw=5, solid_capstyle="butt", alpha=.8)
+        ax.text(np.sqrt(lo * hi), d - 0.012, f"Mono: ≤ {lo:.0f}–{hi:.0f} pA", ha="center", va="top", fontsize=8.5, color=arm.INK)
+    ax.set_xscale("log"); ax.set_xlim(0.3, 300); ax.set_ylim(0, 0.6)
+    ax.set_xlabel("probe current (pA)"); ax.set_ylabel("the gun's source image at the sample (Å FWHM)")
+    t = lambda i: 1e7 * SCAN_A2 * 1.602e-19 / (np.maximum(i, 1e-9) * 1e-12)
+    top = ax.secondary_xaxis("top", functions=(t, t))
+    top.set_xlabel("time for 1e7 e/Å² over the 20 × 20 Å scan (s)", fontsize=9)
+    ax.legend(loc="upper left", bbox_to_anchor=(0.0, 0.83), fontsize=9, frameon=False)
+    ax.spines[["right"]].set_visible(False); ax.grid(alpha=.25, lw=.6)
+    return arm.save(fig, "fig_source_current.png")
+
+WHERE_ROWS = [("chromatic focal spread only (§02)", ["known_a080", "fs0p75", "fs1p5", "fs2p5", "fs3p5", "fs5", "fs5_mix"]),
               ("+ source 0.1 Å", ["src0p1", "fs2p5_src0p1", "ceil_s01", "fs3p5_src0p1"]),
               ("+ source 0.2 Å", ["src0p2", "src0p2_mix", "fs2p5_src0p2", "ceil_s02", "fs3p5_src0p2"]),
               ("+ source 0.1 Å + 100 K", ["cool100_fixed", "cool100_mix"]),
@@ -220,7 +273,7 @@ WHERE_ROWS = [("focal spread only (§02)", ["known_a080", "fs0p75", "fs1p5", "fs
 
 
 def fig_where(recs, man):
-    """Where it works: the combined runs at their focal spread, under the Spectra 300 monochromators' ranges (no off-scale
+    """Where it works: the combined runs at their chromatic focal spread, under the Spectra 300 monochromators' ranges (no off-scale
     instruments). Square colour = verdict, hollow = true probe fixed, filled = probe modes, grey = not scored yet."""
     focal = sorted([recs["known_a080"]] + [r for r in recs.values() if r["spec"]["group"] == "focal" and r["found"]],
                    key=lambda r: r["fs"])
@@ -271,9 +324,16 @@ def fig_where(recs, man):
                 else:
                     ab.plot(xx, y, "s", ms=11, mec="#9aa3ad", mew=2, mfc="#9aa3ad" if mode else "white", zorder=5)
                     ab.text(xx, y + 0.24, "running", ha="center", va="bottom", fontsize=8, color="#7d8a99")
-    ab.set_ylim(-0.6, n - 0.2); ab.set_yticks(range(n)); ab.set_yticklabels([r[0] for r in WHERE_ROWS[::-1]], fontsize=9.5)
+    def ylab(lab):
+        for d in (0.1, 0.2):
+            if f"source {d:g} Å" in lab:
+                lo, hi = mono_current_range(d)
+                return f"{lab}\n(Mono at 90 meV: ≤ {lo:.0f}–{hi:.0f} pA)"
+        return lab
+    ab.set_ylim(-0.6, n - 0.2); ab.set_yticks(range(n))
+    ab.set_yticklabels([ylab(r[0]) for r in WHERE_ROWS[::-1]], fontsize=9.5)
     ab.set_xlim(lo, hi); ab.set_xticks([0, 1, 2, 2.5, 3.5, 5, 6]); ab.set_xticklabels(["0", "1", "2", "2.5", "3.5", "5", "6"])
-    ab.set_xlabel("focal spread (Å rms) = energy spread × Cc × " + f"{FS_PER_EV_MM:.1f} Å per eV·mm at 300 kV")
+    ab.set_xlabel("chromatic focal spread (Å rms) = energy spread × Cc × " + f"{FS_PER_EV_MM:.1f} Å per eV·mm at 300 kV")
     h = [plt.Line2D([], [], ls="", marker="s", ms=9, mec=arm.INK2, mew=2, mfc="white", label="true probe held fixed"),
          plt.Line2D([], [], ls="", marker="s", ms=9, mec=arm.INK2, mew=2, mfc=arm.INK2, label="probe modes"),
          plt.Line2D([], [], ls="", marker="s", ms=9, mec="#9aa3ad", mew=2, mfc="#9aa3ad", label="running, not scored yet")]
@@ -328,7 +388,7 @@ def fig_modes(mix, recs):
 def setting(r):
     parts = []
     if r["fs"]:
-        parts.append(f"focal spread {r['fs']:g} Å")
+        parts.append(f"chromatic focal spread {r['fs']:g} Å")
     if r["src"]:
         parts.append(f"source {r['src']:g} Å")
     return " + ".join(parts) or "coherent"
@@ -360,7 +420,7 @@ def series_tabs(tid, keys, recs, cuts):
 
 
 def headline(recs):
-    """The summary's opening sentence: the last good focal spread and source size alone, and together."""
+    """The summary's opening sentence: the last good chromatic focal spread and source size alone, and together."""
     def wall(grp, key):
         pts = sorted([recs["known_a080"]] + [r for r in recs.values() if r["spec"]["group"] == grp and r["found"]], key=lambda r: r[key])
         g = max(r[key] for r in pts if r["v"] == "good")
@@ -371,7 +431,7 @@ def headline(recs):
     sg, so, smid = wall("source", "src")
     joint = [r for r in recs.values() if r["spec"]["group"] == "joint" and r["found"]]
     jgood = sorted([r for r in joint if r["v"] == "good"], key=lambda r: (r["fs"], r["src"]))
-    line = (f"With the true probe given, the depth survives up to <b>{fg:g} Å</b> of focal spread alone, a <b>{sg:g} Å</b> "
+    line = (f"With the true probe given, the depth survives up to <b>{fg:g} Å</b> of chromatic focal spread alone, a <b>{sg:g} Å</b> "
             f"source alone")
     line += (f", or <b>{jgood[-1]['fs']:g} Å + {jgood[-1]['src']:g} Å</b> together." if jgood else ".")
     return dict(WALL_LINE=line)
@@ -387,7 +447,7 @@ LAM_A, ALPHA = 0.019687, 0.080
 
 def p2_table(recs):
     """A, B and C beside their controls: the ceiling at the Spectra Mono point, cooled, and with the probe found by search."""
-    head = ["run, all at 2.5 Å focal spread", "probe", "strongest mode (%)", *arm.ATOM_HEAD, "vacuum / slab", "verdict"]
+    head = ["run, all at 2.5 Å chromatic focal spread", "probe", "strongest mode (%)", *arm.ATOM_HEAD, "vacuum / slab", "verdict"]
     rows = [("A", "fs2p5_src0p1", "fixed (step 2A)"), ("A", "ceil_s01", "8 modes"), ("A", "fs2p5_src0p2", "fixed (step 2A)"),
             ("A", "ceil_s02", "8 modes"), ("B", "ph_rt", "fixed"), ("B", "ph_100", "fixed"), ("B", "cool100_fixed", "fixed"),
             ("B", "cool100_mix", "8 modes"), ("B", "cool20_fixed", "fixed"), ("B", "cool20_mix", "8 modes"),
@@ -410,7 +470,7 @@ def p2_table(recs):
                        f"<span class='muted-s'>{html.escape(why)}</span></td><td>{r['vac']:.2f}</td><td>–</td></tr>")
         else:
             trs.append(f"<tr>{lead}<td colspan='6'>{arm.pending_box(r['info'])}</td></tr>")
-    return arm.table(head, trs, "All at the Spectra Mono's setting: focal spread 2.5 Å (about 90 meV through C<sub>c</sub> 1.6 mm), "
+    return arm.table(head, trs, "All at the Spectra Mono's setting: chromatic focal spread 2.5 Å (about 90 meV through C<sub>c</sub> 1.6 mm), "
                      "the ARM aberrations, 80 mrad, no shot noise. <b>A</b>: the source size, 0.1 or 0.2 Å. <b>B</b>: plus atomic "
                      "vibration at room temperature, 100 K (liquid nitrogen) and 20 K (liquid helium, where only the zero-point "
                      "motion is left). <b>C</b>: the probe found from the data (below). Probe: <b>fixed</b> = the true probe given "
@@ -478,12 +538,12 @@ COLS_NOTE = ("Columns: <b>strongest mode</b>, how coherent the beam is (the shar
 def status(recs, man):
     """What has been done: one row per step, what it changes, how many runs are in, and its state."""
     rows = [("Part 1, the scan: how coherent must the beam be? The true probe is given, no other physics.",),
-            ("Step 1", "one knob at a time: six focal spreads (0.75–7.29 Å), four source sizes (0.05–0.4 Å)",
+            ("Step 1", "one knob at a time: six chromatic focal spreads (0.75–7.29 Å), four source sizes (0.05–0.4 Å)",
              "true probe, held fixed", "focal source"),
             ("Step 2A", "both knobs together: 2.5 and 3.5 Å, each with a 0.1 and a 0.2 Å source", "true probe, held fixed", "joint"),
-            ("Step 2B", "probe modes at four settings: 5 and 7.29 Å focal spread, 0.2 and 0.4 Å source",
+            ("Step 2B", "probe modes at four settings: 5 and 7.29 Å chromatic focal spread, 0.2 and 0.4 Å source",
              "refined from the data as 7–8 modes, started from a real gun's mixed beam", "modes"),
-            ("Part 2, the physics put back, one piece at a time, at the Spectra Mono's setting (2.5 Å focal spread).",),
+            ("Part 2, the physics put back, one piece at a time, at the Spectra Mono's setting (2.5 Å chromatic focal spread).",),
             ("A", "the source size: 0.1 and 0.2 Å", "refined as 8 modes (corrected solver)", "ceiling"),
             ("B", "add atomic vibration: phonons at 100 K and 20 K (0.1 Å source)",
              "true probe held fixed, and refined as 8 modes", "cooled"),
@@ -509,7 +569,7 @@ def status(recs, man):
 
 
 def joint_grid(recs):
-    """Focal spread (rows) x source size (columns): step-1 edges and the step-2A joint points, judged."""
+    """Chromatic focal spread (rows) x source size (columns): step-1 edges and the step-2A joint points, judged."""
     by = {(r["fs"], r["src"]): r for r in recs.values() if r["spec"]["group"] in ("ref", "focal", "source", "joint")
           and r["key"] != "cold_feg"}
     fss, srcs = [0.0, 2.5, 3.5], [0.0, 0.1, 0.2]
@@ -528,8 +588,8 @@ def joint_grid(recs):
                        f"Ti {pct(r['sc'], 22):.0f} %<br><span class='muted-s'>guessing {pct(r['sc'], 82, 'guess'):.0f} · "
                        f"{pct(r['sc'], 22, 'guess'):.0f} · strongest mode {100 * r['w1']:.0f} %</span></td>")
         trs.append(f"<tr><td><b>{'no spread' if f == 0 else f'{f:g} Å'}</b></td>{''.join(tds)}</tr>")
-    head = ["focal spread ↓ · source →", *[("no source" if s == 0 else f"{s:g} Å") for s in srcs]]
-    return arm.table(head, trs, "Rows: focal spread; columns: source size. The top row and the left column are step 1, one "
+    head = ["chromatic focal spread ↓ · source →", *[("no source" if s == 0 else f"{s:g} Å") for s in srcs]]
+    return arm.table(head, trs, "Rows: chromatic focal spread; columns: source size. The top row and the left column are step 1, one "
                      "effect alone; the four inner cells are step 2A, both at once. Each cell: the verdict, the share of Pb and Ti "
                      "atoms at the right depth, what guessing gives, and how coherent the beam is (strongest mode). True probe "
                      "given and held fixed throughout.")
@@ -568,8 +628,8 @@ def instruments_table(man, recs):
         a = focal_spread(s["dE"][0], s["cc"][0]); b = focal_spread(s["dE"][1], s["cc"][1])
         rng = f"{a:.1f}" if abs(a - b) < 0.05 else f"{a:.1f}–{b:.1f}"
         trs.append(f"<tr><td class='wrap'>{html.escape(s['name'])}</td><td>{rng}</td><td class='wrap muted'>{html.escape(s['src'])}</td></tr>")
-    return arm.table(["instrument", "focal spread (Å rms)", "energy spread and Cc: where they come from"], trs,
-                     f"Focal spread = Cc · (σ<sub>E</sub>/E) · (1 + E/E<sub>0</sub>)/(1 + E/2E<sub>0</sub>), σ<sub>E</sub> = FWHM/2.355: "
+    return arm.table(["instrument", "chromatic focal spread (Å rms)", "energy spread and Cc: where they come from"], trs,
+                     f"Chromatic focal spread = Cc · (σ<sub>E</sub>/E) · (1 + E/E<sub>0</sub>)/(1 + E/2E<sub>0</sub>), σ<sub>E</sub> = FWHM/2.355: "
                      f"{FS_PER_EV_MM:.2f} Å per eV·mm at 300 kV. High-tension ripple and objective-current noise add in "
                      f"quadrature, so every range is a lower bound.")
 
@@ -587,7 +647,7 @@ def repro():
     rows = [("Step 1: ten single-effect points, probe fixed (sims kept)", "bash aberration_experiment/mono300/phase1_fixed_submit.sh"),
             ("Step 2: joint points and probe-mode legs", "bash aberration_experiment/mono300/phase1_step2_submit.sh"),
             ("Step 2: the four mode legs that stopped at a NaN, resubmitted unchanged", "bash aberration_experiment/mono300/phase1_step2_retry.sh"),
-            ("One point by hand (here 2.5 Å focal spread, probe fixed)",
+            ("One point by hand (here 2.5 Å chromatic focal spread, probe fixed)",
              'RTAG=_fixed LABELS=armf_a080 TSV=campaign/ceos_sweep.tsv GROUPING="32;16" PACK_H5=0 FOCAL_SPREAD=2.5 bash campaign/run_thin_atomfind.sh'),
             ("Its probe-mode leg from the mixed state",
              'RECON_ONLY=1 RTAG=_mix LABELS=armf_a080 TSV=campaign/ceos_sweep.tsv FOCAL_SPREAD=5 KICK_ALL=1 KICK_START=mixed '
@@ -630,12 +690,12 @@ def main():
     frag = dict(BUILT=datetime.datetime.now().strftime("%Y-%m-%d %H:%M"))
     frag.update(headline(recs))
     frag["FRAG_STATUS"] = status(recs, man)
-    frag["FIG_WALL"] = arm.img(fig_wall(recs, man), "atoms in the right place against focal spread and source size")
+    frag["FIG_WALL"] = arm.img(fig_wall(recs, man), "atoms in the right place against chromatic focal spread and source size")
     ref_row = lambda k: (recs[k], "coherent beam (reference)" if k == "known_a080" else "ARM200F cold FEG: 7.29 + 0.4 Å", "ref")
     frag["FRAG_FOCAL_TABLE"] = judged_table([ref_row("known_a080")] + [(recs[k], setting(recs[k]), "") for k in focal[1:-1]]
                                             + [ref_row("cold_feg")], "No shot noise, no atomic vibration; the reconstruction is given "
                                             "the true probe and holds it fixed. " + COLS_NOTE)
-    frag["FIG_FOCAL_STRIP"] = arm.img(fig_strip("fig_strip_focal.png", focal, recs, CUTS[0], short), "depth sections, focal spread")
+    frag["FIG_FOCAL_STRIP"] = arm.img(fig_strip("fig_strip_focal.png", focal, recs, CUTS[0], short), "depth sections, chromatic focal spread")
     frag["FRAG_FOCAL_TABS"] = series_tabs("tabs-focal", focal[1:-1], recs, CUTS[0])
     frag["FRAG_SOURCE_TABLE"] = judged_table([ref_row("known_a080")] + [(recs[k], setting(recs[k]), "") for k in source[1:-1]]
                                              + [ref_row("cold_feg")], "As in §02: no shot noise, no atomic "
@@ -646,7 +706,7 @@ def main():
     jl = [k for k in joint if recs[k]["spec"]["group"] == "joint" and recs[k]["found"]]
     frag["FRAG_JOINT_FIG"] = (f'<figure class="wide">{arm.img(fig_strip("fig_strip_joint.png", joint, recs, CUTS[0], short), "depth sections, both at once")}'
                               f'<figcaption><span class="fig-name">fig_strip_joint.png</span> Read as the strips above; each '
-                              f'focal spread first alone, then with a 0.1 and a 0.2 Å source.</figcaption></figure>'
+                              f'chromatic focal spread first alone, then with a 0.1 and a 0.2 Å source.</figcaption></figure>'
                               + series_tabs("tabs-joint", jl, recs, CUTS[0])) if jl else ""
     frag["FRAG_MODES_TABLE"] = modes_table(recs)
     ml = [r for r in (recs[k] for k in mix) if r["vol"]]
@@ -668,7 +728,8 @@ def main():
     frag["FIG_P2_STRIP"] = arm.img(fig_strip("fig_strip_p2.png", p2, recs, CUTS[0], p2short), "depth sections, the Spectra Mono point")
     frag["FRAG_P2_TABS"] = series_tabs("tabs-p2", p2, recs, CUTS[0])
     frag["FRAG_SEARCH_TABLE"] = search_table(R, recs)
-    frag["FIG_INSTRUMENTS"] = arm.img(fig_instruments(recs, man), "instruments on the focal-spread wall")
+    frag["FIG_INSTRUMENTS"] = arm.img(fig_instruments(recs, man), "instruments on the chromatic focal-spread wall")
+    frag["FIG_SOURCE"] = arm.img(fig_source(), "the gun's source image at the sample against probe current")
     frag["FIG_WHERE"] = arm.img(fig_where(recs, man), "the combined runs placed under the Spectra 300 monochromators")
     frag["FRAG_INSTR_TABLE"] = instruments_table(man, recs)
     frag["FRAG_RENDERS"] = renders(recs)

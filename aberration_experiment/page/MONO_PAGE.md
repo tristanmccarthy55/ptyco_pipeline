@@ -1,6 +1,12 @@
 # The Coherence Wall page — how to fill it in and republish
 
 PUBLISHED: https://claude.ai/artifact/B7ep8BpAMVdKvrnXywACq3
+- version 10, 2026-10-21: "focal spread" renamed "chromatic focal spread" everywhere (ΔE through Cc; ripple and
+  lens-current noise named as other, unsimulated causes). New `fig_source_current.png` in §06 (`fig_source`): the gun's
+  source image at the sample, d = (2/πα)√(I/B_r V), against probe current at 80 mrad; X-FEG B_r 0.7-1.5e8 (Thermo
+  Fisher), Mono at 90 meV taken as ÷ 0.7/0.09 (an estimate); 0.1 Å needs ≤ 4-9 pA, 0.2 Å ≤ 17-37 pA; top axis the scan
+  time for 1e7 e/Å². Where-it-works rows carry those currents. Probe modes defined exactly (true aberrations as the
+  mixed state, no search, probe update from it 40 / 20, aperture constraint).
 - version 9, 2026-10-21: `fig_where_it_works.png` at the top of §07 (`fig_where`, rows in `WHERE_ROWS`): every run with
   the source and vibration put back, at its focal spread, under the Spectra 300 monochromators only (Mono at 90 meV and
   at its 0.2 eV spec, UltiMono), on a linear 0-6 A axis. Hollow = probe fixed, filled = modes, grey = running. New runs

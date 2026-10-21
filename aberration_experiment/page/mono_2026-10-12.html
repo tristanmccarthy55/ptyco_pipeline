@@ -52,7 +52,7 @@
       <span><b>previous page</b> <a href="https://claude.ai/artifact/MUkJ7yYrsek3nTLXcZgCrk">ARM200F at 80 mrad</a></span></div>
     <nav class="jump">
       <a href="#s1">Summary</a>
-      <a href="#s2">Focal spread</a>
+      <a href="#s2">Chromatic chromatic focal spread</a>
       <a href="#s3">Source size</a>
       <a href="#s4">Both at once</a>
       <a href="#s5">Probe modes</a>
@@ -81,7 +81,7 @@
           and the source size, each on its own and then together, with the true probe given and no other physics (§02–§05).
           Both are scanned in Å at the specimen, so the limits hold for any microscope.</td></tr>
         <tr><td>What it turned up</td><td class="wrap">The Spectra 300 with the X-FEG Mono (§06), for three reasons. Its
-          monochromator brings the energy spread to about 90 meV in use, about 2.5 Å of focal spread: inside the limit, where
+          monochromator brings the energy spread to about 90 meV in use, about 2.5 Å of chromatic focal spread: inside the limit, where
           the ARM's cold FEG gives 7.3 Å and a Titan's Wien filter 4–12 Å. It is a current, widely installed microscope, not
           a one-off (Cambridge's runs at 90 meV). And its corrector corrects A5, which the ARM's does not, so keeping the
           ARM's aberrations is pessimistic for it. The UltiMono does better still, but it is the rarer, high-end option.</td></tr>
@@ -107,8 +107,9 @@
       <li><b>Energy spread</b>, seen as a spread of focus: the depth survives up to 3.5 Å rms and is lost by 5 Å. For good,
         that needs ΔE ≤ 0.14 eV at C<sub>c</sub> 1.4 mm (≤ 0.08 eV at 2.4 mm). When it fails, false structure fills the
         vacuum above and below the specimen (§02).</li>
-      <li><b>Source size</b>: good up to 0.1 Å, Ti lost at 0.2 Å, off by 0.4 Å. Real effective sources are quoted at
-        0.24–0.6 Å, so this is the harder limit. When it fails, each column smears in depth while the vacuum stays clean
+      <li><b>Source size</b>: good up to 0.1 Å, Ti lost at 0.2 Å, off by 0.4 Å. On the Mono at 80 mrad the gun's source
+        image is 0.1 Å up to about 4–9 pA of probe current, so the source sets the current, and with it the scan time (§06).
+        When it fails, each column smears in depth while the vacuum stays clean
         (§03).</li>
       <li><b>Both together</b>: worse than either alone. 2.5 Å with a 0.2 Å source is off, though each passed alone (§04).</li>
       <li><b>Probe modes</b>, letting the reconstruction describe the beam as a mixture of 7–8 probes instead of one held
@@ -118,10 +119,10 @@
     <p><b>The microscope it points to</b>: in energy spread the Spectra 300 X-FEG Mono is inside at the 90 meV quoted in use
       (not at its 0.2 eV specification); the UltiMono with margin; a Titan's Wien filter only to the edge, at its best; the
       ARM's cold FEG and unmonochromated guns do not (§06).</p>
-    <p><b>The physics put back, at the Spectra Mono's setting</b> (2.5 Å of focal spread)</p>
+    <p><b>The physics put back, at the Spectra Mono's setting</b> (2.5 Å of chromatic focal spread)</p>
     <ol class="found" start="5">
       <li><b>Source size (A)</b>: good with a 0.1 Å source and probe modes; okay with 0.2 Å, where the fixed probe fails.
-        Real sources are quoted at 0.24–0.6 Å, so 0.2 Å is the nearer to a real instrument (§07).</li>
+        On the Mono at 80 mrad, 0.1 Å means a probe current of about 4–9 pA or less, 0.2 Å about 17–37 pA (§06, §07).</li>
       <li><b>Atomic vibration (B)</b>: with probe modes, Pb comes back to okay (51 % at 100 K, 70 % at 20 K); Ti stays at the
         guessing level even at 20 K (§07).</li>
       <li><b>Not knowing the probe (C)</b>: not yet shown. Starting from the corrector's quoted precision, the search found
@@ -134,8 +135,8 @@
       <figcaption><span class="fig-name">fig_wall.png</span>
         <div class="howto"><b>How to read it</b> Share of Pb (blue) and Ti (orange) atoms in the right place, against each
           knob on its own, probe fixed. Squares: the verdict (green good, amber okay, red off). Amber band: between the last
-          good and the first off point. Diamonds: probe modes, drawn just right of their point. Hatched: the effective
-          source size of real instruments, 0.24–0.6 Å (Müller et al. 2006). Top axis: the energy spread giving that focal
+          good and the first off point. Diamonds: probe modes, drawn just right of their point. Hatched: effective
+          source sizes measured at 25–40 mrad, 0.24–0.6 Å (Müller et al. 2006); at 80 mrad the gun's own part is smaller (§06). Top axis: the energy spread giving that chromatic focal
           spread through a 1.4 mm C<sub>c</sub>.</div>
       </figcaption>
     </figure>
@@ -150,20 +151,25 @@
           B2 and A1 retuned for 80 mrad)</td></tr>
         <tr><td>specimen, scan</td><td class="wrap">PbTiO<sub>3</sub>/SrTiO<sub>3</sub>, 5 unit cells (19.5 Å) with 4 Å of
           vacuum each side; 20 Å scanned in 0.5 Å steps; detector to 133 mrad</td></tr>
-        <tr><td>knob 1: focal spread</td><td class="wrap">The gun's energy spread ΔE passed through the objective
-          lens's chromatic aberration C<sub>c</sub>: electrons of different energy focus at different heights, a spread of
-          defocus of 17.4 Å rms per eV·mm at 300 kV. We scan it in Å, so the result holds for any ΔE and C<sub>c</sub>.</td></tr>
+        <tr><td>knob 1: chromatic focal spread</td><td class="wrap">The spread of focus caused by the gun's energy spread
+          ΔE (narrowed by the monochromator) passing through the lenses' chromatic aberration C<sub>c</sub>: electrons of
+          different energy focus at different heights, 17.4 Å rms per eV·mm at 300 kV. Other things spread the focus too
+          (high-tension ripple, lens-current noise); they are not simulated. Scanned in Å, so the result holds for any ΔE and
+          C<sub>c</sub>.</td></tr>
         <tr><td>knob 2: source size</td><td class="wrap">The gun's finite emitting area, demagnified onto the
-          specimen: each electron's probe lands slightly shifted. Given as the FWHM of that spread of positions, in Å.</td></tr>
+          specimen: each electron's probe lands slightly shifted. Given as the FWHM of that spread of positions, in Å. How
+          big it is at the sample depends on the gun's brightness and the probe current (§06).</td></tr>
         <tr><td>how it is simulated</td><td class="wrap">16 copies of the scan, each with its own defocus offset and probe
           shift drawn from these spreads; the diffraction patterns are averaged. No shot noise anywhere yet; atomic
           vibration only in §07, B.</td></tr>
         <tr><td>reconstruction</td><td class="wrap">multislice ptychography (LSQML), 18 slices through the depth</td></tr>
         <tr><td>probe fixed</td><td class="wrap">the reconstruction is given the true probe and may not change it.
           It then has nowhere to put the beam's partial coherence but the object. A control, not an experiment.</td></tr>
-        <tr><td>probe modes</td><td class="wrap">the reconstruction describes the beam as a mixture of 7–8
-          mutually incoherent probes and refines them together with the object, so the partial coherence can go into the
-          beam where it belongs.</td></tr>
+        <tr><td>probe modes</td><td class="wrap">the beam is described as 7–8 mutually incoherent probes, refined together
+          with the object. They start from the true aberrations, made into the mixed state a real gun with that setting
+          would give: no outer search, so this is the probe known but released. The probe update runs from iteration 40 of
+          the first stage and 20 of the second, with the aperture constraint on. Only C (§07) starts from a searched
+          probe.</td></tr>
         <tr><td>strongest mode</td><td class="wrap">how coherent a beam is: the share of its intensity in its single
           most coherent component. 100 % is a perfectly coherent beam.</td></tr>
         <tr><td>vacuum / slab</td><td class="wrap">how much false structure the reconstruction puts in the empty
@@ -197,7 +203,7 @@
   </section>
 
   <section id="s2">
-    <div class="sec-head"><span class="sec-num">02</span><h2>Focal spread alone</h2></div>
+    <div class="sec-head"><span class="sec-num">02</span><h2>Chromatic chromatic focal spread alone</h2></div>
     <div class="call qa ok">
       <span class="k">Question</span><span class="v">How much spread of focus (from the beam's energy spread) can the depth take, with the true probe given?</span>
       <span class="k">Answer</span><span class="v">Up to 3.5 Å rms: good. From 5 Å: off.</span>
@@ -220,13 +226,13 @@
     <div class="sec-head"><span class="sec-num">03</span><h2>Source size alone</h2></div>
     <div class="call qa warn">
       <span class="k">Question</span><span class="v">How large can the source be (the gun's emitting area, demagnified onto the specimen)?</span>
-      <span class="k">Answer</span><span class="v">0.1 Å: good. 0.2 Å: okay, Ti lost. 0.4 Å: off. Real effective sources are quoted at 0.24–0.6 Å.</span>
-      <span class="k">How it fails</span><span class="v">Differently from focal spread: the vacuum stays clean while the columns lose their atom-by-atom contrast. Ti goes first. Caveat: our simulated source is the kind case (at 0.2 Å, 9 modes hold 99 % of its beam, where a real source needs about 17).</span>
+      <span class="k">Answer</span><span class="v">0.1 Å: good. 0.2 Å: okay, Ti lost. 0.4 Å: off. For scale: on the Mono at 80 mrad the gun's source image is 0.1 Å at about 4–9 pA and 0.2 Å at 17–37 pA (§06).</span>
+      <span class="k">How it fails</span><span class="v">Differently from chromatic focal spread: the vacuum stays clean while the columns lose their atom-by-atom contrast. Ti goes first. Caveat: our simulated source is the kind case (at 0.2 Å, 9 modes hold 99 % of its beam, where a real source needs about 17).</span>
     </div>
     {{FRAG_SOURCE_TABLE}}
     <figure class="wide">
       {{FIG_SOURCE_STRIP}}
-      <figcaption><span class="fig-name">fig_strip_source.png</span> Read as the focal-spread strip.</figcaption>
+      <figcaption><span class="fig-name">fig_strip_source.png</span> Read as the chromatic focal-spread strip.</figcaption>
     </figure>
     {{FRAG_SOURCE_TABS}}
   </section>
@@ -236,7 +242,7 @@
     <div class="call qa stop">
       <span class="k">Question</span><span class="v">With both imperfections at once, does the worse one decide, or do they add?</span>
       <span class="k">Answer</span><span class="v">They add. A 0.1 Å source leaves 2.5 Å good but drops 3.5 Å to okay; a 0.2 Å source puts both off, though each part passed alone.</span>
-      <span class="k">How it fails</span><span class="v">Like the source alone (smeared columns), plus the focal spread's false structure in the vacuum at 3.5 Å.</span>
+      <span class="k">How it fails</span><span class="v">Like the source alone (smeared columns), plus the chromatic focal spread's false structure in the vacuum at 3.5 Å.</span>
     </div>
     {{FRAG_JOINT_GRID}}
     {{FRAG_JOINT_FIG}}
@@ -246,7 +252,7 @@
     <div class="sec-head"><span class="sec-num">05</span><h2>Probe modes</h2></div>
     <div class="call qa warn">
       <span class="k">Question</span><span class="v">With the probe fixed, the beam's partial coherence can only go into the object. If the reconstruction instead refines the beam as 7–8 modes (started from the mixed beam a real gun would give), how much comes back?</span>
-      <span class="k">Answer</span><span class="v">Part of it. At 7.29 Å focal spread, off → okay (Pb 31 → 70 %). The other three points are rerunning after a solver bug fix, below.</span>
+      <span class="k">Answer</span><span class="v">Part of it. At 7.29 Å chromatic focal spread, off → okay (Pb 31 → 70 %). The other three points are rerunning after a solver bug fix, below.</span>
     </div>
     <!-- FILL modes (reruns): when the fs5 / src0p2 / src0p4 points land (provisional first, then _mix16), add a sentence
          per point; say whether its mode powers stayed near the start before reading its atoms. -->
@@ -268,37 +274,56 @@
   <section id="s6">
     <div class="sec-head"><span class="sec-num">06</span><h2>Which microscope: the Spectra 300 X-FEG Mono</h2></div>
     <div class="call qa ok">
-      <span class="k">Question</span><span class="v">Which microscopes give a focal spread inside the limit of §02?</span>
+      <span class="k">Question</span><span class="v">Which microscopes give a chromatic focal spread inside the limit of §02?</span>
       <span class="k">Answer</span><span class="v">The UltiMono, with margin. The Mono, at the 90 meV Cambridge
       quotes (if C<sub>c</sub> ≤ about 2 mm), but not at its 0.2 eV specification. A Titan's Wien monochromator reaches the
       band between good and off only at its best (~0.1 eV). The ARM's cold FEG or an unmonochromated X-FEG, no.</span>
-      <span class="k">Our choice</span><span class="v">The Spectra 300 X-FEG Mono: inside on focal spread, current and widely
+      <span class="k">Our choice</span><span class="v">The Spectra 300 X-FEG Mono: inside on chromatic focal spread, current and widely
       installed, and with a corrector that corrects A5, so the ARM aberrations we keep are pessimistic for it. Its weak
-      point is the source: a Schottky X-FEG's source is larger than a cold FEG's, which is why the source size is the first
-      piece of physics put back (§07, A).</span>
-      <span class="k">Caveat</span><span class="v">This is focal spread only. Source size (§03) and ripple are not on this axis, and with real sources the joint result of §04 is the one that counts.</span>
+      point is the source: a Schottky X-FEG is less bright than a cold FEG and the monochromator cuts the brightness further,
+      so a small source at the sample costs probe current (below). That is why the source size is the first piece of
+      physics put back (§07, A).</span>
+      <span class="k">Caveat</span><span class="v">This axis is the chromatic focal spread only. The source size has its own figure below; ripple is not modelled.</span>
     </div>
     <figure class="wide">
       {{FIG_INSTRUMENTS}}
       <figcaption><span class="fig-name">fig_instruments.png</span>
         <div class="howto"><b>How to read it</b> Bands: good, the wall and off, from §02 (triangles: the points tested).
-          Bars: the focal spread each instrument gives over its range of ΔE and C<sub>c</sub>. Log scale.</div>
+          Bars: the chromatic focal spread each instrument gives over its range of ΔE and C<sub>c</sub>. Log scale.</div>
       </figcaption>
     </figure>
     {{FRAG_INSTR_TABLE}}
     <ul>
       <li><b>C<sub>c</sub></b> is unpublished for the Spectra 300, hence its range (its 0.2 eV specification gives 4.9 Å at
         1.4 mm, 8.3 Å at 2.4 mm); 2.4 mm is the Titan 80-300 with its CESCOR corrector.</li>
-      <li><b>Ripple</b> in the high tension and lens currents adds focal spread, so every bar is a lower bound.</li>
-      <li><b>Source size</b> is not on this axis: with real sources (0.24–0.6 Å) the joint result of §04 is the one that
-        counts, so these bands are the generous reading.</li>
+      <li><b>Ripple</b> in the high tension and noise in the lens currents spread the focus further, on top of the chromatic
+        part, so every bar is a lower bound.</li>
+      <li><b>Source size</b> is not on this axis: it has its own figure below.</li>
     </ul>
+    <h3>And the source size at the sample</h3>
+    <p>The gun's source image at the sample is set by its brightness and the probe current: d = (2 / πα) √(I / B<sub>r</sub>V).
+      At 80 mrad it is much smaller, for the same current, than at the 25–40 mrad where effective sources are usually
+      measured. On the Mono at 90 meV the gun's own part stays at 0.1 Å up to about 4–9 pA and at 0.2 Å up to about
+      17–37 pA. At 5 pA, a dose of 1e7 e/Å² over our 20 × 20 Å scan takes about two minutes: a small source costs scan time,
+      which a cold stage's drift has to allow.</p>
+    <figure class="wide">
+      {{FIG_SOURCE}}
+      <figcaption><span class="fig-name">fig_source_current.png</span>
+        <div class="howto"><b>How to read it</b> Lines: the gun's source image at the sample (FWHM) against probe current,
+          at 80 mrad and 300 kV, for the X-FEG with and without the monochromator. Bands: the X-FEG's quoted reduced
+          brightness, 0.7–1.5 × 10<sup>8</sup> A/(m² sr V) (Thermo Fisher); with the monochromator at 90 meV we take that
+          divided by about 8, the share of the gun's ~0.7 eV that the slit keeps (an estimate, not a measurement). Dashed:
+          the sizes tested here, with their verdicts. Black bars: the Mono's current range for 0.1 and 0.2 Å. Grey band:
+          effective sources measured at 25–40 mrad, which include vibration and other jitter on top of the gun's image;
+          that jitter is in neither this figure nor our runs. Top axis: the time for 1e7 e/Å² over the 20 × 20 Å scan.</div>
+      </figcaption>
+    </figure>
   </section>
 
   <section id="s7">
     <div class="sec-head"><span class="sec-num">07</span><h2>The physics put back, at the Spectra Mono's setting</h2></div>
     <div class="call qa warn">
-      <span class="k">Question</span><span class="v">At the Spectra Mono's setting (2.5 Å of focal spread, about
+      <span class="k">Question</span><span class="v">At the Spectra Mono's setting (2.5 Å of chromatic focal spread, about
       90 meV through C<sub>c</sub> ≈ 1.6 mm), does the depth survive as the physics is put back one piece at a time:
       (A) the source size, (B) atomic vibration, cooled to 100 K or 20 K, (C) a probe found from the data rather
       than given? Shot noise (D) comes next.</span>
@@ -307,12 +332,12 @@
     <figure class="wide">
       {{FIG_WHERE}}
       <figcaption><span class="fig-name">fig_where_it_works.png</span>
-        <div class="howto"><b>How to read it</b> Where it works. Top: the focal spread the Spectra 300 monochromators give
+        <div class="howto"><b>How to read it</b> Where it works. Top: the chromatic focal spread the Spectra 300 monochromators give
           (from §06): the Mono at the 90 meV quoted in use and at its 0.2 eV specification, and the UltiMono. Below: every
-          run with the source and vibration put back, at its focal spread, one row per setting. Square colour: the verdict
+          run with the source and vibration put back, at its chromatic focal spread, one row per setting. Square colour: the verdict
           (green good, amber okay, red off). Hollow: the true probe held fixed; filled: probe modes. Numbers: Pb / Ti % at
-          the right depth. Grey: running. Background: the good, wall and off bands of §02, for focal spread alone. Where a
-          hollow and a filled square share a focal spread, they are the same run, fixed and with modes, drawn side by
+          the right depth. Grey: running. Background: the good, wall and off bands of §02, for chromatic focal spread alone. Where a
+          hollow and a filled square share a chromatic focal spread, they are the same run, fixed and with modes, drawn side by
           side.</div>
       </figcaption>
     </figure>
@@ -357,10 +382,10 @@
       <div><span class="lg-t">Probe modes move the wall</span><span class="chip c-warn">partly</span>
         <span class="lg-d">At 7.29 Å off → okay, and at the Mono point 2.5 Å + 0.2 Å off → okay; the single points are
           rerunning with the corrected solver (§05, §07).</span></div>
-      <div><span class="lg-t">Focal spread costs more depth than source size</span><span class="chip c-warn">partly</span>
-        <span class="lg-d">At equal coherence the focal spread is worse; a likely reason: focus is what multislice reads as depth.</span></div>
+      <div><span class="lg-t">Chromatic chromatic focal spread costs more depth than source size</span><span class="chip c-warn">partly</span>
+        <span class="lg-d">At equal coherence the chromatic focal spread is worse; a likely reason: focus is what multislice reads as depth.</span></div>
       <div><span class="lg-t">A widespread monochromated instrument gets past the wall</span><span class="chip c-warn">partly</span>
-        <span class="lg-d">In focal spread: the UltiMono yes; the Mono at the 90 meV quoted in use, not at its 0.2 eV
+        <span class="lg-d">In chromatic focal spread: the UltiMono yes; the Mono at the 90 meV quoted in use, not at its 0.2 eV
           specification; the Titan Wien only to the edge, at its best. The source size and ripple decide it (§06).</span></div>
       <div><span class="lg-t">Cooling restores the depth</span><span class="chip c-warn">partly</span>
         <span class="lg-d">For Pb, with probe modes: 51 % at 100 K, 70 % at 20 K. Not for Ti, at either. Room-temperature
