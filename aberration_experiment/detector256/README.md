@@ -2,10 +2,14 @@
 
 ## Status (2026-10-23)
 
-- **Built and tested locally; nothing submitted yet.** The user's next step on Blythe (after `git pull`):
-  `bash aberration_experiment/detector256/submit.sh`, which runs R1 and R2 with an analysis for each. R3 (optional) is
-  `... submit.sh r3`, run once R2's rebin jobs have finished. R4 is `... submit.sh r4`, only if R2 works. Each command
-  prints its own `scp -O` pull lines.
+- **R1 + R2 SUBMITTED 2026-10-23 16:11** (`submit.sh`; log `logs/detector256_r1r2_20261023_161114.txt` on Blythe; every
+  guard passed there; the kept lab sim confirmed at (1600, 1420, 1420), the reference geometry).
+  R1 `_detc96`: rebin jobs 1339556 / 58 / 60 (lab / Pb / Ti), recons 1339557 / 59 / 61, pack 1339562, analysis 1339563.
+  R2 `_detc96b4_up2`: rebin jobs 1339564 / 66 / 68, recons 1339565 / 67 / 69, pack 1339570, analysis 1339571.
+  Next: a crash check ~30 min into the recons (the MATLAB changes never ran before: `grep -E "upsampl|kept as it
+  is|Probe amplitude|Ndp|NaN" recon_af_armf_a080_lab_fs2p5_src0p1_detc96*_NL18/slurm_*.out`); pull to
+  `~/Desktop/detector256_r1r2` once 1339563 and 1339571 are COMPLETED. R3 (optional): `... submit.sh r3` once R2's rebin
+  jobs are done. R4: `... submit.sh r4`, only if R2 works.
 - **The frame question is settled by test, not argument.** `test_upsampling_frame.py` ports the engine's data and
   model path line by line to numpy. The 256-px data equal the engine's own 4 × 4 binning of the full-pixel truth (up to
   the one scale factor the engine fits at iteration 0), in the same array frame (max relative difference 3e-8). On the
