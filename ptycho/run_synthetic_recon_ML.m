@@ -175,6 +175,17 @@ if ~isempty(pn_env)
     Np_presolve(1) = 2*floor(str2double(pn_env)/2);       % keep it even
     fprintf('PRESOLVE_NDP: presolve detector width forced to %d (full Ndpx = %d)\n', Np_presolve(1), Ndpx);
 end
+% UPSAMPLING=k (2026-10-23, aberration_experiment/detector256): the data's pixels are 2^k x 2^k sums (sim/rebin_detector.py)
+% and the solver models them -- each pattern computed on the 2^k-finer grid, summed into the detector's pixels before the
+% comparison (p.detector.upsampling; Batey et al., PRA 89, 043812, 2014). The window grows 2^k-fold at the same object
+% pixel. probe_initial.mat must already be on that fine grid (sim/rebin_detector.py writes it; core/ptycho_model_probe.m
+% keeps it). Everything above stays in DETECTOR pixels (Ndpx, d_alpha, the 1.2 alpha guard); the engine sees the data
+% unbinned to the fine grid, so its presolve width is given in fine pixels below. A presolve crop stays block-aligned: the
+% detector widths are even, so (Ndpx - Np_presolve)/2 detector pixels are a whole number of 2^k-blocks.
+up_env = getenv('UPSAMPLING');
+upsampling = 0; if ~isempty(up_env); upsampling = round(str2double(up_env)); end
+fprintf('detector upsampling = %d (model grid %d px, data %d px; presolve %d data px)\n', upsampling, ...
+        Ndpx*2^upsampling, Ndpx, Np_presolve(1));
 Niter_save_results        = [50,  50];
 Niter_save_exit_wave      = [200, 200];
 strcustom0                = 'synthetic_ML';
@@ -242,7 +253,7 @@ p.   detector.name           = 'empad';
 p.   detector.check_2_detpos = [];
 p.   detector.data_prefix    = '';
 p.   detector.binning        = false;
-p.   detector.upsampling     = false;
+p.   detector.upsampling     = upsampling;              % 0 = off (every run before 2026-10-23)
 p.   detector.burst_frames   = 1;
 p.   prepare.data_preparator        = 'matlab_aps';
 p.   prepare.auto_prepare_data      = true;
@@ -335,7 +346,7 @@ for ieng = 1:length(Niter)
     eng. check_gpu_load = true;
 
     eng. number_iterations   = Niter(ieng);
-    eng. asize_presolve      = [Np_presolve(ieng), Np_presolve(ieng)];
+    eng. asize_presolve      = [Np_presolve(ieng), Np_presolve(ieng)] * 2^upsampling;   % engine (fine) pixels
     eng. method              = 'MLs';
     eng. opt_errmetric       = 'L1';
     eng. grouping            = grouping(ieng);

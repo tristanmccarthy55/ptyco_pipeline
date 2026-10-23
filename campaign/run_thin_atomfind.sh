@@ -124,13 +124,47 @@ fi
 KICK_ALL="${KICK_ALL:-0}"
 # (never `VAR=$([ test ] && echo x)`: a false test fails the substitution and set -e exits the script)
 PYBIN="${CONDA_ENV:-${SHARE:-}/phucrh/envs/abtem}/bin/python"
+# DETECTOR (2026-10-23, aberration_experiment/detector256): record each leg's sim on a smaller camera, without re-simulating.
+# DET_CROP_MRAD keeps +- that angle, DET_BIN sums DET_BIN x DET_BIN pixels (a CPU job, sim/rebin_detector.py, writes
+# sim_out_af_<leg>_<mode><SFX>_det[c<crop>][b<bin>] beside the sim, which is never touched or cleaned); every leg (lab, Pb,
+# Ti alike: the kernels see the same camera) then reconstructs that copy with the true probe fixed, on the grid the solver
+# models (probe_initial_true_up<k>.mat). UPSAMPLING=k has the solver model the summed pixels (p.detector.upsampling,
+# 2^k = DET_BIN; recon dirs gain _up<k>); without it a binned leg models only the detector's own (2^k smaller) window.
+#   RECON_ONLY=1 LABELS=armf_a080 TSV=campaign/ceos_sweep.tsv GROUPING="32;16" PACK_H5=0 FOCAL_SPREAD=2.5 SOURCE_FWHM=0.1 \
+#     DET_CROP_MRAD=96 DET_BIN=4 UPSAMPLING=2 bash campaign/run_thin_atomfind.sh     # -> ..._fs2p5_src0p1_detc96b4_up2
+# Known-probe legs only for now: refused with DOSES, kicks or searches.
+DET_CROP_MRAD="${DET_CROP_MRAD:-}"; DET_BIN="${DET_BIN:-1}"; UPSAMPLING="${UPSAMPLING:-}"
+DTAG=""; UTAG=""
+if [ -n "$DET_CROP_MRAD" ] || [ "$DET_BIN" != 1 ] || [ -n "$UPSAMPLING" ]; then
+    case "$DET_BIN" in 1|2|4|8) ;; *) echo "DET_BIN=${DET_BIN}: 1, 2, 4 or 8 (the engine upsamples by 2^k)" >&2; exit 1;; esac
+    if [ -n "$DET_CROP_MRAD" ]; then
+        [[ "$DET_CROP_MRAD" =~ ^[0-9]*\.?[0-9]+$ ]] && awk -v x="$DET_CROP_MRAD" 'BEGIN{exit !(x > 0)}' \
+            || { echo "DET_CROP_MRAD=${DET_CROP_MRAD}: a positive angle in mrad" >&2; exit 1; }
+    fi
+    [ -n "$DET_CROP_MRAD" ] || [ "$DET_BIN" != 1 ] \
+        || { echo "UPSAMPLING=${UPSAMPLING} needs a binned detector (DET_BIN)" >&2; exit 1; }
+    case "${UPSAMPLING:-0}" in
+        0) ;;
+        1|2|3) [ $(( 1 << UPSAMPLING )) = "$DET_BIN" ] \
+                   || { echo "UPSAMPLING=${UPSAMPLING} models $(( 1 << UPSAMPLING )) x $(( 1 << UPSAMPLING )) sums: needs DET_BIN=$(( 1 << UPSAMPLING ))" >&2; exit 1; }
+               UTAG="_up${UPSAMPLING}";;
+        *) echo "UPSAMPLING=${UPSAMPLING}: 0-3, with 2^UPSAMPLING = DET_BIN" >&2; exit 1;;
+    esac
+    [ -z "${DOSES}${KICK_LABELS:-}${SEARCH_C1F:-}${SEARCH_C3F:-}" ] && [ "$KICK_ALL" = 0 ] && [ "${PSEARCH:-0}" = 0 ] \
+        || { echo "DET_CROP_MRAD / DET_BIN: known-probe legs only (not with DOSES, KICK_*, SEARCH_* or PSEARCH)" >&2; exit 1; }
+    [ -x "${PYBIN}" ] || { echo "DET_CROP_MRAD / DET_BIN set but no abtem env python at ${PYBIN} (sim/rebin_detector.py)" >&2; exit 1; }
+    DTAG="_det"; [ -n "$DET_CROP_MRAD" ] && DTAG="${DTAG}c$(coh_num "$DET_CROP_MRAD")"; [ "$DET_BIN" != 1 ] && DTAG="${DTAG}b${DET_BIN}"
+fi
 # Tarball name to the second, tagged by alphas (+doses): submissions pasted together must not share one.
 TS="$(date +%Y%m%d_%H%M%S)"
-TAG="$([ -n "$LABELS" ] && echo "$(echo ${LABELS} | tr ' ' '-')" || echo "a$(echo ${ALPHAS} | tr ' ' '-')")${DOSES:+_dose$(echo ${DOSES} | tr ' ' '-')}${SFX}${RTAG:-}"   # RTAG: a re-run's tarball is told apart too
+TAG="$([ -n "$LABELS" ] && echo "$(echo ${LABELS} | tr ' ' '-')" || echo "a$(echo ${ALPHAS} | tr ' ' '-')")${DOSES:+_dose$(echo ${DOSES} | tr ' ' '-')}${SFX}${DTAG}${UTAG}${RTAG:-}"   # RTAG: a re-run's tarball is told apart too
 PACK="${SHARE:+$SHARE/$USER}"; PACK="${PACK:-$REPO_DIR}/atomfind_results_${TAG}_${TS}.tgz"   # own subdir, not the shared group dir
 DIRS_FILE="${REPO_DIR}/logs/af_pack_${TAG}_${TS}.dirs"; : >"${DIRS_FILE}"   # this submission's recon dirs only
 WHAT="alphas: ${ALPHAS}"; [ -n "$LABELS" ] && WHAT="labels: ${LABELS}"   # ${X:+a}${X:-b} prints BOTH when X is set
 echo "full box ${BOXZ} A (THIN=${THIN} cells + 2x${ZVAC} A vac); PSF atom z=${ATOMZ}; ${WHAT}${SFX:+; suffix ${SFX}}"
+if [ -n "$DTAG" ]; then
+    echo "detector: ${DET_CROP_MRAD:+crop +-${DET_CROP_MRAD} mrad, }${DET_BIN}x${DET_BIN} sums, upsampling ${UPSAMPLING:-0}; data ${DTAG}, recon dirs ${DTAG}${UTAG}"
+fi
 
 if [ -n "$DOSES" ] && [ ! -x "${PYBIN}" ]; then echo "DOSES set but no abtem env python at ${PYBIN}" >&2; exit 1; fi
 
@@ -207,6 +241,13 @@ noise_job(){ # $1 noiseless sim dir $2 noisy out dir $3 dose $4 seed [$5 sim job
         --output="logs/af_noise_%j.out" --error="logs/af_noise_%j.err" \
         --wrap="'${PYBIN}' '${REPO_DIR}/sim/add_poisson_noise.py' --in-dir '${src}' --out-dir '${out}' --dose ${dose} --seed ${seed}"
 }
+rebin_job(){ # $1 sim dir $2 out dir [$3 sim job to wait for] -> jobid  (CPU; minutes: sim/rebin_detector.py, DETECTOR above)
+    local src="$1" out="$2" dep="${3:-}"
+    local dep_arg=(); [ -n "$dep" ] && dep_arg=(--dependency="afterok:${dep}")
+    sbatch --parsable --job-name="af_rebin_$(basename "$out" | sed 's/^sim_out_af_//')" --time=01:00:00 --mem=32G --cpus-per-task=2 \
+        ${dep_arg[@]+"${dep_arg[@]}"} --output="logs/af_rebin_%j.out" --error="logs/af_rebin_%j.err" \
+        --wrap="'${PYBIN}' '${REPO_DIR}/sim/rebin_detector.py' --in-dir '${src}' --out-dir '${out}'${DET_CROP_MRAD:+ --crop-mrad ${DET_CROP_MRAD}} --bin ${DET_BIN}"
+}
 recon_job(){ # $1 name $2 datadir $3 bin $4 nl $5 dep -> jobid  (true probe fixed)
     local name="$1" datadir="$2" bin="$3" nl="$4" dep="$5"
     local rdir="${REPO_DIR}/recon_af_${name}_NL${nl}"; mkdir -p "${rdir}/01"
@@ -216,7 +257,9 @@ recon_job(){ # $1 name $2 datadir $3 bin $4 nl $5 dep -> jobid  (true probe fixe
     # only matches */analysis/*, so an analysis.prev_* dir is never shipped.
     if [ -d "${rdir}/analysis" ]; then mv "${rdir}/analysis" "${rdir}/analysis.prev_$(date +%Y%m%d_%H%M%S)"; fi
     local f; for f in "${INPUTS[@]}"; do ln -sf "${datadir}/01/${f}" "${rdir}/01/${f}"; done
-    ln -sf "${datadir}/01/probe_initial_true.mat" "${rdir}/01/probe_initial.mat"     # known aberrated probe
+    # known aberrated probe; on a smaller camera (DETECTOR above) the copy's true probe on the grid the solver models
+    local pf="probe_initial_true.mat"; [ -n "$DTAG" ] && pf="probe_initial_true_up${UPSAMPLING:-0}.mat"
+    ln -sf "${datadir}/01/${pf}" "${rdir}/01/probe_initial.mat"
     local cls; cls="$(res_class "$bin")"
     local grp; grp="$(grp_for "$cls")"; local gx=""; [ -n "$grp" ] && gx=",GROUPING=${grp}"
     # BETA_LSQ is ALWAYS forwarded, one value for every leg: it is an engine setting, so a lab leg
@@ -226,6 +269,7 @@ recon_job(){ # $1 name $2 datadir $3 bin $4 nl $5 dep -> jobid  (true probe fixe
     # 0.05 because a100_Ti diverged to NaN at 0.1. REGLAYER stays 0 for EVERY leg: it symmetrizes
     # information between layers, i.e. low-passes the depth axis. See aberration_experiment/PSF_KERNELS.md.
     gx="${gx},BETA_LSQ=${BETA_LSQ}"
+    [ -n "$UTAG" ] && gx="${gx},UPSAMPLING=${UPSAMPLING}"          # the solver models the summed pixels (DETECTOR above)
     local dep_arg=(); [ -n "$dep" ] && dep_arg=(--dependency="afterok:${dep}")   # empty dep (RECON_ONLY) -> run now
     sbatch --parsable --job-name="af_rec_${name}" --time="$(rtime_for "$cls")" --mem="$(mem_for "$cls")" \
         ${dep_arg[@]+"${dep_arg[@]}"} --output="${rdir}/slurm_%j.out" --error="${rdir}/slurm_%j.err" \
@@ -456,6 +500,22 @@ for a in $ROWS; do
     [ -n "${ROW_SIDE:-}" ] && line+="box=${ROW_SIDE} win=${ROW_WIN:-$WIN} step=${ROW_STEP:-$STEP} det=${ROW_DETMAX:-200} class=$(res_class "$bin") "
     for m in $MODES; do                       # MODES="Pb Ti" re-does only the PSF kernels
         D="${REPO_DIR}/sim_out_af_${leg}_${m}${SFX}"
+        if [ -n "$DTAG" ]; then                # a smaller camera on the sim (DETECTOR above), as DOSES does with noise
+            S=""
+            if [ ! -e "${D}/01/data_dp.hdf5" ]; then   # not there: simulate it in this submission, then rebin it
+                [ "${RECON_ONLY:-0}" = "1" ] && { echo "  ${leg} ${m}: ${D}/01/data_dp.hdf5 missing and RECON_ONLY=1" >&2; exit 1; }
+                S=$(sim_job "$D" "$alpha" "$bin" "$c3" "$c1" "$m" "$aj"); SIM_DIRS+=("$D"); line+=" ${m}:sim=${S}"
+            fi
+            DN="${D}${DTAG}"
+            if [ "${RECON_ONLY:-0}" = "1" ] && [ -e "${DN}/01/rebin_detector.json" ]; then   # written last: the copy is whole
+                N=""; line+=" ${m}${DTAG}:reuse"      # rewriting it could pull the data from under a running leg
+            else
+                N=$(rebin_job "$D" "$DN" "$S"); line+=" ${m}${DTAG}:rebin=${N}"
+            fi
+            SIM_DIRS+=("$DN")                      # the copy only: a kept sim stays (CLEANDATA)
+            submit_legs "${leg}_${m}${SFX}${DTAG}${UTAG}" "$DN" "$N" "$m" 0
+            continue
+        fi
         if [ -n "$DOSES" ]; then               # step 2: Poisson copies of the noiseless sim
             S=""
             if [ ! -e "${D}/01/data_dp.hdf5" ]; then   # not there yet: simulate it in this submission, then noise it

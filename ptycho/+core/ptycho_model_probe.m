@@ -205,7 +205,14 @@ else
 %     end
     verbose(3, 'File %s loaded successfully.', p.initial_probe_file);
 
-    if ~all([size(probe,1) size(probe,2)] == asize)
+    % With data upsampling the solver models the probe on the 2^k-finer grid (core.apply_binning later crop_pads the probe
+    % to asize*2^k in REAL space, i.e. zero-pads a detector-size probe). A probe written on that fine grid is kept as it
+    % is: resampling it to asize here would shrink it 2^k-fold. (2026-10-23, aberration_experiment/detector256)
+    if isfield(p.detector,'upsampling') && p.detector.upsampling && ...
+            all([size(probe,1) size(probe,2)] == asize*2^p.detector.upsampling)
+        verbose(2,'Loaded probe (%d,%d) is on the %dx upsampled grid: kept as it is.', size(probe,1), size(probe,2), ...
+                2^p.detector.upsampling);
+    elseif ~all([size(probe,1) size(probe,2)] == asize)
         verbose(2,'Loaded probe has the wrong size.');
         verbose(2,'Interpolating probe in file %s, from (%d,%d) to (%d,%d).', p.initial_probe_file,size(probe,1),size(probe,2),asize(1),asize(2));
         probe = interpolateFT(probe,asize);

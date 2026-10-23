@@ -152,7 +152,9 @@ else
     ind_range = 1:Nind;
 end
 if mod(iter, par.p.save_results_every_exit_wave)==0
-    exit_wave = single(zeros([par.Np_p_presolve,par.p.numpos]));
+    % the buffer holds abs(aPsi), which is on the DETECTOR grid: 2^k coarser than the model with data upsampling
+    % (unchanged without it). At full size the assignment below failed at the last iteration. (2026-10-23, detector256)
+    exit_wave = single(zeros([par.Np_p_presolve / 2^par.upsampling_data_factor, par.p.numpos]));
 end
 %% apply updated in parallel over sets indices{jj}
 for  jj = ind_range

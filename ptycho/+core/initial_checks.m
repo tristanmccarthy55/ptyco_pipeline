@@ -212,7 +212,12 @@ end
 
 % binning is only supported by Matlab data preparation
 if isfield(p.detector,'upsampling')&& p.detector.upsampling
-    p.prepare.data_preparator = 'matlab_ps';
+    % matlab_aps is a Matlab preparator too, with the same binning.m (it unbins the data the same way), and it is the one
+    % that reads the synthetic data_dp.hdf5 (h5read '/dp'); matlab_ps reads through the cSAXS MEX reader instead. Keep it.
+    % (2026-10-23, aberration_experiment/detector256)
+    if ~strcmpi(p.prepare.data_preparator, 'matlab_aps')
+        p.prepare.data_preparator = 'matlab_ps';
+    end
     verbose(1, 'Using data upsampling %ix%i, switching to matlab data loading', 2^p.detector.upsampling, 2^p.detector.upsampling)
 else
     p.detector.upsampling = false; 

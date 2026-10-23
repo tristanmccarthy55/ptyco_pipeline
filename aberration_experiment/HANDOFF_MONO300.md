@@ -29,6 +29,9 @@ rules), and `page/ARM_PAGE.md` (the results page and the honest atom scoring). W
   submit scripts in `mono300/` with guards (engine fix pulled, exported job variables, dry runs, sims present).
 - The results page (memory `mono-results-page`, `page/MONO_PAGE.md`) is at version 5 (2026-10-21: A, B, the failed C
   and its search table in a new §06); C's rerun and the `_mixF` points are marked pending on it.
+- **Side test, 2026-10-23: is a 256 x 256 camera enough?** (`detector256/README.md`, status at its top): the joint point's
+  data re-recorded on smaller cameras (`sim/rebin_detector.py`; driver `DET_CROP_MRAD` / `DET_BIN` / `UPSAMPLING`), the
+  solver modelling the summed pixels (`p.detector.upsampling`, five engine fixes, frame unit test). R1 + R2 handed over.
 
 ## The goal (the user, 2026-10-12)
 

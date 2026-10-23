@@ -74,7 +74,10 @@ function p = apply_binning(p, binning)
     if check_option(p,'prop_regime', 'farfield')
         p.object_size = p.object_size + ( 1/binning-1)*p.asize ;
         for ii = 1:p.numobjs
-            p.object{ii} = utils.crop_pad(p.object{ii},p.object_size(ii,:));  % crop_pad is better when if the binned reconstruction is loaded from file as an initial guess 
+            % upsampling (binning < 1) GROWS the object by the extra window: pad with the object's mean, as load_from_p pads
+            % it, not with 0 -- a zero ring is an opaque object under the probe's tails, a different start from the same
+            % recon at full pixels. Binning only crops, so the fill never applies there. (2026-10-23, aberration_experiment/detector256)
+            p.object{ii} = utils.crop_pad(p.object{ii},p.object_size(ii,:), mean(p.object{ii}(:)));  % crop_pad is better when if the binned reconstruction is loaded from file as an initial guess
         end
 
         p.asize = p.asize/binning;
