@@ -202,7 +202,7 @@
    "group": "modes",
    "control": "fs5",
    "modes": 7,
-   "pending": "rerunning with the solver bug fixed (set off 2026-10-20, about 32 h; job ids in PHASE1.md)",
+   "pending": "the rerun with the solver bug fixed has not been pulled",
    "legs": [
     "armf_a080_lab_fs5_mixF",
     "armf_a080_lab_fs5_mix16",
@@ -224,7 +224,7 @@
    "group": "modes",
    "control": "fs7p29",
    "modes": 8,
-   "pending": "rerunning with the solver bug fixed (set off 2026-10-20, about 32 h; job ids in PHASE1.md)",
+   "pending": "the rerun with the solver bug fixed has not been pulled",
    "legs": [
     "armf_a080_lab_fs7p29_mixF",
     "armf_a080_lab_fs7p29_mix"
@@ -246,7 +246,7 @@
    "group": "modes",
    "control": "src0p2",
    "modes": 8,
-   "pending": "rerunning with the solver bug fixed (set off 2026-10-20, about 32 h; job ids in PHASE1.md)",
+   "pending": "the rerun with the solver bug fixed has not been pulled",
    "legs": [
     "armf_a080_lab_src0p2_mixF",
     "armf_a080_lab_src0p2_mix16",
@@ -269,7 +269,7 @@
    "group": "modes",
    "control": "src0p4",
    "modes": 8,
-   "pending": "rerunning with the solver bug fixed (set off 2026-10-20, about 32 h; job ids in PHASE1.md)",
+   "pending": "the rerun with the solver bug fixed has not been pulled",
    "legs": [
     "armf_a080_lab_src0p4_mixF",
     "armf_a080_lab_src0p4_mix16",
@@ -391,28 +391,46 @@
    "modes": 8,
    "pending": "1329311/314/317 fixed, 1329312/315/318 modes, analyses 1329320/321"
   },
-  "searched": {
+  "searched_first": {
    "tag": [
-    "armf_a080_fs2p5_src0p1_s3_ps",
     "armf_a080_fs2p5_src0p1_ps"
    ],
    "legs": [
-    "armf_a080_lab_fs2p5_src0p1_s3_ps",
     "armf_a080_lab_fs2p5_src0p1_ps"
    ],
    "leg": "armf_a080_lab_fs2p5_src0p1_ps",
-   "short": "searched start",
-   "name": "2.5 A + 0.1 A, probe found by an outer search from a drawn start, then probe modes",
+   "short": "first search",
+   "name": "2.5 A + 0.1 A, the first (2-stage) outer search, then probe modes: failed on its order",
+   "fs": 2.5,
+   "src": 0.1,
+   "group": "searched_first",
+   "control": "ceil_s01",
+   "modes": 8,
+   "search_dirs": [
+    "search_af_armf_a080_lab_fs2p5_src0p1"
+   ],
+   "pending": "not pulled",
+   "no_atoms": "failed: no atoms"
+  },
+  "searched": {
+   "tag": [
+    "armf_a080_fs2p5_src0p1_s3_ps"
+   ],
+   "legs": [
+    "armf_a080_lab_fs2p5_src0p1_s3_ps"
+   ],
+   "leg": "armf_a080_lab_fs2p5_src0p1_s3_ps",
+   "short": "3-stage search",
+   "name": "2.5 A + 0.1 A, probe found by a 3-stage outer search from a drawn start, then probe modes",
    "fs": 2.5,
    "src": 0.1,
    "group": "searched",
    "control": "ceil_s01",
    "modes": 8,
    "search_dirs": [
-    "search_af_armf_a080_lab_fs2p5_src0p1_s3",
-    "search_af_armf_a080_lab_fs2p5_src0p1"
+    "search_af_armf_a080_lab_fs2p5_src0p1_s3"
    ],
-   "pending": "the rerun with a third search stage (set off 2026-10-20; job ids in PHASE1.md)"
+   "pending": "not pulled"
   }
  },
  "instruments": [
@@ -525,7 +543,7 @@
   0.6
  ],
  "real_source_note": "effective source size at the specimen, 24-60 pm (Müller et al. 2006), measured with 25-40 mrad apertures and including instabilities",
- "phase2": "Phase 2 (B): phonons at 100 K (liquid-nitrogen holders) and 20 K (liquid helium; the Debye model's zero-point floor) at 2.5 A + 0.1 A. Room temperature is out. Next: D, the dose series 1e5-1e8 with the searched start.",
+ "phase2": "Phase 2 (B): phonons at 100 K (liquid-nitrogen holders) and 20 K (liquid helium; the Debye model's zero-point floor) at 2.5 A + 0.1 A. Room temperature is out. C, the probe found by a 3-stage outer search, works (okay). Next: D, the dose series 1e5-1e8 with the search.",
  "sources": {
   "cam": {
    "short": "Cambridge",

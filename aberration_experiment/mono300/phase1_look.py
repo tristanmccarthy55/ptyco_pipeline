@@ -8,7 +8,9 @@ the beam in its first mode (the sim's own 16-configuration state, read from mode
 the rms phase per slice in the two vacuum bands over that in the slab, and for a probe-mode leg the start and recovered
 mode powers (kick/*.json).
   step 1  ten fixed-probe controls, one effect at a time (_fixed)
-  step 2  joint points (_fs<X>_src<Y>_fixed) and probe-mode legs started from the mixed state (_mix)
+  step 2  joint points (_fs<X>_src<Y>_fixed) and probe-mode legs started from the mixed state (_mix, old engine)
+  _mixF   the four single wall points' mode legs rerun with the engine fix (all-modes illumination; rerunF.sh)
+  A/B/C   the ceiling, cooling and searched start at the Spectra Mono settings (C: first 2-stage search, then 3-stage _s3)
 Runs not pulled (or without atoms) are listed as such and drawn without rings.
 
     ~/hyperspy-bundle/bin/python aberration_experiment/mono300/phase1_look.py     # pulled to ~/Desktop/mono_phase1
@@ -42,7 +44,8 @@ CEIL = [("A ceiling", "fs 2.5 + src 0.1, modes", "fs2p5_src0p1_mixF", "fs2p5_src
         ("B cooled", "100 K, modes", "T100_mixF", "ph16_T100_fs2p5_src0p1_mixF", "fs 2.5+src 0.1", 2.5, 0.1),
         ("B cooled", "20 K, fixed", "T20_fixed", "ph16_T20_fs2p5_src0p1_mixF_fixed", "fs 2.5+src 0.1", 2.5, 0.1),
         ("B cooled", "20 K, modes", "T20_mixF", "ph16_T20_fs2p5_src0p1_mixF", "fs 2.5+src 0.1", 2.5, 0.1),
-        ("C searched", "fs 2.5 + src 0.1, searched start, modes", "fs2p5_src0p1_ps", "fs2p5_src0p1_ps", "fs 2.5+src 0.1", 2.5, 0.1)]
+        ("C searched", "fs 2.5 + src 0.1, searched start, modes", "fs2p5_src0p1_ps", "fs2p5_src0p1_ps", "fs 2.5+src 0.1", 2.5, 0.1),
+        ("C searched", "3-stage search, modes", "fs2p5_src0p1_s3_ps", "fs2p5_src0p1_s3_ps", "fs 2.5+src 0.1", 2.5, 0.1)]
 p_ = lambda v: v.replace(".", "p")
 
 
@@ -81,6 +84,11 @@ def runs():
     for k, v in MODES:
         t = f"{k}{p_(v)}"
         out.append(("step 2 modes", f"{k} {v}, modes", f"{t}_mix", {"tag": [f"armf_a080_{t}_mix"], "leg": f"armf_a080_lab_{t}_mix"},
+                    f"{k} {v}", float(v) if k == "fs" else 0.0, float(v) if k == "src" else 0.0))
+    for k, v in MODES:
+        t = f"{k}{p_(v)}"
+        out.append(("step 2 modes, engine fixed", f"{k} {v}, modes", f"{t}_mixF",
+                    {"tag": [f"armf_a080_{t}_mixF"], "leg": f"armf_a080_lab_{t}_mixF"},
                     f"{k} {v}", float(v) if k == "fs" else 0.0, float(v) if k == "src" else 0.0))
     out.append(("B cooled", "phonons only, RT (ARM page)", "split_ph", None, None, 0.0, 0.0))
     out.append(("B cooled", "phonons only, 100 K (ARM page)", "split_ph100", None, None, 0.0, 0.0))
@@ -139,8 +147,10 @@ def main():
               ("joint", ["known_a080", "fs2p5", "fs2p5_src0p1", "fs2p5_src0p2", "fs3p5", "fs3p5_src0p1", "fs3p5_src0p2",
                          "src0p1", "src0p2"]),
               ("modes", ["fs7p29", "fs7p29_mix", "fs5", "fs5_mix", "src0p2", "src0p2_mix", "src0p4", "src0p4_mix"]),
+              ("modesF", ["fs7p29", "fs7p29_mix", "fs7p29_mixF", "fs5", "fs5_mixF", "src0p2", "src0p2_mixF", "src0p4",
+                          "src0p4_mixF"]),
               ("ceiling", ["fs2p5_src0p1", "fs2p5_src0p1_mixF", "fs2p5_src0p2", "fs2p5_src0p2_mixF", "T100_fixed", "T100_mixF",
-                           "T20_fixed", "T20_mixF", "fs2p5_src0p1_ps"]))
+                           "T20_fixed", "T20_mixF", "fs2p5_src0p1_ps", "fs2p5_src0p1_s3_ps"]))
     for series, keys in sheets:
         keys = [k for k in keys if arm.load_leg(R.find(k)) is not None]
         n = len(keys)
@@ -154,7 +164,8 @@ def main():
                 arm.xz_section(ax, lg, sc, rA / lg["dx"], xlim=(nx * lg["dx"] / 2 - 8, nx * lg["dx"] / 2 + 8), show_y=(j == 0))
                 if i == 0:
                     ttl = r["point"].replace(" (fs 7.29 + src 0.4)", "\nfs 7.29 + src 0.4").replace(", modes", "\nprobe modes")
-                    ttl += "\nfixed probe" if (series == "modes" and not k.endswith("_mix")) or \
+                    ttl += " (old engine)" if series == "modesF" and k.endswith("_mix") else ""
+                    ttl += "\nfixed probe" if (series in ("modes", "modesF") and not k.endswith(("_mix", "_mixF"))) or \
                                                (series == "ceiling" and k in ("fs2p5_src0p1", "fs2p5_src0p2")) else ""
                     ttl += f"\nmode 1 {r['mode1_share']:.2f}" if r["mode1_share"] is not None else ""
                     if "right" in r:

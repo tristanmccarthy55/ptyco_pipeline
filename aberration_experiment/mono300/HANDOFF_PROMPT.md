@@ -1,5 +1,8 @@
 # Prompt for the next session -- the 300 kV monochromator experiment (written 2026-10-21)
 
+**USED 2026-10-26:** its steps 1-3 are done (C works, the `_mixF` points scored, page v16); step 4 (D) was proposed and
+awaits the user's go. Start from the STATE block atop `HANDOFF_MONO300.md` instead.
+
 Paste the block below into a new session once the Blythe queue has emptied, followed by whatever the user has pasted
 from Blythe since.
 

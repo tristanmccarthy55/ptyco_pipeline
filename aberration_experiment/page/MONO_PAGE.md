@@ -1,6 +1,13 @@
 # The Coherence Wall page — how to fill it in and republish
 
 PUBLISHED: https://claude.ai/artifact/B7ep8BpAMVdKvrnXywACq3
+- version 16, 2026-10-26: the reruns landed. §05: the four `_mixF` points (engine fixed) -- fs 5 / 7.29 off -> okay, src 0.2
+  okay -> okay, src 0.4 stays off (Pb at guessing, wrong element 47 -> 7 %); boxes on mode drift and on run-to-run scatter
+  (75 Pb / 72 Ti atoms: +-6 points counting, ~15 between single runs). §07 C: the 3-stage search works (C1 1.3 A, C3
+  0.005 um, A1 3.6 A off; overlap 0.43 -> 0.92; Pb 63 / Ti 24 %, okay, against A's 81 / 47). The run list splits C into
+  `searched_first` (group `searched_first`, `no_atoms` "failed: no atoms" labels its strip column and tab) and `searched`
+  (the `_s3_ps` legs); the search table shows stage 3 and waves to 2 significant figures. Ledger: modes move the
+  focal-spread wall, not the source wall; "finds its own probe" partly. Typo "Chromatic chromatic" fixed (h2 + nav).
 - version 15, 2026-10-21: the UltiMono on the source-vs-current figure (`ULTI_DE`): blue at its quoted 300 kV 110 meV
   (0.1 A at <= 5-10 pA, about the Mono), dashed blue at 30 meV if reached at 300 kV (<= 1-3 pA).
 - version 14, 2026-10-21: installs sorted by gun (Mono, UltiMono, monochromated-unstated, X-CFEG/unstated; ARM for

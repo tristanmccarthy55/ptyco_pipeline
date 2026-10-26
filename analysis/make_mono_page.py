@@ -125,7 +125,7 @@ def record(R, key):
 
 STATE_NOTE = {"volume": "reconstruction in, no atoms yet", "crashed": "crashed before a reconstruction",
               "provisional": "provisional: atoms read with the fixed-probe control's kernels",
-              "earlier": "earlier run, solver before the 2026-10-16 fix; its rerun is running"}
+              "earlier": "earlier run, solver before the 2026-10-16 fix"}
 
 
 def pct(sc, z, which="right"):
@@ -378,7 +378,7 @@ def fig_strip(name, keys, recs, cuts, title_of):
             if i == 0:
                 body = (f"\nPb {pct(sc, 82):.0f} vs {pct(sc, 82, 'guess'):.0f}\nTi {pct(sc, 22):.0f} vs {pct(sc, 22, 'guess'):.0f}"
                         f"\n{r['v']}{' (provisional)' if r['provisional'] else ' (earlier solver)' if r['state'] == 'earlier' else ''}") \
-                    if sc else "\nno atoms yet\n\n"
+                    if sc else f"\n{r['spec'].get('no_atoms', 'no atoms yet')}\n\n"
                 ax.set_title(f"{title_of(r)}\nstrongest mode {100 * r['w1']:.0f} %{body}", fontsize=8.5, loc="left", color=arm.INK)
             ax.set_xlabel(f"x (Å) · {cut}", fontsize=8)
     fig.tight_layout()
@@ -436,7 +436,8 @@ def series_tabs(tid, keys, recs, cuts):
         r = recs[k]
         if not r["vol"]:
             continue
-        kind = r["spec"]["name"].split(", ")[-1] + ("" if r["state"] == "in" else f"  ·  {STATE_NOTE[r['state']]}")
+        kind = r["spec"]["name"].split(", ")[-1] + ("" if r["state"] == "in" else
+                                                    f"  ·  {r['spec'].get('no_atoms') or STATE_NOTE[r['state']]}")
         p = arm.compare_fig(f"row_{k}.png", [(f"{setting(r)}  ·  {kind}", r["info"])], CUTS[0])
         panes.append((r["spec"]["short"], arm.img(p, r["spec"]["name"], maxw=1500, jpeg=80)))
     return arm.tabs(tid, panes) if panes else "<p>Nothing landed yet.</p>"
@@ -464,7 +465,7 @@ ORDER = {"off": 0, "okay": 1, "good": 2}
 
 # ====================================================================================== the Spectra Mono point (A, B, C)
 P2_KEYS = ["fs2p5_src0p1", "ceil_s01", "fs2p5_src0p2", "ceil_s02", "cool100_fixed", "cool100_mix", "cool20_fixed",
-           "cool20_mix", "searched"]
+           "cool20_mix", "searched_first", "searched"]
 LAM_A, ALPHA = 0.019687, 0.080
 
 
@@ -474,12 +475,12 @@ def p2_table(recs):
     rows = [("A", "fs2p5_src0p1", "fixed (step 2A)"), ("A", "ceil_s01", "8 modes"), ("A", "fs2p5_src0p2", "fixed (step 2A)"),
             ("A", "ceil_s02", "8 modes"), ("B", "ph_rt", "fixed"), ("B", "ph_100", "fixed"), ("B", "cool100_fixed", "fixed"),
             ("B", "cool100_mix", "8 modes"), ("B", "cool20_fixed", "fixed"), ("B", "cool20_mix", "8 modes"),
-            ("C", "searched", "searched, 8 modes")]
+            ("C", "searched_first", "first search (2 stages), 8 modes"), ("C", "searched", "3-stage search, 8 modes")]
     trs = []
     for part, k, probe in rows:
         r = recs[k]
         label = {"ph_rt": "coherent beam, room temperature", "ph_100": "coherent beam, 100 K",
-                 "searched": f"source {r['src']:g} Å, probe searched"}.get(
+                 "searched": f"source {r['src']:g} Å, probe searched", "searched_first": f"source {r['src']:g} Å, probe searched"}.get(
             k, f"source {r['src']:g} Å" + (f" + {r['spec']['temp']} K" if r["spec"].get("kind") in ("fixed", "modes") else ""))
         cls = "ref" if k in ("ph_rt", "ph_100") else ""
         lead = f"<td><b>{part}</b> {html.escape(label)}</td><td>{html.escape(probe)}</td><td>{100 * r['w1']:.0f}</td>"
@@ -487,7 +488,7 @@ def p2_table(recs):
             trs.append(f"<tr class='{cls}'>{lead}{arm.atoms_cells(r['sc'])}<td>{r['vac']:.2f}</td>{arm.vcell(r['v'])}</tr>")
         elif r["vol"]:
             why = ("failed: the search left C1 32 Å off, the reconstruction drifted into the vacuum, and the finder's Pb "
-                   "and Ti templates could not be made. A rerun with a third search stage is running." if k == "searched"
+                   "and Ti templates could not be made. Rerun with a third search stage: the next row." if k == "searched_first"
                    else "reconstruction in, no atoms yet")
             trs.append(f"<tr>{lead}<td colspan='4' class='wrap'><span class='chip c-stop'>no atoms</span> "
                        f"<span class='muted-s'>{html.escape(why)}</span></td><td>{r['vac']:.2f}</td><td>–</td></tr>")
@@ -536,13 +537,15 @@ def search_table(R, recs):
     for i in range(3):
         cells = "".join(f"<td>{fmt[i](v)}<br><span class='muted-s'>off by {errs(v)[i][0]:.3g} {'µm' if i == 1 else 'Å'}"
                         .replace(f"{errs(v)[i][0]:.3g} µm", f"{errs(v)[i][0] / 1e4:.3g} µm")
-                        + f" · {errs(v)[i][1]:.1f} waves</span></td>" for _, v in cols)
+                        + f" · {errs(v)[i][1]:.2g} waves</span></td>" for _, v in cols)
         trs.append(f"<tr><td>{names[i]}</td><td>{fmt[i](tr)}</td>{cells}</tr>")
     note = (" A third stage, C1 × C3 again at the found A1, is running." if len(stages) < 3 else "")
     return arm.table(head, trs, f"Each row is one aberration the search had to find. <b>Drawn start</b>: what an operator would "
                      f"begin with, the true value plus an error drawn at the corrector's own quoted 95 % precision (C1 39.5 Å, "
                      f"C3 0.80 µm, A1 59 Å; seed 1). <b>Stage 1</b> tries a 7 × 7 grid of C1 and C3 with A1 left at the start; "
-                     f"<b>stage 2</b> a 5 × 5 grid of A1 with C1 and C3 at stage 1's answer. Each trial is a short reconstruction "
+                     f"<b>stage 2</b> a 5 × 5 grid of A1 with C1 and C3 at stage 1's answer; <b>stage 3</b> the same 7 × 7 grid of "
+                     f"C1 and C3 again, now at stage 2's A1. The first search stopped after stage 2; the rerun took its stages 1 "
+                     f"and 2 as they were and added stage 3. Each trial is a short reconstruction "
                      f"with that probe held fixed; the answer is the lowest data error, refined by a smooth fit through its "
                      f"neighbours. <b>Waves</b>: the phase error the "
                      f"remaining mistake leaves at the edge of the 80 mrad aperture, in wavelengths; a quarter wave is the usual "
@@ -587,8 +590,8 @@ def status(recs, man):
                "the point that survives</td><td class='wrap'>searched, then modes</td><td>–</td><td><span class='chip c-none'>next"
                "</span></td></tr>")
     return arm.table(["", "what changes", "probe", "runs in", ""], trs,
-                     "Every run: 300 kV, 80 mrad, no shot noise; atomic vibration only in B. Running now: step 2B's four points, "
-                     "with a solver bug fixed (§05), and C with a third search stage (§07).")
+                     "Every run: 300 kV, 80 mrad, no shot noise; atomic vibration only in B. Step 2B's four points were rerun "
+                     "with a solver bug fixed (§05) and C with a third search stage (§07). Nothing is running; D is proposed.")
 
 
 def joint_grid(recs):

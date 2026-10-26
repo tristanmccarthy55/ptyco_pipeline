@@ -44,6 +44,50 @@ Supersedes the fixed-probe-only proposal in `HANDOFF_MONO300.md` ("Phase 1 as pr
 with modes is the method, the fixed probe is the side control. Stub dry run of `phase1_submit.sh`: 120 sbatch calls,
 `campaign/test_coh_names.sh` 26/26 first.
 
+## C rerun and the `_mixF` wall points (2026-10-26; every job COMPLETED; phase images viewed: `figs/mono300/phase1_ceiling.png`, `phase1_modesF.png`)
+
+Pulled to `~/Desktop/mono_phase1` (`*_s3_*_20261020_1311*`, `*_mixF_20261020_131729*`). Scores from `phase1_look.py` (rows
+added for `fs2p5_src0p1_s3_ps` and the four `_mixF` points; new sheet `phase1_modesF.png`). Each score counts 75 Pb and
+72 Ti bulk atoms: counting alone moves it by ~6 points (1 sigma), and single runs scatter by ~15 (fs 5 below fs 7.29).
+
+**C, the 3-stage search: works.** Stage 3 (C1 x C3 again at stage 2's A1) has a clear minimum (best trial error 6.74 vs
+stage 1's 17.28, interior, quadratic fit). Answer against `start.json`'s truth record, error and waves at the 80 mrad edge:
+
+| term | truth | first search (after stage 2) | 3-stage (after stage 3) | ci95 (corrector) |
+|---|---|---|---|---|
+| C1 | -958.6 A | -991.1 A: 32.5 A, 5.3 waves | -959.9 A: **1.3 A, 0.21 waves** | 39.5 A |
+| C3 | -406600 A | -405910 A: 690 A, 0.36 waves | -406649 A: **49 A, 0.025 waves** | 8040 A |
+| A1 | 12.4 A @ 1.468 | 15.8 A @ 1.508: 3.6 A, 0.59 waves | same (stage 2): **3.6 A, 0.59 waves** | 59 A |
+
+Over the whole aperture the leftover is 0.25 waves rms (first search 1.44), mostly A1. The refine (8 modes, mixed state on the
+searched probe) took the lab leg's mode-1 overlap with the truth from 0.435 to 0.924 (true-start A: 0.958 -> 0.988; first
+search 0.038 -> 0.74). Images: like A's (clean vacuum, same columns); both kernels made this time.
+
+| run | Pb right / guess | Ti right / guess | wrong el. | vacuum / slab | verdict |
+|---|---|---|---|---|---|
+| A: true start, modes | 81 / 22 | 47 / 20 | 4 % | 0.36 | good |
+| **C: 3-stage search, modes** | **63 / 25** | **24 / 15** | 8 % | 0.47 | **okay** |
+
+So by the hand-over rule C works (search far inside the corrector's precision; Pb okay), at a cost of ~20 points on Pb and on
+Ti against the true start (outside the ~15-point run scatter on Ti, at its edge on Pb). Likely reason: the less exact probe
+(overlap 0.92 vs 0.99), of which the leftover A1 (0.6 waves, above a quarter wave) is the largest known part. One seed.
+
+**`_mixF`, the four single wall points with the engine fix (8 modes; fs 5: 7), against step 1's fixed controls:**
+
+| point | fixed: Pb / Ti, verdict | modes (`_mixF`): Pb / Ti (guess) | wrong el. | vacuum / slab fixed -> modes | strongest mode truth / start / recovered | verdict |
+|---|---|---|---|---|---|---|
+| fs 7.29 | 31 / 15 off | **75 / 47** (29 / 21) | 5 % | 1.03 -> 0.41 | 0.30 / 0.32 / 0.46 | **okay** |
+| fs 5 | 39 / 28 off | **59 / 40** (27 / 19) | 3 % | 0.74 -> 0.41 | 0.42 / 0.43 / 0.56 | **okay** |
+| src 0.2 | 82 / 39 okay | **89 / 43** (26 / 20) | 3 % | 0.35 -> 0.34 | 0.26 / 0.31 / 0.59 | **okay** |
+| src 0.4 | 21 / 1 off | **31 / 25** (28 / 20) | 7 % (fixed 47 %) | 0.48 -> 0.48 | 0.17 / 0.18 / 0.43 | **off** |
+
+- **Probe modes move the focal-spread wall, not the source wall.** fs 5 and 7.29 go off -> okay (Pb 59 / 75, Ti 40 / 47; the
+  vacuum loading falls to 0.41); none reaches good. At 0.4 A Pb stays at guessing with modes (8 modes hold ~78 % of the sim's
+  state, ~53 % of a real gun's), though the wrong-element share falls 47 -> 7 %.
+- The old-engine `_mix` at fs 7.29 had 70 / 32; the fix adds Ti (47).
+- Every leg drifts toward one mode (recovered strongest mode 0.43-0.59 against truths 0.17-0.42), most at the source points.
+- fs 5 below fs 7.29 (Pb 59 vs 75) is run-to-run scatter, not physics: read differences under ~15 points as the same.
+
 ## A, B, C results (2026-10-20; phase images viewed: `figs/mono300/phase1_ceiling.png`; `phase1_look.py`)
 
 All at focal spread 2.5 A, ARM tableau, 80 mrad, noiseless; right place (0.5 A) vs guessing; mode 1 = the sim's share.
