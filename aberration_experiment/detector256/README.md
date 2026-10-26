@@ -27,6 +27,10 @@
   `det_look.py ~/Desktop/detector256_r1r2_kh` (lay it out as `<d>/analysis/analysis_*` + `<d>/results/`: `det_look.py`
   needs the `results/` sims and traces from the first pull). Then decide R3 (optional: what upsampling buys) and R4 (if
   R2 is as good as R1).
+- **Running (submitted 2026-10-26 13:15):** the re-analyses with `PSF_HALF_A=2.22`: R1 1348348, R2 1348349 (tarballs
+  `analysis_armf_a080_fs2p5_src0p1_detc96{,b4_up2}_kh2p22_20261026_131519.tgz`; pull to `~/Desktop/detector256_r1r2_kh`).
+  R3 `_detc96b4` (R2's copies reused, log `logs/detector256_r3_20261026_131554.txt`): recons 1348350 / 51 / 52 (lab / Pb /
+  Ti), pack 1348353, analysis 1348354 (already with the 2.22 Å crop); pull to `~/Desktop/detector256_r3`.
 - **Submission record:** R1 `_detc96`: rebin jobs 1339556 / 58 / 60 (lab / Pb / Ti), recons 1339557 / 59 / 61, pack
   1339562, analysis 1339563. R2 `_detc96b4_up2`: rebin jobs 1339564 / 66 / 68, recons 1339565 / 67 / 69, pack 1339570,
   analysis 1339571. Log `logs/detector256_r1r2_20261023_161114.txt` on Blythe; every guard passed there; the kept lab
