@@ -1,40 +1,40 @@
 # detector256 — is a 256 × 256-pixel camera enough for the 80 mrad reconstructions?
 
-## Status (2026-10-26)
+## Status (2026-10-26, evening)
 
-- **R1 and R2 ran cleanly** (submitted 2026-10-23 16:11, ids below; pulled to `~/Desktop/detector256_r1r2`). No NaN, no
-  errors; in R2 the log shows the 4 × 4 upsampling on and the 1024-px probe kept as written. About 2.4 h a leg (R1
-  4250 + 4410 s, R2 4120 + 4280 s, presolve + full engine).
-- **The images first: R1 and R2 reconstruct as cleanly as the reference.** The lab volumes show the same discrete Pb
-  columns with the same lean in x-z, and the vacuum bands stay quiet (vacuum / slab 0.42 R1, 0.39 R2, 0.41 reference).
-  The Pb and Ti kernel grids are 7 × 7 isolated atoms peaked mid-box in both; R2's carries a faint smooth background.
-- **The first atom scores are NOT valid: an analysis fault (mine), not the reconstructions.** The kernel extractor
-  crops ±30 *pixels* around each grid atom. That is 2.22 Å at the reference's 0.0739 Å pixel, but 3.08 Å at 0.1025 Å,
-  which reaches the grid's neighbours 2.96 Å away. R1's kernels came out centred on a neighbour (the extractor's own
-  "argmax is off the crop centre by 29 px" warning), and atomfind centres its kernel on the brightest voxel: R1 scored
-  0 %. R2's centre happened to stay brightest, but both averaged only 9 atoms (16 in the reference) with neighbours in
-  the background (peak/bg 10-11 vs 500-690). A synthetic grid reproduces this exactly with the extractor's own code
-  (30 px at 0.1025 Å: brightest voxel in the crop's corner, edge at 0.99 of the centre; 22 px: centred, edge 0.01).
-  Fix: `PSF_HALF_A=2.22` (the crop in Å, `analysis/analyse_sweep.py --psf-half-A`; 2.22 Å = the reference's 30 px exactly,
-  22 px here). Analysis only: the reconstructions stand. **Re-analysis of R1 and R2 handed over 2026-10-26** (tarballs
-  tagged `_kh2p22`). `det_look.py` now flags kernels centred off their atom or averaged from fewer than 16 atoms.
-- **Provisional (old kernels, R2 only):** Pb right 82 % (guessing 28), Ti 26 % (guessing 23): Pb depths recovered, Ti
-  not. Wait for the re-analysis before reading anything into Ti.
-- **Misfit:** eps R1 0.0182 (N 1024) against the reference's 0.0190 (N 1420); R2 0.0069 (N 256), comparable only with
-  R3. Both runs' error is still falling at iteration 400, R2's faster (lab: R2 5.78 -> 5.41 over the full engine, R1
-  3.70 -> 3.55): R2 may be less converged than R1 at equal iterations.
-- **Next:** the re-analysis (two CPU jobs, ~1 h), pulled into a fresh `~/Desktop/detector256_r1r2_kh`; then
-  `det_look.py ~/Desktop/detector256_r1r2_kh` (lay it out as `<d>/analysis/analysis_*` + `<d>/results/`: `det_look.py`
-  needs the `results/` sims and traces from the first pull). Then decide R3 (optional: what upsampling buys) and R4 (if
-  R2 is as good as R1).
-- **Running (submitted 2026-10-26 13:15):** the re-analyses with `PSF_HALF_A=2.22`: R1 1348348, R2 1348349 (tarballs
-  `analysis_armf_a080_fs2p5_src0p1_detc96{,b4_up2}_kh2p22_20261026_131519.tgz`; pull to `~/Desktop/detector256_r1r2_kh`).
-  R3 `_detc96b4` (R2's copies reused, log `logs/detector256_r3_20261026_131554.txt`): recons 1348350 / 51 / 52 (lab / Pb /
-  Ti), pack 1348353, analysis 1348354 (already with the 2.22 Å crop); pull to `~/Desktop/detector256_r3`.
+- **Answer so far: a 256-pixel camera keeps the Pb depths but loses Ti, and only works when the solver models the
+  summed pixels.** With kernels cropped to 2.22 Å (all centred on their own atom, 16 atoms each, peak/bg 322-697):
+
+  | run | camera | Pb right (guess) | Ti right (guess) | vacuum / slab | eps (N) | verdict |
+  |---|---|---|---|---|---|---|
+  | reference | 1420 px, ±133 mrad | 91 (26) | 60 (18) | 0.41 | 0.0190 (1420) | good |
+  | R1 | 1024 px, ±96 mrad | 87 (27) | 57 (17) | 0.42 | 0.0182 (1024) | good |
+  | R2 | **256 px**, ±96 mrad, upsampled | 86 (29) | **25 (22)** | 0.39 | 0.0069 (256) | okay |
+  | R3 | 256 px, no upsampling | no atoms (triage: phase sd 0.50 rad) | | 0.83 | 0.2908 (256) | failed |
+
+  - **The angle cut costs little:** R1 is within 3-4 points of the reference, as clean, same misfit.
+  - **Upsampling is essential:** on the identical 256-px data the misfit drops 42x (R3 0.29 -> R2 0.0069) and the
+    reconstruction goes from no structure (R3: a faint lattice in projection, noise in the corners, nothing in any
+    slice) to the reference's look.
+  - **R2's Ti is at guessing.** The images: R2's lab volume looks like R1's and the reference's (discrete Pb, same lean,
+    quiet vacuum); in the B-site rows the finder lands on the Ti columns but its depths are no better than chance.
+    Two candidate causes, not yet separated: (1) convergence -- R2's misfit was still falling faster than R1's at
+    iteration 400 (lab, full engine: -6.4 % vs -4.2 %); (2) information -- ~2 measurements per unknown against R1's 31;
+    a weak scatterer is the first to suffer from either. The brief's rule: a denser scan before anything else. The
+    cheaper, sim-free test of (1) is R2 with more iterations.
+- **The first analysis was faulty (fixed):** the kernel extractor's 30-px crop is 3.08 Å at the 0.1025 Å pixel, past
+  the 2.96 Å grid; R1's kernels centred on a neighbour (scored 0 %). Fix `PSF_HALF_A=2.22` (= the reference's 30 px);
+  re-analyses 1348348 / 1348349, pulled to `~/Desktop/detector256_r1r2_kh`. `det_look.py` flags such kernels now.
+- **Runs:** R1 + R2 submitted 2026-10-23 16:11, ~2.4 h a leg, pulled to `~/Desktop/detector256_r1r2` (reconstructions
+  and sims) and `..._r1r2_kh` (analyses); R3 submitted 2026-10-26 13:16 (recons 1348350 / 51 / 52, analysis 1348354,
+  ~12 min a leg on the 256 grid), pulled to `~/Desktop/detector256_r3`. Score with
+  `det_look.py <view>` where `<view>/analysis` holds the `_kh2p22` analyses and `<view>/results` the recon + sim dirs.
+- **Next (the user's choice):** a denser scan (0.4 Å, 2500 positions, ~3 : 1; new lab / Pb / Ti sims under a new label)
+  and/or R2 at 400 + 400 iterations (`NITER=400`, `RTAG`, the existing copies). R4 (±133 mrad) waits on Ti.
 - **Submission record:** R1 `_detc96`: rebin jobs 1339556 / 58 / 60 (lab / Pb / Ti), recons 1339557 / 59 / 61, pack
   1339562, analysis 1339563. R2 `_detc96b4_up2`: rebin jobs 1339564 / 66 / 68, recons 1339565 / 67 / 69, pack 1339570,
-  analysis 1339571. Log `logs/detector256_r1r2_20261023_161114.txt` on Blythe; every guard passed there; the kept lab
-  sim confirmed at (1600, 1420, 1420).
+  analysis 1339571. Log `logs/detector256_r1r2_20261023_161114.txt` on Blythe; the kept lab sim confirmed at
+  (1600, 1420, 1420).
 - **The frame question is settled by test, not argument.** `test_upsampling_frame.py` ports the engine's data and
   model path line by line to numpy. The 256-px data equal the engine's own 4 × 4 binning of the full-pixel truth (up to
   the one scale factor the engine fits at iteration 0), in the same array frame (max relative difference 3e-8). On the
@@ -110,15 +110,9 @@ Ti sims at this point, then a rebin and R2 again.
 Reference, reproduced by `det_look.py` from the pulled step-2 analysis: Pb / Ti / O right 91 / 60 / 56 % against
 guessing 26 / 18 / 19 %, 3 % wrong element, vacuum / slab 0.41, eps 0.0190 (N 1420): **good**.
 
-## Results (provisional: R1 / R2 atom scores await the re-analysis with 2.22 Å kernel crops)
+## Results
 
-| run | Pb / Ti right (guess) | vacuum / slab | eps (N) | images | verdict |
-|---|---|---|---|---|---|
-| reference | 91 / 60 (26 / 18) | 0.41 | 0.0190 (1420) | viewed 2026-10-20 | good |
-| R1 | (kernel fault: 0 / 0) | 0.42 | 0.0182 (1024) | clean, like the reference | pending re-analysis |
-| R2 | 82 / 26 (28 / 23), old kernels | 0.39 | 0.0069 (256) | clean, like the reference | pending re-analysis |
-| R3 | | | | | |
-| R4 | | | | | |
+See the status table at the top (2026-10-26). Depth sections: `figs/detector256/det_sections.png` (from `det_look.py`).
 
 ## Caveats to state beside any result
 
