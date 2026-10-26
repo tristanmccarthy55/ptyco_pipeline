@@ -32,7 +32,7 @@ stage-2 array 1329325, select 1329326, refine legs 1329327/28/29, pack 1329330 (
 no `_ps` in the name), analysis 1329331 (`analysis_armf_a080_fs2p5_src0p1_ps_*`).
 Kept as limitations, with numbers: no measured S-CORR tableau (ARM pessimistic), Cc assumed, the single-Wien elliptical /
 energy-position-correlated source bounded by the round scan, drift through the scan-time budget (D's minimum dose ->
-dwell -> scan time against 0.8-3.3 A/s at LHe), true-probe ceiling for A/B.
+dwell -> scan time against 0.8-3.3 A/s at LHe, arXiv 2603.10892; see D), true-probe ceiling for A/B.
 
 **Status 2026-10-13 (the user's choice): two steps.** Step 1 = the controls only, `phase1_fixed_submit.sh`: the same ten
 points, the same `_<point>_fixed` dirs, the sims KEPT -- DONE, results below ("Step 1 results"). Step 2 = the mode legs below, RECON_ONLY on those sims, at the points
@@ -68,10 +68,15 @@ legs. Dry run `test_dose_submit.sh` (stub sbatch, throwaway git copy): 8 / 8 -- 
 3 selects, 3 legs, pack, analysis), 1e7-1e5 is 40; refusals for a bad dose, a dose searched before, a missing sim, an
 exported job variable. Noise jobs at this pattern size (armf_a080, ~1420 px) ran at 32G in the ARM block (1e7, 1e8).
 
-**Drift (a caveat, not modelled).** 1e8 e/A^2 over the 20 x 20 A scan (41 x 41 positions at 0.5 A) is 4.2e10 electrons:
-**~14-28 min at the 4-8 pA** that keeps the Mono's source at 0.1 A (1e7: ~1.5-3 min). The sim has no drift. A helium stage
-(20 K) drifts more than a nitrogen one (100 K), so the scan time weighs most at 20 K. The "0.8-3.3 A/s at
-LHe" figure in the plan above has no source in the repo: find one before it goes on the page.
+**Drift (a caveat, not modelled; source: Schnitzer et al., arXiv 2603.10892, 2026).** On a probe-corrected X-FEG Spectra
+300 at 300 kV with an h-Bar liquid-helium holder (~20 K, estimated) they measured 0.8-3.3 A/s of drift; of dozens of
+ptychography datasets only the fastest scans reconstructed (64 x 64 points, ~7.3 s on the EMPAD, 21.4 mrad), and their
+position correction fails once a position is off by more than a unit cell. Our 1e8 e/A^2 over the 20 x 20 A scan (41 x 41
+at 0.5 A, 420 A^2) is 4.2e10 electrons: **~14-28 min at the 4-8 pA** that keeps the Mono's source at 0.1 A, 100-200 x
+longer than any scan that worked there. A ~7 s scan at 4-8 pA gives **~4e5-9e5 e/A^2** (the camera's floor, 1681 frames x
+1.86 ms = 3.1 s, gives ~2e5-4e5). So at 20 K on that holder the reachable dose is ~1e5-1e6: 1e8 is the possible-at-all
+gate, 1e6 and 1e5 the doses a real 20 K experiment would have. The sim has no drift. A nitrogen stage (100 K) drifts less
+(the user: the easier experiment), hence 100 K with more modes next.
 
 **After D (the user, 2026-10-26).** Higher temperature with more modes would make the experiment easier (100 K: LN2 stage,
 less drift); B at 100 K with 8 modes was Pb 51 / Ti at guessing. A near-zone-axis tilt for the phonon blur is a later step.

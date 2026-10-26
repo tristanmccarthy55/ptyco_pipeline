@@ -22,8 +22,10 @@ rules), and `page/ARM_PAGE.md` (the results page and the honest atom scoring). W
 - **Next: D at 1e8, BUILT and handed over 2026-10-26 (the user's go: 1e8 first; 1e7-1e5 only if it holds), not yet
   submitted.** `mono300/dose_submit.sh 1e8`: B's 20 K sims + Poisson noise, C's seed-1 draw (checked), the 3-stage search
   afresh, 8-mode refine; driver unchanged; dry run `mono300/test_dose_submit.sh` 8/8. ~230 GPU-h (refine legs measured at
-  23.5 h, not 32), ~1.5-2 days. Command block, pull lines and how to read it: PHASE1.md "D, the dose series". Drift caveat:
-  1e8 over the 20 A scan is ~14-28 min at the Mono's 4-8 pA; the LHe drift figure in PHASE1.md's plan has no source yet.
+  23.5 h, not 32), ~1.5-2 days. Command block, pull lines and how to read it: PHASE1.md "D, the dose series". Drift caveat
+  (arXiv 2603.10892: Spectra 300 + h-Bar LHe holder ~20 K, 0.8-3.3 A/s, only ~7 s scans reconstructed): 1e8 over our 20 A
+  scan is ~14-28 min at the Mono's 4-8 pA; a 7 s scan gives ~4e5-9e5 e/A^2. So 1e8 is the possible-at-all gate and
+  1e6-1e5 the doses a real 20 K experiment has.
   The user also wants, later: 100 K with more modes (an LN2 stage drifts less: easier experiment), then a near-zone-axis tilt.
 - **Engine facts that matter:** LSQML's object illumination now sums all probe modes (it used mode 1 only: the cause of
   every mode-leg NaN); the object step is still divided by the mode count, so mode legs converge their object slowly and
