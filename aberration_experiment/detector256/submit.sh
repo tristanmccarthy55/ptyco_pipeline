@@ -54,9 +54,10 @@ submit(){ # $1 recon tag after the suffix (e.g. _detc96b4_up2), then VAR=value .
   local PJ; PJ=$(echo "$OUT" | awk '/^pack /{print $2}')
   echo "$OUT" | grep -q "recon dirs ${rt}$" && [ -n "$PJ" ] || { echo "$OUT"; echo "STOPPED: recon dirs not ${rt} / no pack for $*"; return 1; }
   echo "$OUT" | sed -n '2,3p;/^pack /p'
-  A=$(LABELS=armf_a080 SUFFIX="${SFX}${rt}" DEP="$PJ" GT_REGION=210 bash campaign/run_analysis.sh | head -1)
+  # kernels cropped to +-2.22 A (the reference's 30 px): at the 0.1025 A pixel 30 px reaches the grid's neighbours (README)
+  A=$(LABELS=armf_a080 SUFFIX="${SFX}${rt}" DEP="$PJ" GT_REGION=210 PSF_HALF_A=2.22 bash campaign/run_analysis.sh | head -1)
   echo "$A"; AIDS="${AIDS} $(echo "$A" | awk '{print $2}')"
-  PULL+=("atomfind_results_armf_a080${SFX}${rt}_2026*.tgz" "analysis_armf_a080${SFX}${rt}_2026*.tgz")
+  PULL+=("atomfind_results_armf_a080${SFX}${rt}_2026*.tgz" "analysis_armf_a080${SFX}${rt}_kh2p22_2026*.tgz")
 }
 case "$WHAT" in
   r1r2)

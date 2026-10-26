@@ -5,12 +5,15 @@ Same machinery as aberration_experiment/mono300/phase1_look.py (analysis/make_ar
 element within 0.5 A in depth) against guessing (atom_scores), the verdict rule (good: Pb >= 80 and Ti >= 45 %; okay:
 Pb >= 50 %), the vacuum loading (rms phase per slice in the vacuum bands over that in the slab; 0.31 for a clean run) and
 the depth sections. The misfit eps = final Fourier error x N / 2e5 with N the width of the DATA each run fitted (its own
-sim_meta.mat: 1420 reference, 1024 R1, 256 R2/R3, 354 R4), not the width in the error-trace file name, which for an
-upsampled run is the model's. eps compares like with like only on the same data grid (R2 with R3, R1 with R4's crop...).
+sim_meta.mat: 1420 reference, 1024 R1, 256 R2/R3, 354 R4; the error-trace file name carries the same width, checked on
+R2). eps compares like with like only on the same data grid (R2 with R3).
 
-    ~/hyperspy-bundle/bin/python aberration_experiment/detector256/det_look.py
+    ~/hyperspy-bundle/bin/python aberration_experiment/detector256/det_look.py [more folders laid out as <d>/analysis/
+    analysis_* and <d>/results/recon_af_*]
 Runs are looked for in ~/Desktop/mono_phase1 (the reference) and ~/Desktop/detector256_{r1r2,r3,r4} (submit.sh's pull
-folders). Writes aberration_experiment/detector256/det_scores.json and aberration_experiment/figs/detector256/det_sections.png.
+folders). Each run's kernels are checked in its extraction logs: a kernel whose brightest voxel is NOT its own atom (the
+extractor's 'argmax is off the crop centre' warning: a neighbouring grid atom inside the crop) makes atomfind centre its
+kernel on the wrong atom, so that run's scores are not about the reconstruction (R1's first analysis, 2026-10-23). Writes aberration_experiment/detector256/det_scores.json and aberration_experiment/figs/detector256/det_sections.png.
 """
 import glob
 import importlib.util
@@ -30,7 +33,7 @@ spec = importlib.util.spec_from_file_location("p1", os.path.join(REPO, "aberrati
 p1 = importlib.util.module_from_spec(spec); spec.loader.exec_module(p1)
 plt = arm.plt
 arm.FIGS = os.path.join(REPO, "aberration_experiment", "figs", "detector256")
-SEARCH = ["~/Desktop/mono_phase1", "~/Desktop/detector256_r1r2", "~/Desktop/detector256_r3", "~/Desktop/detector256_r4"]
+SEARCH = ["~/Desktop/mono_phase1", "~/Desktop/detector256_r1r2", "~/Desktop/detector256_r3", "~/Desktop/detector256_r4"] + sys.argv[1:]
 CORE = "fs2p5_src0p1"
 # (key, display name, recon tag after the label, camera, model grid)
 RUNS = [("ref", "reference: +-133 mrad, 1420 px", f"{CORE}_fixed", "1420 px, +-133 mrad", "1420 px"),
@@ -53,6 +56,23 @@ def eps_of(R, leg):
     return e[-1] * n / 2e5, n
 
 
+def kernel_check(info):
+    """'' or why the run's Pb / Ti kernels are suspect, from the extraction logs of the analysis the run was found in."""
+    if not info.get("af"):
+        return ""
+    bad = []
+    for el in ("Pb", "Ti"):
+        lg = os.path.join(os.path.dirname(info["af"]), "logs", f"extract_{el}_{info['tag']}.log")
+        if os.path.exists(lg):
+            t = open(lg).read()
+            if "off the crop centre" in t:
+                bad.append(f"{el} kernel off its atom")
+            m = re.search(r"\[avg\] (\d+) grid atoms", t)
+            if m and int(m.group(1)) < 16:
+                bad.append(f"{el} from {m.group(1)} atoms")
+    return "; ".join(bad)
+
+
 def main():
     man = json.load(open(arm.MANIFEST))
     man["search_dirs"] = man["search_dirs"] + SEARCH
@@ -68,7 +88,8 @@ def main():
         sc = arm.atom_scores(info) if info["found"] else None
         eps, n = eps_of(R, f"armf_a080_lab_{tag}") if info["found"] else (None, None)
         r = dict(key=key, run=name, camera=cam, model_grid=grid, found=info["found"], eps=eps, data_px=n,
-                 vacuum_ratio=p1.vacuum_ratio(info.get("fd")))
+                 vacuum_ratio=p1.vacuum_ratio(info.get("fd")), kernels=kernel_check(info) if info["found"] else "",
+                 analysis=os.path.basename(os.path.dirname(info["af"])) if info.get("af") else None)
         if sc:
             r.update(right={k: sc["right"][z] for k, z in (("Pb", 82), ("Ti", 22), ("O", 8))},
                      guess={k: sc["guess"][z] for k, z in (("Pb", 82), ("Ti", 22), ("O", 8))},
@@ -77,7 +98,8 @@ def main():
         vr = f"{r['vacuum_ratio']:8.2f}" if r["vacuum_ratio"] is not None else "       -"
         ep = f"{eps:.4f} ({n})" if eps is not None else "-"
         if sc:
-            print(f"{name:34s}{f3(r['right']):>17s}  {f3(r['guess']):>17s}  {100 * r['wrong']:4.0f}%  {vr}  {ep:>13s}  {r['verdict']}")
+            print(f"{name:34s}{f3(r['right']):>17s}  {f3(r['guess']):>17s}  {100 * r['wrong']:4.0f}%  {vr}  {ep:>13s}  {r['verdict']}"
+                  + (f"   KERNELS SUSPECT: {r['kernels']}" if r["kernels"] else ""))
         else:
             print(f"{name:34s}{'not pulled' if not info['found'] else 'no atoms (a leg or kernel missing)':>37s}         {vr}  {ep:>13s}")
     json.dump(out, open(os.path.join(HERE, "det_scores.json"), "w"), indent=1)

@@ -101,6 +101,10 @@ Ordered by how little they disturb byte-identity.
    legs *more* alike. Try this first.
 2. **S2 — densify further.** `GRIDSP=2.5`. There is ~20× headroom before blobs interfere, but keep
    spacing above `extract_psf --half-xy` (30 px = 1.48 Å) so the crop stays neighbour-free.
+   The crop is in PIXELS, so this depends on the pixel: 30 px is 1.48 Å at 0.0492 Å, 2.22 Å at the 80 mrad runs'
+   0.0739 Å, but 3.08 Å at 0.1025 Å (a ±96 mrad detector), past the 2.96 Å grid: a neighbour then sits in the crop and
+   can be the brightest voxel, which atomfind centres its kernel on. Use `PSF_HALF_A=2.22` (run_analysis.sh; the crop
+   in Å, = 30 px at 0.0739 Å) at any other pixel (detector256, 2026-10-26).
 3. **S3 — sparse multi-plane grid** (the agreed last resort). Adds the depth density the single
    plane lacks while keeping every recon setting identical, so it is *more* faithful than thinning
    the box. Planes must be far enough apart that each blob's axial response is neighbour-free —

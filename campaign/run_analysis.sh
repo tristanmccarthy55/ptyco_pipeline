@@ -10,6 +10,8 @@
 #   PSF_DIR=<an earlier analysis' psf/> PSF_TAG=<its label> ...   atomfind with THOSE kernels instead of the label's own
 #       grid legs (only the lab leg is needed; outputs and tarball tagged _kern-<PSF_TAG>) -- the fallback when a run's
 #       kernels fail, e.g. the kicked hail mary read with block 2's known-probe armf_a080 kernels
+#   PSF_HALF_A=2.22 ...   the kernels' crop half-width in A instead of extract_psf's 30 px (2.22 A = 30 px at the 80 mrad runs'
+#       0.0739 A pixel); needed at coarser pixels, where 30 px reaches the grid's neighbours (detector256). Tarball tagged _kh<A>.
 #
 # GT_REGION=S uses $SHARE/$USER/gt_region<S>/gt_prepared.npz, building it in the job if it is missing
 # (atomfind.make_gt_cache --thin-cells THIN --z-vacuum ZVAC --region-side S, from the simulator's own builder).
@@ -30,7 +32,11 @@ if [ -n "${PSF_DIR:-}${PSF_TAG:-}" ]; then
     for el in Pb Ti; do [ -f "${PSF_DIR}/psf_${el}_${PSF_TAG}_vol.npy" ] || { echo "no ${PSF_DIR}/psf_${el}_${PSF_TAG}_vol.npy" >&2; exit 1; }; done
     KARG="--psf-dir '${PSF_DIR}' --psf-tag '${PSF_TAG}'"
 fi
-TS="$(date +%Y%m%d_%H%M%S)"; TAG="$(echo ${LABELS} | tr ' ' '-')${SUFFIX:-}${PSF_TAG:+_kern-${PSF_TAG}}"
+if [ -n "${PSF_HALF_A:-}" ]; then
+    [[ "$PSF_HALF_A" =~ ^[0-9]*\.?[0-9]+$ ]] || { echo "PSF_HALF_A=${PSF_HALF_A}: a half-width in A" >&2; exit 1; }
+    KARG="${KARG} --psf-half-A ${PSF_HALF_A}"
+fi
+TS="$(date +%Y%m%d_%H%M%S)"; TAG="$(echo ${LABELS} | tr ' ' '-')${SUFFIX:-}${PSF_TAG:+_kern-${PSF_TAG}}${PSF_HALF_A:+_kh${PSF_HALF_A//./p}}"
 NAME="analysis_${TAG}_${TS}"; OUT="${BASE}/${NAME}"
 JOB="logs/${NAME}.sh"
 cat >"${JOB}" <<EOF

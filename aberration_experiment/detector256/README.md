@@ -1,15 +1,36 @@
 # detector256 — is a 256 × 256-pixel camera enough for the 80 mrad reconstructions?
 
-## Status (2026-10-23)
+## Status (2026-10-26)
 
-- **R1 + R2 SUBMITTED 2026-10-23 16:11** (`submit.sh`; log `logs/detector256_r1r2_20261023_161114.txt` on Blythe; every
-  guard passed there; the kept lab sim confirmed at (1600, 1420, 1420), the reference geometry).
-  R1 `_detc96`: rebin jobs 1339556 / 58 / 60 (lab / Pb / Ti), recons 1339557 / 59 / 61, pack 1339562, analysis 1339563.
-  R2 `_detc96b4_up2`: rebin jobs 1339564 / 66 / 68, recons 1339565 / 67 / 69, pack 1339570, analysis 1339571.
-  Next: a crash check ~30 min into the recons (the MATLAB changes never ran before: `grep -E "upsampl|kept as it
-  is|Probe amplitude|Ndp|NaN" recon_af_armf_a080_lab_fs2p5_src0p1_detc96*_NL18/slurm_*.out`); pull to
-  `~/Desktop/detector256_r1r2` once 1339563 and 1339571 are COMPLETED. R3 (optional): `... submit.sh r3` once R2's rebin
-  jobs are done. R4: `... submit.sh r4`, only if R2 works.
+- **R1 and R2 ran cleanly** (submitted 2026-10-23 16:11, ids below; pulled to `~/Desktop/detector256_r1r2`). No NaN, no
+  errors; in R2 the log shows the 4 × 4 upsampling on and the 1024-px probe kept as written. About 2.4 h a leg (R1
+  4250 + 4410 s, R2 4120 + 4280 s, presolve + full engine).
+- **The images first: R1 and R2 reconstruct as cleanly as the reference.** The lab volumes show the same discrete Pb
+  columns with the same lean in x-z, and the vacuum bands stay quiet (vacuum / slab 0.42 R1, 0.39 R2, 0.41 reference).
+  The Pb and Ti kernel grids are 7 × 7 isolated atoms peaked mid-box in both; R2's carries a faint smooth background.
+- **The first atom scores are NOT valid: an analysis fault (mine), not the reconstructions.** The kernel extractor
+  crops ±30 *pixels* around each grid atom. That is 2.22 Å at the reference's 0.0739 Å pixel, but 3.08 Å at 0.1025 Å,
+  which reaches the grid's neighbours 2.96 Å away. R1's kernels came out centred on a neighbour (the extractor's own
+  "argmax is off the crop centre by 29 px" warning), and atomfind centres its kernel on the brightest voxel: R1 scored
+  0 %. R2's centre happened to stay brightest, but both averaged only 9 atoms (16 in the reference) with neighbours in
+  the background (peak/bg 10-11 vs 500-690). A synthetic grid reproduces this exactly with the extractor's own code
+  (30 px at 0.1025 Å: brightest voxel in the crop's corner, edge at 0.99 of the centre; 22 px: centred, edge 0.01).
+  Fix: `PSF_HALF_A=2.22` (the crop in Å, `analysis/analyse_sweep.py --psf-half-A`; 2.22 Å = the reference's 30 px exactly,
+  22 px here). Analysis only: the reconstructions stand. **Re-analysis of R1 and R2 handed over 2026-10-26** (tarballs
+  tagged `_kh2p22`). `det_look.py` now flags kernels centred off their atom or averaged from fewer than 16 atoms.
+- **Provisional (old kernels, R2 only):** Pb right 82 % (guessing 28), Ti 26 % (guessing 23): Pb depths recovered, Ti
+  not. Wait for the re-analysis before reading anything into Ti.
+- **Misfit:** eps R1 0.0182 (N 1024) against the reference's 0.0190 (N 1420); R2 0.0069 (N 256), comparable only with
+  R3. Both runs' error is still falling at iteration 400, R2's faster (lab: R2 5.78 -> 5.41 over the full engine, R1
+  3.70 -> 3.55): R2 may be less converged than R1 at equal iterations.
+- **Next:** the re-analysis (two CPU jobs, ~1 h), pulled into a fresh `~/Desktop/detector256_r1r2_kh`; then
+  `det_look.py ~/Desktop/detector256_r1r2_kh` (lay it out as `<d>/analysis/analysis_*` + `<d>/results/`: `det_look.py`
+  needs the `results/` sims and traces from the first pull). Then decide R3 (optional: what upsampling buys) and R4 (if
+  R2 is as good as R1).
+- **Submission record:** R1 `_detc96`: rebin jobs 1339556 / 58 / 60 (lab / Pb / Ti), recons 1339557 / 59 / 61, pack
+  1339562, analysis 1339563. R2 `_detc96b4_up2`: rebin jobs 1339564 / 66 / 68, recons 1339565 / 67 / 69, pack 1339570,
+  analysis 1339571. Log `logs/detector256_r1r2_20261023_161114.txt` on Blythe; every guard passed there; the kept lab
+  sim confirmed at (1600, 1420, 1420).
 - **The frame question is settled by test, not argument.** `test_upsampling_frame.py` ports the engine's data and
   model path line by line to numpy. The 256-px data equal the engine's own 4 × 4 binning of the full-pixel truth (up to
   the one scale factor the engine fits at iteration 0), in the same array frame (max relative difference 3e-8). On the
@@ -18,11 +39,6 @@
 - **Five engine/driver changes were needed** before upsampling could run on our data. Without them it would have
   shrunk the probe 4×, started from an opaque object ring, and crashed at iteration 200 (list below). None of them
   changes a run without `UPSAMPLING`: all 15 recorded launch lines are unchanged and the naming test passes 26/26.
-- **Not yet known:** whether the kept sims are still on Blythe. `submit.sh` checks for the lab, Pb and Ti sims and
-  refuses if any is missing. It also checks that the checkout carries these changes.
-- **Next, when the results are pulled:** `~/hyperspy-bundle/bin/python aberration_experiment/detector256/det_look.py`
-  (scores and depth sections beside the reference); look at the phase images (`<analysis>/phase/`); fill in the results
-  table below.
 
 ## The question
 
@@ -76,8 +92,8 @@ about 3 : 1.
 1. **Phase images** (`<analysis>/phase/recon_af_*.png`; depth sections in `figs/detector256/det_sections.png` from
    `det_look.py`).
 2. **Misfit** eps = final Fourier error × N / 2e5, with N the width of the data the run fitted (1420, 1024, 256 or
-   354). `det_look.py` reads N from each run's own `sim_meta.mat`. The error-trace file name carries the model's width
-   for an upsampled run, so `make_arm_page.trace` would overstate R2's eps 4×. eps compares like with like only on the
+   354). `det_look.py` reads N from each run's own `sim_meta.mat` (the error-trace file name carries the data width
+   too: `S00001_256x256_...` for R2, checked 2026-10-26). eps compares like with like only on the
    same data grid (R2 with R3).
 3. **Vacuum / slab** rms phase ratio: 0.31 for a clean run; the reference is 0.41.
 4. **Right place**, from `make_arm_page.atom_scores`: right element within 0.5 Å in depth, against guessing. Good means
@@ -90,13 +106,13 @@ Ti sims at this point, then a rebin and R2 again.
 Reference, reproduced by `det_look.py` from the pulled step-2 analysis: Pb / Ti / O right 91 / 60 / 56 % against
 guessing 26 / 18 / 19 %, 3 % wrong element, vacuum / slab 0.41, eps 0.0190 (N 1420): **good**.
 
-## Results (pending)
+## Results (provisional: R1 / R2 atom scores await the re-analysis with 2.22 Å kernel crops)
 
 | run | Pb / Ti right (guess) | vacuum / slab | eps (N) | images | verdict |
 |---|---|---|---|---|---|
 | reference | 91 / 60 (26 / 18) | 0.41 | 0.0190 (1420) | viewed 2026-10-20 | good |
-| R1 | | | | | |
-| R2 | | | | | |
+| R1 | (kernel fault: 0 / 0) | 0.42 | 0.0182 (1024) | clean, like the reference | pending re-analysis |
+| R2 | 82 / 26 (28 / 23), old kernels | 0.39 | 0.0069 (256) | clean, like the reference | pending re-analysis |
 | R3 | | | | | |
 | R4 | | | | | |
 

@@ -121,6 +121,12 @@ def main():
                          "read with the known-probe kernels of the same tableau); the kernels then do NOT come from the "
                          "lab leg's operator (PSF_KERNELS.md), say so wherever a number is quoted")
     ap.add_argument("--psf-tag", default=None, help="with --psf-dir: the kernels' tag, e.g. armf_a080")
+    # The kernel crop is extract_psf's --half-xy, in PIXELS (default 30): 2.22 A at the 80 mrad runs' 0.0739 A pixel, clear
+    # of the grid's 2.96 A neighbours, but 3.08 A at a 0.1025 A pixel (a +-96 mrad detector, aberration_experiment/
+    # detector256): the neighbours then sit inside the crop, the average has only 9 atoms, and on R1 a neighbour came out
+    # brightest, so atomfind centred its kernel on it (Pb 0 %). --psf-half-A fixes the crop in A instead; 2.22 reproduces
+    # the 80 mrad runs' 30 px exactly. Unset: 30 px, as every analysis before 2026-10-26.
+    ap.add_argument("--psf-half-A", type=float, default=None, help="kernel crop half-width in A (default: 30 px)")
     a = ap.parse_args()
     if (a.psf_dir is None) != (a.psf_tag is None):
         ap.error("--psf-dir and --psf-tag go together")
@@ -190,6 +196,7 @@ def main():
             # the h5 itself, not the dir: extract_psf once took an engine checkpoint from the dir (presolve / old run)
             rc = run([a.python, extract, h5s[el], name, "--zdrop", str(g["zdrop"]), "--dx", f"{g['dx_A']:.6f}",
                       "--min-sep", f"{a.grid_spacing:g}",
+                      *(["--half-xy", str(int(round(a.psf_half_A / g["dx_A"])))] if a.psf_half_A else []),
                       "--out", os.path.join(a.out, "psf")], os.path.join(a.out, "logs", f"extract_{name}.log"))
             psf[el] = os.path.join(a.out, "psf", f"psf_{name}_vol.npy")
             if rc or not os.path.exists(psf[el]):
