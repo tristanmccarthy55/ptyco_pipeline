@@ -1030,5 +1030,16 @@
   "bar": 1.5641,
   "n": 442,
   "verdict": "okay"
+ },
+ {
+  "section": "D dose",
+  "point": "1e8, 20 K, 3-stage search, modes",
+  "key": "T20_dose1e8_ps",
+  "focal_spread_A": 2.5,
+  "source_fwhm_A": 0.1,
+  "mode1_share": 0.427,
+  "found": false,
+  "eps": null,
+  "vacuum_ratio": null
  }
 ]

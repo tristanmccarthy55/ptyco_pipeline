@@ -19,21 +19,21 @@ rules), and `page/ARM_PAGE.md` (the results page and the honest atom scoring). W
   0.43 -> 0.92, Pb 63 / Ti 24 % = okay, ~20 points below the true start (81 / 47) on both. `_mixF`: probe modes move the
   focal-spread wall (fs 5, 7.29 off -> okay), not the source wall (src 0.4 stays off); src 0.2 okay -> okay. Scores rest on
   75 Pb / 72 Ti atoms: +-6 points counting, ~15 between single runs. Page v16 published.
-- **Next: D, PROPOSED to the user 2026-10-26, not built.** Dose series 1e5-1e8 e/A^2 at fs 2.5 + src 0.1 + phonons 20 K, the
-  3-stage search afresh per dose (driver: `DOSES` + `PSEARCH=1` + `KICK_START=mixed`, Poisson copies of the kept noiseless
-  sims). Cost ~255 GPU-h a dose at the current grids (123 trials x 1.27 h + 3 legs x 32 h), ~1000 for four, ~3 days wall;
-  `PSEARCH_N1=5` cuts it to ~190 a dose. Risk said to the user: the true-start 20 K point is Pb 70 / Ti 24 and the search
-  cost ~18 points of Pb, so even 1e8 may sit at the okay line; gate on 1e8 first is an option. Build only on the user's go;
-  then a submit script in `mono300/` with the usual guards and dry runs.
+- **Next: D at 1e8, BUILT and handed over 2026-10-26 (the user's go: 1e8 first; 1e7-1e5 only if it holds), not yet
+  submitted.** `mono300/dose_submit.sh 1e8`: B's 20 K sims + Poisson noise, C's seed-1 draw (checked), the 3-stage search
+  afresh, 8-mode refine; driver unchanged; dry run `mono300/test_dose_submit.sh` 8/8. ~230 GPU-h (refine legs measured at
+  23.5 h, not 32), ~1.5-2 days. Command block, pull lines and how to read it: PHASE1.md "D, the dose series". Drift caveat:
+  1e8 over the 20 A scan is ~14-28 min at the Mono's 4-8 pA; the LHe drift figure in PHASE1.md's plan has no source yet.
+  The user also wants, later: 100 K with more modes (an LN2 stage drifts less: easier experiment), then a near-zone-axis tilt.
 - **Engine facts that matter:** LSQML's object illumination now sums all probe modes (it used mode 1 only: the cause of
   every mode-leg NaN); the object step is still divided by the mode count, so mode legs converge their object slowly and
-  can score a little below their fixed controls; 8 modes at `4;2` take ~32 h (`16;8` is slower and NaNs more).
+  can score a little below their fixed controls; 8 modes at `4;2`, 250 it take ~24 h (84,600 s measured on C and B; `16;8` is slower and NaNs more).
 - **Tools built in this direction** (all dry-run; tests `campaign/test_coh_names.sh`, `campaign/test_driver_legacy.sh`):
   coherence-valued dir names; `sim/make_mixed_probe.py` (mixed-state start, `--base` for a searched probe);
   `KICK_START=mixed`; the staged search `PSEARCH=1` (`campaign/psearch_plan.py`, `select_grid.py`, 3 stages, resume);
   submit scripts in `mono300/` with guards (engine fix pulled, exported job variables, dry runs, sims present).
 - The results page (memory `mono-results-page`, `page/MONO_PAGE.md`) is at version 16 (2026-10-26: every run landed;
-  D is the only pending item).
+  D is the only pending item; D at 1e8 not on the page until it lands).
 - **Side test, 2026-10-23: is a 256 x 256 camera enough?** (`detector256/README.md`, status at its top): the joint point's
   data re-recorded on smaller cameras (`sim/rebin_detector.py`; driver `DET_CROP_MRAD` / `DET_BIN` / `UPSAMPLING`), the
   solver modelling the summed pixels (`p.detector.upsampling`, five engine fixes, frame unit test). R1 + R2 handed over.

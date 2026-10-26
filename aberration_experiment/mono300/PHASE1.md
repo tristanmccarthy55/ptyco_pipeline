@@ -22,6 +22,7 @@ outputs at doses x-y-z. Runs, in order (cheap "possible at all?" first, realism 
   Why A1 matters: the old 5 % kick moved C12 by 0.6 A, the corrector's precision is ~30 A per component (~5 waves at the
   80 mrad edge); a 10 A C1 error alone drops the start's overlap with the truth to 0.18.
 - **D. dose series 1e5-1e8 with the search**, at the final survivor and temperature. Last (most expensive).
+  Built 2026-10-26 as `dose_submit.sh`, 1e8 first (section "D, the dose series" below).
 **SUBMITTED 2026-10-16 17:14** (logs `logs/ceiling_20261016_171444.txt`, `logs/search_20261016_171458.txt` on Blythe; both
 dry runs passed; the seed-1 draw as planned). A: fs2p5_src0p1 `_mixF` legs 1329288/89/90, pack 1329291, analysis 1329292 ·
 fs2p5_src0p2 1329293/94/95, pack 1329296, analysis 1329297. B, 100 K: sims 1329298/301/304, fixed 1329299/302/305, modes
@@ -43,6 +44,52 @@ a true 0.30 at 7.29 A, and every mode run so far ended with mode 1 at 0.84-0.90 
 Supersedes the fixed-probe-only proposal in `HANDOFF_MONO300.md` ("Phase 1 as proposed"). The user's rule: probe update
 with modes is the method, the fixed probe is the side control. Stub dry run of `phase1_submit.sh`: 120 sbatch calls,
 `campaign/test_coh_names.sh` 26/26 first.
+
+## D, the dose series: 1e8 first (handed over 2026-10-26; the user: 1e8 first, the rest if it holds)
+
+**What.** Everything at the Mono point put back at once: ARM tableau, fs 2.5 A + src 0.1 A, phonons at 20 K (B's kept sims
+`sim_out_af_armf_a080_<leg>_ph16_T20_fs2p5_src0p1`), Poisson noise (`sim/add_poisson_noise.py`, seeds 0/1/2 for lab/Pb/Ti),
+and the probe not given: C's seed-1 draw, the 3-stage search afresh on the noisy data (49 + 25 + 49 trials of 50 it), then
+lab, Pb and Ti refined from its answer with the mixed state built on it (8 modes, 250 it, "4;2", 96G). The draw is C's
+start exactly (checked in the dry run), and the same at every dose, so doses differ only in the noise.
+`dose_submit.sh <doses>`; the driver is unchanged (`DOSES` + `PSEARCH` + `RECON_ONLY` already chain noise -> search ->
+refine per dose). Dirs `..._ph16_T20_fs2p5_src0p1_dose1e8[_ps]`, search `search_af_armf_a080_lab_ph16_T20_fs2p5_src0p1_dose1e8/`,
+analysis SUFFIX `_ph16_T20_fs2p5_src0p1_dose1e8_ps`; `phase1_look.py` has the row (`T20_dose1e8_ps`) and a `dose` sheet
+(B 20 K true start, C, D).
+
+**Why 1e8 first.** It is the gate: on the ARM block 1e7 scored as 1e8, so at 1e8 the noise should cost little and D reads as
+"C at 20 K". The bars it meets: B at 20 K with the true start, Pb 70 / Ti 24 (okay, Ti at guessing); C's search cost ~20
+points of Pb without phonons. If Pb holds at okay (>= 50), run `dose_submit.sh "1e7 1e6 1e5"` (~690 GPU-h); if not, the
+dose series is moot and the search (the leftover A1) is the thing to fix.
+
+**Cost.** ~230 GPU-h: 123 trials x ~1.3 h + 3 legs x 23.5 h (C's and B's 20 K refine legs took 84,600 s each, not the
+32 h estimated before). Wall ~1.5-2 days: three search stages in sequence (~5 + 3 + 5 h at ~12 trials at once), then the
+legs. Dry run `test_dose_submit.sh` (stub sbatch, throwaway git copy): 8 / 8 -- 1e8 is 14 sbatch calls (3 noise, 3 arrays +
+3 selects, 3 legs, pack, analysis), 1e7-1e5 is 40; refusals for a bad dose, a dose searched before, a missing sim, an
+exported job variable. Noise jobs at this pattern size (armf_a080, ~1420 px) ran at 32G in the ARM block (1e7, 1e8).
+
+**Drift (a caveat, not modelled).** 1e8 e/A^2 over the 20 x 20 A scan (41 x 41 positions at 0.5 A) is 4.2e10 electrons:
+**~14-28 min at the 4-8 pA** that keeps the Mono's source at 0.1 A (1e7: ~1.5-3 min). The sim has no drift. A helium stage
+(20 K) drifts more than a nitrogen one (100 K), so the scan time weighs most at 20 K. The "0.8-3.3 A/s at
+LHe" figure in the plan above has no source in the repo: find one before it goes on the page.
+
+**After D (the user, 2026-10-26).** Higher temperature with more modes would make the experiment easier (100 K: LN2 stage,
+less drift); B at 100 K with 8 modes was Pb 51 / Ti at guessing. A near-zone-axis tilt for the phonon blur is a later step.
+
+**Hand-over (run on Blythe; nothing submitted from here):**
+
+    cd /springbrook/share/physics/phucrh/ptyco_baseline/ptyco_pipeline && git pull
+    bash aberration_experiment/mono300/dose_submit.sh 1e8
+
+Done when the analysis job (last id in `logs/dose_<ts>.txt`) is COMPLETED in `sacct -j <id>`. Pull:
+
+    scp -O 'phucrh@blythe.scrtp.warwick.ac.uk:/springbrook/share/physics/phucrh/analysis_armf_a080_ph16_T20_fs2p5_src0p1_dose1e8_ps_*.tgz' ~/Desktop/mono_phase1/analysis/
+    scp -O 'phucrh@blythe.scrtp.warwick.ac.uk:/springbrook/share/physics/phucrh/atomfind_results_armf_a080_dose1e8_ph16_T20_fs2p5_src0p1_*.tgz' ~/Desktop/mono_phase1/results/
+    cd ~/Desktop/mono_phase1/analysis && tar xzf analysis_armf_a080_ph16_T20_fs2p5_src0p1_dose1e8_ps_*.tgz
+    cd ~/Desktop/mono_phase1/results && tar xzf atomfind_results_armf_a080_dose1e8_ph16_T20_fs2p5_src0p1_*.tgz
+
+Then: look at the depth sections first, compare `search_best.json` with `start.json`'s truth (C1 -958.6 A, C3 -406600 A,
+A1 12.4 A @ 1.468), score with `phase1_look.py` (the `dose` sheet).
 
 ## C rerun and the `_mixF` wall points (2026-10-26; every job COMPLETED; phase images viewed: `figs/mono300/phase1_ceiling.png`, `phase1_modesF.png`)
 

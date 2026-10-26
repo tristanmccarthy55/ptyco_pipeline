@@ -11,6 +11,7 @@ mode powers (kick/*.json).
   step 2  joint points (_fs<X>_src<Y>_fixed) and probe-mode legs started from the mixed state (_mix, old engine)
   _mixF   the four single wall points' mode legs rerun with the engine fix (all-modes illumination; rerunF.sh)
   A/B/C   the ceiling, cooling and searched start at the Spectra Mono settings (C: first 2-stage search, then 3-stage _s3)
+  D       the dose series: B's 20 K sims + Poisson noise, 3-stage search, modes (dose_submit.sh; 1e8 first)
 Runs not pulled (or without atoms) are listed as such and drawn without rings.
 
     ~/hyperspy-bundle/bin/python aberration_experiment/mono300/phase1_look.py     # pulled to ~/Desktop/mono_phase1
@@ -45,7 +46,9 @@ CEIL = [("A ceiling", "fs 2.5 + src 0.1, modes", "fs2p5_src0p1_mixF", "fs2p5_src
         ("B cooled", "20 K, fixed", "T20_fixed", "ph16_T20_fs2p5_src0p1_mixF_fixed", "fs 2.5+src 0.1", 2.5, 0.1),
         ("B cooled", "20 K, modes", "T20_mixF", "ph16_T20_fs2p5_src0p1_mixF", "fs 2.5+src 0.1", 2.5, 0.1),
         ("C searched", "fs 2.5 + src 0.1, searched start, modes", "fs2p5_src0p1_ps", "fs2p5_src0p1_ps", "fs 2.5+src 0.1", 2.5, 0.1),
-        ("C searched", "3-stage search, modes", "fs2p5_src0p1_s3_ps", "fs2p5_src0p1_s3_ps", "fs 2.5+src 0.1", 2.5, 0.1)]
+        ("C searched", "3-stage search, modes", "fs2p5_src0p1_s3_ps", "fs2p5_src0p1_s3_ps", "fs 2.5+src 0.1", 2.5, 0.1),
+        ("D dose", "1e8, 20 K, 3-stage search, modes", "T20_dose1e8_ps", "ph16_T20_fs2p5_src0p1_dose1e8_ps", "fs 2.5+src 0.1",
+         2.5, 0.1)]
 p_ = lambda v: v.replace(".", "p")
 
 
@@ -150,7 +153,8 @@ def main():
               ("modesF", ["fs7p29", "fs7p29_mix", "fs7p29_mixF", "fs5", "fs5_mixF", "src0p2", "src0p2_mixF", "src0p4",
                           "src0p4_mixF"]),
               ("ceiling", ["fs2p5_src0p1", "fs2p5_src0p1_mixF", "fs2p5_src0p2", "fs2p5_src0p2_mixF", "T100_fixed", "T100_mixF",
-                           "T20_fixed", "T20_mixF", "fs2p5_src0p1_ps", "fs2p5_src0p1_s3_ps"]))
+                           "T20_fixed", "T20_mixF", "fs2p5_src0p1_ps", "fs2p5_src0p1_s3_ps"]),
+              ("dose", ["T20_mixF", "fs2p5_src0p1_s3_ps", "T20_dose1e8_ps"]))
     for series, keys in sheets:
         keys = [k for k in keys if arm.load_leg(R.find(k)) is not None]
         n = len(keys)
