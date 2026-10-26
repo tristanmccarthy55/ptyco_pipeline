@@ -1,0 +1,11 @@
+key,run,change_vs_R2,verdict,Pb_right,Ti_right,O_right,Pb_guess,Ti_guess,O_guess,wrong,vacuum_ratio,eps,data_px,theta_max_mrad,model_px,object_px_A,scan_step_A,positions,iterations_per_engine,measurements_per_unknown,kernels,analysis,recon_leg,data_dir
+ref,"reference: 1420 px, ±133 mrad",full camera,good,90.7,59.7,56.0,25.9,17.6,18.9,3.3,0.41,0.01904,1420,133.12,1420,0.07394,0.5,1600,200,31.36,,analysis_armf_a080_fs2p5_src0p1_fixed_20261014_205858,recon_af_armf_a080_lab_fs2p5_src0p1_fixed,sim_out_af_armf_a080_lab_fs2p5_src0p1
+R1,"R1: 1024 px, ±96 mrad",full pixels,good,86.7,56.9,51.4,27.0,17.1,18.2,3.2,0.422,0.01817,1024,96.0,1024,0.10254,0.5,1600,200,31.36,,analysis_armf_a080_fs2p5_src0p1_detc96_kh2p22_20261026_131519,recon_af_armf_a080_lab_fs2p5_src0p1_detc96,sim_out_af_armf_a080_lab_fs2p5_src0p1_detc96
+C512,"C512: 512 px, ±96 mrad",512 px,,,,,,,,,,,,,1024,,,,200,,,,recon_af_armf_a080_lab_fs2p5_src0p1_detc96b2_up1,sim_out_af_armf_a080_lab_fs2p5_src0p1_detc96b2
+R2,"R2: 256 px, ±96 mrad",-,okay,85.9,25.0,22.7,28.8,21.9,21.2,3.5,0.392,0.00692,256,96.0,1024,0.10254,0.5,1600,200,1.96,,analysis_armf_a080_fs2p5_src0p1_detc96b4_up2_kh2p22_20261026_131519,recon_af_armf_a080_lab_fs2p5_src0p1_detc96b4_up2,sim_out_af_armf_a080_lab_fs2p5_src0p1_detc96b4
+C128,"C128: 128 px, ±96 mrad",128 px,,,,,,,,,,,,,1024,,,,200,,,,recon_af_armf_a080_lab_fs2p5_src0p1_detc96b8_up3,sim_out_af_armf_a080_lab_fs2p5_src0p1_detc96b8
+R3,"R3: 256 px, not modelled",no upsampling,failed (no atoms),,,,,,,,0.83,0.29078,256,96.0,256,0.10254,0.5,1600,200,14.32,,figdata,recon_af_armf_a080_lab_fs2p5_src0p1_detc96b4,sim_out_af_armf_a080_lab_fs2p5_src0p1_detc96b4
+R4,"R4: 354 px, ±133 mrad",±133 mrad,,,,,,,,,,,,,1416,,,,200,,,,recon_af_armf_a080_lab_fs2p5_src0p1_detc133b4_up2,sim_out_af_armf_a080_lab_fs2p5_src0p1_detc133b4
+S04,"S04: 256 px, 0.4 Å scan",0.4 Å step,,,,,,,,,,,,,1024,,,,200,,,,recon_af_armf_a080_s04_lab_fs2p5_src0p1_detc96b4_up2,sim_out_af_armf_a080_s04_lab_fs2p5_src0p1_detc96b4
+R2_n400,"R2, 400 + 400 it",2x iterations,,,,,,,,,,,,,1024,,,,400,,,,recon_af_armf_a080_lab_fs2p5_src0p1_detc96b4_up2_n400,sim_out_af_armf_a080_lab_fs2p5_src0p1_detc96b4
+R2_n1000,"R2, 1000 + 1000 it",5x iterations,,,,,,,,,,,,,1024,,,,1000,,,,recon_af_armf_a080_lab_fs2p5_src0p1_detc96b4_up2_n1000,sim_out_af_armf_a080_lab_fs2p5_src0p1_detc96b4

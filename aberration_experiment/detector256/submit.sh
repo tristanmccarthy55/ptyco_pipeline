@@ -29,7 +29,7 @@ T=$(bash campaign/test_coh_names.sh); echo "$T" | grep -v '^ok'
 T=$(PYTHON="$PY" bash campaign/test_driver_legacy.sh HEAD); echo "$T" | grep -v '^same'
 [ "$(echo "$T" | tail -1)" = "all launch lines unchanged" ] || { echo "NOT SUBMITTED: the old-launch dry run failed (above)"; exit 1; }
 T=$(bash aberration_experiment/detector256/test_det_driver.sh); echo "$T" | grep -v '^ok'
-[ "$(echo "$T" | tail -1)" = "all 21 cases passed" ] || { echo "NOT SUBMITTED: the detector dry run failed (above)"; exit 1; }
+[ "$(echo "$T" | tail -1)" = "all 25 cases passed" ] || { echo "NOT SUBMITTED: the detector dry run failed (above)"; exit 1; }
 T=$("$PY" aberration_experiment/detector256/test_upsampling_frame.py 2>&1); echo "$T" | grep -E '^FAIL|PASSED|FAILED'
 [ "$(echo "$T" | tail -1)" = "ALL PASSED" ] || { echo "NOT SUBMITTED: the frame unit test failed (above)"; exit 1; }
 for m in lab Pb Ti; do                        # the kept sims (disk cleanup 2026-10-14 kept the joint ones), whole

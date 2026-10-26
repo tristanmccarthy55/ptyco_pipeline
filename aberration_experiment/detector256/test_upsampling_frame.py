@@ -215,6 +215,8 @@ def main() -> int:
         r1 = run_rebin(sim, 96, 1)          # R1: +-96 mrad, full pixels
         r2 = run_rebin(sim, 96, 4)          # R2/R3: +-96 mrad, 4 x 4 sums
         r4 = run_rebin(sim, 133, 4)         # R4: +-133 mrad (1416), 4 x 4 sums -> 354
+        r512 = run_rebin(sim, 96, 2)        # C512: +-96 mrad, 2 x 2 sums -> 512 (upsampling 1)
+        r128 = run_rebin(sim, 96, 8)        # C128: +-96 mrad, 8 x 8 sums -> 128 (upsampling 3)
 
         # T1 the script's geometry
         m1 = loadmat(r1 / "sim_meta.mat", simplify_cells=True)["meta"]
@@ -260,6 +262,19 @@ def main() -> int:
               f"{rel(E4, 16 * binning_2D(E4f, 4)):.1e}")
         E4p = engine_data(r4 / "data_dp.hdf5", 2, presolve=1024)
         check("T5 R4 presolve (1416 -> 1024 fine, then binned) == R2's data", rel(E4p, E2) < 1e-6, f"{rel(E4p, E2):.1e}")
+
+        # T5b the other cameras of the limits wave (2026-10-26): 512 px (2 x 2, k = 1) and 128 px (8 x 8, k = 3), same truth
+        Pf = loadmat(r2 / "probe_initial_true.mat")["probe"].astype(np.complex128)   # R2's fine probe (= R1's, T8)
+        for rr, B, k in ((r512, 2, 1), (r128, 8, 3)):
+            m = loadmat(rr / "sim_meta.mat", simplify_cells=True)["meta"]
+            Ek = engine_data(rr / "data_dp.hdf5", k)
+            mk = binning_2D(E1, B)
+            ck = Ek.sum() / mk.sum()
+            Pk = loadmat(rr / f"probe_initial_true_up{k}.mat")["probe"].astype(np.complex128)
+            check(f"T5b {1024 // B} px ({B} x {B}, k = {k}): data == engine binning of the R1-frame truth, fine probe = R1's",
+                  m["Ndpx"] == 1024 // B and Ek.shape[:2] == (1024 // B,) * 2 and abs(ck - B * B) < 1e-6
+                  and rel(Ek, ck * mk) < 1e-6 and overlap(Pk, Pf) > 1 - 1e-9,
+                  f"{m['Ndpx']} px, scale {ck:.4f}, max rel diff {rel(Ek, ck * mk):.1e}")
 
         # T6 the modulus constraint maps each detector pixel's ratio back onto the same fine block the model summed
         rng = np.random.default_rng(3)

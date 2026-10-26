@@ -29,8 +29,10 @@
   and sims) and `..._r1r2_kh` (analyses); R3 submitted 2026-10-26 13:16 (recons 1348350 / 51 / 52, analysis 1348354,
   ~12 min a leg on the 256 grid), pulled to `~/Desktop/detector256_r3`. Score with
   `det_look.py <view>` where `<view>/analysis` holds the `_kh2p22` analyses and `<view>/results` the recon + sim dirs.
-- **Next (the user's choice):** a denser scan (0.4 Å, 2500 positions, ~3 : 1; new lab / Pb / Ti sims under a new label)
-  and/or R2 at 400 + 400 iterations (`NITER=400`, `RTAG`, the existing copies). R4 (±133 mrad) waits on Ti.
+- **LIMITS WAVE handed over 2026-10-26** (the user: "take as many sims as you need to know the limits"):
+  `bash aberration_experiment/detector256/submit_limits.sh` -- six runs, each ONE change against R2 (section "Limits wave"
+  below), every analysis with 2.22 Å kernels; all tarballs pull into `~/Desktop/detector256_limits`. Then
+  `det_look.py` scores everything into `results/` (section "Where the results are").
 - **Submission record:** R1 `_detc96`: rebin jobs 1339556 / 58 / 60 (lab / Pb / Ti), recons 1339557 / 59 / 61, pack
   1339562, analysis 1339563. R2 `_detc96b4_up2`: rebin jobs 1339564 / 66 / 68, recons 1339565 / 67 / 69, pack 1339570,
   analysis 1339571. Log `logs/detector256_r1r2_20261023_161114.txt` on Blythe; the kept lab sim confirmed at
@@ -110,9 +112,48 @@ Ti sims at this point, then a rebin and R2 again.
 Reference, reproduced by `det_look.py` from the pulled step-2 analysis: Pb / Ti / O right 91 / 60 / 56 % against
 guessing 26 / 18 / 19 %, 3 % wrong element, vacuum / slab 0.41, eps 0.0190 (N 1420): **good**.
 
+## Limits wave (2026-10-26): what limits Ti on a 256-px camera, and where Pb goes too
+
+R2 kept Pb (86 %) and lost Ti (25 against 22 guessing). Each run changes ONE thing against R2 (256 px, ±96 mrad, 0.5 Å
+step, 200 + 200 iterations); same sim physics, true probe fixed, lab + Pb + Ti alike, analyses with 2.22 Å kernel crops.
+
+| run | changes | measurements / unknown | question | data |
+|---|---|---|---|---|
+| R2_n400 | 400 + 400 iterations | 2.0 | was R2 short of convergence? (its misfit was still falling) | R2's copies |
+| R2_n1000 | 1000 + 1000 iterations | 2.0 | ditto, ~12 h a leg | R2's copies |
+| C512 | 512-px camera (2 × 2 sums, upsampling 1) | 7.8 | how many pixels does Ti need? | new copies of the kept sims |
+| C128 | 128-px camera (8 × 8 sums, upsampling 3) | 0.5 | an EMPAD-class camera: does Pb survive? | new copies |
+| R4 | ±133 mrad on 354 px (4 × 4, upsampling 2) | 2.0 | does more angle help at this pixel size? | new copies |
+| S04 | 0.4 Å scan, 2500 positions | 3.1 | does a denser scan bring Ti back? (the brief's rule) | NEW lab / Pb / Ti sims, label `armf_a080_s04` |
+
+Reading it: if Ti returns with iterations, R2 was under-converged; if it returns with C512 or S04 but not iterations,
+the limit is information (measurements per unknown), and C512 against S04 (7.8 vs 3.1) says whether pixels or positions
+buy it more cheaply; C128 bounds the low end; R4 isolates the angle. Not in this wave (a second wave if needed): 0.3 Å
+scans (4489 positions: the coherence-averaged sim at 1420 px would need ~145 GB, past the sims' 128 GB), 512 px on the
+dense scan, full pixels on the dense scan.
+Tests for the wave: `test_upsampling_frame.py` now also binds 512 px (k = 1) and 128 px (k = 3) to the engine's binning
+(scales 4 and 64, max rel diff < 6e-8); `test_det_driver.sh` 25 cases (512 / 128 px, NITER + RTAG on a reused copy, the
+dense-scan label sim -> rebin -> recon chain); the whole wave stub-run (31 sbatch calls, every export checked).
+
+## Where the results are
+
+- **`results/`** (committed; rebuilt by `det_look.py` from the pulled folders):
+  `det_scores.json` -- every run's numbers AND where each came from (analysis folder, recon leg, data dir, error trace,
+  kernel check), with the scoring rules; `det_scores.csv` -- the same as one flat table; `det_limits.png` -- Pb and Ti
+  right place against measurements per unknown and against iterations, guessing beside each point;
+  `det_sections_cameras.png` (reference, R1, C512, R2, C128, R3) and `det_sections_limits.png` (R2 and its iteration
+  runs, R4, S04) -- the depth sections with the found atoms; `phase/<run>_lab.jpg` -- each lab leg's phase image
+  (projection, every slice, x-z), a 75 % copy.
+- **Pulled tarballs, full size** (phase images, kernels, figure data, found atoms, logs): `~/Desktop/detector256_r1r2`
+  (R1 + R2 reconstructions and sims; their first, faulty analyses), `~/Desktop/detector256_r1r2_kh` (R1 + R2 analyses
+  with 2.22 Å kernels), `~/Desktop/detector256_r3`, `~/Desktop/detector256_limits`; the same tarballs stay on Blythe in
+  `/springbrook/share/physics/phucrh/` (names in each submission log, `logs/detector256_*.txt`).
+- **Reconstructions (h5, ~1 GB each) and sims stay on Blythe** (PACK_H5=0, CLEANDATA=0): `recon_af_<label>_<mode>_fs2p5_
+  src0p1_<tag>_NL18/` and `sim_out_af_*` under the pipeline checkout.
+
 ## Results
 
-See the status table at the top (2026-10-26). Depth sections: `figs/detector256/det_sections.png` (from `det_look.py`).
+See the status table at the top and `results/` (above).
 
 ## Caveats to state beside any result
 
@@ -172,6 +213,7 @@ rule: the fewest whole 4 × 4 blocks that keep ±θ (to 0.001 px), so ±96 mrad 
 | `submit.sh` | the hand-over: guards (leaked exports, naming 26/26, old launches unchanged, detector dry run 21/21, frame unit test, sims present at the reference geometry), then R1 + R2 (or `r3` / `r4`) and their analyses; log in `logs/detector256_<what>_<ts>.txt` |
 | `test_upsampling_frame.py` | the frame unit test (40 checks: 22 that the engine's source still has the lines it ports or the changes above, 18 on the data, the probes and controls that must fail); `~/hyperspy-bundle/bin/python ...` |
 | `test_det_driver.sh` | dry run of the driver's detector switches with a stub sbatch (21 cases) |
-| `det_look.py` | scores, eps on the data grid, vacuum ratio, depth sections beside the reference |
+| `submit_limits.sh` | the limits wave (six runs + analyses; guards as `submit.sh`; log `logs/detector256_limits_<ts>.txt`) |
+| `det_look.py` | scores, eps on the data grid, vacuum ratio, measurements per unknown, kernel check; writes `results/` |
 | `../../sim/rebin_detector.py` | the post-processing step (crop, B × B sums, probes per grid, sim_meta, record) |
 | `HANDOFF_PROMPT.md` | the brief this work started from |

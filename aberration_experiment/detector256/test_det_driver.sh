@@ -58,7 +58,8 @@ case_ok(){ # $1 have, $2 data tag, $3 recon tag, $4 expected rebin args ("" = re
         [ -n "$id" ] && id=$((id + 1000))
         if [ -n "$rargs" ]; then [[ "$rec" == *"--dependency=afterok:${id} "* ]] || { fail "$* : ${m} recon not chained on its rebin ${id}"; ok=0; }
         else [[ "$rec" != *"--dependency"* ]] || { fail "$* : ${m} recon waits on something: ${rec}"; ok=0; }; fi
-        [[ "$rec" == *"NLAYERS=18,SIM_BASE=${root}/${rd}/,REGLAYER=0,PROBE_MODES=1,NITER=200,SAVE_EVERY=200,GROUPING=32;16,BETA_LSQ=0.05"* ]] \
+        local ni="${WANT_NITER:-200}"
+        [[ "$rec" == *"NLAYERS=18,SIM_BASE=${root}/${rd}/,REGLAYER=0,PROBE_MODES=1,NITER=${ni},SAVE_EVERY=${ni},GROUPING=32;16,BETA_LSQ=0.05"* ]] \
             || { fail "$* : ${m} recon export: ${rec}"; ok=0; }
         if [ -n "$up" ]; then [[ "$rec" == *",UPSAMPLING=${up} "* ]] || { fail "$* : ${m} no UPSAMPLING=${up}"; ok=0; }
         else [[ "$rec" != *"UPSAMPLING"* ]] || { fail "$* : ${m} UPSAMPLING exported"; ok=0; }; fi
@@ -72,6 +73,27 @@ case_ok(){ # $1 have, $2 data tag, $3 recon tag, $4 expected rebin args ("" = re
     grep -q "atomfind_results_armf_a080${SFX}${rt}_TS\|atomfind_results_armf_a080${SFX}${rt}_[0-9]" "$root/out.txt" \
         || { fail "$* : tarball not tagged ${SFX}${rt}"; ok=0; }
     [ "$ok" = 1 ] && echo "ok    ${rt}  ($(grep -c . "$L") sbatch calls${rargs:+, rebin${rargs}})  <-  $*"
+}
+case_chain(){ # a label with no sims yet (the dense scan): sim -> rebin (afterok) -> recon (afterok), all named by the label
+    local lab="$1" dt="$2" rt="$3" step="$4"; shift 4; N=$((N + 1)); local root="$TMP/c$N" m ok=1 sid rid
+    if ! run_driver "$root" none LABELS="$lab" "$@"; then fail "$* : driver refused: $(tail -1 "$root/out.txt")"; return; fi
+    local L="$root/sbatch.log"
+    for m in lab Pb Ti; do
+        local sd="sim_out_af_${lab}_${m}${SFX}"
+        sid=$(grep -n -- "--job-name=af_sim_${lab}_${m}${SFX} " "$L" | cut -d: -f1); [ -n "$sid" ] && sid=$((sid + 1000))
+        rid=$(grep -n -- "--job-name=af_rebin_${lab}_${m}${SFX}${dt} " "$L" | cut -d: -f1); [ -n "$rid" ] && rid=$((rid + 1000))
+        [ -n "$sid" ] && [ -n "$rid" ] || { fail "$* : ${m} sim ${sid:-none} / rebin ${rid:-none}"; ok=0; continue; }
+        local sim; sim=$(grep -- "--job-name=af_sim_${lab}_${m}${SFX} " "$L")
+        [[ "$sim" == *"JOB_DIR=${root}/${sd},"*"SCAN_STEP=${step},"*"FOCAL_SPREAD=2.5,SOURCE_FWHM=0.1"* ]] || { fail "$* : ${m} sim export: ${sim}"; ok=0; }
+        grep -q -- "--job-name=af_rebin_${lab}_${m}${SFX}${dt} .*--dependency=afterok:${sid} .*--in-dir '${root}/${sd}' --out-dir '${root}/${sd}${dt}'" "$L" \
+            || { fail "$* : ${m} rebin not chained on sim ${sid}"; ok=0; }
+        grep -q -- "--job-name=af_rec_${lab}_${m}${SFX}${rt} .*--dependency=afterok:${rid} .*SIM_BASE=${root}/recon_af_${lab}_${m}${SFX}${rt}_NL18/" "$L" \
+            || { fail "$* : ${m} recon not chained on rebin ${rid}"; ok=0; }
+        [ "$(readlink "$root/recon_af_${lab}_${m}${SFX}${rt}_NL18/01/data_dp.hdf5")" = "${root}/${sd}${dt}/01/data_dp.hdf5" ] \
+            || { fail "$* : ${m} data link"; ok=0; }
+    done
+    grep -q "atomfind_results_${lab}${SFX}${rt}_[0-9]" "$root/out.txt" || { fail "$* : tarball not tagged ${lab}${SFX}${rt}"; ok=0; }
+    [ "$ok" = 1 ] && echo "ok    ${lab}${rt}  (sim -> rebin -> recon, $(grep -c . "$L") sbatch calls)  <-  $*"
 }
 case_refused(){ # $1 have, then VAR=value ... that must be refused before any sbatch
     local have="$1"; shift; N=$((N + 1)); local root="$TMP/c$N"
@@ -88,6 +110,11 @@ PARTIAL=1 case_ok sims+copy_detc96b4 _detc96b4 _detc96b4_up2 " --crop-mrad 96 --
 case_ok sims _detc133b4 _detc133b4_up2 " --crop-mrad 133 --bin 4" 2 2 RECON_ONLY=1 DET_CROP_MRAD=133 DET_BIN=4 UPSAMPLING=2  # R4
 case_ok sims _detc96p5 _detc96p5 " --crop-mrad 96.5 --bin 1" 0 "" RECON_ONLY=1 DET_CROP_MRAD=96.5             # '.' -> 'p'
 case_ok sims _detc96b4 _detc96b4 " --crop-mrad 96 --bin 4" 0 "" RECON_ONLY=1 DET_CROP_MRAD=96 DET_BIN=4 UPSAMPLING=0
+# the limits wave (2026-10-26): 512 / 128 px cameras, longer R2 under a run tag on the reused copy, the dense-scan label from scratch
+case_ok sims _detc96b2 _detc96b2_up1 " --crop-mrad 96 --bin 2" 1 1 RECON_ONLY=1 DET_CROP_MRAD=96 DET_BIN=2 UPSAMPLING=1   # C512
+case_ok sims _detc96b8 _detc96b8_up3 " --crop-mrad 96 --bin 8" 3 3 RECON_ONLY=1 DET_CROP_MRAD=96 DET_BIN=8 UPSAMPLING=3   # C128
+WANT_NITER=400 case_ok sims+copy_detc96b4 _detc96b4 _detc96b4_up2_n400 "" 2 2 RECON_ONLY=1 DET_CROP_MRAD=96 DET_BIN=4 UPSAMPLING=2 NITER=400 RTAG=_n400
+case_chain armf_a080_s04 _detc96b4 _detc96b4_up2 0.4 DET_CROP_MRAD=96 DET_BIN=4 UPSAMPLING=2                       # S04
 case_refused sims RECON_ONLY=1 UPSAMPLING=2
 case_refused sims RECON_ONLY=1 DET_BIN=2 UPSAMPLING=2
 case_refused sims RECON_ONLY=1 DET_BIN=3
