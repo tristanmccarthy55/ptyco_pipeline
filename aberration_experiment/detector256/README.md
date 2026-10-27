@@ -45,9 +45,10 @@ the fine grid, no NaN, full traces. Figures: `results/det_summary.png` (one row 
 - **No coarse camera has yet reached the reference's Ti.** The best is 49 % (R2_n1000) against R1's 57 and the
   reference's 60, about two standard deviations. This does not yet show missing information: R1 was not run longer,
   and might gain too. S04, the denser scan, is the other test.
-- **S04 is not back.** On 2026-10-27 at 15:45 its two tarballs were not on Blythe. Its sims (2500 positions) had 12 h
-  and its recons 24 h; whether they are still running or failed is not known (check in its submission log,
-  `logs/detector256_limits_<ts>.txt`, and `sacct`). The five other runs were pulled into `~/Desktop/detector256_limits`.
+- **S04 is still running (2026-10-27).** All three sims finished (7.2 h each, 2500 positions), and so did all three rebins.
+  The lab and Pb recons finished at 3.7 h a leg: 1.56× R2's, as the positions predict, and less than R2_n400's 4.7 h.
+  The Ti recon was 1.8 h in; its pack and then analysis 1348935 follow. The five other runs were pulled into
+  `~/Desktop/detector256_limits`; S04 goes there too.
 
 ### What this overturns
 
@@ -141,6 +142,10 @@ must still be computed on the fine grid, because the physics happens there; only
     | C512 | 1348902 / 04 / 06 |
     | C128 | 1348910 / 12 / 14 |
     | R4 | 1348918 / 20 / 22 |
+    | S04 | 1348927 / 30 / 33 |
+
+    S04's sims were 1348925 / 28 / 31 and its rebins 1348926 / 29 / 32. The analyses were 1348895 (R2_n400),
+    1348900 (R2_n1000), 1348908 (C512), 1348916 (C128), 1348924 (R4) and 1348935 (S04).
 - **The frame question is settled by test, not argument.** `test_upsampling_frame.py` ports the engine's data and
   model path line by line to numpy.
   - The 256-px data equal the engine's own 4 × 4 binning of the full-pixel truth, in the same array frame (max relative
