@@ -16,8 +16,11 @@ the reconstruction (the first R1 / R2 analysis, 2026-10-23, before PSF_HALF_A=2.
 Pull folders may be laid out flat (the tarballs unpacked in place: analysis_* / recon_af_* / sim_out_af_* side by side) or
 as <d>/analysis + <d>/results; a view is built in a temporary folder, nothing is moved. Defaults: ~/Desktop/mono_phase1
 (the reference), ~/Desktop/detector256_{r1r2, r1r2_kh, r3, limits}. For a run in several analyses the newest wins.
+Each run also records what its camera gives on its own (pixel in mrad, window lambda / pixel, share of the probe outside
+that window, from the copy's rebin_detector.json) and the hours its legs took (the slurm logs' engine times).
 Writes aberration_experiment/detector256/results/: det_scores.json (every number + where it came from), det_scores.csv,
-det_sections_cameras.png, det_sections_limits.png, det_limits.png, phase/<run>_lab.jpg (a 75 % copy).
+det_summary.png (one row per run), det_sections_cameras.png, det_sections_limits.png, det_limits.png,
+phase/<run>_lab.jpg (a 75 % copy).
 """
 import csv
 import glob
@@ -118,6 +121,24 @@ def meta_of(R, data_dir):
     return (loadmat(m, simplify_cells=True)["meta"], m) if m else (None, None)
 
 
+def rebin_of(R, data_dir):
+    """The copy's rebin_detector.json (None for the uncropped reference sim)."""
+    m = R._newest([os.path.join(d, "results", f"sim_out_af_{data_dir}", "01", "rebin_detector.json") for d in R.dirs])
+    return json.load(open(m)) if m else None
+
+
+def hours_of(R, lab, tag):
+    """{leg: hours} -- the two engines' 'Elapsed time for engine' from each leg's slurm log (one L40 per leg)."""
+    h = {}
+    for m in ("lab", "Pb", "Ti"):
+        logs = [p for d in R.dirs for p in glob.glob(os.path.join(d, "results", f"recon_af_{lab}_{m}{tag}_NL*", "slurm_*.out"))]
+        for p in sorted(logs, key=os.path.getmtime, reverse=True):
+            s = [float(x) for x in re.findall(r"Elapsed time for engine \S+: ([\d.]+) s", open(p, errors="replace").read())]
+            if len(s) == 2:
+                h[m] = sum(s) / 3600; break
+    return h
+
+
 def score_all(R):
     out = []
     for key, name, lab, tag, data, model_px, niter, change in RUNS:
@@ -142,6 +163,13 @@ def score_all(R):
                 r.update(data_px=n, theta_max_mrad=round(n / 2 * float(meta["d_alpha_rad"]) * 1e3, 2), object_px_A=dx,
                          scan_step_A=step, positions=npos, measurements_per_unknown=npos * n * n / unknowns,
                          eps=err * n / 2e5 if err is not None else None)
+                # the camera on its own (the old rule: N lambda / 2 theta must hold the probe) against the solver's grid
+                rb = rebin_of(R, data)
+                r.update(camera_mrad_per_px=float(meta["d_alpha_rad"]) * 1e3, camera_window_A=arm.LAM / float(meta["d_alpha_rad"]),
+                         solver_window_A=model_px * dx,
+                         camera_window_probe_outside=rb["probes"]["grids"]["up0"]["power_outside"] if rb else 0.0)
+            hrs = hours_of(R, lab, tag)
+            r.update(hours_per_leg=float(np.mean(list(hrs.values()))) if hrs else None, hours_by_leg=hrs)
             if sc:
                 r.update(right={k: sc["right"][z] for k, z in (("Pb", 82), ("Ti", 22), ("O", 8))},
                          guess={k: sc["guess"][z] for k, z in (("Pb", 82), ("Ti", 22), ("O", 8))},
@@ -154,15 +182,19 @@ def score_all(R):
 
 def print_table(out):
     f3 = lambda d: "/".join(f"{100 * d[s]:3.0f}" for s in ("Pb", "Ti", "O"))
-    print(f"{'run':30s}{'right Pb/Ti/O %':>16s} {'guess Pb/Ti/O %':>16s} {'wrong':>5s} {'vac':>5s} {'eps (N)':>14s} {'m/u':>6s}  verdict")
+    print(f"{'run':30s}{'right Pb/Ti/O %':>16s} {'guess Pb/Ti/O %':>16s} {'wrong':>5s} {'vac':>5s} {'eps (N)':>14s} {'m/u':>6s}"
+          f" {'cam win':>8s} {'out':>4s} {'h/leg':>6s}  verdict")
     for r in out:
         if not r["found"]:
             print(f"{r['run']:30s}{'not pulled':>16s}"); continue
         vr = f"{r['vacuum_ratio']:5.2f}" if r.get("vacuum_ratio") is not None else "    -"
         ep = f"{r['eps']:.4f} ({r['data_px']})" if r.get("eps") is not None else "-"
         mu = f"{r['measurements_per_unknown']:6.1f}" if r.get("measurements_per_unknown") else "     -"
+        cw = (f"{r['camera_window_A']:6.1f} A {100 * r['camera_window_probe_outside']:3.0f}%" if r.get("camera_window_A")
+              else f"{'-':>8s} {'-':>4s}")
+        hl = f"{r['hours_per_leg']:6.1f}" if r.get("hours_per_leg") else "     -"
         sc = (f"{f3(r['right']):>16s} {f3(r['guess']):>16s} {100 * r['wrong']:4.0f}%") if "right" in r else f"{'no atoms':>16s} {'':>16s} {'':>5s}"
-        print(f"{r['run']:30s}{sc} {vr} {ep:>14s} {mu}  {r.get('verdict')}"
+        print(f"{r['run']:30s}{sc} {vr} {ep:>14s} {mu} {cw} {hl}  {r.get('verdict')}"
               + (f"   KERNELS SUSPECT: {r['kernels']}" if r.get("kernels") else ""))
 
 
@@ -171,11 +203,16 @@ def save_tables(out):
         right="right element within 0.6 A in plane and 0.5 A in depth (make_arm_page.atom_scores)",
         guess="the same found atoms slid along their columns: the score of depths that are guesses",
         verdict="good: Pb >= 80 and Ti >= 45 %; okay: Pb >= 50 %", eps="final Fourier error x data width / 2e5",
-        measurements_per_unknown="positions x data px^2 / (((20 A + model px x dx) / dx)^2 x 18 slices x 2)"),
+        measurements_per_unknown="positions x data px^2 / (((20 A + model px x dx) / dx)^2 x 18 slices x 2)",
+        camera_window_A="lambda / camera pixel (= N lambda / 2 theta): the window the camera gives on its own, the old rule's window",
+        camera_window_probe_outside="share of the 105 A true probe's intensity outside camera_window_A (rebin_detector.json)",
+        solver_window_A="model px x object pixel: the window the solver fits (upsampling sums its model into the camera's pixels)",
+        hours_per_leg="the two engines' elapsed time from each leg's slurm log, mean of lab / Pb / Ti, one L40 each"),
         runs=out), open(os.path.join(OUT, "det_scores.json"), "w"), indent=1, ensure_ascii=False)
     cols = ["key", "run", "change_vs_R2", "verdict", "Pb_right", "Ti_right", "O_right", "Pb_guess", "Ti_guess", "O_guess", "wrong",
-            "vacuum_ratio", "eps", "data_px", "theta_max_mrad", "model_px", "object_px_A", "scan_step_A", "positions",
-            "iterations_per_engine", "measurements_per_unknown", "kernels", "analysis", "recon_leg", "data_dir"]
+            "vacuum_ratio", "eps", "data_px", "theta_max_mrad", "camera_mrad_per_px", "camera_window_A",
+            "camera_window_probe_outside", "model_px", "solver_window_A", "object_px_A", "scan_step_A", "positions",
+            "iterations_per_engine", "hours_per_leg", "measurements_per_unknown", "kernels", "analysis", "recon_leg", "data_dir"]
     with open(os.path.join(OUT, "det_scores.csv"), "w", newline="") as fh:
         w = csv.DictWriter(fh, fieldnames=cols); w.writeheader()
         for r in out:
@@ -185,7 +222,8 @@ def save_tables(out):
                 row[f"{s}_guess"] = round(100 * r["guess"][s], 1) if "guess" in r else None
             for k in ("wrong",):
                 row[k] = round(100 * r[k], 1) if r.get(k) is not None else None
-            for k, nd in (("vacuum_ratio", 3), ("eps", 5), ("object_px_A", 5), ("measurements_per_unknown", 2)):
+            for k, nd in (("vacuum_ratio", 3), ("eps", 5), ("object_px_A", 5), ("measurements_per_unknown", 2), ("camera_mrad_per_px", 4),
+                          ("camera_window_A", 2), ("camera_window_probe_outside", 3), ("solver_window_A", 2), ("hours_per_leg", 2)):
                 row[k] = round(r[k], nd) if r.get(k) is not None else None
             w.writerow(row)
 
@@ -273,6 +311,64 @@ def limits_figure(out):
     arm.save(fig, "det_limits.png")
 
 
+def summary_figure(out):
+    """One row per run, from the full camera down to 128 px: what the camera alone would give (its own window and the share
+    of the probe outside it: the old rule), Pb and Ti right place against guessing, and the hours each leg took."""
+    order = ["ref", "R1", "C512", "R4", "R2", "R2_n400", "R2_n1000", "S04", "R3", "C128"]
+    rows = [r for k in order for r in out if r["key"] == k and r["found"] and r.get("camera_window_A")]
+    n = len(rows); ys = np.arange(n)[::-1]
+    fig, axs = plt.subplots(1, 3, figsize=(11.5, 0.62 * n + 1.9), sharey=True, gridspec_kw=dict(width_ratios=[1, 1, 0.7]))
+    labels = []
+    for r in rows:
+        it = r["iterations_per_engine"]
+        l1 = f"{r['key']} · {r['data_px']} px to ±{r['theta_max_mrad']:.0f} mrad · {it} + {it} it"
+        if r["key"] == "R3":
+            l2 = f"sums NOT modelled: the solver fits the camera's {r['solver_window_A']:.0f} Å"
+        elif r["camera_window_probe_outside"] < 0.005:
+            l2 = f"camera's own window {r['camera_window_A']:.0f} Å: probe inside"
+        else:
+            l2 = f"camera's own window {r['camera_window_A']:.0f} Å: {100 * r['camera_window_probe_outside']:.0f} % of probe outside"
+        labels.append(l1 + "\n" + l2)
+    for c, (el, bar) in enumerate((("Pb", 80), ("Ti", 45))):
+        ax = axs[c]
+        for y, r in zip(ys, rows):
+            if "right" not in r:
+                ax.plot(1.5, y, "x", ms=8, mew=1.8, color=INK2)
+                ax.text(5, y, "no atoms found", va="center", fontsize=8, color=INK2)
+                continue
+            v, g = 100 * r["right"][el], 100 * r["guess"][el]
+            ax.plot([g, v], [y, y], color=GREY, lw=1.2, zorder=1)
+            ax.plot(g, y, "o", ms=8, mfc="white", mec=GREY, mew=1.6, zorder=2)
+            ax.plot(v, y, "o", ms=9, color=BLUE, mec="white", mew=1.5, zorder=3)
+            ax.text(v + 3, y, f"{v:.0f}", va="center", fontsize=8, color=INK2)
+        ax.axvline(bar, color=INK2, lw=0.8, ls=(0, (4, 3)))
+        ax.text(bar, n - 0.45, f"good ≥ {bar}", fontsize=8, color=INK2, ha="center", va="bottom",
+                bbox=dict(boxstyle="square,pad=0.15", fc="white", ec="none"))
+        ax.set_xlim(0, 100); ax.set_xlabel(f"{el} right place (%)", fontsize=9, color=INK2)
+    ax = axs[2]
+    for y, r in zip(ys, rows):
+        h = r.get("hours_per_leg")
+        if h:
+            ax.barh(y, h, height=0.42, color="#b7b5af", zorder=2)
+            ax.text(h + 0.25, y, f"{h:.1f} h", va="center", fontsize=8, color=INK2)
+    ax.set_xlim(0, 14); ax.set_xlabel("hours per leg (one L40)", fontsize=9, color=INK2)
+    for ax in axs:
+        ax.set_ylim(-0.6, n - 0.1)
+        ax.grid(True, axis="x", color="#e6e5e1", lw=0.6); ax.set_axisbelow(True)
+        for s in ("top", "right"):
+            ax.spines[s].set_visible(False)
+        ax.tick_params(colors=INK2, labelsize=8.5, left=False)
+    axs[0].set_yticks(ys); axs[0].set_yticklabels(labels, fontsize=8.2, color=INK)
+    axs[0].plot([], [], "o", ms=9, color=BLUE, mec="white", label="right element, right depth (±0.5 Å)")
+    axs[0].plot([], [], "o", ms=8, mfc="white", mec=GREY, mew=1.6, label="guessing (depths slid along the column)")
+    fig.legend(fontsize=8, frameon=False, loc="lower left", ncol=2, bbox_to_anchor=(0.01, 0.0))
+    fig.suptitle("detector256: a coarse camera works when the solver models its pixels "
+                 "(80 mrad ARM tableau, fs 2.5 Å + src 0.1 Å, noiseless, true probe; probe d90 72 Å)",
+                 fontsize=10, color=INK, x=0.01, ha="left")
+    fig.tight_layout(rect=(0, 0.05, 1, 0.97))
+    arm.save(fig, "det_summary.png")
+
+
 def main():
     os.makedirs(OUT, exist_ok=True)
     view = build_view(PULLS)
@@ -287,8 +383,10 @@ def main():
     copy_phase(R, out)
     sections(R, out, arm.cuts_from(arm.load_leg(R.find("known_a080"))))
     limits_figure(out)
+    summary_figure(out)
     shutil.rmtree(view, ignore_errors=True)
-    print(f"saved in {os.path.relpath(OUT, REPO)}/: det_scores.json, det_scores.csv, det_sections_*.png, det_limits.png, phase/")
+    print(f"saved in {os.path.relpath(OUT, REPO)}/: det_scores.json, det_scores.csv, det_summary.png, det_sections_*.png, "
+          f"det_limits.png, phase/")
 
 
 if __name__ == "__main__":

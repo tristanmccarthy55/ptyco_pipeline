@@ -5,7 +5,11 @@
   "guess": "the same found atoms slid along their columns: the score of depths that are guesses",
   "verdict": "good: Pb >= 80 and Ti >= 45 %; okay: Pb >= 50 %",
   "eps": "final Fourier error x data width / 2e5",
-  "measurements_per_unknown": "positions x data px^2 / (((20 A + model px x dx) / dx)^2 x 18 slices x 2)"
+  "measurements_per_unknown": "positions x data px^2 / (((20 A + model px x dx) / dx)^2 x 18 slices x 2)",
+  "camera_window_A": "lambda / camera pixel (= N lambda / 2 theta): the window the camera gives on its own, the old rule's window",
+  "camera_window_probe_outside": "share of the 105 A true probe's intensity outside camera_window_A (rebin_detector.json)",
+  "solver_window_A": "model px x object pixel: the window the solver fits (upsampling sums its model into the camera's pixels)",
+  "hours_per_leg": "the two engines' elapsed time from each leg's slurm log, mean of lab / Pb / Ti, one L40 each"
  },
  "runs": [
   {
@@ -30,6 +34,16 @@
    "positions": 1600,
    "measurements_per_unknown": 31.360000000000003,
    "eps": 0.01904015946,
+   "camera_mrad_per_px": 0.18749989426407307,
+   "camera_window_A": 105.00112587942066,
+   "solver_window_A": 104.99999999999997,
+   "camera_window_probe_outside": 0.0,
+   "hours_per_leg": 5.097851851851851,
+   "hours_by_leg": {
+    "lab": 4.985027777777777,
+    "Pb": 5.265861111111111,
+    "Ti": 5.042666666666666
+   },
    "right": {
     "Pb": 0.9066666666666666,
     "Ti": 0.5972222222222222,
@@ -66,6 +80,16 @@
    "positions": 1600,
    "measurements_per_unknown": 31.360062843217797,
    "eps": 0.018166459904,
+   "camera_mrad_per_px": 0.18749989426407307,
+   "camera_window_A": 105.00112587942066,
+   "solver_window_A": 105.00065754237814,
+   "camera_window_probe_outside": 0.0,
+   "hours_per_leg": 2.411296296296296,
+   "hours_by_leg": {
+    "lab": 2.4109444444444446,
+    "Pb": 2.4115555555555557,
+    "Ti": 2.411388888888889
+   },
    "right": {
     "Pb": 0.8666666666666667,
     "Ti": 0.5694444444444444,
@@ -89,7 +113,42 @@
    "data_dir": "sim_out_af_armf_a080_lab_fs2p5_src0p1_detc96b2",
    "model_px": 1024,
    "iterations_per_engine": 200,
-   "found": false
+   "found": true,
+   "analysis": "analysis_armf_a080_fs2p5_src0p1_detc96b2_up1_kh2p22_20261026_223730",
+   "kernels": "",
+   "vacuum_ratio": 0.4029911075181892,
+   "error_trace": "S00001_512x512_b0_ML_recon_error_trace.csv",
+   "final_error": 4.5026884,
+   "data_px": 512,
+   "theta_max_mrad": 96.0,
+   "object_px_A": 0.10253970463122865,
+   "scan_step_A": 0.5,
+   "positions": 1600,
+   "measurements_per_unknown": 7.840015710804449,
+   "eps": 0.011526882304000001,
+   "camera_mrad_per_px": 0.37499978852814614,
+   "camera_window_A": 52.50056293971033,
+   "solver_window_A": 105.00065754237814,
+   "camera_window_probe_outside": 0.14830572092018113,
+   "hours_per_leg": 2.3693796296296292,
+   "hours_by_leg": {
+    "lab": 2.36875,
+    "Pb": 2.368722222222222,
+    "Ti": 2.370666666666667
+   },
+   "right": {
+    "Pb": 0.8354430379746836,
+    "Ti": 0.4583333333333333,
+    "O": 0.4027777777777778
+   },
+   "guess": {
+    "Pb": 0.26582278481012656,
+    "Ti": 0.1857638888888889,
+    "O": 0.1970486111111111
+   },
+   "wrong": 0.026442307692307692,
+   "n_found": 449,
+   "verdict": "good"
   },
   {
    "key": "R2",
@@ -113,6 +172,16 @@
    "positions": 1600,
    "measurements_per_unknown": 1.9600039277011123,
    "eps": 0.0069239685120000005,
+   "camera_mrad_per_px": 0.7499995770562923,
+   "camera_window_A": 26.250281469855164,
+   "solver_window_A": 105.00065754237814,
+   "camera_window_probe_outside": 0.5619267039258311,
+   "hours_per_leg": 2.336685185185185,
+   "hours_by_leg": {
+    "lab": 2.334388888888889,
+    "Pb": 2.338027777777778,
+    "Ti": 2.337638888888889
+   },
    "right": {
     "Pb": 0.8589743589743589,
     "Ti": 0.25,
@@ -136,7 +205,42 @@
    "data_dir": "sim_out_af_armf_a080_lab_fs2p5_src0p1_detc96b8",
    "model_px": 1024,
    "iterations_per_engine": 200,
-   "found": false
+   "found": true,
+   "analysis": "analysis_armf_a080_fs2p5_src0p1_detc96b8_up3_kh2p22_20261026_223730",
+   "kernels": "",
+   "vacuum_ratio": 0.397126969416126,
+   "error_trace": "S00001_128x128_b0_ML_recon_error_trace.csv",
+   "final_error": 5.7794542,
+   "data_px": 128,
+   "theta_max_mrad": 96.0,
+   "object_px_A": 0.10253970463122865,
+   "scan_step_A": 0.5,
+   "positions": 1600,
+   "measurements_per_unknown": 0.4900009819252781,
+   "eps": 0.003698850688,
+   "camera_mrad_per_px": 1.4999991541125846,
+   "camera_window_A": 13.125140734927582,
+   "solver_window_A": 105.00065754237814,
+   "camera_window_probe_outside": 0.8783926403481291,
+   "hours_per_leg": 2.3266203703703705,
+   "hours_by_leg": {
+    "lab": 2.3265833333333337,
+    "Pb": 2.3266111111111107,
+    "Ti": 2.3266666666666667
+   },
+   "right": {
+    "Pb": 0.6533333333333333,
+    "Ti": 0.2222222222222222,
+    "O": 0.3055555555555556
+   },
+   "guess": {
+    "Pb": 0.2783333333333333,
+    "Ti": 0.1840277777777778,
+    "O": 0.2013888888888889
+   },
+   "wrong": 0.11519607843137254,
+   "n_found": 466,
+   "verdict": "okay"
   },
   {
    "key": "R3",
@@ -160,6 +264,16 @@
    "positions": 1600,
    "measurements_per_unknown": 14.317097263956004,
    "eps": 0.2907788288,
+   "camera_mrad_per_px": 0.7499995770562923,
+   "camera_window_A": 26.250281469855164,
+   "solver_window_A": 26.250164385594534,
+   "camera_window_probe_outside": 0.5619267039258311,
+   "hours_per_leg": 0.19518518518518516,
+   "hours_by_leg": {
+    "lab": 0.1958888888888889,
+    "Pb": 0.19452777777777777,
+    "Ti": 0.1951388888888889
+   },
    "verdict": "failed (no atoms)"
   },
   {
@@ -171,7 +285,42 @@
    "data_dir": "sim_out_af_armf_a080_lab_fs2p5_src0p1_detc133b4",
    "model_px": 1416,
    "iterations_per_engine": 200,
-   "found": false
+   "found": true,
+   "analysis": "analysis_armf_a080_fs2p5_src0p1_detc133b4_up2_kh2p22_20261026_223730",
+   "kernels": "",
+   "vacuum_ratio": 0.38217391304347825,
+   "error_trace": "S00001_354x354_b0_ML_recon_error_trace.csv",
+   "final_error": 3.7874496,
+   "data_px": 354,
+   "theta_max_mrad": 132.75,
+   "object_px_A": 0.0741530067389676,
+   "scan_step_A": 0.5,
+   "positions": 1600,
+   "measurements_per_unknown": 1.9600039277011125,
+   "eps": 0.006703785792,
+   "camera_mrad_per_px": 0.7499995770562923,
+   "camera_window_A": 26.250281469855164,
+   "solver_window_A": 105.00065754237812,
+   "camera_window_probe_outside": 0.5619363835210678,
+   "hours_per_leg": 5.570444444444444,
+   "hours_by_leg": {
+    "lab": 5.57061111111111,
+    "Pb": 5.570027777777778,
+    "Ti": 5.570694444444444
+   },
+   "right": {
+    "Pb": 0.8,
+    "Ti": 0.4583333333333333,
+    "O": 0.46296296296296297
+   },
+   "guess": {
+    "Pb": 0.28515625,
+    "Ti": 0.18836805555555558,
+    "O": 0.21006944444444442
+   },
+   "wrong": 0.02,
+   "n_found": 474,
+   "verdict": "good"
   },
   {
    "key": "S04",
@@ -193,7 +342,42 @@
    "data_dir": "sim_out_af_armf_a080_lab_fs2p5_src0p1_detc96b4",
    "model_px": 1024,
    "iterations_per_engine": 400,
-   "found": false
+   "found": true,
+   "analysis": "analysis_armf_a080_fs2p5_src0p1_detc96b4_up2_n400_kh2p22_20261026_223730",
+   "kernels": "",
+   "vacuum_ratio": 0.3986655546288574,
+   "error_trace": "S00001_256x256_b0_ML_recon_error_trace.csv",
+   "final_error": 4.9986744,
+   "data_px": 256,
+   "theta_max_mrad": 96.0,
+   "object_px_A": 0.10253970463122865,
+   "scan_step_A": 0.5,
+   "positions": 1600,
+   "measurements_per_unknown": 1.9600039277011123,
+   "eps": 0.006398303231999999,
+   "camera_mrad_per_px": 0.7499995770562923,
+   "camera_window_A": 26.250281469855164,
+   "solver_window_A": 105.00065754237814,
+   "camera_window_probe_outside": 0.5619267039258311,
+   "hours_per_leg": 4.650074074074074,
+   "hours_by_leg": {
+    "lab": 4.6488611111111116,
+    "Pb": 4.653166666666667,
+    "Ti": 4.648194444444444
+   },
+   "right": {
+    "Pb": 0.9102564102564102,
+    "Ti": 0.4722222222222222,
+    "O": 0.3148148148148148
+   },
+   "guess": {
+    "Pb": 0.2732371794871795,
+    "Ti": 0.18489583333333334,
+    "O": 0.20370370370370372
+   },
+   "wrong": 0.018691588785046728,
+   "n_found": 468,
+   "verdict": "good"
   },
   {
    "key": "R2_n1000",
@@ -204,7 +388,42 @@
    "data_dir": "sim_out_af_armf_a080_lab_fs2p5_src0p1_detc96b4",
    "model_px": 1024,
    "iterations_per_engine": 1000,
-   "found": false
+   "found": true,
+   "analysis": "analysis_armf_a080_fs2p5_src0p1_detc96b4_up2_n1000_kh2p22_20261026_223730",
+   "kernels": "",
+   "vacuum_ratio": 0.4263005780346821,
+   "error_trace": "S00001_256x256_b0_ML_recon_error_trace.csv",
+   "final_error": 4.5378551,
+   "data_px": 256,
+   "theta_max_mrad": 96.0,
+   "object_px_A": 0.10253970463122865,
+   "scan_step_A": 0.5,
+   "positions": 1600,
+   "measurements_per_unknown": 1.9600039277011123,
+   "eps": 0.005808454528,
+   "camera_mrad_per_px": 0.7499995770562923,
+   "camera_window_A": 26.250281469855164,
+   "solver_window_A": 105.00065754237814,
+   "camera_window_probe_outside": 0.5619267039258311,
+   "hours_per_leg": 11.587472222222223,
+   "hours_by_leg": {
+    "lab": 11.585944444444443,
+    "Pb": 11.587361111111111,
+    "Ti": 11.589111111111112
+   },
+   "right": {
+    "Pb": 0.9102564102564102,
+    "Ti": 0.4861111111111111,
+    "O": 0.4444444444444444
+   },
+   "guess": {
+    "Pb": 0.2692307692307692,
+    "Ti": 0.18402777777777776,
+    "O": 0.21064814814814814
+   },
+   "wrong": 0.03125,
+   "n_found": 453,
+   "verdict": "good"
   }
  ]
 }

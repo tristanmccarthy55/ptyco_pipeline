@@ -38,7 +38,15 @@ rules), and `page/ARM_PAGE.md` (the results page and the honest atom scoring). W
   D is the only pending item; D at 1e8 not on the page until it lands).
 - **Side test, 2026-10-23: is a 256 x 256 camera enough?** (`detector256/README.md`, status at its top): the joint point's
   data re-recorded on smaller cameras (`sim/rebin_detector.py`; driver `DET_CROP_MRAD` / `DET_BIN` / `UPSAMPLING`), the
-  solver modelling the summed pixels (`p.detector.upsampling`, five engine fixes, frame unit test). R1 + R2 handed over.
+  solver modelling the summed pixels (`p.detector.upsampling`, five engine fixes, frame unit test). **Answered
+  2026-10-27: yes.**
+  - 256 px at ±96 mrad, with the pixels modelled and 400 + 400 iterations: Pb / Ti right 91 / 47 % (good), against
+    1420 px's 91 / 60.
+  - Not modelled: no atoms.
+  - So the window is set by the solver's grid, not the camera. "The window is set by the detector" is wrong: its home
+    README lists where the repo said it.
+  - Separately, cutting the recorded angle from ±133 to ±96 mrad halves a leg (5.1 → 2.4 h) at no measurable cost.
+  - S04 (0.4 Å scan) is still out.
 
 ## The goal (the user, 2026-10-12)
 
@@ -68,6 +76,7 @@ their columns): `analysis/make_arm_page.py atom_scores`. Never judge on summary.
 | probe known, coherent: works 70–80 mrad | 80 mrad 90 / 58 vs 26 / 18 % |
 | 90 mrad works once the window holds the probe | 140 Å window 92 / 50 vs 23 / 13 %; 105 Å window 76 / 32 % |
 | 90/100 mrad failures were the 105 Å window | 80 mrad probe in a 52.5 Å window fails like 100 mrad |
+| the window is the SOLVER's grid, not the camera's (2026-10-27, `detector256/`) | 256-px camera (own window 26 Å, 56 % of the probe outside), pixels modelled, 400 + 400 it: 91 / 47 vs 27 / 18 %; same data not modelled: no atoms |
 | outer search finds C1, C3 from realistic data | to 2.3 Å and 0.14 µm (corrector: ±40 Å, ±0.8 µm); 4× closer than a 5 % kick |
 | shot noise not the cause | 1e7 = 1e8 e/Å² |
 | RT phonons alone remove depth (80 mrad, noiseless, probe fixed) | 24 / 11 vs 18 / 14 %, wrong element 33 %; clean recon, smooth column streaks |
@@ -215,7 +224,7 @@ up to ~350 GB at once before the packs clean it.
 | symptom | cause / rule |
 |---|---|
 | array jobs on `compute` nodes, `[CPU-MLs]`, OOM | an sbatch'd wrapper without the `#SBATCH --gres` header; slurm reads only the submitted script's header. A stub-sbatch dry run cannot catch it: grep every new wrapper for `--gres` |
-| large-aperture failure | the reconstruction window, not the aperture: keep < ~5 % of the probe outside it |
+| large-aperture failure | the reconstruction window, not the aperture: keep < ~5 % of the probe outside it. That is the solver's window: a camera whose own N λ / 2θ is smaller works when its pixels are modelled (`UPSAMPLING`, `detector256/`) |
 | region sim OOM in seconds | grid with a large prime factor (now rounded to 7-smooth) and batch size (2 above 7000 px) |
 | `error contains NaNs` in the full engine | probe released at full resolution with tiny GROUPING (90 mrad, "2;2"); release in the presolve only or use larger groups |
 | full-physics runs look "okay" on summary.csv | the 2 Å any-element match; use atom_scores |

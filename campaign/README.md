@@ -161,6 +161,11 @@ Optional columns 11–14 (`side win step detmax`, `ceos_sweep.tsv`): the row's r
 (`nl_force`, LABELS rows only) forces the row's recon layer count; `-` or absent = Nyquist; the `NL` env var still
 wins. Column 8 `nl` stays unread by `run_thin_atomfind.sh` (older tsvs carry stale values there).
 Region windows are at least 35 Å (`region_geometry`, 2026-09-27): 17.5 Å fails with the point-sampled detector.
+**`bin` sets the simulated camera's pixel, and through it the window, only because these runs fit the camera's own
+grid (2026-10-27).** A real camera need not be that fine. When the solver models the camera's pixels (`UPSAMPLING`), a
+256-px camera with 4× coarser pixels at ±96 mrad reconstructs the 80 mrad point as well as 1420 px (Pb), and at "good"
+for Ti with 400 + 400 iterations. The window is the solver's grid; see `aberration_experiment/detector256/README.md`,
+"What this overturns".
 
 ## Results / analysis
 Each `*_recons.h5` holds the object volume (`reconstruction/object`, **NL×1×753×753** — NL varies

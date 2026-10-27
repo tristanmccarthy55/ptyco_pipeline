@@ -1,47 +1,153 @@
 # detector256 — is a 256 × 256-pixel camera enough for the 80 mrad reconstructions?
 
-## Status (2026-10-26, evening)
+## Status (2026-10-27): the answer
 
-- **Answer so far: a 256-pixel camera keeps the Pb depths but loses Ti, and only works when the solver models the
-  summed pixels.** With kernels cropped to 2.22 Å (all centred on their own atom, 16 atoms each, peak/bg 322-697):
+**A 256 × 256 camera is enough at 80 mrad, if the solver models its pixels and is given about twice the iterations.**
+With 400 + 400 iterations the 256-pixel camera finds the Pb depths as well as the full 1420-pixel camera (91 %) and the
+Ti depths at "good" (47 %, against the reference's 60). The same data fitted without modelling the pixels find nothing.
+Noiseless, true probe, idealised pixels: see the caveats below.
 
-  | run | camera | Pb right (guess) | Ti right (guess) | vacuum / slab | eps (N) | verdict |
-  |---|---|---|---|---|---|---|
-  | reference | 1420 px, ±133 mrad | 91 (26) | 60 (18) | 0.41 | 0.0190 (1420) | good |
-  | R1 | 1024 px, ±96 mrad | 87 (27) | 57 (17) | 0.42 | 0.0182 (1024) | good |
-  | R2 | **256 px**, ±96 mrad, upsampled | 86 (29) | **25 (22)** | 0.39 | 0.0069 (256) | okay |
-  | R3 | 256 px, no upsampling | no atoms (triage: phase sd 0.50 rad) | | 0.83 | 0.2908 (256) | failed |
+Every run on the same simulation (80 mrad ARM tableau, focal spread 2.5 Å + source 0.1 Å, noiseless, true probe fixed),
+kernels cropped to 2.22 Å, all centred on their own atom from 16 atoms. "Camera's own window" is N λ / 2θ, the window the
+camera would give on its own. The repo's documents took this to be the window the probe has to fit in (next
+section). The scores count 78 Pb, 144 Ti and 432 O atoms, so one standard deviation is about ±3 points for Pb and ±4 for
+Ti.
 
-  - **The angle cut costs little:** R1 is within 3-4 points of the reference, as clean, same misfit.
-  - **Upsampling is essential:** on the identical 256-px data the misfit drops 42x (R3 0.29 -> R2 0.0069) and the
-    reconstruction goes from no structure (R3: a faint lattice in projection, noise in the corners, nothing in any
-    slice) to the reference's look.
-  - **R2's Ti is at guessing.** The images: R2's lab volume looks like R1's and the reference's (discrete Pb, same lean,
-    quiet vacuum); in the B-site rows the finder lands on the Ti columns but its depths are no better than chance.
-    Two candidate causes, not yet separated: (1) convergence -- R2's misfit was still falling faster than R1's at
-    iteration 400 (lab, full engine: -6.4 % vs -4.2 %); (2) information -- ~2 measurements per unknown against R1's 31;
-    a weak scatterer is the first to suffer from either. The brief's rule: a denser scan before anything else. The
-    cheaper, sim-free test of (1) is R2 with more iterations.
+| run | camera | iterations | camera's own window (probe outside it) | Pb right (guess) | Ti right (guess) | vacuum / slab | hours a leg | verdict |
+|---|---|---|---|---|---|---|---|---|
+| reference | 1420 px, ±133 mrad | 200 + 200 | 105 Å (all inside) | 91 (26) | 60 (18) | 0.41 | 5.1 | good |
+| R1 | 1024 px, ±96 mrad | 200 + 200 | 105 Å (all inside) | 87 (27) | 57 (17) | 0.42 | 2.4 | good |
+| C512 | 512 px, ±96 mrad | 200 + 200 | 52 Å (15 %) | 84 (27) | 46 (19) | 0.40 | 2.4 | good |
+| R4 | 354 px, ±133 mrad | 200 + 200 | 26 Å (56 %) | 80 (29) | 46 (19) | 0.38 | 5.6 | good |
+| R2 | **256 px**, ±96 mrad | 200 + 200 | 26 Å (56 %) | 86 (29) | 25 (22) | 0.39 | 2.3 | okay |
+| **R2_n400** | **256 px**, ±96 mrad | **400 + 400** | 26 Å (56 %) | **91 (27)** | **47 (18)** | 0.40 | 4.7 | **good** |
+| R2_n1000 | 256 px, ±96 mrad | 1000 + 1000 | 26 Å (56 %) | 91 (27) | 49 (18) | 0.43 | 11.6 | good |
+| C128 | 128 px, ±96 mrad | 200 + 200 | 13 Å (88 %) | 65 (28) | 22 (18) | 0.40 | 2.3 | okay |
+| R3 | 256 px, pixels **not** modelled | 200 + 200 | 26 Å (56 %), and the solver uses it | no atoms | | 0.83 | 0.2 | failed |
+| S04 | 256 px on a 0.4 Å scan | 200 + 200 | 26 Å (56 %) | not back | | | | |
+
+O right (guess): reference 56 (19), R1 51 (18), C512 40 (20), R4 46 (21), R2 23 (21), R2_n400 31 (20), R2_n1000 44 (21),
+C128 31 (20). Every phase image was viewed (`results/phase/`). Each is a clean crystal with the reference's column lean
+and quiet vacuum; C128 is a little softer, with fringes at two corners. All logs are clean: upsampling on, probe kept on
+the fine grid, no NaN, full traces. Figures: `results/det_summary.png` (one row per run, with the hours) and
+`results/det_limits.png`.
+
+- **R2's Ti loss was mostly convergence, not missing information.** On the same 256-px data, more iterations take Ti from
+  25 to 47 % (400) to 49 % (1000), and Pb from 86 to 91 %. Most of the gain comes by 400. Going to 1000 adds 2 points of
+  Ti (within the ±4) and 13 of O (31 → 44). The misfit is still falling slowly: the lab leg fell 1 % over the last 200
+  iterations.
+- **Coarser pixels make each iteration less effective; they do not, so far, lose the depths.** At 200 iterations Ti
+  falls with the pixel count: 57 (1024 px), 46 (512), 25 (256), 22 (128). The 256-px camera recovers with more
+  iterations; the 128-px one was not given more.
+- **More angle on the same pixel converges faster, but costs the same.** R4 has R2's 0.75 mrad pixel to ±133 mrad and
+  reaches Ti 46 % in 200 iterations, where R2 needed 400. Its solver grid is 1416 px, though, so its legs take 5.6 h,
+  about R2_n400's 4.7 h.
+- **No coarse camera has yet reached the reference's Ti.** The best is 49 % (R2_n1000) against R1's 57 and the
+  reference's 60, about two standard deviations. This does not yet show missing information: R1 was not run longer,
+  and might gain too. S04, the denser scan, is the other test.
+- **S04 is not back.** On 2026-10-27 at 15:45 its two tarballs were not on Blythe. Its sims (2500 positions) had 12 h
+  and its recons 24 h; whether they are still running or failed is not known (check in its submission log,
+  `logs/detector256_limits_<ts>.txt`, and `sacct`). The five other runs were pulled into `~/Desktop/detector256_limits`.
+
+### What this overturns
+
+**"The window is set by the detector" is wrong.** Until today the repo took the window to be the camera's own,
+N λ / 2θ_max, and concluded that a large probe needs a camera with fine angular pixels: 0.19 mrad, 1420 px to ±133 mrad
+for the 105 Å window. The statement, or rules built on it, appears in:
+
+- `report/aberrations_paper/aberrations_paper.tex` (draft 1), Geometry section: "The window is set by the detector: a
+  pattern N pixels across, recorded to an angle θ_max, gives a window Nλ/2θ_max. The solver handles patterns up to about
+  1420 pixels ..."
+- this README's "The question" below, and `HANDOFF_PROMPT.md`: "the pixel count is set by probe size × detector angle".
+- the campaign primer (`artifacts/primer_src/primer_template.html`): "The window (region over detector binning, 17.5 to
+  140 Å) must hold the probe."
+- `campaign/README.md`: the planner's `bin` column, "probe size → real-space window" (`plan_probe.region_geometry` sets
+  the simulated detector's pixel from the window).
+- the paper's referee-risk list: "ideal point-sampled detector (~1400 px needed at ±133 mrad)".
+
+**What is true instead: the window is set by the grid on which the solver computes each pattern.** The camera's pixels
+can be coarser, provided the solver adds its fine pattern up into the camera's pixels before comparing it with the data.
+A camera with 4× coarser pixels (0.75 mrad) gives a 26 Å window on its own, which leaves 56 % of the probe outside, and
+it still gives the full camera's Pb depths and good Ti (R2_n400). A camera with 8× coarser pixels (1.5 mrad; its own
+window 13 Å, 88 % of the probe outside) still gives the Pb depths at "okay" (65 %).
+
+**Still true: the window must hold the probe**, the solver's window, that is. R3 proves it: the same 256-px data, fitted
+on the camera's own 26 Å grid, find no atoms, and the misfit is 42× worse. So the rule is not withdrawn, only moved from
+the camera to the solver. The "dense scan, not big window" rule and the large-aperture trap ("the reconstruction window,
+not the aperture") stand as written; they concern the solver's window.
+
+**What it means for the experiment.** The 1420-pixel patterns of every simulation describe the forward model, not the
+camera the experiment needs. A 256-pixel camera at ±96 mrad records what the 80 mrad runs need. The simulation itself
+must still be computed on the fine grid, because the physics happens there; only the recorded data can be coarse.
+
+### Speed: what does and does not make the reconstructions faster
+
+- **The coarse camera does not.** Time per iteration is set by the solver's grid, not the data's. R2 (256-px data on a
+  1024 grid) took 2.3 h a leg; R1 (1024-px data) took 2.4 h. R2 also needs about twice the iterations for Ti, so it is
+  about twice as slow to the same quality: 4.7 h against 2.4 h. R3 ran 12× faster on its 256 grid, and failed.
+- **Cutting the recorded angle does: about 2× faster, at no cost we can measure.** Cutting from ±133 to ±96 mrad
+  (1.2 α at 80 mrad) makes the solver's grid 1024 px instead of 1420 at the same 105 Å window. Each leg falls from 5.1 h
+  to 2.4 h; the reference's full engine alone took 3.8 h at 1420 px against 1.2 h at 1024. It cost 4 points of Pb and 3
+  of Ti (R1 against the reference), within the ±3–4 scatter. Only 0.13 % of the electrons land beyond ±96 mrad. Today
+  this is `DET_CROP_MRAD=96` on a known-probe leg. Dose, kick and search legs would need that switch extended, because it
+  refuses them now.
+- **Part of that gain is the FFT size, which could be had without cutting angle (a hint, untested).**
+  - The grid's area grows as θ²: 1420² / 1024² = 1.9×. Yet the full engine took 3.1× longer at 1420 px.
+  - R4's presolve at 1032 px took 1.6× longer than the reference's at 1026 px, almost the same size.
+  - FFTs are slow on sizes with a large prime factor: 1420 = 4·5·71 and 1032 = 8·3·43, against 1024 = 2¹⁰ and
+    1026 = 2·27·19.
+  - Choosing grid sizes made of small primes, as the region sims already do (7-smooth), may give about 1.5× at ±133 mrad
+    with no angle cut. It is one run to check.
+  - Limits: tested at 80 mrad only, noiseless, true probe fixed. At 90 mrad, 1.2 α is 108 mrad, a 1152-px grid for 105 Å
+    (about 1.5× faster). Whether a searched probe or probe modes miss the outer angles is untested.
+- **What the coarse camera does save is data:** 0.42 GB a scan of 1600 patterns at 256 px, against 6.7 GB at 1024 px and
+  12.9 GB at 1420. That means less disk, transfer and host memory. GPU memory was not logged, so whether the space freed
+  allows larger windows on the same card is untested. On a microscope a small camera also reads out faster, so a scan is
+  shorter and drifts less; that is not tested here.
+
+### Still open
+
+- **S04** (0.4 Å scan): pull when back. It asks whether positions buy Ti faster than iterations.
+- **R1 at 400 + 400 iterations**: is 49 against 57 % a real information gap or only convergence? (no new sims: R1's
+  copies.)
+- **C128 at 400 + 400 or more**: does Ti come back at 0.5 measurements per unknown?
+- **Shot noise**: summing raises the counts per pixel 16× at the same dose; untested.
+
+### Record
+
 - **The first analysis was faulty (fixed):** the kernel extractor's 30-px crop is 3.08 Å at the 0.1025 Å pixel, past
-  the 2.96 Å grid; R1's kernels centred on a neighbour (scored 0 %). Fix `PSF_HALF_A=2.22` (= the reference's 30 px);
-  re-analyses 1348348 / 1348349, pulled to `~/Desktop/detector256_r1r2_kh`. `det_look.py` flags such kernels now.
-- **Runs:** R1 + R2 submitted 2026-10-23 16:11, ~2.4 h a leg, pulled to `~/Desktop/detector256_r1r2` (reconstructions
-  and sims) and `..._r1r2_kh` (analyses); R3 submitted 2026-10-26 13:16 (recons 1348350 / 51 / 52, analysis 1348354,
-  ~12 min a leg on the 256 grid), pulled to `~/Desktop/detector256_r3`. Score with
-  `det_look.py <view>` where `<view>/analysis` holds the `_kh2p22` analyses and `<view>/results` the recon + sim dirs.
-- **LIMITS WAVE handed over 2026-10-26** (the user: "take as many sims as you need to know the limits"):
-  `bash aberration_experiment/detector256/submit_limits.sh` -- six runs, each ONE change against R2 (section "Limits wave"
-  below), every analysis with 2.22 Å kernels; all tarballs pull into `~/Desktop/detector256_limits`. Then
-  `det_look.py` scores everything into `results/` (section "Where the results are").
-- **Submission record:** R1 `_detc96`: rebin jobs 1339556 / 58 / 60 (lab / Pb / Ti), recons 1339557 / 59 / 61, pack
-  1339562, analysis 1339563. R2 `_detc96b4_up2`: rebin jobs 1339564 / 66 / 68, recons 1339565 / 67 / 69, pack 1339570,
-  analysis 1339571. Log `logs/detector256_r1r2_20261023_161114.txt` on Blythe; the kept lab sim confirmed at
-  (1600, 1420, 1420).
+  the 2.96 Å grid, so R1's kernels centred on a neighbour (scored 0 %). The fix is `PSF_HALF_A=2.22` (= the reference's
+  30 px); re-analyses 1348348 / 1348349 were pulled to `~/Desktop/detector256_r1r2_kh`. `det_look.py` now flags such
+  kernels.
+- **Runs:**
+  - R1 + R2 were submitted 2026-10-23 16:11 and pulled to `~/Desktop/detector256_r1r2` (reconstructions and sims) and
+    `..._r1r2_kh` (analyses).
+  - R3 was submitted 2026-10-26 13:16 (recons 1348350 / 51 / 52, analysis 1348354) and pulled to
+    `~/Desktop/detector256_r3`.
+  - The limits wave was submitted 2026-10-26 22:37 (`submit_limits.sh`; tarball stamps `20261026_2237*`) and pulled to
+    `~/Desktop/detector256_limits` on 2026-10-27, all but S04. `det_look.py` (no arguments) scores everything into
+    `results/`.
+- **Submission record:**
+  - R1 `_detc96`: rebin jobs 1339556 / 58 / 60 (lab / Pb / Ti), recons 1339557 / 59 / 61, pack 1339562, analysis
+    1339563.
+  - R2 `_detc96b4_up2`: rebin jobs 1339564 / 66 / 68, recons 1339565 / 67 / 69, pack 1339570, analysis 1339571.
+  - Log on Blythe: `logs/detector256_r1r2_20261023_161114.txt`; the kept lab sim confirmed at (1600, 1420, 1420).
+  - Limits-wave recon slurm ids, read from the pulled logs:
+
+    | run | lab / Pb / Ti recons |
+    |---|---|
+    | R2_n400 | 1348891 / 92 / 93 |
+    | R2_n1000 | 1348896 / 97 / 98 |
+    | C512 | 1348902 / 04 / 06 |
+    | C128 | 1348910 / 12 / 14 |
+    | R4 | 1348918 / 20 / 22 |
 - **The frame question is settled by test, not argument.** `test_upsampling_frame.py` ports the engine's data and
-  model path line by line to numpy. The 256-px data equal the engine's own 4 × 4 binning of the full-pixel truth (up to
-  the one scale factor the engine fits at iteration 0), in the same array frame (max relative difference 3e-8). On the
-  test's random patterns, blocks shifted by 1, 2 or 3 fine pixels, or binned centred, miss by 33–47 %, so the test can
-  fail. It also passes on the jobs' own outputs, at the real geometry and with the real ARM probe.
+  model path line by line to numpy.
+  - The 256-px data equal the engine's own 4 × 4 binning of the full-pixel truth, in the same array frame (max relative
+    difference 3e-8), apart from the one scale factor the engine fits at iteration 0.
+  - On the test's random patterns, blocks shifted by 1, 2 or 3 fine pixels, or binned centred, miss by 33–47 %, so the
+    test can fail.
+  - It also passes on the jobs' own outputs, at the real geometry and with the real ARM probe.
 - **Five engine/driver changes were needed** before upsampling could run on our data. Without them it would have
   shrunk the probe 4×, started from an opaque object ring, and crashed at iteration 200 (list below). None of them
   changes a run without `UPSAMPLING`: all 15 recorded launch lines are unchanged and the naming test passes 26/26.
@@ -53,7 +159,8 @@ cameras are 128–256 pixels across (Lei & Wang's EMPAD: 128). The solver models
 (λ = 0.0197 Å at 300 kV), and that window must hold the probe. The ARM-tableau probe at 80 mrad is 72 Å across (d90;
 d50 32 Å, d99 120 Å), which is why the campaign uses a 105 Å window. A 256-pixel camera at ±96 mrad gives a 26 Å
 window, which leaves 56 % of the probe outside. So the pixel count is set by probe size × detector angle, not by the
-aperture itself.
+aperture itself. **(That was the premise, and it was wrong for the camera: it sets the solver's grid only. See "What
+this overturns" above.)**
 
 **The idea** (Batey et al., Phys. Rev. A 89, 043812, 2014): record fewer, bigger pixels and let the solver model them.
 Each pattern is computed on a 4×-finer angular grid (the 105 Å window) and summed into the camera's pixels before it
@@ -95,8 +202,8 @@ about 3 : 1.
 
 ## How to judge (in this order)
 
-1. **Phase images** (`<analysis>/phase/recon_af_*.png`; depth sections in `figs/detector256/det_sections.png` from
-   `det_look.py`).
+1. **Phase images** (`<analysis>/phase/recon_af_*.png`, 75 % copies in `results/phase/`; depth sections in
+   `results/det_sections_*.png` from `det_look.py`).
 2. **Misfit** eps = final Fourier error × N / 2e5, with N the width of the data the run fitted (1420, 1024, 256 or
    354). `det_look.py` reads N from each run's own `sim_meta.mat` (the error-trace file name carries the data width
    too: `S00001_256x256_...` for R2, checked 2026-10-26). eps compares like with like only on the
@@ -139,7 +246,8 @@ dense-scan label sim -> rebin -> recon chain); the whole wave stub-run (31 sbatc
 
 - **`results/`** (committed; rebuilt by `det_look.py` from the pulled folders):
   `det_scores.json` -- every run's numbers AND where each came from (analysis folder, recon leg, data dir, error trace,
-  kernel check), with the scoring rules; `det_scores.csv` -- the same as one flat table; `det_limits.png` -- Pb and Ti
+  kernel check), with the scoring rules, each camera's own window and the hours per leg; `det_scores.csv` -- the same
+  as one flat table; `det_summary.png` -- one row per run (camera, own window, Pb, Ti, hours); `det_limits.png` -- Pb and Ti
   right place against measurements per unknown and against iterations, guessing beside each point;
   `det_sections_cameras.png` (reference, R1, C512, R2, C128, R3) and `det_sections_limits.png` (R2 and its iteration
   runs, R4, S04) -- the depth sections with the found atoms; `phase/<run>_lab.jpg` -- each lab leg's phase image
@@ -153,7 +261,8 @@ dense-scan label sim -> rebin -> recon chain); the whole wave stub-run (31 sbatc
 
 ## Results
 
-See the status table at the top and `results/` (above).
+See the status table at the top and `results/` (above). `results/det_summary.png` has one row per run: the camera, its
+own window and the share of the probe outside it, Pb and Ti right place against guessing, and the hours a leg took.
 
 ## Caveats to state beside any result
 
@@ -214,6 +323,6 @@ rule: the fewest whole 4 × 4 blocks that keep ±θ (to 0.001 px), so ±96 mrad 
 | `test_upsampling_frame.py` | the frame unit test (40 checks: 22 that the engine's source still has the lines it ports or the changes above, 18 on the data, the probes and controls that must fail); `~/hyperspy-bundle/bin/python ...` |
 | `test_det_driver.sh` | dry run of the driver's detector switches with a stub sbatch (21 cases) |
 | `submit_limits.sh` | the limits wave (six runs + analyses; guards as `submit.sh`; log `logs/detector256_limits_<ts>.txt`) |
-| `det_look.py` | scores, eps on the data grid, vacuum ratio, measurements per unknown, kernel check; writes `results/` |
+| `det_look.py` | scores, eps on the data grid, vacuum ratio, measurements per unknown, kernel check, camera's own window, hours per leg; writes `results/` |
 | `../../sim/rebin_detector.py` | the post-processing step (crop, B × B sums, probes per grid, sim_meta, record) |
 | `HANDOFF_PROMPT.md` | the brief this work started from |
