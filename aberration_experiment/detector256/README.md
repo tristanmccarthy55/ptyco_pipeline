@@ -24,10 +24,10 @@ Ti.
 | R2_n1000 | 256 px, ±96 mrad | 1000 + 1000 | 26 Å (56 %) | 91 (27) | 49 (18) | 0.43 | 11.6 | good |
 | C128 | 128 px, ±96 mrad | 200 + 200 | 13 Å (88 %) | 65 (28) | 22 (18) | 0.40 | 2.3 | okay |
 | R3 | 256 px, pixels **not** modelled | 200 + 200 | 26 Å (56 %), and the solver uses it | no atoms | | 0.83 | 0.2 | failed |
-| S04 | 256 px on a 0.4 Å scan | 200 + 200 | 26 Å (56 %) | not back | | | | |
+| S04 | 256 px on a 0.4 Å scan (2500 positions) | 200 + 200 | 26 Å (56 %) | 83 (28) | 32 (22) | 0.39 | 3.6 | okay |
 
 O right (guess): reference 56 (19), R1 51 (18), C512 40 (20), R4 46 (21), R2 23 (21), R2_n400 31 (20), R2_n1000 44 (21),
-C128 31 (20). Every phase image was viewed (`results/phase/`). Each is a clean crystal with the reference's column lean
+C128 31 (20), S04 24 (20). Every phase image was viewed (`results/phase/`). Each is a clean crystal with the reference's column lean
 and quiet vacuum; C128 is a little softer, with fringes at two corners. All logs are clean: upsampling on, probe kept on
 the fine grid, no NaN, full traces. Figures: `results/det_summary.png` (one row per run, with the hours) and
 `results/det_limits.png`.
@@ -44,11 +44,17 @@ the fine grid, no NaN, full traces. Figures: `results/det_summary.png` (one row 
   about R2_n400's 4.7 h.
 - **No coarse camera has yet reached the reference's Ti.** The best is 49 % (R2_n1000) against R1's 57 and the
   reference's 60, about two standard deviations. This does not yet show missing information: R1 was not run longer,
-  and might gain too. S04, the denser scan, is the other test.
-- **S04 is still running (2026-10-27).** All three sims finished (7.2 h each, 2500 positions), and so did all three rebins.
-  The lab and Pb recons finished at 3.7 h a leg: 1.56× R2's, as the positions predict, and less than R2_n400's 4.7 h.
-  The Ti recon was 1.8 h in; its pack and then analysis 1348935 follow. The five other runs were pulled into
-  `~/Desktop/detector256_limits`; S04 goes there too.
+  and might gain too. The denser scan did not close it (S04, next).
+- **A denser scan barely helps; iterations do (S04, scored 2026-10-29).** The 256-px camera on a 0.4 Å scan
+  (2500 positions, 3.1 measurements per unknown) at 200 + 200 iterations scored Ti 32 % against R2's 25. That is
+  +7 points, about one standard deviation of the difference. Pb was 83 against 86, the same within the scatter. The
+  images and depth sections look like R2's: clean crystal, Pb on its planes, Ti depths scattered. Each leg took 3.6 h
+  (1.56× R2's, as the positions predict). For about the same cost, R2_n400 (4.7 h) reached Ti 47 %. So on a 256-px
+  camera the lever is iterations, not positions. The brief's rule ("if R2 fails, try a denser scan before anything
+  else") was the wrong first move here. S04 used new simulations of the same settings, at a different scan step.
+- **At a fixed 200 + 200 iterations, Ti follows the pixels per pattern more than the number of patterns:** 22 (128 px),
+  25 (256), 32 (256 on 2500 positions), 46 (354 to ±133), 46 (512), 57 (1024). This reading rests on single runs, each
+  ±4.
 
 ### What this overturns
 
@@ -108,7 +114,6 @@ must still be computed on the fine grid, because the physics happens there; only
 
 ### Still open
 
-- **S04** (0.4 Å scan): pull when back. It asks whether positions buy Ti faster than iterations.
 - **R1 at 400 + 400 iterations**: is 49 against 57 % a real information gap or only convergence? (no new sims: R1's
   copies.)
 - **C128 at 400 + 400 or more**: does Ti come back at 0.5 measurements per unknown?
@@ -126,8 +131,10 @@ must still be computed on the fine grid, because the physics happens there; only
   - R3 was submitted 2026-10-26 13:16 (recons 1348350 / 51 / 52, analysis 1348354) and pulled to
     `~/Desktop/detector256_r3`.
   - The limits wave was submitted 2026-10-26 22:37 (`submit_limits.sh`; tarball stamps `20261026_2237*`) and pulled to
-    `~/Desktop/detector256_limits` on 2026-10-27, all but S04. `det_look.py` (no arguments) scores everything into
-    `results/`.
+    `~/Desktop/detector256_limits` on 2026-10-27, and S04 on 2026-10-29. `det_look.py` (no arguments) scores everything
+    into `results/`. If OneDrive has made `analysis/atomfind/align.py` cloud-only, the import hangs and times out
+    (2026-10-29). The workaround is to export the package's `.py` files with `git show HEAD:<file>` to a local folder and
+    import it from there before running `det_look.py`.
 - **Submission record:**
   - R1 `_detc96`: rebin jobs 1339556 / 58 / 60 (lab / Pb / Ti), recons 1339557 / 59 / 61, pack 1339562, analysis
     1339563.
@@ -218,7 +225,8 @@ about 3 : 1.
    Pb ≥ 80 % and Ti ≥ 45 %; okay means Pb ≥ 50 %.
 
 **Success:** R2 within a few points of R1 and the reference, and as clean in the images. **If R2 fails, try a denser
-scan before anything else.** The sims are at 0.5 Å; a 0.4 Å step (2500 positions, about 3 : 1) needs new lab, Pb and
+scan before anything else.** (Tried, 2026-10-29: S04 gained little. More iterations were the lever; see the status at
+the top.) The sims are at 0.5 Å; a 0.4 Å step (2500 positions, about 3 : 1) needs new lab, Pb and
 Ti sims at this point, then a rebin and R2 again.
 
 Reference, reproduced by `det_look.py` from the pulled step-2 analysis: Pb / Ti / O right 91 / 60 / 56 % against

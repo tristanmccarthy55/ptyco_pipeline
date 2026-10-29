@@ -46,7 +46,8 @@ rules), and `page/ARM_PAGE.md` (the results page and the honest atom scoring). W
   - So the window is set by the solver's grid, not the camera. "The window is set by the detector" is wrong: its home
     README lists where the repo said it.
   - Separately, cutting the recorded angle from ±133 to ±96 mrad halves a leg (5.1 → 2.4 h) at no measurable cost.
-  - S04 (0.4 Å scan) is still out.
+  - S04 (0.4 Å scan, 2026-10-29): Ti 32 % against R2's 25 at the same iterations. The lever on a 256-px camera is
+    iterations, not a denser scan.
 
 ## The goal (the user, 2026-10-12)
 

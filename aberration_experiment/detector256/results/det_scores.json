@@ -331,7 +331,42 @@
    "data_dir": "sim_out_af_armf_a080_s04_lab_fs2p5_src0p1_detc96b4",
    "model_px": 1024,
    "iterations_per_engine": 200,
-   "found": false
+   "found": true,
+   "analysis": "analysis_armf_a080_s04_fs2p5_src0p1_detc96b4_up2_kh2p22_20261026_223730",
+   "kernels": "",
+   "vacuum_ratio": 0.3927943760984183,
+   "error_trace": "S00001_256x256_b0_ML_recon_error_trace.csv",
+   "final_error": 5.5448008,
+   "data_px": 256,
+   "theta_max_mrad": 96.0,
+   "object_px_A": 0.10253970463122865,
+   "scan_step_A": 0.4,
+   "positions": 2500,
+   "measurements_per_unknown": 3.062506137032988,
+   "eps": 0.007097345024,
+   "camera_mrad_per_px": 0.7499995770562923,
+   "camera_window_A": 26.250281469855164,
+   "solver_window_A": 105.00065754237814,
+   "camera_window_probe_outside": 0.5619267038024383,
+   "hours_per_leg": 3.647361111111111,
+   "hours_by_leg": {
+    "lab": 3.6459444444444444,
+    "Pb": 3.6459166666666665,
+    "Ti": 3.650222222222222
+   },
+   "right": {
+    "Pb": 0.8333333333333334,
+    "Ti": 0.3194444444444444,
+    "O": 0.2361111111111111
+   },
+   "guess": {
+    "Pb": 0.2796474358974359,
+    "Ti": 0.2170138888888889,
+    "O": 0.20341435185185186
+   },
+   "wrong": 0.04491725768321513,
+   "n_found": 473,
+   "verdict": "okay"
   },
   {
    "key": "R2_n400",
