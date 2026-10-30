@@ -45,6 +45,34 @@ Supersedes the fixed-probe-only proposal in `HANDOFF_MONO300.md` ("Phase 1 as pr
 with modes is the method, the fixed probe is the side control. Stub dry run of `phase1_submit.sh`: 120 sbatch calls,
 `campaign/test_coh_names.sh` 26/26 first.
 
+## VIBRATION CORRECTION (2026-10-30): every phonon sim moved the atoms sqrt(3) too far -- read this before any B / D number
+
+`sim/simulate_4dstem.py` passed abTEM `sigmas = sqrt(3) u` (u = per-axis rms from the B table / Debye model): right on
+abTEM 1.0.5 (the Mac; sigmas = 3-D rms, its draws divided by sqrt(3)), wrong on Blythe's 1.0.9 (sigmas = per-axis std,
+no division; `FrozenPhonons.randomize`). Measured (one atom, 4000 draws): old code 1.74 u per axis on 1.0.9, 1.00 u on
+1.0.5; fixed code 1.00 u on both. Every lone-atom sim log on Blythe records 1.0.9. Fixed in a8b9264 (`abtem_sigmas()`
+measures the installed abTEM and converts; sim_meta records the motion and version; `sim/test_phonon_sigma.py` PASS on
+1.0.5 and 1.0.9). B = 3x the meant B, so in the simulator's Debye model the runs really had:
+
+| labelled | Pb | Ti | O | Sr |
+|---|---|---|---|---|
+| 20 K | 0.067 A, ~110 K | 0.075 A, ~295 K | 0.113 A, ~390 K | 0.069 A, ~200 K |
+| 100 K | 0.110 A, ~310 K | 0.088 A, ~410 K | 0.125 A, ~480 K | 0.091 A, ~350 K |
+| 295 K | 0.185 A, ~890 K | 0.131 A, ~930 K | 0.174 A, ~960 K | 0.145 A, ~900 K |
+
+So: B "20 K" with modes (Pb 70 / Ti 24) = Pb at ~110 K (close to a real LN2 run for Pb: 0.067 vs 0.064 A), Ti at room
+temperature -- "Ti at guessing even at 20 K" was a room-temperature result; real 20 K untested. B "100 K" with modes
+(Pb 51) = Pb at ~310 K. The ARM pages' room-temperature phonon runs were at ~900 K. D reuses B's "20 K" sims. Everything
+without phonons (step 1, step 2 joint, A, C, the _mixF walls, detector256) is unaffected. Reruns at true temperatures
+need NEW sim dir names: the driver (and zblur's zb_submit.sh) reuse an existing `_ph16_T<T>` dir by name, so a rerun
+under the old names would quietly read the old data. Weekly page v7 (https://claude.ai/artifact/3ucj9N8jzfZ7ThTc6dQxZD)
+§02 has the chart, table and what each result now reads as.
+
+**D's search answer (read on Blythe 2026-10-30):** `search_best.txt` = -958.2633 -406349.34 14.7688 1.511508 -> C1 0.34 A
+(0.055 waves), C3 0.025 um (0.13 waves), A1 2.6 A (0.43 waves) off the truth: as close as C without noise or vibration
+(1.3 A, 0.005 um, 3.6 A). Refine legs running since the evening of 2026-10-29 (~24 h each); read the atoms as Pb ~110 K,
+Ti ~295 K.
+
 ## D, the dose series: 1e8 first (handed over 2026-10-26; the user: 1e8 first, the rest if it holds)
 
 **What.** Everything at the Mono point put back at once: ARM tableau, fs 2.5 A + src 0.1 A, phonons at 20 K (B's kept sims
