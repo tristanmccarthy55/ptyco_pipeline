@@ -13,6 +13,10 @@
 # are not all there, or if B's sims already exist. Output, job ids included: logs/ceiling_<ts>.txt.
 set -uo pipefail
 cd "$(dirname "${BASH_SOURCE[0]}")/../.." || exit 1
+# RETIRED 2026-10-30. This ran once (2026-10-16): A's mode legs, and B's phonon sims, which moved every atom sqrt(3) too far
+# (abTEM 1.0.9; sim/simulate_4dstem.py a8b9264: "100 K" was Pb ~310 K, "20 K" Pb ~110 K / Ti ~295 K). Run again it would
+# repeat A and rebuild B under the driver's new _ph16v2 names. The true-temperature rerun of B gets its own script.
+echo "NOT SUBMITTED: ceiling_submit.sh is retired (2026-10-30, the phonon fix): see aberration_experiment/mono300/PHASE1.md"; exit 1
 mkdir -p logs; LOG="logs/ceiling_$(date +%Y%m%d_%H%M%S).txt"
 A_PTS=("_fs2p5_src0p1" "_fs2p5_src0p2")
 B_PTS=("100 _ph16_T100_fs2p5_src0p1" "20 _ph16_T20_fs2p5_src0p1")

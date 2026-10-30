@@ -17,7 +17,7 @@
 #   ALPHAS="70 90" THIN=18 CELL_Z=3.889 GROUPING=16 RTIME=20:00:00 bash campaign/run_thin_atomfind.sh   # step 6: 70 A slab
 #   TSV=campaign/nonround_sweep.tsv LABELS="nr1_C56_0p6w nr3_C56_2p5w" bash campaign/run_thin_atomfind.sh   # non-round, 70 mrad
 # PHONONS>0 re-simulates every leg over that many frozen-phonon configurations (PHONON_SIGMA scalar, or
-# PER_SPECIES=1 for the tabulated room-temperature Pb/Sr/Ti/O values); dirs gain _ph<N>. LABELS picks
+# PER_SPECIES=1 for the tabulated room-temperature Pb/Sr/Ti/O values); dirs gain _ph<N> (per-species: _ph<N>v2, below). LABELS picks
 # rows of the TSV by label instead of alpha, so a non-round row's aber_json (C56, C34, ...) reaches the
 # sim as ABERRATIONS_JSON; dirs are named by the label. CELL_Z is the unit cell the driver's box formula
 # uses (5 cells: 3.905 reproduces the 27.525 A box; 18 cells: the structure's 3.889 gives 78.00 vs the
@@ -79,6 +79,12 @@ DOSES="${DOSES:-}"; DOSE_SEED="${DOSE_SEED:-0}"
 PHONONS="${PHONONS:-0}"; PHONON_SIGMA="${PHONON_SIGMA:-0.08}"; PER_SPECIES="${PER_SPECIES:-0}"; PHONON_SEED="${PHONON_SEED:-1}"
 LABELS="${LABELS:-}"                      # non-empty: select TSV rows by label (col 1), not alpha
 SFX=""; [ "$PHONONS" != 0 ] && SFX="_ph${PHONONS}"; [ "$THIN" != 5 ] && SFX="${SFX}_thin${THIN}"   # sim + recon dir suffix
+# v2 (2026-10-30, sim/simulate_4dstem.py a8b9264): every per-species phonon sim made before the fix moved each atom sqrt(3)
+# too far on Blythe's abTEM 1.0.9 (3x the B: "20 K" was Pb ~110 K, Ti ~295 K). Those dirs keep their names and stay on
+# disk, so a per-species sim made now is named _ph<N>v2: a rerun can never reuse or overwrite an old one, and its tag never
+# collides with the old runs' tags on the pages. The scalar PHONON_SIGMA path keeps _ph<N>: 1.0.9 gave it the per-axis
+# value it now means. THIS IS A DELIBERATE RENAME; campaign/test_driver_legacy.sh maps the old names onto it.
+[ "$PHONONS" != 0 ] && [ "$PER_SPECIES" = 1 ] && SFX="${SFX/_ph${PHONONS}/_ph${PHONONS}v2}"
 # PHONON_T=<K>: a cooled specimen (simulate_4dstem --phonon-temperature; needs PER_SPECIES=1), dirs gain _T<K>
 PHONON_T="${PHONON_T:-}"
 if [ -n "$PHONON_T" ]; then

@@ -5,19 +5,22 @@
 # noisy data (C1 x C3 7 x 7, the A1 vector 5 x 5, C1 x C3 again: 123 fixed-probe trials of 50 it), then every leg (lab, Pb,
 # Ti; Pb and Ti take the lab leg's answer) refined from the search's answer with the mixed state built on it -- 8 modes,
 # 250 it, "4;2". Noise: sim/add_poisson_noise.py on B's noiseless sims, a CPU job per leg and dose (seeds 0/1/2 for
-# lab/Pb/Ti). Dirs sim_out_af_armf_a080_<leg>_ph16_T20_fs2p5_src0p1_dose<D>, search_af_armf_a080_lab_ph16_T20_fs2p5_src0p1_
-# dose<D>/, recon_af_armf_a080_<leg>_ph16_T20_fs2p5_src0p1_dose<D>_ps_NL18; analysis SUFFIX _ph16_T20_fs2p5_src0p1_dose<D>_ps.
+# lab/Pb/Ti). Dirs sim_out_af_armf_a080_<leg>_ph16v2_T20_fs2p5_src0p1_dose<D>, search_af_armf_a080_lab_ph16v2_T20_fs2p5_src0p1_
+# dose<D>/, recon_af_armf_a080_<leg>_ph16v2_T20_fs2p5_src0p1_dose<D>_ps_NL18; analysis SUFFIX _ph16v2_T20_fs2p5_src0p1_dose<D>_ps.
 # ~230 GPU-h a dose (123 trials x ~1.3 h + 3 legs x 23.5 h, the measured C and B legs), ~1.5-2 days with the queue.
 #   bash aberration_experiment/mono300/dose_submit.sh 1e8               # the gate
 #   bash aberration_experiment/mono300/dose_submit.sh "1e7 1e6 1e5"     # the rest, if 1e8 holds
 # Submits nothing if the pulled engine lacks the fix, if the shell exports a job variable, if a dry run fails, if B's 20 K
 # sims are not all there, if a dose is not one of 1e5-1e8, or if a dose was searched before. Output: logs/dose_<ts>.txt.
+# 2026-10-30: the 1e8 run submitted on the old sims (_ph16_T20_...) moved the atoms sqrt(3) too far (Pb as at ~110 K, Ti
+# ~295 K; sim/simulate_4dstem.py a8b9264). From now on D reads B's TRUE 20 K sims, _ph16v2_T20_fs2p5_src0p1 (the driver's
+# per-species v2 names), so it refuses until B has been rerun at 20 K with the fixed simulator.
 # Its own dry run (stub sbatch, throwaway git copy): bash aberration_experiment/mono300/test_dose_submit.sh
 set -uo pipefail
 cd "$(dirname "${BASH_SOURCE[0]}")/../.." || exit 1
 DOSE_LIST="${1:-}"
 mkdir -p logs; LOG="logs/dose_$(date +%Y%m%d_%H%M%S).txt"
-S="_ph16_T20_fs2p5_src0p1"                                  # B's 20 K sims at the Mono point
+S="_ph16v2_T20_fs2p5_src0p1"                                # B's 20 K sims at the Mono point (v2: the fixed simulator)
 {
 [ -n "$DOSE_LIST" ] || { echo "NOT SUBMITTED: give the doses, e.g. dose_submit.sh 1e8"; exit 1; }
 ATS=""
@@ -43,7 +46,7 @@ PY="${CONDA_ENV:-${SHARE:-}/phucrh/envs/abtem}/bin/python"; [ -x "$PY" ] || PY=p
 T=$(PYTHON="$PY" bash campaign/test_driver_legacy.sh HEAD); echo "$T" | grep -v '^same'
 [ "$(echo "$T" | tail -1)" = "all launch lines unchanged" ] || { echo "NOT SUBMITTED: the old-launch dry run failed (above)"; exit 1; }
 for m in lab Pb Ti; do
-  [ -e "sim_out_af_armf_a080_${m}${S}/01/data_dp.hdf5" ] || { echo "NOT SUBMITTED: sim_out_af_armf_a080_${m}${S} has no data (D noises B's 20 K sims)"; exit 1; }
+  [ -e "sim_out_af_armf_a080_${m}${S}/01/data_dp.hdf5" ] || { echo "NOT SUBMITTED: sim_out_af_armf_a080_${m}${S} has no data (D noises B's 20 K sims; rerun B at 20 K with the fixed simulator first)"; exit 1; }
 done
 AIDS=""
 submit(){ # $1 expected dir suffix, then the analysis suffixes (comma list), then -- and VAR=value ... for the driver

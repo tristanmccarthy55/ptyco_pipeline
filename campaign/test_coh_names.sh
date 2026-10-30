@@ -50,12 +50,12 @@ case_refused(){ # VAR=value ... that must be refused before any sbatch
     echo "ok    refused  <-  $*   ($(tail -1 "$root/out.txt"))"
 }
 echo "driver: ${DRIVER} (${#DVARS[@]} driver variables cleared per case)"
-# the old cold-FEG setting keeps its name, however the numbers are written
+# the old cold-FEG setting keeps its name, however the numbers are written (per-species phonon sims carry v2 since the 2026-10-30 abTEM sigma fix)
 case_ok _coh            ENERGY_SPREAD_EV=0.3 CC_MM=1.4 SOURCE_FWHM=0.4
 case_ok _coh            ENERGY_SPREAD_EV=0.30 CC_MM=1.40 SOURCE_FWHM=0.40
-case_ok _ph16_coh       PHONONS=16 PER_SPECIES=1 ENERGY_SPREAD_EV=0.3 CC_MM=1.4 SOURCE_FWHM=0.4
-case_ok _ph16           PHONONS=16 PER_SPECIES=1
-case_ok _ph16_T100      PHONONS=16 PER_SPECIES=1 PHONON_T=100
+case_ok _ph16v2_coh     PHONONS=16 PER_SPECIES=1 ENERGY_SPREAD_EV=0.3 CC_MM=1.4 SOURCE_FWHM=0.4
+case_ok _ph16v2         PHONONS=16 PER_SPECIES=1
+case_ok _ph16v2_T100    PHONONS=16 PER_SPECIES=1 PHONON_T=100
 case_ok ""
 # new: one dir per value
 case_ok _fs7p3          FOCAL_SPREAD=7.3
@@ -69,7 +69,7 @@ case_ok _dE0p3_cc1p4    ENERGY_SPREAD_EV=0.3 CC_MM=1.4
 case_ok _dE0p09_cc2p4   ENERGY_SPREAD_EV=0.09 CC_MM=2.4
 case_ok _dE0p3_cc1p4_src0p2 ENERGY_SPREAD_EV=0.3 CC_MM=1.4 SOURCE_FWHM=0.2
 case_ok _fs1p5_cs32     FOCAL_SPREAD=1.5 COHERENCE_SAMPLES=32
-case_ok _ph16_T100_fs2p5 PHONONS=16 PER_SPECIES=1 PHONON_T=100 FOCAL_SPREAD=2.5
+case_ok _ph16v2_T100_fs2p5 PHONONS=16 PER_SPECIES=1 PHONON_T=100 FOCAL_SPREAD=2.5
 # refused: the sim would ignore part of it, or the value is not a spread
 case_refused ENERGY_SPREAD_EV=0.3
 case_refused CC_MM=1.4

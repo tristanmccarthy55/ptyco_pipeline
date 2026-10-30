@@ -7,7 +7,7 @@
 #     its array, each later stage on the select before it; the draw is C's seed-1 start (search_af_..._s3/start.json);
 #   - the refine legs: 8 modes, 250 it, "4;2", 96G, the mixed state on the search's answer, each on its own noise job
 #     (afterok) and its dose's last select (afterany); data linked from the noisy copy;
-#   - one pack, one analysis per dose with SUFFIX _ph16_T20_fs2p5_src0p1_dose<D>_ps;
+#   - one pack, one analysis per dose with SUFFIX _ph16v2_T20_fs2p5_src0p1_dose<D>_ps (v2: the fixed simulator's sims);
 #   - refusals before any sbatch: no dose, a dose not written 1e5-1e8, a dose searched before, a sim missing, an exported
 #     job variable.
 #   bash aberration_experiment/mono300/test_dose_submit.sh      (PYTHON=<python with numpy>: default the hyperspy bundle's)
@@ -19,7 +19,7 @@ TMP="$(mktemp -d)"; trap 'rm -rf "$TMP"' EXIT
 sbatch(){ local n; n=$(( $(cat "$STUB_N" 2>/dev/null || echo 1000) + 1 )); echo "$n" >"$STUB_N"
           printf '%s\n' "$*" >>"$STUB_LOG"; echo "$n"; }
 export -f sbatch
-S=_ph16_T20_fs2p5_src0p1
+S=_ph16v2_T20_fs2p5_src0p1
 FILES=(campaign/run_thin_atomfind.sh campaign/run_analysis.sh campaign/test_coh_names.sh campaign/test_driver_legacy.sh
        campaign/psearch_plan.py campaign/select_grid.py campaign/select_trial.py campaign/search_trial.sh
        run_recon_synthetic_ML.slurm ptycho/run_synthetic_recon_ML.m ptycho/+engines/+GPU/+initialize/init_solver.m

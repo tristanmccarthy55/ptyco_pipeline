@@ -1009,7 +1009,9 @@ def part_reproduce(R, T):
     sg = " · ".join(f"{k} {np.sqrt(3 * B[k] / (8 * np.pi ** 2)):.3f}" for k in ("Pb", "Ti", "O"))
     phys = table(["", "coherent (§3–5)", "full physics (§6–8)"], [
         f"<tr><td>phonons</td><td>none (static crystal)</td><td class='wrap'>{nph} frozen configurations, room-temperature B: {sp}; "
-        f"per-axis rms displacement {u1} Å (abTEM <code>sigmas</code> = √3 × that: {sg} Å)</td></tr>",
+        f"per-axis rms displacement meant {u1} Å. <b>Corrected 2026-10-30:</b> the sims passed abTEM <code>sigmas</code> = "
+        f"√3 × that, and Blythe's abTEM 1.0.9 applies <code>sigmas</code> per axis, so the atoms moved {sg} Å: 3 × the B, "
+        f"as at about 900 K (sim/simulate_4dstem.py a8b9264)</td></tr>",
         f"<tr><td>energy spread</td><td>none</td><td class='wrap'>cold FEG {dE:g} eV FWHM through Cc {cc:g} mm → focal spread "
         f"{focal:.2f} Å rms at {E / 1e3:.0f} kV ({edge:.2f} waves rms at the 80 mrad edge)</td></tr>",
         f"<tr><td>source size</td><td>none</td><td>{100 * src:.0f} pm FWHM, Gaussian</td></tr>",

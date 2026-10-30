@@ -6,6 +6,9 @@
 #   bash campaign/test_driver_legacy.sh            # against HEAD
 #   bash campaign/test_driver_legacy.sh ac69bb2    # against an older revision
 # RECON_ONLY lines are given the old names' data, so a renamed sim shows up as a difference, not a skip.
+# ONE DELIBERATE RENAME is mapped onto the reference before the comparison: per-species phonon sims gained v2 on
+# 2026-10-30 (_ph<N> -> _ph<N>v2; the abTEM sigma fix, sim/simulate_4dstem.py a8b9264), so for a PER_SPECIES=1 launch
+# the reference's _ph<N> is read as _ph<N>v2 and RECON_ONLY roots hold both names' data. Anything else must be "same".
 set -uo pipefail
 REPO_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"; cd "$REPO_DIR"
 REF="${1:-HEAD}"
@@ -42,7 +45,7 @@ while IFS= read -r cmd; do
     if [ $which = ref ]; then cp "$TMP/driver_ref.sh" "$R/campaign/run_thin_atomfind.sh"; else cp campaign/run_thin_atomfind.sh "$R/campaign/"; fi
     cp campaign/ceos_sweep.tsv "$R/campaign/"
     if [[ "$cmd" == *RECON_ONLY=1* ]]; then
-      for s in sim_out_af_armf_a080_{lab,Pb,Ti}_ph16_coh{,_dose1e7,_dose1e8}; do mkdir -p "$R/$s/01"; : >"$R/$s/01/data_dp.hdf5"; done
+      for s in sim_out_af_armf_a080_{lab,Pb,Ti}_ph16{,v2}_coh{,_dose1e7,_dose1e8}; do mkdir -p "$R/$s/01"; : >"$R/$s/01/data_dp.hdf5"; done
     fi
     c="${cmd//bash campaign\/run_thin_atomfind.sh/bash \"$R/campaign/run_thin_atomfind.sh\"}"
     u=(-u BASH_ENV -u ENV); for v in "${DVARS[@]}"; do u+=(-u "$v"); done
@@ -51,6 +54,9 @@ while IFS= read -r cmd; do
     { cat "$R/out.txt" "$R/sbatch.log" 2>/dev/null
       (cd "$R" && find . -path ./campaign -prune -o -type l -print | sort | while read -r l; do echo "$l -> $(readlink "$l")"; done)
     } | sed -E "s#$R#ROOT#g; s/[0-9]{8}_[0-9]{6}/TS/g" >"$R/norm.txt"
+    if [ $which = ref ] && [[ "$cmd" == *PER_SPECIES=1* ]] && [[ "$cmd" == *PHONONS=* ]]; then   # the v2 rename (header)
+      sed -E 's/_ph([0-9]+)([^0-9v])/_ph\1v2\2/g; s/_ph([0-9]+)$/_ph\1v2/' "$R/norm.txt" >"$R/norm2.txt" && mv "$R/norm2.txt" "$R/norm.txt"
+    fi
   done
   n=$(grep -c . "$TMP/new/$i/sbatch.log" 2>/dev/null || echo 0)
   if diff -q "$TMP/ref/$i/norm.txt" "$TMP/new/$i/norm.txt" >/dev/null; then
