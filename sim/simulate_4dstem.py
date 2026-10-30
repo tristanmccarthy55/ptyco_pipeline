@@ -114,16 +114,16 @@ FOCAL_SPREAD_A     = 0.0  # rms defocus spread [A]: Cc (sigma_E / E) (1 + E/E0) 
 SOURCE_SIZE_FWHM_A = 0.0  # effective (demagnified) source FWHM [A]; Gaussian
 COHERENCE_SAMPLES  = 16   # configurations when phonons are off
 COHERENCE_SEED     = 7
-PHONON_SIGMA_A = 0.08     # abtem `sigmas` [Å] (scalar: same for all species)
+PHONON_SIGMA_A = 0.08     # per-axis rms thermal displacement [Å] (scalar: same for all species)
 PHONON_SEED    = 1
-# Per-species thermal displacements at ROOM TEMPERATURE. abtem's `sigmas` is the 3-D rms
-# displacement MAGNITUDE (verified on 1.0.5: per-Cartesian std = sigmas/√3), so to inject
-# a target isotropic Uiso = B/(8π²) we pass sigmas = √(3·Uiso) = √(3·B/(8π²)). Parameterised
-# by the tabulated RT isotropic B [Å²] so it's auditable (Pb & O vibrate far more than Ti);
-# for a single-element PSF grid only that element's value is used.
+# Per-species thermal displacements at ROOM TEMPERATURE, as the per-axis rms u = √(Uiso) = √(B/(8π²)), from the
+# tabulated RT isotropic B [Å²] so it's auditable (Pb & O vibrate far more than Ti); for a single-element PSF grid only
+# that element's value is used. abTEM's `sigmas` changed meaning between versions: 1.0.5 divides its isotropic draws by
+# √3 (sigmas = 3-D rms), 1.0.9 does not (sigmas = per-axis std). Until 2026-10-30 this file passed √3·u, right for 1.0.5
+# only, so every phonon sim on Blythe's 1.0.9 moved the atoms √3 too far (3× the B). abtem_sigmas() now measures what the
+# installed abTEM does and converts, so u is what the atoms get on any version (sim/test_phonon_sigma.py checks it).
 _B_BY_SPECIES = {"Pb": 0.90, "Sr": 0.55, "Ti": 0.45, "O": 0.80}     # RT isotropic B [Å²]
-PHONON_SIGMA_BY_SPECIES = {k: float(np.sqrt(3.0 * b / (8.0 * np.pi ** 2)))
-                           for k, b in _B_BY_SPECIES.items()}
+PHONON_SIGMA_BY_SPECIES = {k: float(np.sqrt(b / (8.0 * np.pi ** 2))) for k, b in _B_BY_SPECIES.items()}
 PER_SPECIES_SIGMA = False   # False = scalar PHONON_SIGMA_A; True = the per-species dict
 # --phonon-temperature T (2026-10-09, cooled specimens): the per-species B at T from a Debye model (zero-point motion
 # included) whose Debye temperature is fitted, per species, to the room-temperature B above at PHONON_T_REF_K. At 100 K
@@ -141,6 +141,35 @@ def debye_B(theta, mass_amu, T):
     x = theta / T
     phi = quad(lambda t: t / np.expm1(t), 0, x)[0] / x
     return 6 * h ** 2 * T / (mass_amu * amu * kB * theta ** 2) * (phi + x / 4) * 1e20
+
+
+_ABTEM_PER_AXIS = None
+
+
+def abtem_per_axis():
+    """The per-axis displacement std the installed abTEM gives for sigmas = 1 (measured once on one atom, 4000 draws):
+    1/√3 on abTEM 1.0.5, 1 on 1.0.9. Anything else stops the run rather than guess."""
+    global _ABTEM_PER_AXIS
+    if _ABTEM_PER_AXIS is None:
+        from ase import Atoms
+        a = Atoms("Pb", positions=[[5.0, 5.0, 5.0]], cell=[10.0, 10.0, 10.0])
+        d = np.array([c.positions[0] - 5.0 for c in abtem.FrozenPhonons(a, num_configs=4000, sigmas={"Pb": 1.0}, seed=0)])
+        s = float(d.std(0).mean())
+        if abs(s - 1.0) < 0.05:
+            _ABTEM_PER_AXIS = 1.0
+        elif abs(s - 1.0 / np.sqrt(3.0)) < 0.05:
+            _ABTEM_PER_AXIS = float(1.0 / np.sqrt(3.0))
+        else:
+            raise RuntimeError(f"abTEM {abtem.__version__}: sigmas = 1 gives a per-axis std of {s:.3f}, neither 1 nor 1/√3")
+        print(f"[phonons] abTEM {abtem.__version__}: sigmas = 1 gives a per-axis std of {s:.3f}; "
+              f"passing u / {_ABTEM_PER_AXIS:.4f}", flush=True)
+    return _ABTEM_PER_AXIS
+
+
+def abtem_sigmas(u):
+    """Per-axis rms displacement(s) u [Å] (a number or {species: u}) -> the `sigmas` the installed abTEM needs."""
+    f = abtem_per_axis()
+    return {k: v / f for k, v in u.items()} if isinstance(u, dict) else u / f
 
 
 def B_at_temperature(T):
@@ -691,8 +720,8 @@ def _scan_partially_coherent(probe, atoms, scan, detector, scan_one):
     n = N_PHONONS if N_PHONONS and N_PHONONS > 0 else COHERENCE_SAMPLES
     if N_PHONONS and N_PHONONS > 0:
         sigmas = PHONON_SIGMA_BY_SPECIES if PER_SPECIES_SIGMA else PHONON_SIGMA_A
-        configs = list(abtem.FrozenPhonons(atoms, num_configs=n, sigmas=sigmas, seed=PHONON_SEED))
-        print(f"[phonons] {n} configs, sigma={sigmas} Å ({'per-species' if PER_SPECIES_SIGMA else 'scalar'})")
+        configs = list(abtem.FrozenPhonons(atoms, num_configs=n, sigmas=abtem_sigmas(sigmas), seed=PHONON_SEED))
+        print(f"[phonons] {n} configs, per-axis rms u={sigmas} Å ({'per-species' if PER_SPECIES_SIGMA else 'scalar'})")
     else:
         configs = [atoms] * n
         print(f"[phonons] OFF; {n} configurations of the undisplaced crystal for the coherence average")
@@ -730,11 +759,11 @@ def run_scan_binned(probe, atoms, scan):
         return _scan_partially_coherent(probe, atoms, scan, detector, scan_one)
     if N_PHONONS and N_PHONONS > 0:
         sigmas = PHONON_SIGMA_BY_SPECIES if PER_SPECIES_SIGMA else PHONON_SIGMA_A
-        print(f"[phonons] {N_PHONONS} configs, sigma={sigmas} Å "
+        print(f"[phonons] {N_PHONONS} configs, per-axis rms u={sigmas} Å "
               f"({'per-species' if PER_SPECIES_SIGMA else 'scalar'}) — one at a time "
               f"(bounded memory; incoherent TDS average)")
         configs = list(abtem.FrozenPhonons(atoms, num_configs=N_PHONONS,
-                                           sigmas=sigmas, seed=PHONON_SEED))
+                                           sigmas=abtem_sigmas(sigmas), seed=PHONON_SEED))
         acc = None
         for i, cfg in enumerate(configs):
             arr_i, n_b, n_u, n_c = scan_one(
@@ -911,6 +940,12 @@ def write_driver_geometry(n_b: int, box_a: float, beam_thickness_a: float,
         "n_phonons": int(N_PHONONS),
         "phonon_sigma_A": float(PHONON_SIGMA_A),
         "phonon_per_species": int(PER_SPECIES_SIGMA),
+        # per-axis rms each species actually got, and abTEM's per-axis std for sigmas = 1 (absent before 2026-10-30: those
+        # sims ran on Blythe's abTEM 1.0.9 with the atoms moved √3 too far)
+        "phonon_u_per_axis_A": {k: float(v) for k, v in PHONON_SIGMA_BY_SPECIES.items()} if PER_SPECIES_SIGMA
+                               else float(PHONON_SIGMA_A),
+        "abtem_version": str(abtem.__version__),
+        "abtem_sigma_per_axis": float(abtem_per_axis()) if N_PHONONS else 0.0,
         "phonon_temperature_K": float(PHONON_TEMPERATURE_K if PHONON_TEMPERATURE_K is not None else PHONON_T_REF_K),
         "focal_spread_A": float(FOCAL_SPREAD_A),
         "source_size_fwhm_A": float(SOURCE_SIZE_FWHM_A),
@@ -980,7 +1015,7 @@ def main(argv=None) -> int:
                     help="Frozen-phonon configs (thermal diffuse scattering). "
                          "0 = coherent (default); 8-16 for a realistic sim.")
     ap.add_argument("--phonon-sigma", type=float, default=PHONON_SIGMA_A,
-                    help="RMS thermal displacement [Å] for frozen phonons (~0.08 ≈ RT).")
+                    help="per-axis RMS thermal displacement [Å] for frozen phonons (Pb at RT: 0.107).")
     ap.add_argument("--per-species-sigma", action="store_true",
                     help="use per-species RMS thermal displacements (Pb/Sr/Ti/O, RT) "
                          "instead of one --phonon-sigma for all atoms — more faithful TDS.")
@@ -1065,7 +1100,7 @@ def main(argv=None) -> int:
             ap.error("--phonon-temperature needs --per-species-sigma")
         PHONON_TEMPERATURE_K = float(args.phonon_temperature)
         b_t = B_at_temperature(PHONON_TEMPERATURE_K)
-        PHONON_SIGMA_BY_SPECIES = {k: float(np.sqrt(3.0 * b / (8.0 * np.pi ** 2))) for k, b in b_t.items()}
+        PHONON_SIGMA_BY_SPECIES = {k: float(np.sqrt(b / (8.0 * np.pi ** 2))) for k, b in b_t.items()}
         print(f"[phonons] specimen at {PHONON_TEMPERATURE_K:g} K (Debye model fitted at {PHONON_T_REF_K:g} K): B "
               + ", ".join(f"{k} {_B_BY_SPECIES[k]:.2f} -> {b_t[k]:.3f}" for k in b_t) + " A^2")
     if args.focal_spread is not None:
